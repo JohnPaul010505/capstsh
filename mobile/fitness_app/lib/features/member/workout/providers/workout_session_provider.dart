@@ -347,6 +347,8 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
     _ticker = null;
     _idleGraceTimer?.cancel();
     _idleGraceTimer = null;
+    // Auto-persist any completed exercises before wiping state.
+    persistSession().then((_) {});
     state = WorkoutSessionState(sessionCount: state.sessionCount + 1);
   }
 

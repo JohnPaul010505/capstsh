@@ -25,14 +25,29 @@ class WorkoutPage extends ConsumerStatefulWidget {
   ConsumerState<WorkoutPage> createState() => _WorkoutPageState();
 }
 
-class _WorkoutPageState extends ConsumerState<WorkoutPage> {
+class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingObserver {
   final _searchController = TextEditingController();
   String _query = '';
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      // App going to background — persist any in-progress exercises.
+      ref.read(workoutSessionProvider.notifier).persistSession().then((_) {});
+    }
   }
 
   List<MetExercise> get _matches {
