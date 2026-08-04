@@ -1,0 +1,17 @@
+const { createClient } = require('@supabase/supabase-js')
+const s = createClient('https://itxetmemsztydtngaqjx.supabase.co', 'sb_publishable_wIAQ039t0plKRk-DDA0p-w_ZTQrG-QR')
+
+;(async () => {
+  const { error } = await s.auth.signInWithPassword({ email: 'admin@fitness.com', password: 'Admin123!' })
+  if (error) return console.log('login err', error.message)
+  const { data } = await s.from('memberships').select('plan_name, status, end_date, expires_at').order('end_date')
+  const rows = (data ?? []).map(m => `${m.plan_name} ${m.status} end=${m.end_date} exp=${m.expires_at}`)
+  console.log(rows.slice(0, 14).join('\n'))
+  console.log('...')
+  const today = new Date('2026-07-31T00:00:00')
+  const cutoff = new Date(today.getTime() + 30 * 86400000)
+  const active = (data ?? []).filter(m => m.status === 'active' && m.end_date && new Date(m.end_date) >= today && new Date(m.end_date) <= cutoff)
+  console.log('active ending within 30d:', active.length)
+  const dailyActive = (data ?? []).filter(m => m.status === 'active' && m.plan_name === 'Daily')
+  console.log('daily active count:', dailyActive.length)
+})()

@@ -1,0 +1,802 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/workout_session_provider.dart';
+import '../widgets/exercise_proof_button.dart';
+import '../data/met_exercise_catalog.dart';
+import '../../calendar/widgets/calendar_flip_sheet.dart';
+import '../../../shared/widgets/pressable.dart';
+import '../../../shared/widgets/animations.dart';
+import '../../../../app/design_tokens.dart';
+
+/// Workout session flow (client-side, in-memory — nothing persisted yet):
+///  1. Add exercises via the catalog autocomplete (must match one of the 140).
+///  2. Start Session → continuous clock.
+///  3. Per exercise: record video proof (Ready? → 3s countdown → 30s auto),
+///     then tap Done to timestamp it.
+///  4. Idle 30 min → frozen clock + "Are you still there?" 10s countdown.
+///  5. All done → summary with durations + MET calories.
+class WorkoutPage extends ConsumerStatefulWidget {
+  const WorkoutPage({super.key});
+
+  @override
+  ConsumerState<WorkoutPage> createState() => _WorkoutPageState();
+}
+
+class _WorkoutPageState extends ConsumerState<WorkoutPage> {
+  final _searchController = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<MetExercise> get _matches {
+    final q = _query.trim().toLowerCase();
+    if (q.isEmpty) return const [];
+    final result = <MetExercise>[];
+    for (final category in metExerciseCatalog.values) {
+      for (final e in category) {
+        if (e.name.toLowerCase().startsWith(q)) result.add(e);
+      }
+    }
+    return result.take(6).toList();
+  }
+
+  String _format(int seconds) {
+    final h = seconds ~/ 3600;
+    final m = (seconds % 3600) ~/ 60;
+    final s = seconds % 60;
+    return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+  }
+
+  String _formatDuration(DateTime? start, DateTime? end) {
+    if (start == null || end == null) return '—';
+    final s = end.difference(start).inSeconds;
+    final m = s ~/ 60;
+    final sec = s % 60;
+    return m > 0 ? '${m}m ${sec}s' : '${sec}s';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final session = ref.watch(workoutSessionProvider);
+    final notifier = ref.read(workoutSessionProvider.notifier);
+    final isRunning = session.isRunning;
+    final ended = session.sessionEnded;
+
+    return Scaffold(
+      backgroundColor: ClayTokens.clayDarkBase,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              physics: const ClampingScrollPhysics(),
+              children: [
+                const SizedBox(height: 14),
+                _buildHeader(session),
+                const SizedBox(height: 8),
+                _buildClockCard(session, notifier),
+                const SizedBox(height: 8),
+                if (ended)
+                  _buildSummary(session, notifier)
+                else ...[
+                  if (!isRunning) ...[
+                    _buildAddForm(notifier),
+                    const SizedBox(height: 8),
+                  ],
+                  _buildExerciseList(session, notifier),
+                ],
+                const SizedBox(height: 96),
+              ],
+            ),
+            if (session.idleWarning) _buildIdleOverlay(session, notifier),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(WorkoutSessionState session) {
+    final isRunning = session.isRunning;
+    final liveColor = isRunning ? const Color(0xFF30D158) : const Color(0xFF636366);
+    return Row(
+      children: [
+        Expanded(
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'WORKOUT LOG',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800, color: Color(0xFFFFFFFF)),
+            ),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: liveColor.withAlpha(25),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: liveColor.withAlpha(40)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedPulseDot(
+                color: isRunning ? const Color(0xFF30D158) : const Color(0xFF8E8E93),
+                size: 6,
+              ),
+              const SizedBox(width: 5),
+              Text(
+                isRunning ? 'Live' : session.sessionEnded ? 'Done' : 'Ready',
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: liveColor),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: GestureDetector(
+              onTap: () => showCalendarFlipSheet(
+                context,
+                selected: DateTime.now(),
+                today: DateTime.now(),
+              ),
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: ClayTokens.clayDarkSurface,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFF2A2A45)),
+                ),
+                child: const Icon(
+                  Icons.calendar_month,
+                  color: Color(0xFFD6A5FF),
+                  size: 18,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildClockCard(WorkoutSessionState session, WorkoutSessionNotifier notifier) {
+    final isRunning = session.isRunning;
+    final canStart = !isRunning && !session.sessionEnded && session.exercises.isNotEmpty;
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 22),
+      decoration: BoxDecoration(
+        color: ClayTokens.clayDarkSurface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF38383A).withAlpha(100)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AnimatedPulseDot(
+                color: isRunning ? const Color(0xFF64D2FF) : const Color(0xFF8E8E93),
+                size: 6,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                isRunning ? 'SESSION ACTIVE' : 'SESSION DURATION',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: isRunning ? const Color(0xFF64D2FF) : const Color(0xFF8E8E93),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            _format(session.elapsedSeconds),
+            style: TextStyle(
+              fontSize: 42,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'monospace',
+              color: isRunning ? const Color(0xFF64D2FF) : const Color(0xFFFFFFFF),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            isRunning
+                ? 'Record proof then tap Done for each exercise'
+                : session.exercises.isNotEmpty
+                    ? 'Ready to start — ${session.exercises.length} exercise${session.exercises.length == 1 ? '' : 's'}'
+                    : 'Add an exercise to begin',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 10,
+              color: isRunning ? const Color(0xFF64D2FF).withAlpha(150) : const Color(0xFF8E8E93),
+            ),
+          ),
+          if (canStart) ...[
+            const SizedBox(height: 14),
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.symmetric(horizontal: 14),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(colors: [Color(0xFF5E3AEE), Color(0xFFC56BF0)]),
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFC56BF0).withAlpha(60),
+                    blurRadius: 14,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: TextButton.icon(
+                onPressed: () => notifier.startSession(),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                icon: const Icon(Icons.play_arrow, size: 18),
+                label: const Text(
+                  'Start Session',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // ---------------- Add form (autocomplete) ----------------
+
+  Widget _buildAddForm(WorkoutSessionNotifier notifier) {
+    final matches = _matches;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeInOut,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: ClayTokens.clayDarkSurface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF38383A).withAlpha(100)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'ADD EXERCISE',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF8E8E93),
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _searchController,
+            onChanged: (v) => setState(() => _query = v),
+            decoration: InputDecoration(
+              hintText: 'Search 140 exercises…',
+              hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF7070A0)),
+              prefixIcon: const Icon(Icons.search, color: Color(0xFF7070A0), size: 18),
+              filled: true,
+              fillColor: ClayTokens.clayDarkSurfaceElevated,
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFF2A2A45)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFFA78BFA)),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            ),
+            style: const TextStyle(fontSize: 13, color: Color(0xFFFFFFFF)),
+          ),
+          if (_query.isNotEmpty && matches.isEmpty) ...[
+            const SizedBox(height: 8),
+            const Text(
+              'No catalog match — pick one of the suggestions below.',
+              style: TextStyle(fontSize: 11, color: Color(0xFFFF6B61)),
+            ),
+          ],
+          if (matches.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Column(
+              children: matches.map((e) {
+                return PressableCard(
+                  onTap: () {
+                    notifier.addExercise(e.name);
+                    _searchController.clear();
+                    setState(() => _query = '');
+                    FocusScope.of(context).unfocus();
+                  },
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  margin: const EdgeInsets.only(bottom: 6),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFBF5AF2).withAlpha(20),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(Icons.add, color: Color(0xFFD6A5FF), size: 16),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              e.name,
+                              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF)),
+                            ),
+                            Text(
+                              '${e.category} · MET ${e.met}',
+                              style: const TextStyle(fontSize: 10, color: Color(0xFF8E8E93)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // ---------------- Exercise list ----------------
+
+  Widget _buildExerciseList(WorkoutSessionState session, WorkoutSessionNotifier notifier) {
+    if (session.exercises.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: Center(
+          child: Text(
+            'No exercises yet — search above to add one',
+            style: TextStyle(color: Color(0xFF636366), fontSize: 12),
+          ),
+        ),
+      );
+    }
+
+    final currentIndex = session.exercises.indexWhere((e) => !e.isDone);
+
+    return Column(
+      children: [
+        ...session.exercises.asMap().entries.map(
+          (entry) {
+            final i = entry.key;
+            final e = entry.value;
+            final isCurrent = i == currentIndex;
+            final isDone = e.isDone;
+            return StaggeredFadeIn(
+              index: i,
+              child: _ExerciseCard(
+                exercise: e,
+                index: i,
+                isCurrent: isCurrent,
+                isDone: isDone,
+                isRunning: session.isRunning,
+                sessionStartedAt: session.startedAt,
+                weightKg: session.weightKg,
+                canStartProof: session.isRunning && isCurrent,
+                onProofRecorded: (url) => notifier.markProofRecorded(i, url),
+                onProofRemoved: () => notifier.removeProof(i),
+                onDone: () => notifier.markDone(i),
+                onRemove: () => notifier.removeExercise(i),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  // ---------------- Summary ----------------
+
+  Widget _buildSummary(WorkoutSessionState session, WorkoutSessionNotifier notifier) {
+    return StaggeredFadeIn(
+      index: 99,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1C1C2E),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFF2A2A45)),
+          gradient: RadialGradient(
+            center: const Alignment(0.9, -0.9),
+            radius: 1.2,
+            colors: [
+              const Color(0xFF7C3AED).withAlpha(60),
+              const Color(0xFF1C1C2E),
+            ],
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Text(
+                  'Workout Complete',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFFFFFFFF)),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: ClayTokens.clayAccent.withAlpha(25),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    'SESSION DONE',
+                    style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: ClayTokens.clayAccentLight),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 3),
+            const Text(
+              "Great job! Here's your session summary.",
+              style: TextStyle(fontSize: 10, color: Color(0xFFB4B4D0)),
+            ),
+            const SizedBox(height: 12),
+            Container(height: 1, color: const Color(0xFF2A2A45)),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                const Icon(Icons.timer_outlined, size: 13, color: Color(0xFFD6A5FF)),
+                const SizedBox(width: 5),
+                Text(
+                  'Total time: ${_format(session.elapsedSeconds)}',
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFFFFFFFF)),
+                ),
+                const Spacer(),
+                const Icon(Icons.local_fire_department_outlined, size: 13, color: Color(0xFFFF9F0A)),
+                const SizedBox(width: 5),
+                Text(
+                  '${session.latestCalories} kcal',
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFFFF9F0A)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            ...session.exercises.map((e) {
+              final name = e.name;
+              final duration = _formatDuration(e.startedAt, e.doneAt);
+              final hasVideo = e.hasProof;
+              final kcal = session.caloriesFor(e, session.weightKg);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 7),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 18,
+                      height: 18,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: hasVideo ? ClayTokens.clayAccent : const Color(0xFFFF453A),
+                      ),
+                      child: Icon(hasVideo ? Icons.check : Icons.close, size: 11, color: Colors.black),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '$name · $duration',
+                        style: const TextStyle(fontSize: 11, color: Color(0xFFFFFFFF)),
+                      ),
+                    ),
+                    Text(
+                      '${kcal.round()} kcal',
+                      style: const TextStyle(fontSize: 10, color: Color(0xFFB4B4D0)),
+                    ),
+                  ],
+                ),
+              );
+            }),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(colors: [Color(0xFF5E3AEE), Color(0xFFC56BF0)]),
+                borderRadius: BorderRadius.circular(999),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFC56BF0).withAlpha(60),
+                    blurRadius: 14,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: TextButton(
+                onPressed: () {
+                  notifier.restartSession();
+                  setState(() => _query = '');
+                },
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+                child: const Text(
+                  'New Session',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ---------------- Idle overlay ----------------
+
+  Widget _buildIdleOverlay(WorkoutSessionState session, WorkoutSessionNotifier notifier) {
+    return Positioned.fill(
+      child: Container(
+        color: Colors.black.withAlpha(200),
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1C1C2E),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFF2A2A45)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: ClayTokens.clayWarning.withAlpha(25),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.schedule, color: Color(0xFFFF9F0A), size: 26),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'Are you still there?',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFFFFFFFF)),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'No activity for 30 minutes. The session will restart in ${session.idleWarningSeconds}s.',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 11, color: Color(0xFFB4B4D0)),
+                  ),
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: PressableCard(
+                          onTap: () => notifier.restartSession(),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          borderRadius: BorderRadius.circular(12),
+                          decoration: BoxDecoration(
+                            color: ClayTokens.clayError.withAlpha(25),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: ClayTokens.clayError.withAlpha(100)),
+                          ),
+                          child: const Text(
+                            'Restart',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFFFF6B61)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: PressableCard(
+                          onTap: () => notifier.continueFromIdle(),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          borderRadius: BorderRadius.circular(12),
+                          decoration: BoxDecoration(
+                            color: ClayTokens.clayAccent.withAlpha(25),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: ClayTokens.clayAccent.withAlpha(100)),
+                          ),
+                          child: const Text(
+                            'Continue',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF6EE7B7)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------- Exercise card ----------------
+
+class _ExerciseCard extends StatelessWidget {
+  final SessionExercise exercise;
+  final int index;
+  final bool isCurrent;
+  final bool isDone;
+  final bool isRunning;
+  final DateTime? sessionStartedAt;
+  final double weightKg;
+  final bool canStartProof;
+  final ValueChanged<String> onProofRecorded;
+  final VoidCallback onProofRemoved;
+  final VoidCallback onDone;
+  final VoidCallback onRemove;
+
+  const _ExerciseCard({
+    required this.exercise,
+    required this.index,
+    required this.isCurrent,
+    required this.isDone,
+    required this.isRunning,
+    required this.sessionStartedAt,
+    required this.weightKg,
+    required this.canStartProof,
+    required this.onProofRecorded,
+    required this.onProofRemoved,
+    required this.onDone,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final name = exercise.name;
+    final hasVideo = exercise.hasProof;
+    final duration = exercise.isDone
+        ? _fmt(exercise.doneAt!.difference(exercise.startedAt ?? sessionStartedAt ?? exercise.doneAt!).inSeconds)
+        : null;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: isCurrent ? const Color(0xFF1C1C2E) : ClayTokens.clayDarkSurface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isCurrent ? const Color(0xFFA78BFA).withAlpha(80) : const Color(0xFF2A2A45),
+            width: isCurrent ? 1.5 : 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: isDone
+                        ? ClayTokens.clayAccent.withAlpha(25)
+                        : isCurrent
+                            ? const Color(0xFFBF5AF2).withAlpha(25)
+                            : const Color(0xFF636366).withAlpha(20),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    isDone ? Icons.check : isCurrent ? Icons.play_arrow : Icons.schedule,
+                    color: isDone
+                        ? ClayTokens.clayAccent
+                        : isCurrent
+                            ? const Color(0xFFD6A5FF)
+                            : const Color(0xFF8E8E93),
+                    size: 14,
+                  ),
+                ),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF)),
+                      ),
+                      Text(
+                        '${exercise.category} · MET ${exercise.met}',
+                        style: const TextStyle(fontSize: 10, color: Color(0xFF8E8E93)),
+                      ),
+                    ],
+                  ),
+                ),
+                if (isDone) ...[
+                  Text(
+                    duration ?? '',
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFFD6A5FF)),
+                  ),
+                ],
+              ],
+            ),
+            if (canStartProof) ...[
+              const SizedBox(height: 8),
+              ExerciseProofTile(
+                videoUrl: exercise.proofUrl,
+                onRecorded: onProofRecorded,
+                onRemoved: onProofRemoved,
+              ),
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [Color(0xFF5E3AEE), Color(0xFFC56BF0)]),
+                  borderRadius: BorderRadius.circular(999),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFC56BF0).withAlpha(60),
+                      blurRadius: 14,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: TextButton(
+                  onPressed: hasVideo ? onDone : null,
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    disabledForegroundColor: Colors.white.withAlpha(120),
+                  ),
+                  child: Text(
+                    hasVideo ? 'Done — Timestamp Now' : 'Record proof to unlock Done',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+            ] else if (!isDone && !isRunning) ...[
+              const SizedBox(height: 6),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  GestureDetector(
+                    onTap: onRemove,
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                      child: Text(
+                        'Remove',
+                        style: TextStyle(fontSize: 11, color: Color(0xFFFF6B61)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _fmt(int s) {
+    final m = s ~/ 60;
+    final sec = s % 60;
+    return m > 0 ? '${m}m ${sec}s' : '${sec}s';
+  }
+}

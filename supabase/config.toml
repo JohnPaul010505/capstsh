@@ -1,0 +1,8 @@
+[api]
+enabled = true
+port = 54321
+
+[db]
+
+[auth]
+enabled = true

@@ -1,0 +1,68 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Unbounded:wght@500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  }
+}
+
+@layer components {
+  .display {
+    font-family: 'Unbounded', 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: -0.02em;
+  }
+
+  .glass-card {
+    @apply bg-[#14142A]/55 backdrop-blur-2xl backdrop-saturate-150 border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)];
+  }
+
+  .glass-strong {
+    @apply bg-[#14142A]/80 backdrop-blur-2xl backdrop-saturate-150 border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)];
+  }
+
+  .glass-input {
+    @apply bg-white/[0.08] border-white/10;
+  }
+
+  .glass-chip {
+    @apply bg-white/[0.08] border-white/10;
+  }
+
+  .app-bg-image {
+    background-image: url('/logo.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+
+  .fade-up {
+    animation: fadeUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  @keyframes fadeUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .fade-up {
+      animation: none;
+      opacity: 1;
+      transform: none;
+    }
+  }
+}

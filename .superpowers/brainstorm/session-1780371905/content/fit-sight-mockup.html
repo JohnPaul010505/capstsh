@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>FIT Sight - App Mockups</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #09090E;
+    font-family: 'Outfit', sans-serif;
+    color: #F0F0FF;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+  }
+  h1 { font-family: 'Bebas Neue', sans-serif; font-size: 32px; letter-spacing: 2px; color: #F0F0FF; margin-bottom: 8px; }
+  .subtitle { color: #8888A8; font-size: 13px; margin-bottom: 40px; font-weight: 400; }
+
+  .row {
+    display: flex;
+    gap: 60px;
+    align-items: flex-start;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .app-section { display: flex; flex-direction: column; align-items: center; }
+  .app-section .label { font-family: 'Bebas Neue'; font-size: 18px; letter-spacing: 2px; margin-bottom: 20px; }
+  .app-section .label.member { color: #00FF88; }
+  .app-section .label.trainer { color: #4A8AFF; }
+
+  /* Phone frame */
+  .phone {
+    width: 300px;
+    height: 590px;
+    background: #0D0D16;
+    border-radius: 44px;
+    border: 2px solid rgba(255,255,255,0.10);
+    box-shadow: 0 40px 80px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.07);
+    position: relative;
+    overflow: hidden;
+    padding: 0 14px;
+  }
+
+  /* Notch */
+  .notch {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 88px;
+    height: 22px;
+    background: #000;
+    border-radius: 0 0 16px 16px;
+    z-index: 10;
+  }
+
+  /* Status bar */
+  .status-bar {
+    display: flex;
+    justify-content: space-between;
+    padding: 28px 6px 8px;
+    font-size: 10px;
+    color: #8888A8;
+  }
+  .status-dots { letter-spacing: 3px; }
+
+  /* Content area */
+  .content {
+    padding: 4px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  /* Welcome header */
+  .welcome {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2px;
+  }
+  .welcome-label { font-size: 11px; color: #8888A8; }
+  .welcome-name { font-family: 'Bebas Neue'; font-size: 19px; letter-spacing: 0.05em; color: #F0F0FF; }
+  .avatar {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 700; color: #000;
+    flex-shrink: 0;
+  }
+  .avatar.green-blue { background: linear-gradient(135deg, #00FF88, #00AAFF); }
+  .avatar.blue-green { background: linear-gradient(135deg, #4A8AFF, #00FF88); }
+
+  /* Goal card */
+  .goal-card {
+    background: linear-gradient(135deg, rgba(0,255,136,0.18), rgba(74,138,255,0.05));
+    border: 1px solid rgba(0,255,136,0.33);
+    border-radius: 16px;
+    padding: 14px;
+  }
+  .goal-label { font-size: 10px; color: #00FF88; letter-spacing: 0.12em; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; }
+  .goal-row { display: flex; justify-content: space-between; align-items: center; }
+  .goal-title { font-size: 14px; font-weight: 700; }
+  .goal-sub { font-size: 12px; color: #8888A8; margin-top: 2px; }
+  .progress-ring { position: relative; width: 52px; height: 52px; flex-shrink: 0; }
+  .progress-ring svg { transform: rotate(-90deg); }
+  .progress-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 12px; font-weight: 800; color: #00FF88; }
+  .progress-bar-wrap { margin-top: 10px; height: 4px; background: rgba(255,255,255,0.07); border-radius: 2px; }
+  .progress-bar-fill { height: 100%; width: 40%; border-radius: 2px; background: linear-gradient(90deg, #00FF88, #00AAFF); }
+
+  /* Quick stats */
+  .stats-row { display: flex; gap: 8px; }
+  .stat-card {
+    flex: 1;
+    background: #12121C;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px;
+    padding: 10px 8px;
+    text-align: center;
+  }
+  .stat-icon { font-size: 13px; margin-bottom: 5px; }
+  .stat-value { font-size: 15px; font-weight: 700; }
+  .stat-label { font-size: 10px; color: #8888A8; margin-top: 2px; }
+  .green { color: #00FF88; }
+  .blue { color: #4A8AFF; }
+  .amber { color: #FFB830; }
+
+  /* Workout card */
+  .workout-card {
+    background: #12121C;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 14px;
+    padding: 14px;
+  }
+  .workout-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .workout-header h3 { font-size: 13px; font-weight: 700; }
+  .badge {
+    font-size: 10px; font-weight: 700;
+    background: rgba(0,255,136,0.13);
+    color: #00FF88;
+    padding: 3px 7px;
+    border-radius: 4px;
+  }
+  .exercise-row {
+    display: flex; justify-content: space-between; padding: 8px 0;
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+  .exercise-row:first-of-type { border-top: none; }
+  .exercise-name { font-size: 12px; }
+  .exercise-data { font-size: 11px; }
+  .exercise-data strong { color: #00FF88; font-weight: 700; }
+  .exercise-data span { color: #8888A8; }
+
+  /* Chart */
+  .chart-card {
+    background: #12121C;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 14px;
+    padding: 14px;
+  }
+  .chart-card h3 { font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+  .chart-area { height: 70px; position: relative; }
+  .chart-line { position: absolute; bottom: 0; left: 0; right: 0; height: 100%; }
+  .chart-labels { display: flex; justify-content: space-between; margin-top: 4px; }
+  .chart-labels span { font-size: 10px; color: #8888A8; }
+
+  /* Bottom nav */
+  .bottom-nav {
+    position: absolute;
+    bottom: 0;
+    left: 0; right: 0;
+    background: rgba(18,18,28,0.94);
+    border-top: 1px solid rgba(255,255,255,0.06);
+    display: flex;
+    justify-content: space-around;
+    padding: 7px 0 18px;
+  }
+  .nav-item { text-align: center; }
+  .nav-icon { font-size: 18px; margin-bottom: 1px; }
+  .nav-label { font-size: 9px; }
+  .nav-item.active .nav-icon { color: #00FF88; }
+  .nav-item.active .nav-label { color: #00FF88; font-weight: 700; }
+  .nav-item.inactive .nav-icon { color: #8888A8; }
+  .nav-item.inactive .nav-label { color: #8888A8; font-weight: 400; }
+
+  /* === TRAINER SPECIFIC === */
+  .client-count-label { font-size: 10px; color: #8888A8; letter-spacing: 0.10em; font-weight: 600; text-transform: uppercase; margin-bottom: 6px; }
+
+  .client-cards { display: flex; flex-direction: column; gap: 5px; }
+  .client-card {
+    padding: 10px 12px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .client-card.inactive {
+    background: #12121C;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .client-card.active {
+    background: rgba(0,255,136,0.10);
+    border: 1px solid rgba(0,255,136,0.27);
+  }
+  .client-avatar {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(0,255,136,0.20), rgba(74,138,255,0.20));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; color: #00FF88;
+    flex-shrink: 0;
+  }
+  .client-info { flex: 1; }
+  .client-name { font-size: 13px; font-weight: 600; }
+  .client-goal { font-size: 11px; color: #8888A8; }
+  .client-badge {
+    font-size: 10px; font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 5px;
+  }
+  .client-badge.excellent { color: #00FF88; background: rgba(0,255,136,0.13); }
+  .client-badge.on-track { color: #4A8AFF; background: rgba(74,138,255,0.13); }
+  .client-badge.at-risk { color: #FF4466; background: rgba(255,68,102,0.13); }
+
+  /* Detail panel */
+  .detail-panel {
+    background: #12121C;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 14px;
+    padding: 14px;
+    margin-top: 6px;
+  }
+  .detail-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .detail-header h3 { font-size: 13px; font-weight: 700; }
+  .detail-stats { display: flex; gap: 8px; }
+  .detail-stat {
+    flex: 1;
+    background: #0D0D16;
+    border-radius: 10px;
+    padding: 10px;
+    text-align: center;
+  }
+  .detail-stat-value { font-size: 16px; font-weight: 700; }
+  .detail-stat-label { font-size: 10px; color: #8888A8; margin-top: 2px; }
+  .goal-progress { margin-top: 10px; }
+  .goal-progress-header { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px; }
+  .goal-progress-header span:first-child { color: #8888A8; }
+  .goal-progress-header span:last-child { color: #00FF88; font-weight: 700; }
+  .goal-progress-bar { height: 5px; background: rgba(255,255,255,0.07); border-radius: 3px; }
+  .goal-progress-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, #00FF88, #00AAFF); transition: width 0.4s ease; }
+
+  .cta-button {
+    width: 100%;
+    padding: 10px;
+    border-radius: 10px;
+    border: none;
+    background: linear-gradient(135deg, #00FF88, #00AAFF);
+    color: #000;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 10px;
+  }
+
+  /* Feature lists */
+  .feature-list {
+    width: 280px;
+    display: flex; flex-direction: column; gap: 16px;
+  }
+  .feature-label { font-size: 11px; letter-spacing: 0.12em; font-weight: 700; text-transform: uppercase; }
+  .feature-title { font-family: 'Bebas Neue'; font-size: 24px; line-height: 1.2; margin-bottom: 8px; }
+  .feature-row { display: flex; align-items: center; gap: 12px; }
+  .feature-icon {
+    width: 30px; height: 30px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .feature-icon.green-bg { background: rgba(0,255,136,0.10); color: #00FF88; }
+  .feature-icon.blue-bg { background: rgba(74,138,255,0.10); color: #4A8AFF; }
+  .feature-text { font-size: 13px; color: #8888A8; }
+
+  .hint-box {
+    background: #12121C;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 9px;
+    padding: 12px 16px;
+    font-size: 12px;
+    color: #8888A8;
+    text-align: center;
+    margin-top: 12px;
+  }
+</style>
+</head>
+<body>
+<h1>FIT SIGHT — UI MOCKUPS</h1>
+<p class="subtitle">Member App (left) and Trainer App (right) with the neon dark design system</p>
+
+<div class="row">
+  <!-- MEMBER APP -->
+  <div class="app-section">
+    <div class="label member">MEMBER APP</div>
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="status-bar">
+        <span>9:41</span>
+        <span class="status-dots">● ● ●</span>
+      </div>
+      <div class="content">
+        <!-- Welcome -->
+        <div class="welcome">
+          <div>
+            <div class="welcome-label">Welcome back</div>
+            <div class="welcome-name">MARCUS LEE</div>
+          </div>
+          <div class="avatar green-blue">M</div>
+        </div>
+
+        <!-- Goal Card -->
+        <div class="goal-card">
+          <div class="goal-label">CURRENT GOAL</div>
+          <div class="goal-row">
+            <div>
+              <div class="goal-title">Weight Loss</div>
+              <div class="goal-sub">86 kg → 80 kg target</div>
+            </div>
+            <div class="progress-ring">
+              <svg width="52" height="52" viewBox="0 0 52 52">
+                <circle cx="26" cy="26" r="22" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="4"/>
+                <circle cx="26" cy="26" r="22" fill="none" stroke="#00FF88" stroke-width="4" stroke-linecap="round" stroke-dasharray="138.23" stroke-dashoffset="82.94"/>
+              </svg>
+              <div class="progress-center">40%</div>
+            </div>
+          </div>
+          <div class="progress-bar-wrap"><div class="progress-bar-fill"></div></div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-icon green">↓</div>
+            <div class="stat-value green">86kg</div>
+            <div class="stat-label">Weight</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon blue">⚡</div>
+            <div class="stat-value blue">24.1</div>
+            <div class="stat-label">BMI</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon amber">🔥</div>
+            <div class="stat-value amber">12d</div>
+            <div class="stat-label">Streak</div>
+          </div>
+        </div>
+
+        <!-- Today's Workout -->
+        <div class="workout-card">
+          <div class="workout-header">
+            <h3>Today's Workout</h3>
+            <span class="badge">CHEST</span>
+          </div>
+          <div class="exercise-row"><span class="exercise-name">Bench Press</span><span class="exercise-data"><strong>4×12</strong> <span>60kg</span></span></div>
+          <div class="exercise-row"><span class="exercise-name">Incline Press</span><span class="exercise-data"><strong>3×10</strong> <span>50kg</span></span></div>
+          <div class="exercise-row"><span class="exercise-name">Cable Fly</span><span class="exercise-data"><strong>3×15</strong> <span>20kg</span></span></div>
+        </div>
+
+        <!-- Weight Progress -->
+        <div class="chart-card">
+          <h3>Weight Progress</h3>
+          <div class="chart-area">
+            <svg viewBox="0 0 260 70" class="chart-line" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#00FF88" stop-opacity="0.25"/>
+                  <stop offset="100%" stop-color="#00FF88" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              <path d="M0,25 Q26,35 43,22 Q60,9 87,28 Q113,47 130,32 Q147,17 173,30 Q200,43 217,28 Q234,13 260,18" fill="none" stroke="#00FF88" stroke-width="2"/>
+              <path d="M0,25 Q26,35 43,22 Q60,9 87,28 Q113,47 130,32 Q147,17 173,30 Q200,43 217,28 Q234,13 260,18 L260,70 L0,70 Z" fill="url(#areaGrad)"/>
+            </svg>
+          </div>
+          <div class="chart-labels">
+            <span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Nav -->
+      <div class="bottom-nav">
+        <div class="nav-item active"><div class="nav-icon">◩</div><div class="nav-label">Home</div></div>
+        <div class="nav-item inactive"><div class="nav-icon">◉</div><div class="nav-label">Workout</div></div>
+        <div class="nav-item inactive"><div class="nav-icon">◎</div><div class="nav-label">Goals</div></div>
+        <div class="nav-item inactive"><div class="nav-icon">💬</div><div class="nav-label">Chat</div></div>
+        <div class="nav-item inactive"><div class="nav-icon">👤</div><div class="nav-label">Profile</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRAINER APP -->
+  <div class="app-section">
+    <div class="label trainer">TRAINER APP</div>
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="status-bar">
+        <span>9:41</span>
+        <span class="status-dots">● ● ●</span>
+      </div>
+      <div class="content">
+        <!-- Welcome -->
+        <div class="welcome">
+          <div>
+            <div class="welcome-label">Trainer Portal</div>
+            <div class="welcome-name">COACH ANA</div>
+          </div>
+          <div class="avatar blue-green">A</div>
+        </div>
+
+        <!-- Client Count -->
+        <div class="client-count-label">MY CLIENTS (4)</div>
+
+        <!-- Client List -->
+        <div class="client-cards">
+          <div class="client-card active">
+            <div class="client-avatar">M</div>
+            <div class="client-info">
+              <div class="client-name">Marcus Lee</div>
+              <div class="client-goal">Weight Loss</div>
+            </div>
+            <span class="client-badge on-track">On Track</span>
+          </div>
+          <div class="client-card inactive">
+            <div class="client-avatar">S</div>
+            <div class="client-info">
+              <div class="client-name">Sofia Cruz</div>
+              <div class="client-goal">Muscle Gain</div>
+            </div>
+            <span class="client-badge excellent">Excellent</span>
+          </div>
+          <div class="client-card inactive">
+            <div class="client-avatar">J</div>
+            <div class="client-info">
+              <div class="client-name">James Rio</div>
+              <div class="client-goal">Maintenance</div>
+            </div>
+            <span class="client-badge on-track">On Track</span>
+          </div>
+          <div class="client-card inactive">
+            <div class="client-avatar">C</div>
+            <div class="client-info">
+              <div class="client-name">Carla Mendez</div>
+              <div class="client-goal">Weight Loss</div>
+            </div>
+            <span class="client-badge at-risk">At Risk</span>
+          </div>
+        </div>
+
+        <!-- Detail Panel -->
+        <div class="detail-panel">
+          <div class="detail-header">
+            <h3>Marcus Lee</h3>
+            <span class="client-badge on-track">On Track</span>
+          </div>
+          <div class="detail-stats">
+            <div class="detail-stat">
+              <div class="detail-stat-value green">86 kg</div>
+              <div class="detail-stat-label">Weight</div>
+            </div>
+            <div class="detail-stat">
+              <div class="detail-stat-value green">85%</div>
+              <div class="detail-stat-label">Attendance</div>
+            </div>
+          </div>
+          <div class="goal-progress">
+            <div class="goal-progress-header">
+              <span>Goal Progress</span>
+              <span>40%</span>
+            </div>
+            <div class="goal-progress-bar">
+              <div class="goal-progress-fill" style="width: 40%"></div>
+            </div>
+          </div>
+          <button class="cta-button">Send Feedback to Marcus</button>
+        </div>
+      </div>
+
+      <!-- Bottom Nav -->
+      <div class="bottom-nav">
+        <div class="nav-item active"><div class="nav-icon">👥</div><div class="nav-label">Clients</div></div>
+        <div class="nav-item inactive"><div class="nav-icon">◉</div><div class="nav-label">Workouts</div></div>
+        <div class="nav-item inactive"><div class="nav-icon">📈</div><div class="nav-label">Progress</div></div>
+        <div class="nav-item inactive"><div class="nav-icon">💬</div><div class="nav-label">Chat</div></div>
+        <div class="nav-item inactive"><div class="nav-icon">👤</div><div class="nav-label">Profile</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row" style="margin-top: 40px; gap: 80px;">
+  <!-- Member Features -->
+  <div class="feature-list">
+    <div class="feature-label" style="color: #00FF88;">MEMBER APP</div>
+    <div class="feature-title">EVERYTHING MEMBERS NEED</div>
+    <div class="feature-row">
+      <div class="feature-icon green-bg">🎯</div>
+      <span class="feature-text">Goal tracking with live progress ring</span>
+    </div>
+    <div class="feature-row">
+      <div class="feature-icon green-bg">💪</div>
+      <span class="feature-text">Log workouts — sets, reps & weight</span>
+    </div>
+    <div class="feature-row">
+      <div class="feature-icon green-bg">📊</div>
+      <span class="feature-text">Weight & BMI progress charts</span>
+    </div>
+    <div class="feature-row">
+      <div class="feature-icon green-bg">🍽</div>
+      <span class="feature-text">Meal tracker + AI food recommendations</span>
+    </div>
+    <div class="feature-row">
+      <div class="feature-icon green-bg">💬</div>
+      <span class="feature-text">Direct chat with assigned trainer</span>
+    </div>
+  </div>
+
+  <!-- Trainer Features -->
+  <div class="feature-list">
+    <div class="feature-label" style="color: #4A8AFF;">TRAINER APP</div>
+    <div class="feature-title">POWERFUL COACHING TOOLS</div>
+    <div class="feature-row">
+      <div class="feature-icon blue-bg">👥</div>
+      <span class="feature-text">View & manage all assigned clients</span>
+    </div>
+    <div class="feature-row">
+      <div class="feature-icon blue-bg">📊</div>
+      <span class="feature-text">Analyze workout logs & consistency</span>
+    </div>
+    <div class="feature-row">
+      <div class="feature-icon blue-bg">📈</div>
+      <span class="feature-text">Track weight, body fat & attendance trends</span>
+    </div>
+    <div class="feature-row">
+      <div class="feature-icon blue-bg">🚩</div>
+      <span class="feature-text">Detect unrealistic goals & suggest fixes</span>
+    </div>
+    <div class="feature-row">
+      <div class="feature-icon blue-bg">💬</div>
+      <span class="feature-text">Chat directly with members</span>
+    </div>
+    <div class="hint-box">Tap a client card to see their overview</div>
+  </div>
+</div>
+
+<script>
+// Simple client card interaction
+document.querySelectorAll('.client-card').forEach(card => {
+  card.addEventListener('click', function() {
+    document.querySelectorAll('.client-card').forEach(c => {
+      c.classList.remove('active');
+      c.classList.add('inactive');
+    });
+    this.classList.remove('inactive');
+    this.classList.add('active');
+
+    const name = this.querySelector('.client-name').textContent;
+    const firstName = name.split(' ')[0];
+    const badge = this.querySelector('.client-badge');
+    const badgeText = badge.textContent;
+    const badgeClass = badge.className.replace('client-badge ', '');
+
+    document.querySelector('.detail-header h3').textContent = name;
+    document.querySelector('.detail-header .client-badge').textContent = badgeText;
+    document.querySelector('.detail-header .client-badge').className = 'client-badge ' + badgeClass;
+    document.querySelector('.cta-button').textContent = 'Send Feedback to ' + firstName;
+
+    // Simulate different stats per client
+    const stats = {
+      'Marcus Lee': { weight: '86 kg', att: '85%', progress: 40 },
+      'Sofia Cruz': { weight: '58 kg', att: '92%', progress: 65 },
+      'James Rio': { weight: '74 kg', att: '78%', progress: 80 },
+      'Carla Mendez': { weight: '91 kg', att: '45%', progress: 20 }
+    };
+    const s = stats[name] || { weight: '—', att: '—', progress: 0 };
+    document.querySelectorAll('.detail-stat-value')[0].textContent = s.weight;
+    document.querySelectorAll('.detail-stat-value')[0].style.color = '#00FF88';
+    document.querySelectorAll('.detail-stat-value')[1].textContent = s.att;
+    document.querySelectorAll('.detail-stat-value')[1].style.color = parseInt(s.att) >= 70 ? '#00FF88' : '#FF4466';
+    document.querySelector('.goal-progress-header span:last-child').textContent = s.progress + '%';
+    document.querySelector('.goal-progress-fill').style.width = s.progress + '%';
+  });
+});
+</script>
+</body>
+</html>

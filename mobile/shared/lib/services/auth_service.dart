@@ -1,0 +1,74 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../models/profile.dart';
+import 'supabase_client.dart';
+
+class AuthService {
+  final SupabaseClient _client;
+
+  AuthService() : _client = SupabaseClientService().client;
+
+  Future<Profile?> signIn({required String email, required String password}) async {
+    final response = await _client.auth.signInWithPassword(email: email, password: password);
+    if (response.user == null) return null;
+    return _fetchProfile(response.user!.id);
+  }
+
+  Future<Profile?> signInWithCode({
+    required String code,
+    required String password,
+  }) async {
+    String email;
+    try {
+      final result = await _client
+          .from('profiles')
+          .select('email')
+          .eq('code', code)
+          .maybeSingle();
+      if (result == null || result.isEmpty) {
+        throw Exception('No profile found with code "$code"');
+      }
+      email = result['email'] as String;
+    } catch (e) {
+      if (e is Exception && e.toString().contains('No profile found')) rethrow;
+      throw Exception('Could not look up code "$code"');
+    }
+
+    try {
+      final response = await _client.auth.signInWithPassword(
+        email: email,
+        password: password,
+      );
+      if (response.user == null) {
+        throw Exception('Invalid credentials');
+      }
+      return await _fetchProfile(response.user!.id);
+    } catch (e) {
+      final msg = e.toString();
+      if (msg.contains('Invalid login credentials')) {
+        throw Exception('Wrong password. Use Welcome123!');
+      }
+      rethrow;
+    }
+  }
+
+  Future<void> signOut() async {
+    await _client.auth.signOut();
+  }
+
+  Future<Profile?> refreshProfile() async {
+    final user = _client.auth.currentUser;
+    if (user == null) return null;
+    return _fetchProfile(user.id);
+  }
+
+  Future<Profile?> _fetchProfile(String userId) async {
+    final response = await _client
+        .from('profiles')
+        .select()
+        .eq('id', userId)
+        .single();
+    return Profile.fromJson(response);
+  }
+
+  Session? get currentSession => _client.auth.currentSession;
+}
