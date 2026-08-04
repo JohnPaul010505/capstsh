@@ -142,7 +142,7 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
         weightKg: _weightKg,
         proofUrl: e.proofUrl,
         proofType: e.hasProof ? 'video' : null,
-        loggedAt: e.doneAt!,
+        loggedAt: e.doneAt!.toUtc(),
       );
       await service.createWorkout(log);
     }

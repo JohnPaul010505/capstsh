@@ -9,9 +9,11 @@ final monthEntriesProvider = FutureProvider.autoDispose
   final userId = client.auth.currentUser!.id;
   final monthEnd = DateTime(monthStart.year, monthStart.month + 1, 1);
 
-  // Use date-only strings (YYYY-MM-DD) to avoid timezone conversion issues.
-  final startStr = '${monthStart.year}-${monthStart.month.toString().padLeft(2, '0')}-${monthStart.day.toString().padLeft(2, '0')}';
-  final endStr = '${monthEnd.year}-${monthEnd.month.toString().padLeft(2, '0')}-${monthEnd.day.toString().padLeft(2, '0')}';
+  // Convert local calendar dates to UTC for correct timestamptz comparison.
+  final startUtc = DateTime(monthStart.year, monthStart.month, monthStart.day).toUtc();
+  final endUtc = DateTime(monthEnd.year, monthEnd.month, monthEnd.day).toUtc();
+  final startStr = startUtc.toIso8601String();
+  final endStr = endUtc.toIso8601String();
 
   final results = await Future.wait([
     client
