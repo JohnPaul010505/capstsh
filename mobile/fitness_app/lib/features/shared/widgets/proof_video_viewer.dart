@@ -120,82 +120,81 @@ class _ProofViewerDialogState extends State<_ProofViewerDialog> {
         child: AspectRatio(
           aspectRatio: 16 / 9,
           child: Container(
-              clipBehavior: Clip.antiAlias,
-              decoration: BoxDecoration(
-                color: const Color(0xFF1C1C2E),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFF2A2A45)),
-                gradient: RadialGradient(
-                  center: const Alignment(0.9, -0.9),
-                  radius: 1.3,
-                  colors: [
-                    const Color(0xFF7C3AED).withAlpha(50),
-                    const Color(0xFF1C1C2E),
-                  ],
-                ),
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              color: const Color(0xFF1C1C2E),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFF2A2A45)),
+              gradient: RadialGradient(
+                center: const Alignment(0.9, -0.9),
+                radius: 1.3,
+                colors: [
+                  const Color(0xFF7C3AED).withAlpha(50),
+                  const Color(0xFF1C1C2E),
+                ],
               ),
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: _togglePlay,
-                      child: Center(
-                        child: _controller == null
-                            ? const SizedBox.shrink()
-                            : VideoPlayer(_controller!),
-                      ),
+            ),
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: _togglePlay,
+                    child: Center(
+                      child: _controller == null
+                          ? const SizedBox.shrink()
+                          : VideoPlayer(_controller!),
                     ),
                   ),
-                  if (_error)
-                    const Center(
-                      child: Text(
-                        'Video unavailable',
-                        style: TextStyle(color: Colors.white54, fontSize: 12),
-                      ),
-                    )
-                  else if (!_initialized && !_waitingForTap)
-                    const Center(
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: ClayColors.clayPrimaryLight,
-                      ),
-                    )
-                  else if (_waitingForTap || !_playing)
-                    Center(
-                      child: GestureDetector(
-                        onTap: _tryPlay,
-                        child: Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: Colors.black.withAlpha(140),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.play_arrow,
-                            color: Colors.white,
-                            size: 26,
-                          ),
+                ),
+                if (_error)
+                  const Center(
+                    child: Text(
+                      'Video unavailable',
+                      style: TextStyle(color: Colors.white54, fontSize: 12),
+                    ),
+                  )
+                else if (!_initialized && !_waitingForTap)
+                  const Center(
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: ClayColors.clayPrimaryLight,
+                    ),
+                  )
+                else if (_waitingForTap || !_playing)
+                  Center(
+                    child: GestureDetector(
+                      onTap: _tryPlay,
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withAlpha(140),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.play_arrow,
+                          color: Colors.white,
+                          size: 26,
                         ),
                       ),
                     ),
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: PressableCard(
-                      onTap: () => Navigator.of(context).pop(),
-                      padding: const EdgeInsets.all(7),
-                      borderRadius: BorderRadius.circular(999),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withAlpha(120),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: const Icon(Icons.close, color: Colors.white, size: 16),
-                    ),
                   ),
-                ],
-              ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: PressableCard(
+                    onTap: () => Navigator.of(context).pop(),
+                    padding: const EdgeInsets.all(7),
+                    borderRadius: BorderRadius.circular(999),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withAlpha(120),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: const Icon(Icons.close, color: Colors.white, size: 16),
+                  ),
+                ),
+              ],
             ),
           ),
         ),

@@ -8,6 +8,7 @@ import '../../calendar/providers/month_entries_provider.dart';
 import '../../home/pages/home_page.dart';
 import '../../../shared/widgets/pressable.dart';
 import '../../../shared/widgets/animations.dart';
+import '../../../shared/widgets/proof_video_viewer.dart';
 import '../../../../app/design_tokens.dart';
 
 /// Workout session flow (client-side, in-memory — nothing persisted yet):
@@ -494,32 +495,88 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
               final duration = _formatDuration(e.startedAt, e.doneAt);
               final hasVideo = e.hasProof;
               final kcal = session.caloriesFor(e, session.weightKg);
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 7),
-                child: Row(
-                  children: [
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 18,
+                          height: 18,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: hasVideo ? ClayTokens.clayAccent : const Color(0xFFFF453A),
+                          ),
+                          child: Icon(hasVideo ? Icons.check : Icons.close, size: 11, color: Colors.black),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '$name · $duration',
+                            style: const TextStyle(fontSize: 11, color: Color(0xFFFFFFFF)),
+                          ),
+                        ),
+                        Text(
+                          '${kcal.round()} kcal',
+                          style: const TextStyle(fontSize: 10, color: Color(0xFFB4B4D0)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (hasVideo)
+                    GestureDetector(
+                      onTap: () => showProofVideoDialog(context, e.proofUrl!),
+                      child: Container(
+                        height: 40,
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1C1C2E),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFF2A2A45)),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.play_circle_outline, size: 16, color: Colors.white54),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text('Video saved · tap to view', style: TextStyle(
+                                fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFFB4B4D0),
+                              )),
+                            ),
+                            SizedBox(width: 6),
+                            SizedBox(
+                              width: 5, height: 5,
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  color: Color(0xFF6EE7B7),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
                     Container(
-                      width: 18,
-                      height: 18,
+                      height: 40,
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
                       decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: hasVideo ? ClayTokens.clayAccent : const Color(0xFFFF453A),
+                        color: ClayTokens.clayDarkSurfaceElevated,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFF2A2A45)),
                       ),
-                      child: Icon(hasVideo ? Icons.check : Icons.close, size: 11, color: Colors.black),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        '$name · $duration',
-                        style: const TextStyle(fontSize: 11, color: Color(0xFFFFFFFF)),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.videocam_outlined, size: 14, color: Color(0xFF636366)),
+                          SizedBox(width: 8),
+                          Text('No video', style: TextStyle(fontSize: 10, color: Color(0xFF636366))),
+                        ],
                       ),
                     ),
-                    Text(
-                      '${kcal.round()} kcal',
-                      style: const TextStyle(fontSize: 10, color: Color(0xFFB4B4D0)),
-                    ),
-                  ],
-                ),
+                ],
               );
             }),
             const SizedBox(height: 12),
