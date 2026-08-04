@@ -195,9 +195,7 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
     if (state.exercises.isEmpty || state.isRunning || state.sessionEnded) return;
     _lastTick = DateTime.now();
     final started = DateTime.now();
-    for (final e in state.exercises) {
-      e.startedAt ??= started;
-    }
+    state.exercises.first.startedAt ??= started;
     state = WorkoutSessionState(
       exercises: state.exercises,
       isRunning: true,
