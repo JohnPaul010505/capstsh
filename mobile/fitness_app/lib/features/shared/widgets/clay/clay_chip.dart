@@ -274,8 +274,11 @@ class _ClayFilterChipsState extends State<ClayFilterChips> {
               onSelected: (selected) {
                 setState(() {
                   if (widget.multiSelect) {
-                    if (selected) _selected.add(option);
-                    else _selected.remove(option);
+                    if (selected) {
+                      _selected.add(option);
+                    } else {
+                      _selected.remove(option);
+                    }
                   } else {
                     _selected = {option};
                   }

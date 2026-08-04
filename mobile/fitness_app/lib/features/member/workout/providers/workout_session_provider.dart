@@ -50,6 +50,7 @@ class WorkoutSessionState {
     this.sessionEnded = false,
     this.weightKg = 70,
     int? latestCalories,
+  // ignore: prefer_initializing_formals
   }) : _latestCalories = latestCalories;
 
   /// Total active session time, minus idle windows (tracked by the notifier).

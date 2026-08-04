@@ -129,9 +129,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     _messageController.clear();
 
     try {
-      if (_roomId == null) {
-        _roomId = await _createRoom();
-      }
+      _roomId ??= await _createRoom();
 
       await SupabaseClientService().client.from('chat_messages').insert({
         'room_id': _roomId,

@@ -3,7 +3,7 @@
 /// Values are sourced/approximated from the Compendium of Physical Activities
 /// (Ainsworth et al., 2024 update) and standard exercise-science references.
 /// Used for calorie calculation: calories = MET * weight(kg) * duration(hours)
-library met_exercise_catalog;
+library;
 
 /// A single exercise entry with its MET value.
 class MetExercise {

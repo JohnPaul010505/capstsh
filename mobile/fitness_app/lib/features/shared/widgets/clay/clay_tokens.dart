@@ -1,4 +1,5 @@
 /// Re-export all Claymorphism design tokens and widgets for easy importing
+library;
 
 // Design tokens
 export '../../../../app/design_tokens.dart';

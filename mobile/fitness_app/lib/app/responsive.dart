@@ -232,9 +232,13 @@ class ResponsiveGap extends StatelessWidget {
   Widget build(BuildContext context) {
     final rc = context.responsive;
     double size;
-    if (rc.isDesktop && desktop != null) size = desktop!;
-    else if (rc.isTablet && tablet != null) size = tablet!;
-    else size = phone ?? ClayTokens.md;
+    if (rc.isDesktop && desktop != null) {
+      size = desktop!;
+    } else if (rc.isTablet && tablet != null) {
+      size = tablet!;
+    } else {
+      size = phone ?? ClayTokens.md;
+    }
 
     return SizedBox(height: size, width: size);
   }
@@ -259,9 +263,13 @@ class ResponsivePadding extends StatelessWidget {
   Widget build(BuildContext context) {
     final rc = context.responsive;
     EdgeInsetsGeometry padding;
-    if (rc.isDesktop && desktop != null) padding = desktop!;
-    else if (rc.isTablet && tablet != null) padding = tablet!;
-    else padding = phone ?? EdgeInsets.symmetric(horizontal: rc.pageHorizontalPadding, vertical: ClayTokens.md);
+    if (rc.isDesktop && desktop != null) {
+      padding = desktop!;
+    } else if (rc.isTablet && tablet != null) {
+      padding = tablet!;
+    } else {
+      padding = phone ?? EdgeInsets.symmetric(horizontal: rc.pageHorizontalPadding, vertical: ClayTokens.md);
+    }
 
     return Padding(padding: padding, child: child);
   }
@@ -330,9 +338,13 @@ class ResponsiveGrid extends StatelessWidget {
     return ResponsiveBuilder(
       builder: (context, rc) {
         int columns;
-        if (rc.isDesktop) columns = desktopColumns ?? 4;
-        else if (rc.isTablet) columns = tabletColumns ?? 3;
-        else columns = phoneColumns ?? 2;
+        if (rc.isDesktop) {
+          columns = desktopColumns ?? 4;
+        } else if (rc.isTablet) {
+          columns = tabletColumns ?? 3;
+        } else {
+          columns = phoneColumns ?? 2;
+        }
 
         return Wrap(
           spacing: spacing,

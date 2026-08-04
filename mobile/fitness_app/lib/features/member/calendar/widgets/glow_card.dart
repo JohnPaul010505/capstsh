@@ -51,7 +51,7 @@ class _GlowCardState extends State<GlowCard> with SingleTickerProviderStateMixin
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  const _RadialGlow(const Color(0xFF5E3AEE), Alignment(-0.9, -0.9)),
+                  const _RadialGlow(Color(0xFF5E3AEE), Alignment(-0.9, -0.9)),
                   const _RadialGlow(Color(0xFFC56BF0), Alignment(0.45, -0.6)),
                   const _RadialGlow(Color(0xFF7C3AED), Alignment(1.1, 0.9)),
                   _TopLight(),

@@ -220,7 +220,7 @@ class _MembersPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final p = Paint()..color = color;
     final s = size.width;
-    void _person(double cx) {
+    void person(double cx) {
       final head = Path()..addOval(Rect.fromCircle(center: Offset(cx, s * 0.3), radius: s * 0.09));
       _stroke(canvas, head, p, width: 2.5);
       final body = Path()..moveTo(cx, s * 0.39)..lineTo(cx, s * 0.65);
@@ -230,8 +230,8 @@ class _MembersPainter extends CustomPainter {
       _stroke(canvas, armL, p, width: 2);
       _stroke(canvas, armR, p, width: 2);
     }
-    _person(s * 0.3);
-    _person(s * 0.7);
+    person(s * 0.3);
+    person(s * 0.7);
   }
   @override
   bool shouldRepaint(covariant _MembersPainter old) => old.color != color;
