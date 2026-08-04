@@ -38,6 +38,8 @@ class WorkoutSessionState {
   final bool sessionEnded;
   final double weightKg;
   final int? _latestCalories;
+  final int sessionCount;
+  final bool? lastPersistSuccess;
 
   const WorkoutSessionState({
     this.exercises = const [],
@@ -50,6 +52,8 @@ class WorkoutSessionState {
     this.sessionEnded = false,
     this.weightKg = 70,
     int? latestCalories,
+    this.sessionCount = 0,
+    this.lastPersistSuccess,
   // ignore: prefer_initializing_formals
   }) : _latestCalories = latestCalories;
 
@@ -126,25 +130,30 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
     }
   }
 
-  Future<void> persistSession() async {
+  Future<bool> persistSession() async {
     final client = SupabaseClientService().client;
     final userId = client.auth.currentUser?.id;
-    if (userId == null || state.exercises.isEmpty) return;
+    if (userId == null || state.exercises.isEmpty) return false;
 
     final service = WorkoutService();
-    for (final e in state.exercises) {
-      if (e.doneAt == null) continue;
-      final log = WorkoutLog(
-        id: '',
-        memberId: userId,
-        exerciseName: e.name,
-        durationMinutes: e.doneAt!.difference(e.startedAt ?? state.startedAt ?? e.doneAt!).inMinutes,
-        weightKg: _weightKg,
-        proofUrl: e.proofUrl,
-        proofType: e.hasProof ? 'video' : null,
-        loggedAt: e.doneAt!.toUtc(),
-      );
-      await service.createWorkout(log);
+    try {
+      for (final e in state.exercises) {
+        if (e.doneAt == null) continue;
+        final log = WorkoutLog(
+          id: '',
+          memberId: userId,
+          exerciseName: e.name,
+          durationMinutes: e.doneAt!.difference(e.startedAt ?? state.startedAt ?? e.doneAt!).inMinutes,
+          weightKg: _weightKg,
+          proofUrl: e.proofUrl,
+          proofType: e.hasProof ? 'video' : null,
+          loggedAt: e.doneAt!.toUtc(),
+        );
+        await service.createWorkout(log);
+      }
+      return true;
+    } catch (_) {
+      return false;
     }
   }
 
@@ -256,7 +265,25 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
       sessionEnded: true,
       weightKg: _weightKg,
       latestCalories: totalCalories,
+      sessionCount: state.sessionCount,
     );
+    // Auto-persist in background — fire and forget.
+    persistSession().then((ok) {
+      state = WorkoutSessionState(
+        exercises: state.exercises,
+        isRunning: false,
+        elapsedSeconds: state.elapsedSeconds,
+        startedAt: state.startedAt,
+        lastInteractionAt: state.lastInteractionAt,
+        idleWarning: false,
+        idleWarningSeconds: 0,
+        sessionEnded: true,
+        weightKg: _weightKg,
+        latestCalories: totalCalories,
+        sessionCount: state.sessionCount,
+        lastPersistSuccess: ok,
+      );
+    });
   }
 
   void _tick() {
@@ -320,7 +347,7 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
     _ticker = null;
     _idleGraceTimer?.cancel();
     _idleGraceTimer = null;
-    state = const WorkoutSessionState();
+    state = WorkoutSessionState(sessionCount: state.sessionCount + 1);
   }
 
   WorkoutSessionState _copyWith({
@@ -332,6 +359,8 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
     bool? sessionEnded,
     double? weightKg,
     int? latestCalories,
+    int? sessionCount,
+    bool? lastPersistSuccess,
   }) {
     return WorkoutSessionState(
       exercises: state.exercises,
@@ -344,6 +373,8 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
       sessionEnded: sessionEnded ?? state.sessionEnded,
       weightKg: weightKg ?? state.weightKg,
       latestCalories: latestCalories ?? state.latestCalories,
+      sessionCount: sessionCount ?? state.sessionCount,
+      lastPersistSuccess: lastPersistSuccess ?? state.lastPersistSuccess,
     );
   }
 

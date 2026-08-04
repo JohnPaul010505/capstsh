@@ -62,13 +62,44 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
     return m > 0 ? '${m}m ${sec}s' : '${sec}s';
   }
 
-  Future<void> _persistAndInvalidate() async {
-    final notifier = ref.read(workoutSessionProvider.notifier);
-    await notifier.persistSession();
+  void _invalidateProviders() {
     final now = DateTime.now();
     final monthStart = DateTime(now.year, now.month, 1);
     ref.invalidate(monthEntriesProvider(monthStart));
     ref.invalidate(homeDataProvider);
+  }
+
+  void _showMinSessionsWarning() {
+    final session = ref.read(workoutSessionProvider);
+    final remaining = 3 - session.sessionCount;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: ClayTokens.clayDarkSurface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Minimum 3 Sessions Required',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFFF2F5F7)),
+        ),
+        content: Text(
+          'You\'ve completed ${session.sessionCount} session${session.sessionCount == 1 ? '' : 's'} today. '
+          'You need $remaining more session${remaining == 1 ? '' : 's'} to meet the daily minimum.',
+          style: const TextStyle(fontSize: 13, color: Color(0xFF8E8E93)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Continue Working Out', style: TextStyle(color: Color(0xFFD6A5FF))),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              Navigator.of(context).pop();
+            },
+            child: const Text('Leave Anyway', style: TextStyle(color: Color(0xFF636366))),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -78,34 +109,58 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
     final isRunning = session.isRunning;
     final ended = session.sessionEnded;
 
-    return Scaffold(
-      backgroundColor: ClayTokens.clayDarkBase,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              physics: const ClampingScrollPhysics(),
-              children: [
-                const SizedBox(height: 14),
-                _buildHeader(session),
-                const SizedBox(height: 8),
-                _buildClockCard(session, notifier),
-                const SizedBox(height: 8),
-                if (ended)
-                  _buildSummary(session, notifier)
-                else ...[
-                  if (!isRunning) ...[
-                    _buildAddForm(notifier),
-                    const SizedBox(height: 8),
+    // Listen for persist results and show error snackbar.
+    ref.listen(workoutSessionProvider, (prev, next) {
+      if (next.lastPersistSuccess == false && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to save workout. Please check your connection.'),
+            backgroundColor: Color(0xFFFF453A),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    });
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        if (session.sessionCount < 3) {
+          _showMinSessionsWarning();
+        } else {
+          Navigator.of(context).pop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: ClayTokens.clayDarkBase,
+        body: SafeArea(
+          child: Stack(
+            children: [
+              ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                physics: const ClampingScrollPhysics(),
+                children: [
+                  const SizedBox(height: 14),
+                  _buildHeader(session),
+                  const SizedBox(height: 8),
+                  _buildClockCard(session, notifier),
+                  const SizedBox(height: 8),
+                  if (ended)
+                    _buildSummary(session, notifier)
+                  else ...[
+                    if (!isRunning) ...[
+                      _buildAddForm(notifier),
+                      const SizedBox(height: 8),
+                    ],
+                    _buildExerciseList(session, notifier),
                   ],
-                  _buildExerciseList(session, notifier),
+                  const SizedBox(height: 96),
                 ],
-                const SizedBox(height: 96),
-              ],
-            ),
-            if (session.idleWarning) _buildIdleOverlay(session, notifier),
-          ],
+              ),
+              if (session.idleWarning) _buildIdleOverlay(session, notifier),
+            ],
+          ),
         ),
       ),
     );
@@ -594,8 +649,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                 ],
               ),
               child: TextButton(
-                onPressed: () async {
-                  await _persistAndInvalidate();
+                onPressed: () {
+                  _invalidateProviders();
                   notifier.restartSession();
                   setState(() => _query = '');
                 },
