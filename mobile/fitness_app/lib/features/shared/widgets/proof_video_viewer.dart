@@ -113,12 +113,13 @@ class _ProofViewerDialogState extends State<_ProofViewerDialog> {
   Widget build(BuildContext context) {
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 640),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: AspectRatio(
-            aspectRatio: 16 / 9,
-            child: Container(
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.92,
+          maxHeight: MediaQuery.of(context).size.height * 0.55,
+        ),
+        child: AspectRatio(
+          aspectRatio: 16 / 9,
+          child: Container(
               clipBehavior: Clip.antiAlias,
               decoration: BoxDecoration(
                 color: const Color(0xFF1C1C2E),
