@@ -148,8 +148,8 @@ class _LoginPageState extends ConsumerState<LoginPage>
                     child: _GlowBlob(
                       size: 240,
                       colors: [
-                        CupertinoAppColors.purple.withOpacity(0.26),
-                        CupertinoAppColors.purple.withOpacity(0.0),
+                        CupertinoAppColors.purple.withValues(alpha: 0.26),
+                        CupertinoAppColors.purple.withValues(alpha: 0.0),
                       ],
                     ),
                   ),
@@ -161,8 +161,8 @@ class _LoginPageState extends ConsumerState<LoginPage>
                     child: _GlowBlob(
                       size: 260,
                       colors: [
-                        CupertinoAppColors.primaryBlue.withOpacity(0.22),
-                        CupertinoAppColors.primaryBlue.withOpacity(0.0),
+                        CupertinoAppColors.primaryBlue.withValues(alpha: 0.22),
+                        CupertinoAppColors.primaryBlue.withValues(alpha: 0.0),
                       ],
                     ),
                   ),
@@ -196,12 +196,12 @@ class _LoginPageState extends ConsumerState<LoginPage>
                                 borderRadius: BorderRadius.circular(22),
                                 border: Border.all(
                                   color:
-                                      CupertinoAppColors.separator.withOpacity(0.5),
+                                      CupertinoAppColors.separator.withValues(alpha: 0.5),
                                 ),
                                 boxShadow: [
                                   BoxShadow(
                                     color: CupertinoAppColors.purple
-                                        .withOpacity(0.12),
+                                        .withValues(alpha: 0.12),
                                     blurRadius: 44,
                                     offset: const Offset(0, 22),
                                   ),
@@ -315,11 +315,11 @@ class _LoginPageState extends ConsumerState<LoginPage>
                                         ),
                                         decoration: BoxDecoration(
                                           color:
-                                              CupertinoAppColors.red.withOpacity(0.12),
+                                              CupertinoAppColors.red.withValues(alpha: 0.12),
                                           borderRadius: BorderRadius.circular(12),
                                           border: Border.all(
                                             color: CupertinoAppColors.red
-                                                .withOpacity(0.3),
+                                                .withValues(alpha: 0.3),
                                           ),
                                         ),
                                         child: Row(
@@ -372,7 +372,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
                                               BoxShadow(
                                                 color: CupertinoAppColors
                                                     .primaryBlue
-                                                    .withOpacity(0.35),
+                                                    .withValues(alpha: 0.35),
                                                 blurRadius: 18,
                                                 offset: const Offset(0, 10),
                                               ),
@@ -431,7 +431,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
                                     boxShadow: [
                                       BoxShadow(
                                         color: CupertinoAppColors.primaryBlue
-                                            .withOpacity(0.38),
+                                            .withValues(alpha: 0.38),
                                         blurRadius: 22,
                                         offset: const Offset(0, 10),
                                       ),
@@ -532,8 +532,8 @@ class _FloatingLabelInputState extends State<_FloatingLabelInput> {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: focused
-              ? CupertinoAppColors.primaryBlue.withOpacity(0.6)
-              : CupertinoAppColors.separator.withOpacity(0.4),
+              ? CupertinoAppColors.primaryBlue.withValues(alpha: 0.6)
+              : CupertinoAppColors.separator.withValues(alpha: 0.4),
           width: focused ? 1.4 : 1,
         ),
       ),
