@@ -32,11 +32,6 @@ class MonthDayGrid extends StatelessWidget {
     return names[m - 1];
   }
 
-  Widget _dot(Color color) => Container(
-    width: 5, height: 5,
-    decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-  );
-
   @override
   Widget build(BuildContext context) {
     final first = DateTime(visibleMonth.year, visibleMonth.month, 1);
@@ -71,18 +66,23 @@ class MonthDayGrid extends StatelessWidget {
       cells.add(Expanded(
         child: GestureDetector(
           onTap: () => onDayTap(DateTime(visibleMonth.year, visibleMonth.month, d)),
-          child: Container(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
             margin: const EdgeInsets.all(3),
             decoration: BoxDecoration(
-              color: isToday ? ClayTokens.clayPrimary.withAlpha(22) : ClayTokens.clayDarkSurface,
-              borderRadius: BorderRadius.circular(10),
+              color: isToday
+                  ? ClayTokens.clayPrimary.withAlpha(30)
+                  : isSelected
+                      ? Colors.white.withAlpha(12)
+                      : Colors.white.withAlpha(5),
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isSelected
                     ? ClayTokens.clayPrimaryLight
                     : isToday
-                        ? ClayTokens.clayPrimaryLight.withAlpha(80)
-                        : ClayTokens.clayDarkBorder.withAlpha(80),
-                width: isSelected ? 1.6 : 1,
+                        ? ClayTokens.clayPrimary.withAlpha(100)
+                        : Colors.white.withAlpha(10),
+                width: isSelected ? 1.5 : 1,
               ),
             ),
             child: Column(
@@ -91,29 +91,39 @@ class MonthDayGrid extends StatelessWidget {
                 Text(
                   '$d',
                   style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: isToday ? FontWeight.w800 : FontWeight.w500,
+                    fontSize: 13,
+                    fontWeight: isToday ? FontWeight.w800 : isSelected ? FontWeight.w700 : FontWeight.w500,
                     color: isToday
                         ? ClayTokens.clayPrimaryLight
                         : isFuture
-                            ? ClayTokens.clayDarkTextTertiary.withAlpha(140)
+                            ? ClayTokens.clayDarkTextTertiary.withAlpha(100)
                             : ClayTokens.clayDarkTextPrimary,
                   ),
                 ),
-                const SizedBox(height: 2),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (ws.isNotEmpty)
-                      const Icon(Icons.fitness_center, size: 10, color: ClayColors.clayAccent),
-                    if (wsHasVideo) ...[
-                      const SizedBox(width: 3),
-                      const Icon(Icons.play_circle, size: 10, color: ClayColors.clayPrimaryLight),
+                const SizedBox(height: 3),
+                if (ws.isNotEmpty || ms.isNotEmpty)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (ws.isNotEmpty)
+                        Container(
+                          width: 5, height: 5,
+                          decoration: BoxDecoration(
+                            color: wsHasVideo ? ClayTokens.clayPrimaryLight : ClayColors.clayAccent,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      if (ws.isNotEmpty && ms.isNotEmpty) const SizedBox(width: 3),
+                      if (ms.isNotEmpty)
+                        Container(
+                          width: 5, height: 5,
+                          decoration: BoxDecoration(
+                            color: ClayTokens.clayWarning,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
                     ],
-                    if (ws.isNotEmpty && ms.isNotEmpty) const SizedBox(width: 3),
-                    if (ms.isNotEmpty) _dot(ClayTokens.clayWarning),
-                  ],
-                ),
+                  ),
               ],
             ),
           ),
@@ -139,36 +149,55 @@ class MonthDayGrid extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              IconButton(
-                onPressed: () => onShiftMonth(-1),
-                icon: Icon(Icons.chevron_left, color: ClayTokens.clayDarkTextTertiary, size: 22),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+              GestureDetector(
+                onTap: () => onShiftMonth(-1),
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(8),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(Icons.chevron_left, color: ClayTokens.clayDarkTextTertiary, size: 20),
+                ),
               ),
               Text(
                 '${_monthName(visibleMonth.month)} ${visibleMonth.year}',
-                style: ClayTokens.titleMedium.copyWith(color: ClayTokens.clayDarkTextPrimary),
+                style: ClayTokens.titleMedium.copyWith(
+                  color: ClayTokens.clayDarkTextPrimary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
-              IconButton(
-                onPressed: () => onShiftMonth(1),
-                icon: Icon(Icons.chevron_right, color: ClayTokens.clayDarkTextTertiary, size: 22),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+              GestureDetector(
+                onTap: () => onShiftMonth(1),
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(8),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(Icons.chevron_right, color: ClayTokens.clayDarkTextTertiary, size: 20),
+                ),
               ),
             ],
           ),
         ),
+        const SizedBox(height: 8),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Row(
             children: labels.map((l) => Expanded(
               child: Center(
-                child: Text(l, style: ClayTokens.labelSmall.copyWith(color: ClayTokens.clayDarkTextTertiary)),
+                child: Text(l, style: ClayTokens.labelSmall.copyWith(
+                  color: ClayTokens.clayDarkTextTertiary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                )),
               ),
             )).toList(),
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 6),
         Expanded(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),

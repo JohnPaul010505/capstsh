@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -95,16 +96,22 @@ class _CalendarFlipSheetState extends ConsumerState<CalendarFlipSheet> {
       child: GestureDetector(
         onTap: () {},
         child: Container(
-            height: 480,
-            margin: const EdgeInsets.symmetric(horizontal: 18),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: Material(
-                color: ClayTokens.clayDarkBase.withAlpha(245),
+          height: 480,
+          margin: const EdgeInsets.symmetric(horizontal: 18),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: ClayTokens.clayDarkBase.withAlpha(200),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white.withAlpha(18)),
+                ),
                 child: Column(
                   children: [
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
                       child: Row(
                         children: [
                           const Text('CALENDAR', style: TextStyle(
@@ -123,31 +130,39 @@ class _CalendarFlipSheetState extends ConsumerState<CalendarFlipSheet> {
                           ] else if (failed)
                             const Text("couldn't sync", style: TextStyle(fontSize: 10, color: Color(0xFFFF6B61))),
                           const SizedBox(width: 8),
-                          TextButton.icon(
-                            onPressed: () => Navigator.of(context).pop(_selectedDate),
-                            icon: const Icon(Icons.check, size: 15, color: Color(0xFFD6A5FF)),
-                            label: Text(
-                              'Done · ${DateFormat('MMM d').format(_selectedDate)}',
-                              style: const TextStyle(fontSize: 11, color: Color(0xFFD6A5FF)),
-                            ),
-                          ),
-                          const SizedBox(width: 2),
                           GestureDetector(
                             onTap: () => Navigator.of(context).pop(_selectedDate),
                             child: Container(
-                              padding: const EdgeInsets.all(6),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                               decoration: BoxDecoration(
-                                color: Colors.black.withAlpha(120),
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFF7C3AED), Color(0xFFC56BF0)],
+                                ),
                                 borderRadius: BorderRadius.circular(999),
-                                border: Border.all(color: const Color(0xFF2A2A45)),
                               ),
-                              child: const Icon(Icons.close, color: Color(0xFFB4B4D0), size: 16),
+                              child: Text(
+                                'Done · ${DateFormat('MMM d').format(_selectedDate)}',
+                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          GestureDetector(
+                            onTap: () => Navigator.of(context).pop(_selectedDate),
+                            child: Container(
+                              padding: const EdgeInsets.all(5),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withAlpha(12),
+                                borderRadius: BorderRadius.circular(999),
+                                border: Border.all(color: Colors.white.withAlpha(20)),
+                              ),
+                              child: const Icon(Icons.close, color: Color(0xFFB4B4D0), size: 15),
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 4),
                     Expanded(
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(6, 0, 6, 10),
@@ -182,6 +197,7 @@ class _CalendarFlipSheetState extends ConsumerState<CalendarFlipSheet> {
             ),
           ),
         ),
+      ),
     );
   }
 }
@@ -226,7 +242,7 @@ class _FrontFace extends StatelessWidget {
         const SizedBox(height: 8),
         SizedBox(
           width: double.infinity,
-          child: _GradientPillButton(
+          child: _GlassPillButton(
             label: 'View Workout',
             onPressed: onFlip,
           ),
@@ -236,8 +252,7 @@ class _FrontFace extends StatelessWidget {
   }
 }
 
-/// Back face: the React-style card with title, divider, check-list rows and a
-/// gradient button.
+/// Back face: rich workout cards with glassmorphic styling.
 class _BackFace extends StatelessWidget {
   final DateTime day;
   final bool isToday;
@@ -263,130 +278,68 @@ class _BackFace extends StatelessWidget {
             Text(
               DateFormat('EEEE, MMM d, yyyy').format(day),
               style: const TextStyle(
-                fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFFF2F5F7),
+                fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFFF2F5F7),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 10),
-        Container(height: 1, color: const Color(0xFF2A2A45)),
+        const SizedBox(height: 12),
+        Container(height: 1, color: Colors.white.withAlpha(15)),
         const SizedBox(height: 12),
         Expanded(
           child: workouts.isEmpty
-              ? const Center(
+              ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.fitness_center, size: 26, color: Color(0xFF636366)),
-                      SizedBox(height: 8),
-                      Text('No Workout in this Day',
-                        style: TextStyle(fontSize: 12, color: Color(0xFF8E8E93)),
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withAlpha(8),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.white.withAlpha(12)),
+                        ),
+                        child: const Icon(Icons.fitness_center, size: 28, color: Color(0xFF636366)),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text('No workouts recorded',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF8E8E93)),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text('Complete a workout to see it here',
+                        style: TextStyle(fontSize: 11, color: Color(0xFF636366)),
                       ),
                     ],
                   ),
                 )
-              : SingleChildScrollView(
-                  child: Column(
-                    children: workouts.map((w) {
-                      final name = w['exercise_name'] as String? ?? 'Exercise';
-                      final sets = w['sets'] as int?;
-                      final reps = w['reps'] as int?;
-                      final weight = w['weight_kg'] as double?;
-                      final hasVideo = w['proof_url'] != null;
-                      final missing = !hasVideo && isToday;
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 22, height: 22,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF7C3AED),
-                                borderRadius: BorderRadius.circular(22),
-                              ),
-                              child: const Icon(Icons.check, size: 14, color: Color(0xFF0F0E16)),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(name, style: const TextStyle(
-                                    fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFF2F5F7),
-                                  )),
-                                  Text(
-                                    [
-                                      if (sets != null) '$sets sets',
-                                      if (reps != null) '$reps reps',
-                                      if (weight != null) '$weight kg',
-                                    ].join(' · '),
-                                    style: const TextStyle(fontSize: 10, color: Color(0xFF8E8E93)),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            if (hasVideo) ...[
-                              GestureDetector(
-                                onTap: () {
-                                  final url = w['proof_url'] as String?;
-                                  if (url != null) {
-                                    showProofVideoDialog(context, url);
-                                  }
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF7C3AED).withAlpha(40),
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(color: const Color(0xFF7C3AED).withAlpha(120)),
-                                  ),
-                                  child: const Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.play_arrow, size: 12, color: Color(0xFFD6A5FF)),
-                                      SizedBox(width: 2),
-                                      Text('Video', style: TextStyle(
-                                        fontSize: 9, fontWeight: FontWeight.w700, color: Color(0xFFD6A5FF),
-                                      )),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                            ],
-                            if (hasVideo)
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: ClayTokens.clayAccent.withAlpha(25),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Text('DONE', style: TextStyle(
-                                  fontSize: 8, fontWeight: FontWeight.w700, color: ClayTokens.clayAccentLight,
-                                )),
-                              )
-                            else if (missing)
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFFF453A).withAlpha(25),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: const Text('MISSING VIDEO', style: TextStyle(
-                                  fontSize: 8, fontWeight: FontWeight.w700, color: Color(0xFFFF6B61),
-                                )),
-                              ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                  ),
+              : ListView.separated(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  itemCount: workouts.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (context, i) {
+                    final w = workouts[i];
+                    final name = w['exercise_name'] as String? ?? 'Exercise';
+                    final sets = w['sets'] as int?;
+                    final reps = w['reps'] as int?;
+                    final weight = w['weight_kg'] as double?;
+                    final hasVideo = w['proof_url'] != null;
+                    final missing = !hasVideo && isToday;
+                    return _WorkoutCard(
+                      name: name,
+                      sets: sets,
+                      reps: reps,
+                      weight: weight,
+                      hasVideo: hasVideo,
+                      missing: missing,
+                      proofUrl: w['proof_url'] as String?,
+                    );
+                  },
                 ),
         ),
         const SizedBox(height: 8),
         SizedBox(
           width: double.infinity,
-          child: _GradientPillButton(
+          child: _GlassPillButton(
             label: 'Back to Calendar',
             onPressed: onFlip,
           ),
@@ -396,43 +349,196 @@ class _BackFace extends StatelessWidget {
   }
 }
 
-/// Reproduces the React `.button`: violet gradient pill with white glow, used
-/// as the flip trigger.
-class _GradientPillButton extends StatelessWidget {
-  final String label;
-  final VoidCallback onPressed;
+/// Individual workout card with glassmorphic styling.
+class _WorkoutCard extends StatelessWidget {
+  final String name;
+  final int? sets;
+  final int? reps;
+  final double? weight;
+  final bool hasVideo;
+  final bool missing;
+  final String? proofUrl;
 
-  const _GradientPillButton({required this.label, required this.onPressed});
+  const _WorkoutCard({
+    required this.name,
+    this.sets,
+    this.reps,
+    this.weight,
+    required this.hasVideo,
+    required this.missing,
+    this.proofUrl,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF5E3AEE), Color(0xFFC56BF0)],
-        ),
-        borderRadius: BorderRadius.circular(9999),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.white.withAlpha(60),
-            blurRadius: 20,
-            spreadRadius: -6,
-            offset: const Offset(0, -2),
+        color: Colors.white.withAlpha(8),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withAlpha(12)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 24, height: 24,
+                decoration: BoxDecoration(
+                  gradient: hasVideo
+                      ? const LinearGradient(colors: [Color(0xFF7C3AED), Color(0xFFC56BF0)])
+                      : null,
+                  color: hasVideo ? null : const Color(0xFF3A3A4A),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  hasVideo ? Icons.check : Icons.fitness_center,
+                  size: 14,
+                  color: hasVideo ? Colors.white : const Color(0xFF8E8E93),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(name, style: const TextStyle(
+                  fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFFF2F5F7),
+                )),
+              ),
+              if (hasVideo)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: ClayTokens.clayAccent.withAlpha(25),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text('DONE', style: TextStyle(
+                    fontSize: 8, fontWeight: FontWeight.w700, color: ClayTokens.clayAccentLight,
+                  )),
+                )
+              else if (missing)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFF453A).withAlpha(25),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Text('NO PROOF', style: TextStyle(
+                    fontSize: 8, fontWeight: FontWeight.w700, color: Color(0xFFFF6B61),
+                  )),
+                ),
+            ],
           ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              if (sets != null) _StatChip(label: '$sets', unit: 'sets'),
+              if (sets != null && reps != null) const SizedBox(width: 6),
+              if (reps != null) _StatChip(label: '$reps', unit: 'reps'),
+              if (reps != null && weight != null) const SizedBox(width: 6),
+              if (weight != null) _StatChip(label: weight!.toStringAsFixed(1), unit: 'kg'),
+            ],
+          ),
+          if (hasVideo) ...[
+            const SizedBox(height: 10),
+            GestureDetector(
+              onTap: () {
+                if (proofUrl != null) showProofVideoDialog(context, proofUrl!);
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFF7C3AED).withAlpha(50),
+                      const Color(0xFFC56BF0).withAlpha(30),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFF7C3AED).withAlpha(100)),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.play_circle_outline, size: 14, color: Color(0xFFD6A5FF)),
+                    SizedBox(width: 4),
+                    Text('Watch video proof', style: TextStyle(
+                      fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFFD6A5FF),
+                    )),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onPressed,
+    );
+  }
+}
+
+/// Small stat chip for sets/reps/weight.
+class _StatChip extends StatelessWidget {
+  final String label;
+  final String unit;
+
+  const _StatChip({required this.label, required this.unit});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white.withAlpha(8),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white.withAlpha(12)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label, style: const TextStyle(
+            fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFFF2F5F7),
+          )),
+          const SizedBox(width: 3),
+          Text(unit, style: const TextStyle(
+            fontSize: 10, fontWeight: FontWeight.w500, color: Color(0xFF8E8E93),
+          )),
+        ],
+      ),
+    );
+  }
+}
+
+/// Glassmorphic pill button — no Material/InkWell splash, just clean tap.
+class _GlassPillButton extends StatelessWidget {
+  final String label;
+  final VoidCallback onPressed;
+
+  const _GlassPillButton({required this.label, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF5E3AEE), Color(0xFFC56BF0)],
+          ),
           borderRadius: BorderRadius.circular(9999),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            child: Center(
-              child: Text(label, style: const TextStyle(
-                fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white,
-              )),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.white.withAlpha(50),
+              blurRadius: 20,
+              spreadRadius: -6,
+              offset: const Offset(0, -2),
             ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 11),
+          child: Center(
+            child: Text(label, style: const TextStyle(
+              fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white,
+            )),
           ),
         ),
       ),
