@@ -4,7 +4,7 @@ class WorkoutLog {
   final String exerciseName;
   final int? sets;
   final int? reps;
-  final double? weight;
+  final double? weightKg;
   final int? durationMinutes;
   final String? notes;
   final DateTime loggedAt;
@@ -15,7 +15,7 @@ class WorkoutLog {
     required this.exerciseName,
     this.sets,
     this.reps,
-    this.weight,
+    this.weightKg,
     this.durationMinutes,
     this.notes,
     required this.loggedAt,
@@ -27,7 +27,7 @@ class WorkoutLog {
     exerciseName: json['exercise_name'] as String,
     sets: json['sets'] as int?,
     reps: json['reps'] as int?,
-    weight: (json['weight'] as num?)?.toDouble(),
+    weightKg: (json['weight_kg'] as num?)?.toDouble(),
     durationMinutes: json['duration_minutes'] as int?,
     notes: json['notes'] as String?,
     loggedAt: DateTime.parse(json['logged_at'] as String),
@@ -39,7 +39,7 @@ class WorkoutLog {
     'exercise_name': exerciseName,
     'sets': sets,
     'reps': reps,
-    'weight': weight,
+    'weight_kg': weightKg,
     'duration_minutes': durationMinutes,
     'notes': notes,
     'logged_at': loggedAt.toIso8601String(),
