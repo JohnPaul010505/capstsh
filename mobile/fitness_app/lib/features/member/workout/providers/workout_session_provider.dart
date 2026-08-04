@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/services/supabase_client.dart';
+import 'package:shared/services/workout_service.dart';
+import 'package:shared/models/workout_log.dart';
 import '../../../shared/services/interaction_monitor.dart';
 import '../data/met_exercise_catalog.dart';
 
@@ -120,6 +122,28 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
       }
     } catch (_) {
       // Keep the 70 kg default if the measurement can't be loaded.
+    }
+  }
+
+  Future<void> persistSession() async {
+    final client = SupabaseClientService().client;
+    final userId = client.auth.currentUser?.id;
+    if (userId == null || state.exercises.isEmpty) return;
+
+    final service = WorkoutService();
+    for (final e in state.exercises) {
+      if (e.doneAt == null) continue;
+      final log = WorkoutLog(
+        id: '',
+        memberId: userId,
+        exerciseName: e.name,
+        durationMinutes: e.doneAt!.difference(e.startedAt ?? state.startedAt ?? e.doneAt!).inMinutes,
+        weightKg: _weightKg,
+        proofUrl: e.proofUrl,
+        proofType: e.hasProof ? 'video' : null,
+        loggedAt: e.doneAt!,
+      );
+      await service.createWorkout(log);
     }
   }
 

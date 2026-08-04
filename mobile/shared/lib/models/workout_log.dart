@@ -7,6 +7,8 @@ class WorkoutLog {
   final double? weightKg;
   final int? durationMinutes;
   final String? notes;
+  final String? proofUrl;
+  final String? proofType;
   final DateTime loggedAt;
 
   WorkoutLog({
@@ -18,6 +20,8 @@ class WorkoutLog {
     this.weightKg,
     this.durationMinutes,
     this.notes,
+    this.proofUrl,
+    this.proofType,
     required this.loggedAt,
   });
 
@@ -30,11 +34,13 @@ class WorkoutLog {
     weightKg: (json['weight_kg'] as num?)?.toDouble(),
     durationMinutes: json['duration_minutes'] as int?,
     notes: json['notes'] as String?,
+    proofUrl: json['proof_url'] as String?,
+    proofType: json['proof_type'] as String?,
     loggedAt: DateTime.parse(json['logged_at'] as String),
   );
 
   Map<String, dynamic> toJson() => {
-    'id': id,
+    if (id.isNotEmpty) 'id': id,
     'member_id': memberId,
     'exercise_name': exerciseName,
     'sets': sets,
@@ -42,6 +48,8 @@ class WorkoutLog {
     'weight_kg': weightKg,
     'duration_minutes': durationMinutes,
     'notes': notes,
+    'proof_url': proofUrl,
+    'proof_type': proofType,
     'logged_at': loggedAt.toIso8601String(),
   };
 }

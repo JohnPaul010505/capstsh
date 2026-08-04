@@ -4,6 +4,8 @@ import '../providers/workout_session_provider.dart';
 import '../widgets/exercise_proof_button.dart';
 import '../data/met_exercise_catalog.dart';
 import '../../calendar/widgets/calendar_flip_sheet.dart';
+import '../../calendar/providers/month_entries_provider.dart';
+import '../../home/pages/home_page.dart';
 import '../../../shared/widgets/pressable.dart';
 import '../../../shared/widgets/animations.dart';
 import '../../../../app/design_tokens.dart';
@@ -57,6 +59,15 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
     final m = s ~/ 60;
     final sec = s % 60;
     return m > 0 ? '${m}m ${sec}s' : '${sec}s';
+  }
+
+  Future<void> _persistAndInvalidate() async {
+    final notifier = ref.read(workoutSessionProvider.notifier);
+    await notifier.persistSession();
+    final now = DateTime.now();
+    final monthStart = DateTime(now.year, now.month, 1);
+    ref.invalidate(monthEntriesProvider(monthStart));
+    ref.invalidate(homeDataProvider);
   }
 
   @override
@@ -526,7 +537,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> {
                 ],
               ),
               child: TextButton(
-                onPressed: () {
+                onPressed: () async {
+                  await _persistAndInvalidate();
                   notifier.restartSession();
                   setState(() => _query = '');
                 },
