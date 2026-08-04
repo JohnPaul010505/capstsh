@@ -542,111 +542,142 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
             const SizedBox(height: 12),
             Container(height: 1, color: const Color(0xFF2A2A45)),
             const SizedBox(height: 12),
-            Row(
-              children: [
-                const Icon(Icons.timer_outlined, size: 13, color: Color(0xFFD6A5FF)),
-                const SizedBox(width: 5),
-                Text(
-                  'Total time: ${_format(session.elapsedSeconds)}',
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFFFFFFFF)),
-                ),
-                const Spacer(),
-                const Icon(Icons.local_fire_department_outlined, size: 13, color: Color(0xFFFF9F0A)),
-                const SizedBox(width: 5),
-                Text(
-                  '${session.latestCalories} kcal',
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFFFF9F0A)),
-                ),
-              ],
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withAlpha(8),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white.withAlpha(12)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.timer_outlined, size: 16, color: Color(0xFFD6A5FF)),
+                  const SizedBox(width: 8),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Session Duration', style: TextStyle(
+                        fontSize: 10, color: Color(0xFF8E8E93),
+                      )),
+                      Text(
+                        _format(session.elapsedSeconds),
+                        style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFFFFFFFF),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Spacer(),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      const Text('Total Calories', style: TextStyle(
+                        fontSize: 10, color: Color(0xFF8E8E93),
+                      )),
+                      Text(
+                        '${session.latestCalories} kcal',
+                        style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFFFF9F0A),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             ...session.exercises.map((e) {
               final name = e.name;
               final duration = _formatDuration(e.startedAt, e.doneAt);
               final hasVideo = e.hasProof;
               final kcal = session.caloriesFor(e, session.weightKg);
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 18,
-                          height: 18,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: hasVideo ? ClayTokens.clayAccent : const Color(0xFFFF453A),
-                          ),
-                          child: Icon(hasVideo ? Icons.check : Icons.close, size: 11, color: Colors.black),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            '$name · $duration',
-                            style: const TextStyle(fontSize: 11, color: Color(0xFFFFFFFF)),
-                          ),
-                        ),
-                        Text(
-                          '${kcal.round()} kcal',
-                          style: const TextStyle(fontSize: 10, color: Color(0xFFB4B4D0)),
-                        ),
-                      ],
-                    ),
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(6),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white.withAlpha(10)),
                   ),
-                  if (hasVideo)
-                    GestureDetector(
-                      onTap: () => showProofVideoDialog(context, e.proofUrl!),
-                      child: Container(
-                        height: 40,
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1C1C2E),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFF2A2A45)),
-                        ),
-                        child: const Row(
-                          children: [
-                            Icon(Icons.play_circle_outline, size: 16, color: Colors.white54),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: Text('Video saved · tap to view', style: TextStyle(
-                                fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFFB4B4D0),
-                              )),
-                            ),
-                            SizedBox(width: 6),
-                            SizedBox(
-                              width: 5, height: 5,
-                              child: DecoratedBox(
-                                decoration: BoxDecoration(
-                                  color: Color(0xFF6EE7B7),
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  else
-                    Container(
-                      height: 40,
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      decoration: BoxDecoration(
-                        color: ClayTokens.clayDarkSurfaceElevated,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0xFF2A2A45)),
-                      ),
-                      child: const Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
                         children: [
-                          Icon(Icons.videocam_outlined, size: 14, color: Color(0xFF636366)),
-                          SizedBox(width: 8),
-                          Text('No video', style: TextStyle(fontSize: 10, color: Color(0xFF636366))),
+                          Container(
+                            width: 20, height: 20,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: hasVideo
+                                  ? const LinearGradient(colors: [Color(0xFF7C3AED), Color(0xFFC56BF0)])
+                                  : null,
+                              color: hasVideo ? null : const Color(0xFF3A3A4A),
+                            ),
+                            child: Icon(
+                              hasVideo ? Icons.check : Icons.close,
+                              size: 12,
+                              color: hasVideo ? Colors.white : const Color(0xFF8E8E93),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(name, style: const TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFFF2F5F7),
+                            )),
+                          ),
                         ],
                       ),
-                    ),
-                ],
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          _summaryStat(icon: Icons.timer_outlined, value: duration, color: const Color(0xFFD6A5FF)),
+                          const SizedBox(width: 12),
+                          _summaryStat(icon: Icons.local_fire_department_outlined, value: '${kcal.round()} kcal', color: const Color(0xFFFF9F0A)),
+                          const Spacer(),
+                          if (hasVideo)
+                            GestureDetector(
+                              onTap: () => showProofVideoDialog(context, e.proofUrl!),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      const Color(0xFF7C3AED).withAlpha(50),
+                                      const Color(0xFFC56BF0).withAlpha(30),
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: const Color(0xFF7C3AED).withAlpha(100)),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.play_circle_outline, size: 12, color: Color(0xFFD6A5FF)),
+                                    SizedBox(width: 3),
+                                    Text('View', style: TextStyle(
+                                      fontSize: 9, fontWeight: FontWeight.w600, color: Color(0xFFD6A5FF),
+                                    )),
+                                  ],
+                                ),
+                              ),
+                            )
+                          else
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFF453A).withAlpha(20),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Text('No proof', style: TextStyle(
+                                fontSize: 9, fontWeight: FontWeight.w600, color: Color(0xFFFF6B61),
+                              )),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               );
             }),
             const SizedBox(height: 12),
@@ -770,6 +801,19 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
           ),
         ),
       ),
+    );
+  }
+
+  Widget _summaryStat({required IconData icon, required String value, required Color color}) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 12, color: color),
+        const SizedBox(width: 3),
+        Text(value, style: TextStyle(
+          fontSize: 11, fontWeight: FontWeight.w600, color: color,
+        )),
+      ],
     );
   }
 }
