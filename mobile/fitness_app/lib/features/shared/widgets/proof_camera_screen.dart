@@ -5,15 +5,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared/services/supabase_client.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:video_player/video_player.dart';
 import '../../../app/design_tokens.dart';
 import '../widgets/pressable.dart';
 
-enum _ProofStage { initializing, ready, countdown, recording, preview, error }
+enum _ProofStage { initializing, ready, countdown, recording, uploading, error }
 
 /// Full-screen workout proof recorder: 3-2-1 countdown, auto 30s video capture,
-/// preview with Keep / Retake / Cancel, upload to the `proofs` bucket and pop
-/// the public URL. Native camera only — web callers must use the picker fallback.
+/// upload to the `proofs` bucket and pop the public URL.
+/// Native camera only — web callers must use the picker fallback.
 class ProofCameraScreen extends StatefulWidget {
   const ProofCameraScreen({super.key});
 
@@ -26,7 +25,6 @@ class ProofCameraScreen extends StatefulWidget {
 class _ProofCameraScreenState extends State<ProofCameraScreen>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   CameraController? _camera;
-  VideoPlayerController? _preview;
   AnimationController? _progress;
   Timer? _countdownTimer;
   _ProofStage _stage = _ProofStage.initializing;
@@ -50,7 +48,6 @@ class _ProofCameraScreenState extends State<ProofCameraScreen>
     WidgetsBinding.instance.removeObserver(this);
     _countdownTimer?.cancel();
     _progress?.dispose();
-    _preview?.dispose();
     _camera?.dispose();
     super.dispose();
   }
@@ -92,17 +89,21 @@ class _ProofCameraScreenState extends State<ProofCameraScreen>
       _countdownLeft = 3;
     });
     _countdownTimer?.cancel();
-    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (!mounted) {
-        t.cancel();
-        return;
-      }
-      if (_countdownLeft <= 1) {
-        t.cancel();
-        _startRecording();
-      } else {
-        setState(() => _countdownLeft--);
-      }
+    Future.delayed(const Duration(seconds: 1), () {
+      if (!mounted || _stage != _ProofStage.countdown) return;
+      _countdownTimer?.cancel();
+      _countdownTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+        if (!mounted) {
+          t.cancel();
+          return;
+        }
+        if (_countdownLeft <= 1) {
+          t.cancel();
+          _startRecording();
+        } else {
+          setState(() => _countdownLeft--);
+        }
+      });
     });
   }
 
@@ -115,7 +116,10 @@ class _ProofCameraScreenState extends State<ProofCameraScreen>
     _progress!.addListener(() {
       if (mounted) setState(() {});
     });
-    _progress!.forward().whenComplete(_stopRecording);
+    _progress!.forward().then(
+      (_) => _stopRecording(),
+      onError: (_) => _stopRecording(),
+    );
     try {
       await _camera!.startVideoRecording();
     } catch (_) {
@@ -130,12 +134,9 @@ class _ProofCameraScreenState extends State<ProofCameraScreen>
     try {
       final file = await _camera!.stopVideoRecording();
       _tempPath = file.path;
-      _preview = VideoPlayerController.file(File(file.path));
-      await _preview!.initialize();
-      await _preview!.setLooping(true);
-      await _preview!.play();
       if (!mounted) return;
-      setState(() => _stage = _ProofStage.preview);
+      setState(() => _stage = _ProofStage.uploading);
+      await _keep();
     } catch (_) {
       if (!mounted) return;
       setState(() => _stage = _ProofStage.error);
@@ -149,13 +150,6 @@ class _ProofCameraScreenState extends State<ProofCameraScreen>
     } catch (_) {}
     _deleteTemp();
     if (mounted) Navigator.of(context).pop(null);
-  }
-
-  Future<void> _retake() async {
-    _preview?.dispose();
-    _preview = null;
-    _deleteTemp();
-    _startCountdown();
   }
 
   void _deleteTemp() {
@@ -189,6 +183,7 @@ class _ProofCameraScreenState extends State<ProofCameraScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to save proof: $e')),
       );
+      setState(() => _stage = _ProofStage.error);
     }
   }
 
@@ -203,32 +198,31 @@ class _ProofCameraScreenState extends State<ProofCameraScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          if (_stage == _ProofStage.error)
-            const _ErrorView()
-          else if (_camera != null && _stage != _ProofStage.initializing)
-            CameraPreview(_camera!)
-          else
-            const Center(
-              child: CircularProgressIndicator(color: ClayColors.clayPrimaryLight),
-            ),
-          if (_stage == _ProofStage.preview && _preview != null)
-            Center(
-              child: AspectRatio(
-                aspectRatio: _preview!.value.aspectRatio,
-                child: VideoPlayer(_preview!),
+    return PopScope(
+      canPop: _stage != _ProofStage.uploading,
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (_stage == _ProofStage.error)
+              const _ErrorView()
+            else if (_camera != null && _stage != _ProofStage.initializing)
+              CameraPreview(_camera!)
+            else
+              const Center(
+                child: CircularProgressIndicator(color: ClayColors.clayPrimaryLight),
               ),
-            ),
-          if (_stage == _ProofStage.countdown) _buildCountdown(),
-          if (_stage == _ProofStage.ready) _buildReady(),
-          if (_stage == _ProofStage.recording) _buildRecordingOverlay(),
-          if (_stage == _ProofStage.preview) _buildPreviewControls(),
-          _buildTopBar(),
-        ],
+            if (_stage == _ProofStage.countdown) _buildCountdown(),
+            if (_stage == _ProofStage.ready) _buildReady(),
+            if (_stage == _ProofStage.recording) _buildRecordingOverlay(),
+            if (_stage == _ProofStage.uploading)
+              const Center(
+                child: CircularProgressIndicator(color: Colors.white70),
+              ),
+            _buildTopBar(),
+          ],
+        ),
       ),
     );
   }
@@ -242,7 +236,11 @@ class _ProofCameraScreenState extends State<ProofCameraScreen>
           child: Row(
             children: [
               PressableCard(
-                onTap: _stage == _ProofStage.error ? () => Navigator.of(context).pop(null) : _close,
+                onTap: _stage == _ProofStage.error
+                    ? () => Navigator.of(context).pop(null)
+                    : _stage == _ProofStage.uploading
+                        ? null
+                        : _close,
                 padding: const EdgeInsets.all(10),
                 borderRadius: BorderRadius.circular(999),
                 child: const Icon(Icons.close, color: Colors.white, size: 20),
@@ -404,72 +402,6 @@ class _ProofCameraScreenState extends State<ProofCameraScreen>
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildPreviewControls() {
-    return Align(
-      alignment: Alignment.bottomCenter,
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.only(bottom: 24, top: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              PressableCard(
-                onTap: _retake,
-                padding: const EdgeInsets.all(16),
-                borderRadius: BorderRadius.circular(999),
-                child: const Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.replay, color: Colors.white, size: 22),
-                    SizedBox(height: 4),
-                    Text('Retake', style: TextStyle(color: Colors.white, fontSize: 11)),
-                  ],
-                ),
-              ),
-              PressableCard(
-                onTap: _uploading ? null : _keep,
-                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
-                borderRadius: BorderRadius.circular(999),
-                decoration: BoxDecoration(
-                  color: ClayTokens.clayAccent.withAlpha(30),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: ClayTokens.clayAccent.withAlpha(120)),
-                ),
-                child: _uploading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                      )
-                    : const Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.check, color: Colors.white, size: 22),
-                          SizedBox(height: 4),
-                          Text('Keep', style: TextStyle(color: Colors.white, fontSize: 11)),
-                        ],
-                      ),
-              ),
-              PressableCard(
-                onTap: _close,
-                padding: const EdgeInsets.all(16),
-                borderRadius: BorderRadius.circular(999),
-                child: const Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.close, color: Colors.white, size: 22),
-                    SizedBox(height: 4),
-                    Text('Discard', style: TextStyle(color: Colors.white, fontSize: 11)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

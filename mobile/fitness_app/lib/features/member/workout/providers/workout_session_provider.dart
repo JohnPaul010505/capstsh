@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/services/supabase_client.dart';
 import 'package:shared/services/workout_service.dart';
@@ -16,6 +17,7 @@ class SessionExercise {
   DateTime? proofRecordedAt;
   String? proofUrl;
   DateTime? doneAt;
+  int? sessionElapsedSeconds;
 
   SessionExercise({
     required this.name,
@@ -25,6 +27,26 @@ class SessionExercise {
 
   bool get hasProof => proofUrl != null;
   bool get isDone => doneAt != null;
+}
+
+class CompletedSession {
+  final String workoutName;
+  final List<String> exerciseNames;
+  final List<int> exerciseCalories;
+  final List<String?> exerciseProofUrls;
+  final int totalCalories;
+  final int elapsedSeconds;
+  final DateTime completedAt;
+
+  const CompletedSession({
+    required this.workoutName,
+    required this.exerciseNames,
+    this.exerciseCalories = const <int>[],
+    this.exerciseProofUrls = const <String?>[],
+    required this.totalCalories,
+    required this.elapsedSeconds,
+    required this.completedAt,
+  });
 }
 
 class WorkoutSessionState {
@@ -39,6 +61,9 @@ class WorkoutSessionState {
   final double weightKg;
   final int? _latestCalories;
   final int sessionCount;
+  final int completedSessionCount;
+  final List<CompletedSession> completedSessions;
+  final bool showPreviousCards;
   final bool? lastPersistSuccess;
 
   const WorkoutSessionState({
@@ -53,6 +78,9 @@ class WorkoutSessionState {
     this.weightKg = 70,
     int? latestCalories,
     this.sessionCount = 0,
+    this.completedSessionCount = 0,
+    this.completedSessions = const [],
+    this.showPreviousCards = false,
     this.lastPersistSuccess,
   // ignore: prefer_initializing_formals
   }) : _latestCalories = latestCalories;
@@ -94,6 +122,7 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
 
   WorkoutSessionNotifier() : super(const WorkoutSessionState()) {
     _loadWeight();
+    _loadSessionHistory();
   }
 
   List<SessionExercise> get exercises => state.exercises;
@@ -130,12 +159,87 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
     }
   }
 
+  Future<void> _loadSessionHistory() async {
+    try {
+      final client = SupabaseClientService().client;
+      final userId = client.auth.currentUser?.id;
+      if (userId == null) return;
+
+      final now = DateTime.now();
+      final startOfDay = DateTime(now.year, now.month, now.day).toUtc();
+      final endOfDay = DateTime(now.year, now.month, now.day + 1).toUtc();
+
+       final res = await client
+           .from('workout_logs')
+           .select('workout_name, exercise_name, total_calories, duration_seconds, logged_at')
+           .eq('member_id', userId)
+           .gte('logged_at', startOfDay.toIso8601String())
+           .lt('logged_at', endOfDay.toIso8601String())
+           .order('logged_at', ascending: true);
+
+      final groups = <String, List<Map<String, dynamic>>>{};
+      for (final row in res) {
+        final name = row['workout_name'] as String? ?? 'Workout';
+        groups.putIfAbsent(name, () => []).add(row);
+      }
+
+      final sessions = <CompletedSession>[];
+      int maxSessionNum = 0;
+
+      for (final entry in groups.entries) {
+        final name = entry.key;
+        final exercises = entry.value;
+        final exerciseNames = exercises.map((e) => e['exercise_name'] as String? ?? '').toList();
+        final exerciseCalories = List<int>.filled(exercises.length, 0);
+        final exerciseProofUrls = List<String?>.filled(exercises.length, null);
+        final totalCalories = exercises
+            .map((e) => (e['total_calories'] as int?) ?? 0)
+            .fold<int>(0, (sum, k) => sum + k);
+        final elapsedSeconds = exercises
+            .map((e) => (e['duration_seconds'] as int?) ?? 0)
+            .fold<int>(0, (sum, k) => sum + k);
+
+        sessions.add(CompletedSession(
+          workoutName: name,
+          exerciseNames: exerciseNames,
+          exerciseCalories: exerciseCalories,
+          exerciseProofUrls: exerciseProofUrls,
+          totalCalories: totalCalories,
+          elapsedSeconds: elapsedSeconds,
+          completedAt: DateTime.tryParse(exercises.last['logged_at'] as String? ?? '') ?? DateTime.now(),
+        ));
+
+        final match = RegExp(r'S(\d+)').firstMatch(name);
+        if (match != null) {
+          final num = int.tryParse(match.group(1) ?? '') ?? 0;
+          if (num > maxSessionNum) maxSessionNum = num;
+        }
+      }
+
+      if (sessions.isNotEmpty) {
+        state = _copyWith(
+          sessionCount: maxSessionNum,
+          completedSessionCount: sessions.length,
+          completedSessions: sessions,
+          sessionEnded: true,
+        );
+      }
+    } catch (e) {
+      debugPrint('Failed to load session history: $e');
+    }
+  }
+
   Future<bool> persistSession() async {
     final client = SupabaseClientService().client;
     final userId = client.auth.currentUser?.id;
     if (userId == null || state.exercises.isEmpty) return false;
 
     final service = WorkoutService();
+    final workoutName = 'Workout S${state.sessionCount + 1}';
+    final totalCalories = state.exercises
+        .map((e) => _caloriesFor(e))
+        .fold<double>(0, (sum, c) => sum + c)
+        .round();
     try {
       for (final e in state.exercises) {
         if (e.doneAt == null) continue;
@@ -143,11 +247,14 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
           id: '',
           memberId: userId,
           exerciseName: e.name,
+          workoutName: workoutName,
           durationMinutes: e.doneAt!.difference(e.startedAt ?? state.startedAt ?? e.doneAt!).inMinutes,
+          durationSeconds: e.sessionElapsedSeconds,
           weightKg: _weightKg,
           proofUrl: e.proofUrl,
           proofType: e.hasProof ? 'video' : null,
           loggedAt: e.doneAt!.toUtc(),
+          totalCalories: totalCalories,
         );
         await service.createWorkout(log);
       }
@@ -175,6 +282,10 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
       sessionEnded: state.sessionEnded,
       weightKg: _weightKg,
       latestCalories: state.latestCalories,
+      sessionCount: state.sessionCount,
+      completedSessionCount: state.completedSessionCount,
+      completedSessions: state.completedSessions,
+      showPreviousCards: state.showPreviousCards,
     );
   }
 
@@ -188,6 +299,10 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
       lastInteractionAt: _stampInteraction(),
       sessionEnded: false,
       weightKg: _weightKg,
+      sessionCount: state.sessionCount,
+      completedSessionCount: state.completedSessionCount,
+      completedSessions: state.completedSessions,
+      showPreviousCards: state.showPreviousCards,
     );
   }
 
@@ -204,13 +319,43 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
       lastInteractionAt: _stampInteraction(),
       sessionEnded: false,
       weightKg: _weightKg,
+      sessionCount: state.sessionCount,
+      completedSessionCount: state.completedSessionCount,
+      completedSessions: state.completedSessions,
+      showPreviousCards: state.showPreviousCards,
     );
     _ticker?.cancel();
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
-    InteractionMonitor.instance.ensureStarted();
-  }
+InteractionMonitor.instance.ensureStarted();
+   }
 
-  /// Records that the current exercise has a saved proof video.
+    void startNewSession() {
+      if (state.sessionCount >= 3) return;
+      _ticker?.cancel();
+      _ticker = null;
+      _idleGraceTimer?.cancel();
+      _idleGraceTimer = null;
+      _lastTick = null;
+      state = WorkoutSessionState(
+        exercises: const [],
+        isRunning: false,
+        elapsedSeconds: 0,
+        startedAt: null,
+        lastInteractionAt: _stampInteraction(),
+        idleWarning: false,
+        idleWarningSeconds: 0,
+        sessionEnded: false,
+        weightKg: _weightKg,
+        latestCalories: 0,
+        sessionCount: state.sessionCount + 1,
+        completedSessionCount: state.completedSessionCount,
+        completedSessions: state.completedSessions,
+        showPreviousCards: false,
+        lastPersistSuccess: null,
+      );
+    }
+
+   /// Records that the current exercise has a saved proof video.
   void markProofRecorded(int index, String url) {
     if (index < 0 || index >= state.exercises.length) return;
     final e = state.exercises[index];
@@ -252,6 +397,15 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
         .map((e) => _caloriesFor(e))
         .fold<double>(0, (sum, c) => sum + c)
         .round();
+    final completed = CompletedSession(
+      workoutName: 'Workout S${state.sessionCount + 1}',
+      exerciseNames: state.exercises.map((e) => e.name).toList(),
+      exerciseCalories: state.exercises.map((e) => _caloriesFor(e).round()).toList(),
+      exerciseProofUrls: state.exercises.map((e) => e.proofUrl).toList(),
+      totalCalories: totalCalories,
+      elapsedSeconds: state.elapsedSeconds,
+      completedAt: DateTime.now(),
+    );
     state = WorkoutSessionState(
       exercises: state.exercises,
       isRunning: false,
@@ -264,23 +418,12 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
       weightKg: _weightKg,
       latestCalories: totalCalories,
       sessionCount: state.sessionCount,
+      completedSessionCount: state.completedSessionCount + 1,
+      completedSessions: [...state.completedSessions, completed],
+      showPreviousCards: state.showPreviousCards,
     );
-    // Auto-persist in background — fire and forget.
     persistSession().then((ok) {
-      state = WorkoutSessionState(
-        exercises: state.exercises,
-        isRunning: false,
-        elapsedSeconds: state.elapsedSeconds,
-        startedAt: state.startedAt,
-        lastInteractionAt: state.lastInteractionAt,
-        idleWarning: false,
-        idleWarningSeconds: 0,
-        sessionEnded: true,
-        weightKg: _weightKg,
-        latestCalories: totalCalories,
-        sessionCount: state.sessionCount,
-        lastPersistSuccess: ok,
-      );
+      state = _copyWith(lastPersistSuccess: ok);
     });
   }
 
@@ -345,9 +488,13 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
     _ticker = null;
     _idleGraceTimer?.cancel();
     _idleGraceTimer = null;
-    // Auto-persist any completed exercises before wiping state.
     persistSession().then((_) {});
-    state = WorkoutSessionState(sessionCount: state.sessionCount + 1);
+    state = WorkoutSessionState(
+      sessionCount: state.sessionCount + 1,
+      completedSessionCount: state.completedSessionCount,
+      completedSessions: state.completedSessions,
+      showPreviousCards: state.showPreviousCards,
+    );
   }
 
   WorkoutSessionState _copyWith({
@@ -360,6 +507,9 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
     double? weightKg,
     int? latestCalories,
     int? sessionCount,
+    int? completedSessionCount,
+    List<CompletedSession>? completedSessions,
+    bool? showPreviousCards,
     bool? lastPersistSuccess,
   }) {
     return WorkoutSessionState(
@@ -374,6 +524,9 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
       weightKg: weightKg ?? state.weightKg,
       latestCalories: latestCalories ?? state.latestCalories,
       sessionCount: sessionCount ?? state.sessionCount,
+      completedSessionCount: completedSessionCount ?? state.completedSessionCount,
+      completedSessions: completedSessions ?? state.completedSessions,
+      showPreviousCards: showPreviousCards ?? state.showPreviousCards,
       lastPersistSuccess: lastPersistSuccess ?? state.lastPersistSuccess,
     );
   }

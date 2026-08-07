@@ -126,7 +126,7 @@ class _CalendarFlipSheetState extends ConsumerState<CalendarFlipSheet> {
                               ),
                             ),
                             const SizedBox(width: 5),
-                            const Text('syncing…', style: TextStyle(fontSize: 10, color: Color(0xFF8E8E93))),
+                            const Text('syncingâ€¦', style: TextStyle(fontSize: 10, color: Color(0xFF8E8E93))),
                           ] else if (failed)
                             const Text("couldn't sync", style: TextStyle(fontSize: 10, color: Color(0xFFFF6B61))),
                           const SizedBox(width: 8),
@@ -141,7 +141,7 @@ class _CalendarFlipSheetState extends ConsumerState<CalendarFlipSheet> {
                                 borderRadius: BorderRadius.circular(999),
                               ),
                               child: Text(
-                                'Done · ${DateFormat('MMM d').format(_selectedDate)}',
+                                'Done Â· ${DateFormat('MMM d').format(_selectedDate)}',
                                 style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white),
                               ),
                             ),
@@ -312,28 +312,9 @@ class _BackFace extends StatelessWidget {
                     ],
                   ),
                 )
-              : ListView.separated(
+              : ListView(
                   padding: const EdgeInsets.only(bottom: 8),
-                  itemCount: workouts.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
-                  itemBuilder: (context, i) {
-                    final w = workouts[i];
-                    final name = w['exercise_name'] as String? ?? 'Exercise';
-                    final sets = w['sets'] as int?;
-                    final reps = w['reps'] as int?;
-                    final weight = w['weight_kg'] as double?;
-                    final hasVideo = w['proof_url'] != null;
-                    final missing = !hasVideo && isToday;
-                    return _WorkoutCard(
-                      name: name,
-                      sets: sets,
-                      reps: reps,
-                      weight: weight,
-                      hasVideo: hasVideo,
-                      missing: missing,
-                      proofUrl: w['proof_url'] as String?,
-                    );
-                  },
+                  children: _buildSessionGroups(context, workouts, isToday),
                 ),
         ),
         const SizedBox(height: 8),
@@ -347,6 +328,103 @@ class _BackFace extends StatelessWidget {
       ],
     );
   }
+
+  List<Widget> _buildSessionGroups(BuildContext context, List<Map<String, dynamic>> workouts, bool isToday) {
+    final groups = <String, List<Map<String, dynamic>>>{};
+    for (final w in workouts) {
+      final name = w['workout_name'] as String? ?? 'Workout';
+      groups.putIfAbsent(name, () => []).add(w);
+    }
+
+    final widgets = <Widget>[];
+    var groupIndex = 0;
+    final sortedEntries = groups.entries.toList()..sort((a, b) {
+      final numA = int.tryParse(RegExp(r'S(\d+)').firstMatch(a.key)?.group(1) ?? '0') ?? 0;
+      final numB = int.tryParse(RegExp(r'S(\d+)').firstMatch(b.key)?.group(1) ?? '0') ?? 0;
+      return numA.compareTo(numB);
+    });
+
+    for (final entry in sortedEntries) {
+      if (groupIndex > 0) {
+        widgets.add(const SizedBox(height: 16));
+      }
+      final sessionName = entry.key;
+      final exercises = entry.value;
+      final totalKcal = exercises
+          .map((e) => (e['total_calories'] as int?) ?? 0)
+          .fold<int>(0, (sum, k) => sum + k);
+
+      widgets.add(
+        Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF7C3AED).withAlpha(30), Color(0xFF1C1C2E)],
+            ),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Color(0xFF7C3AED).withAlpha(50)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [Color(0xFF7C3AED), Color(0xFFC56BF0)]),
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  sessionName,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFFD6A5FF),
+                  ),
+                ),
+              ),
+              if (totalKcal > 0)
+                Text(
+                  '$totalKcal kcal',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFFFF9F0A),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
+
+      for (final w in exercises) {
+        final name = w['exercise_name'] as String? ?? 'Exercise';
+        final sets = w['sets'] as int?;
+        final reps = w['reps'] as int?;
+        final weight = w['weight_kg'] as double?;
+        final exerciseCalories = (w['exercise_calories'] as int?) ?? (w['total_calories'] as int?);
+        final hasVideo = w['proof_url'] != null;
+        final missing = !hasVideo && isToday;
+        widgets.add(
+          _WorkoutCard(
+            name: name,
+            sets: sets,
+            reps: reps,
+            weight: weight,
+            calories: exerciseCalories,
+            hasVideo: hasVideo,
+            missing: missing,
+            proofUrl: w['proof_url'] as String?,
+          ),
+        );
+      }
+      groupIndex++;
+    }
+    return widgets;
+  }
 }
 
 /// Individual workout card with glassmorphic styling.
@@ -355,6 +433,7 @@ class _WorkoutCard extends StatelessWidget {
   final int? sets;
   final int? reps;
   final double? weight;
+  final int? calories;
   final bool hasVideo;
   final bool missing;
   final String? proofUrl;
@@ -364,6 +443,7 @@ class _WorkoutCard extends StatelessWidget {
     this.sets,
     this.reps,
     this.weight,
+    this.calories,
     required this.hasVideo,
     required this.missing,
     this.proofUrl,
@@ -404,6 +484,17 @@ class _WorkoutCard extends StatelessWidget {
                   fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFFF2F5F7),
                 )),
               ),
+              if (calories != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFF9F0A).withAlpha(25),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text('$calories kcal', style: TextStyle(
+                    fontSize: 10, fontWeight: FontWeight.w700, color: const Color(0xFFFF9F0A),
+                  )),
+                ),
               if (hasVideo)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -507,7 +598,7 @@ class _StatChip extends StatelessWidget {
   }
 }
 
-/// Glassmorphic pill button — no Material/InkWell splash, just clean tap.
+/// Glassmorphic pill button Â· no Material/InkWell splash, just clean tap.
 class _GlassPillButton extends StatelessWidget {
   final String label;
   final VoidCallback onPressed;

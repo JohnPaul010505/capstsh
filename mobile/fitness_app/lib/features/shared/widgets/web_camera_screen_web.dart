@@ -65,7 +65,8 @@ class _WebCameraScreenState extends State<WebCameraScreen> {
 
       final video = web.HTMLVideoElement()..muted = true
         ..playsInline = true
-        ..autoplay = true;
+        ..autoplay = true
+        ..style.height = '100%';
       video.srcObject = stream;
       ui_web.platformViewRegistry.registerViewFactory(
         _viewType,
@@ -216,7 +217,9 @@ class _WebCameraScreenState extends State<WebCameraScreen> {
                 fit: StackFit.expand,
                 children: [
                   if (_stream != null)
-                    HtmlElementView(viewType: _viewType)
+                    SizedBox.expand(
+                      child: HtmlElementView(viewType: _viewType),
+                    )
                   else
                     const Center(
                       child: CircularProgressIndicator(color: Colors.white54),

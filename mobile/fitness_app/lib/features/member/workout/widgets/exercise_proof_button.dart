@@ -23,12 +23,14 @@ import '../../../shared/widgets/web_camera_screen.dart'
 class ExerciseProofTile extends StatefulWidget {
   final String? videoUrl;
   final ValueChanged<String> onRecorded;
+  final VoidCallback onDone;
   final VoidCallback onRemoved;
 
   const ExerciseProofTile({
     super.key,
     required this.videoUrl,
     required this.onRecorded,
+    required this.onDone,
     required this.onRemoved,
   });
 
@@ -48,7 +50,10 @@ class _ExerciseProofTileState extends State<ExerciseProofTile> {
     final url = await Navigator.of(context).push<String>(
       MaterialPageRoute(builder: (_) => const ProofCameraScreen()),
     );
-    if (url != null && mounted) widget.onRecorded(url);
+    if (url != null && mounted) {
+      widget.onRecorded(url);
+      widget.onDone();
+    }
   }
 
   Future<void> _recordWeb() async {
@@ -60,6 +65,7 @@ class _ExerciseProofTileState extends State<ExerciseProofTile> {
       );
       if (url != null && mounted) {
         widget.onRecorded(url);
+        widget.onDone();
         return;
       }
       if (!mounted) return;
@@ -106,6 +112,7 @@ class _ExerciseProofTileState extends State<ExerciseProofTile> {
 
       if (!mounted) return;
       widget.onRecorded(pickerUrl);
+      widget.onDone();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

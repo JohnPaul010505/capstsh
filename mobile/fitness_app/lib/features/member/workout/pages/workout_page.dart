@@ -28,6 +28,7 @@ class WorkoutPage extends ConsumerStatefulWidget {
 class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingObserver {
   final _searchController = TextEditingController();
   String _query = '';
+  bool _showPrevCards = false;
 
   @override
   void initState() {
@@ -40,6 +41,12 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
     WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _showPreviousCards() {
+    if (!_showPrevCards) {
+      setState(() => _showPrevCards = true);
+    }
   }
 
   @override
@@ -161,8 +168,13 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
                   const SizedBox(height: 8),
                   _buildClockCard(session, notifier),
                   const SizedBox(height: 8),
-                  if (ended)
-                    _buildSummary(session, notifier)
+                  if (ended) ...[
+                    if (_showPrevCards && session.completedSessions.length > 1) ...[
+                      ..._buildPreviousSessionCards(session),
+                      const SizedBox(height: 16),
+                    ],
+                    _buildSummary(session, notifier),
+                  ]
                   else ...[
                     if (!isRunning) ...[
                       _buildAddForm(notifier),
@@ -681,35 +693,67 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
               );
             }),
             const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [Color(0xFF5E3AEE), Color(0xFFC56BF0)]),
-                borderRadius: BorderRadius.circular(999),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFC56BF0).withAlpha(60),
-                    blurRadius: 14,
-                    offset: const Offset(0, 4),
+            if (session.completedSessions.length > 1 && !_showPrevCards)
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [Color(0xFF5E3AEE), Color(0xFFC56BF0)]),
+                  borderRadius: BorderRadius.circular(999),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFC56BF0).withAlpha(60),
+                      blurRadius: 14,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: TextButton(
+                  onPressed: _showPreviousCards,
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
                   ),
-                ],
-              ),
-              child: TextButton(
-                onPressed: () {
-                  _invalidateProviders();
-                  notifier.restartSession();
-                  setState(() => _query = '');
-                },
-                style: TextButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                ),
-                child: const Text(
-                  'New Session',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                  child: Text(
+                    session.completedSessions.length >= 3 ? 'View All Sessions' : 'View Workout S1',
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                  ),
                 ),
               ),
-            ),
+            if (session.completedSessions.length > 1 && session.completedSessionCount < 3 && !_showPrevCards)
+              const SizedBox(height: 8),
+            if (session.completedSessionCount < 3)
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [Color(0xFF5E3AEE), Color(0xFFC56BF0)]),
+                  borderRadius: BorderRadius.circular(999),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFC56BF0).withAlpha(60),
+                      blurRadius: 14,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                  child: TextButton(
+                    onPressed: () {
+                      _invalidateProviders();
+                      notifier.restartSession();
+                      setState(() {
+                        _query = '';
+                        _showPrevCards = false;
+                      });
+                    },
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                  child: const Text(
+                    'New Session',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -802,6 +846,189 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
         ),
       ),
     );
+  }
+
+  List<Widget> _buildPreviousSessionCards(WorkoutSessionState session) {
+    final previous = session.completedSessions.length > 1
+        ? session.completedSessions.sublist(0, session.completedSessions.length - 1)
+        : <CompletedSession>[];
+    return previous.map((s) {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1C1C2E),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFF2A2A45)),
+          gradient: RadialGradient(
+            center: Alignment(0.9, -0.9),
+            radius: 1.2,
+            colors: [
+              Color(0xFF7C3AED).withAlpha(60),
+              Color(0xFF1C1C2E),
+            ],
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Text(
+                  'Workout Complete',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFFFFFFFF)),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: ClayTokens.clayAccent.withAlpha(25),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    s.workoutName,
+                    style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: ClayTokens.clayAccentLight),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 3),
+            const Text(
+              'Great job! Here\'s your session summary.',
+              style: TextStyle(fontSize: 10, color: Color(0xFFB4B4D0)),
+            ),
+            const SizedBox(height: 12),
+            Container(height: 1, color: const Color(0xFF2A2A45)),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withAlpha(8),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white.withAlpha(12)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.timer_outlined, size: 16, color: Color(0xFFD6A5FF)),
+                  const SizedBox(width: 8),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Session Duration', style: TextStyle(
+                        fontSize: 10, color: Color(0xFF8E8E93),
+                      )),
+                      Text(
+                        _format(s.elapsedSeconds),
+                        style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFFFFFFFF),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Spacer(),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      const Text('Total Calories', style: TextStyle(
+                        fontSize: 10, color: Color(0xFF8E8E93),
+                      )),
+                      Text(
+                        '${s.totalCalories} kcal',
+                        style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFFFF9F0A),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            ...List.generate(s.exerciseNames.length, (i) {
+              final name = s.exerciseNames[i];
+              final kcal = i < s.exerciseCalories.length ? s.exerciseCalories[i] : null;
+              final proofUrl = i < s.exerciseProofUrls.length ? s.exerciseProofUrls[i] : null;
+              final hasVideo = proofUrl != null;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(6),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white.withAlpha(10)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 20, height: 20,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: hasVideo
+                                  ? const LinearGradient(colors: [Color(0xFF7C3AED), Color(0xFFC56BF0)])
+                                  : null,
+                              color: hasVideo ? null : const Color(0xFF3A3A4A),
+                            ),
+                            child: Icon(
+                              hasVideo ? Icons.check : Icons.close,
+                              size: 12,
+                              color: hasVideo ? Colors.white : const Color(0xFF8E8E93),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(name, style: const TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFFF2F5F7),
+                            )),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          _summaryStat(icon: Icons.local_fire_department_outlined, value: '${kcal ?? 0} kcal', color: const Color(0xFFFF9F0A)),
+                          const Spacer(),
+                          if (hasVideo)
+                            GestureDetector(
+                              onTap: () => showProofVideoDialog(context, proofUrl),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      const Color(0xFF7C3AED).withAlpha(50),
+                                      const Color(0xFFC56BF0).withAlpha(30),
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: const Color(0xFF7C3AED).withAlpha(100)),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.play_circle_outline, size: 12, color: Color(0xFFD6A5FF)),
+                                    SizedBox(width: 3),
+                                    Text('View', style: TextStyle(
+                                      fontSize: 9, fontWeight: FontWeight.w600, color: Color(0xFFD6A5FF),
+                                    )),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ],
+        ),
+      );
+    }).toList();
   }
 
   Widget _summaryStat({required IconData icon, required String value, required Color color}) {
@@ -925,6 +1152,7 @@ class _ExerciseCard extends StatelessWidget {
                 videoUrl: exercise.proofUrl,
                 onRecorded: onProofRecorded,
                 onRemoved: onProofRemoved,
+                 onDone: onDone,
               ),
               const SizedBox(height: 8),
               Container(

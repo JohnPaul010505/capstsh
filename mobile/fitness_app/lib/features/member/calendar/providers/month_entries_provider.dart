@@ -18,7 +18,7 @@ final monthEntriesProvider = FutureProvider.autoDispose
   final results = await Future.wait([
     client
         .from('workout_logs')
-        .select('exercise_name, logged_at, sets, reps, weight_kg, proof_url')
+        .select('exercise_name, logged_at, sets, reps, weight_kg, proof_url, workout_name, total_calories')
         .eq('member_id', userId)
         .gte('logged_at', startStr)
         .lt('logged_at', endStr),
