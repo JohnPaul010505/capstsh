@@ -271,19 +271,6 @@ class _BackFace extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            const Icon(Icons.calendar_today, size: 13, color: Color(0xFFD6A5FF)),
-            const SizedBox(width: 6),
-            Text(
-              DateFormat('EEEE, MMM d, yyyy').format(day),
-              style: const TextStyle(
-                fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFFF2F5F7),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
         Container(height: 1, color: Colors.white.withAlpha(15)),
         const SizedBox(height: 12),
         Expanded(
