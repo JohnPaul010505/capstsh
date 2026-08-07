@@ -89,7 +89,7 @@ class _CalendarFlipSheetState extends ConsumerState<CalendarFlipSheet> {
     final isToday = _selectedDate.year == widget.today.year &&
         _selectedDate.month == widget.today.month &&
         _selectedDate.day == widget.today.day;
-
+    final selectedDateStr = DateFormat('MMM d').format(_selectedDate);
     return Container(
       color: Colors.black38,
       alignment: Alignment.center,
@@ -141,7 +141,7 @@ class _CalendarFlipSheetState extends ConsumerState<CalendarFlipSheet> {
                                 borderRadius: BorderRadius.circular(999),
                               ),
                               child: Text(
-                                'Done Â· ${DateFormat('MMM d').format(_selectedDate)}',
+                                selectedDateStr,
                                 style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white),
                               ),
                             ),
@@ -404,7 +404,7 @@ class _BackFace extends StatelessWidget {
         final name = w['exercise_name'] as String? ?? 'Exercise';
         final sets = w['sets'] as int?;
         final reps = w['reps'] as int?;
-        final weight = w['weight_kg'] as double?;
+        final durationSeconds = w['duration_seconds'] as int?;
         final exerciseCalories = (w['exercise_calories'] as int?) ?? (w['total_calories'] as int?);
         final hasVideo = w['proof_url'] != null;
         final missing = !hasVideo && isToday;
@@ -413,7 +413,7 @@ class _BackFace extends StatelessWidget {
             name: name,
             sets: sets,
             reps: reps,
-            weight: weight,
+            durationSeconds: durationSeconds,
             calories: exerciseCalories,
             hasVideo: hasVideo,
             missing: missing,
@@ -432,7 +432,7 @@ class _WorkoutCard extends StatelessWidget {
   final String name;
   final int? sets;
   final int? reps;
-  final double? weight;
+  final int? durationSeconds;
   final int? calories;
   final bool hasVideo;
   final bool missing;
@@ -442,7 +442,7 @@ class _WorkoutCard extends StatelessWidget {
     required this.name,
     this.sets,
     this.reps,
-    this.weight,
+    this.durationSeconds,
     this.calories,
     required this.hasVideo,
     required this.missing,
@@ -525,8 +525,8 @@ class _WorkoutCard extends StatelessWidget {
               if (sets != null) _StatChip(label: '$sets', unit: 'sets'),
               if (sets != null && reps != null) const SizedBox(width: 6),
               if (reps != null) _StatChip(label: '$reps', unit: 'reps'),
-              if (reps != null && weight != null) const SizedBox(width: 6),
-              if (weight != null) _StatChip(label: weight!.toStringAsFixed(1), unit: 'kg'),
+               if (reps != null && durationSeconds != null) const SizedBox(width: 6),
+               if (durationSeconds != null) _DurationChip(seconds: durationSeconds!),
             ],
           ),
           if (hasVideo) ...[
@@ -599,6 +599,40 @@ class _StatChip extends StatelessWidget {
 }
 
 /// Glassmorphic pill button Â· no Material/InkWell splash, just clean tap.
+
+/// Duration chip formatted as minutes or minutes:seconds.
+class _DurationChip extends StatelessWidget {
+  final int seconds;
+
+  const _DurationChip({required this.seconds});
+
+  @override
+  Widget build(BuildContext context) {
+    final text = seconds < 60
+        ? 's'
+        : ':';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white.withAlpha(8),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white.withAlpha(12)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(text, style: const TextStyle(
+            fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFFF2F5F7),
+          )),
+          const SizedBox(width: 3),
+          const Text('min', style: TextStyle(
+            fontSize: 10, fontWeight: FontWeight.w500, color: Color(0xFF8E8E93),
+          )),
+        ],
+      ),
+    );
+  }
+}
 class _GlassPillButton extends StatelessWidget {
   final String label;
   final VoidCallback onPressed;
