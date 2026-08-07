@@ -350,6 +350,12 @@ class _BackFace extends StatelessWidget {
       }
       final sessionName = entry.key;
       final exercises = entry.value;
+      final totalDurationSeconds = exercises
+          .map((e) => (e['duration_seconds'] as int?) ?? 0)
+          .fold<int>(0, (sum, s) => sum + s);
+      final totalDurationStr = totalDurationSeconds >= 60
+          ? '${totalDurationSeconds ~/ 60}:${(totalDurationSeconds % 60).toString().padLeft(2, '0')} min'
+          : '${totalDurationSeconds}s';
       final totalKcal = exercises
           .map((e) => (e['total_calories'] as int?) ?? 0)
           .fold<int>(0, (sum, k) => sum + k);
@@ -386,6 +392,17 @@ class _BackFace extends StatelessWidget {
                   ),
                 ),
               ),
+              if (totalDurationSeconds > 0)
+                Text(
+                  totalDurationStr,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFFD6A5FF),
+                  ),
+                ),
+              if (totalDurationSeconds > 0 && totalKcal > 0)
+                const SizedBox(width: 8),
               if (totalKcal > 0)
                 Text(
                   '$totalKcal kcal',
