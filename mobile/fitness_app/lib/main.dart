@@ -7,7 +7,7 @@ import 'features/shared/services/interaction_monitor.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load();
+  await dotenv.load(fileName: 'assets/.env');
   await SupabaseClientService().initialize(
     supabaseUrl: dotenv.env['SUPABASE_URL']!,
     anonKey: dotenv.env['SUPABASE_ANON_KEY']!,

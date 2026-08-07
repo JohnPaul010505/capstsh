@@ -35,6 +35,7 @@ migrate_working_dir/
 
 # Env files
 .env
+!assets/.env
 
 # Symbolication related
 app.*.symbols
