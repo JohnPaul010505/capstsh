@@ -7,7 +7,6 @@ import 'package:intl/intl.dart';
 import 'package:shared/services/supabase_client.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../shared/widgets/animations.dart';
-import '../../home/pages/home_page.dart';
 import '../data/bmi_info.dart';
 import '../providers/bmi_history_provider.dart';
 
@@ -96,7 +95,6 @@ class _BmiPageState extends ConsumerState<BmiPage> {
       ref.invalidate(bmiHistoryProvider);
       ref.invalidate(bmiRawRowsProvider);
       ref.invalidate(latestBmiProvider);
-      ref.invalidate(homeDataProvider);
       if (mounted) {
         setState(() {
           _editing = false;
@@ -294,7 +292,7 @@ class _BmiPageState extends ConsumerState<BmiPage> {
           color: ClayTokens.clayDarkSurface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: ClayTokens.clayDarkBorder),
-        ),
+        ),do it
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -595,7 +593,6 @@ class _BmiPageState extends ConsumerState<BmiPage> {
             ref.invalidate(bmiHistoryProvider);
             ref.invalidate(bmiRawRowsProvider);
             ref.invalidate(latestBmiProvider);
-            ref.invalidate(homeDataProvider);
           },
           child: Icon(CupertinoIcons.trash, color: ClayTokens.clayError, size: 20),
         ),
