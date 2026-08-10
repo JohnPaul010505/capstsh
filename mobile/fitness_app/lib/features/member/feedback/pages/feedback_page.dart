@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:shared/services/supabase_client.dart';
 import '../../../../app/design_tokens.dart';
 
@@ -36,7 +38,7 @@ class _FeedbackPageState extends ConsumerState<FeedbackPage> {
     });
     _contentController.clear();
     ref.invalidate(feedbackListProvider);
-    setState(() => _saving = false);
+    if (mounted) setState(() => _saving = false);
   }
 
   @override
@@ -60,62 +62,7 @@ class _FeedbackPageState extends ConsumerState<FeedbackPage> {
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                 children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      color: ClayTokens.clayDarkSurface,
-                      borderRadius: const BorderRadius.all(Radius.circular(16)),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Submit Feedback',
-                            style: ClayTokens.titleLarge.copyWith(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w600,
-                              color: ClayTokens.clayDarkTextPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          CupertinoTextField(
-                            controller: _contentController,
-                            placeholder: 'Your feedback...',
-                            placeholderStyle: ClayTokens.bodyMedium.copyWith(color: ClayTokens.clayDarkTextTertiary),
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                            decoration: BoxDecoration(
-                              color: ClayTokens.clayDarkSurfaceElevated,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            maxLines: 4,
-                            cursorColor: ClayTokens.clayPrimary,
-                            style: ClayTokens.bodyMedium.copyWith(color: ClayTokens.clayDarkTextPrimary),
-                          ),
-                          const SizedBox(height: 12),
-                          SizedBox(
-                            width: double.infinity,
-                            height: 44,
-                            child: CupertinoButton(
-                              color: ClayTokens.clayPrimary,
-                              borderRadius: BorderRadius.circular(12),
-                              onPressed: _saving ? null : _submit,
-                              child: _saving
-                                  ? CupertinoActivityIndicator(color: ClayTokens.clayDarkTextPrimary)
-                                  : Text(
-                                      'Submit',
-                                      style: ClayTokens.titleLarge.copyWith(
-                                        fontSize: 17,
-                                        fontWeight: FontWeight.w600,
-                                        color: ClayTokens.clayDarkTextPrimary,
-                                      ),
-                                    ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                  _buildSubmitCard(),
                   const SizedBox(height: 16),
                   Padding(
                     padding: const EdgeInsets.only(left: 4, bottom: 8),
@@ -129,56 +76,51 @@ class _FeedbackPageState extends ConsumerState<FeedbackPage> {
                     ),
                   ),
                   feedbackAsync.when(
-                    data: (feedback) => Container(
-                      decoration: BoxDecoration(
-                        color: ClayTokens.clayDarkSurface,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Column(
-                        children: feedback.asMap().entries.map((entry) {
-                          final f = entry.value;
-                          final isLast = entry.key == feedback.length - 1;
-                          return Column(
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            f['content'] ?? '',
-                                            style: ClayTokens.titleLarge.copyWith(
-                                              fontSize: 17,
-                                              fontWeight: FontWeight.w500,
-                                              color: ClayTokens.clayDarkTextPrimary,
-                                              letterSpacing: -0.41,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            f['created_at']?.toString().substring(0, 10) ?? '',
-                                            style: ClayTokens.titleMedium.copyWith(
-                                              fontSize: 15,
-                                              color: ClayTokens.clayDarkTextTertiary,
-                                              letterSpacing: -0.24,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
+                    data: (feedback) => feedback.isEmpty
+                        ? Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: ClayTokens.clayDarkSurface,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: ClayTokens.clayDarkBorder),
+                            ),
+                            child: const Column(
+                              children: [
+                                Icon(Icons.feedback_outlined, color: Color(0xFF7070A0), size: 28),
+                                SizedBox(height: 8),
+                                Text(
+                                  'No feedback yet.\nYour submitted feedback will appear here.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF7070A0),
+                                    height: 1.5,
                                   ),
-                                ],
-                              ),
-                              if (!isLast)
-                                const SizedBox(height: 0.5),
-                            ],
-                          );
-                        }).toList(),
-                      ),
-                    ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : Container(
+                            decoration: BoxDecoration(
+                              color: ClayTokens.clayDarkSurface,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: ClayTokens.clayDarkBorder),
+                            ),
+                            child: Column(
+                              children: feedback.asMap().entries.map((entry) {
+                                final f = entry.value;
+                                final isLast = entry.key == feedback.length - 1;
+                                return Column(
+                                  children: [
+                                    _feedbackRow(f),
+                                    if (!isLast)
+                                      const SizedBox(height: 0.5),
+                                  ],
+                                );
+                              }).toList(),
+                            ),
+                          ),
                     loading: () => const Center(child: CupertinoActivityIndicator()),
                     error: (e, _) => Padding(
                       padding: const EdgeInsets.all(16),
@@ -194,6 +136,147 @@ class _FeedbackPageState extends ConsumerState<FeedbackPage> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSubmitCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: ClayTokens.clayDarkSurface,
+        borderRadius: const BorderRadius.all(Radius.circular(16)),
+        border: Border.all(color: ClayTokens.clayDarkBorder),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: ClayTokens.clayPrimary.withAlpha(25),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.feedback_outlined,
+                    color: Color(0xFF7C3AED),
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  'Submit Feedback',
+                  style: ClayTokens.titleLarge.copyWith(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
+                    color: ClayTokens.clayDarkTextPrimary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            CupertinoTextField(
+              controller: _contentController,
+              placeholder: 'Share your thoughts about your workouts...',
+              placeholderStyle: ClayTokens.bodyMedium.copyWith(color: ClayTokens.clayDarkTextTertiary),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              decoration: BoxDecoration(
+                color: ClayTokens.clayDarkSurfaceElevated,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              maxLines: 4,
+              cursorColor: ClayTokens.clayPrimary,
+              style: ClayTokens.bodyMedium.copyWith(color: ClayTokens.clayDarkTextPrimary),
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              height: 44,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(colors: [Color(0xFF5E3AEE), Color(0xFFC56BF0)]),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: CupertinoButton(
+                padding: EdgeInsets.zero,
+                borderRadius: BorderRadius.circular(12),
+                onPressed: (_saving || _contentController.text.trim().isEmpty) ? null : _submit,
+                child: _saving
+                    ? const Center(child: CupertinoActivityIndicator(color: Colors.white))
+                    : const Center(
+                        child: Text(
+                          'Submit',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _feedbackRow(Map<String, dynamic> f) {
+    final createdAt =
+        DateTime.tryParse(f['created_at']?.toString() ?? '')?.toLocal() ?? DateTime.now();
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 16, top: 14),
+          child: Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: ClayTokens.clayPrimary.withAlpha(20),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: const Icon(
+              Icons.subject,
+              color: Color(0xFFA78BFA),
+              size: 16,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 12, bottom: 12, right: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  f['content'] ?? '',
+                  style: ClayTokens.titleLarge.copyWith(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: ClayTokens.clayDarkTextPrimary,
+                    letterSpacing: -0.41,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  DateFormat('MMM d, yyyy · h:mm a').format(createdAt),
+                  style: ClayTokens.titleMedium.copyWith(
+                    fontSize: 12,
+                    color: ClayTokens.clayDarkTextTertiary,
+                    letterSpacing: -0.24,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 

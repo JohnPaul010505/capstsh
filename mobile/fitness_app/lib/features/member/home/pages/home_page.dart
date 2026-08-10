@@ -345,6 +345,8 @@ class _GreetingRow extends StatelessWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Text(firstName, style: ClayTokens.displaySmall.copyWith(letterSpacing: 0)),
+            const SizedBox(height: 2),
             Row(
               children: [
                 const AnimatedPulseDot(),
@@ -352,8 +354,6 @@ class _GreetingRow extends StatelessWidget {
                 Text(greeting, style: const TextStyle(fontSize: 11, color: Color(0xFF8E8E93), fontWeight: FontWeight.w500)),
               ],
             ),
-            const SizedBox(height: 2),
-            Text(firstName, style: ClayTokens.displaySmall.copyWith(letterSpacing: 0)),
           ],
         ),
         ClayAvatar(
@@ -473,7 +473,7 @@ class _WeekChartState extends State<_WeekChart> {
 
   @override
   Widget build(BuildContext context) {
-    final labels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    final labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     final today = DateTime.now().weekday - 1;
 
     return ClayCard(
@@ -502,15 +502,6 @@ class _WeekChartState extends State<_WeekChart> {
                   else
                     Text('Tap a bar for details', style: TextStyle(fontSize: 10, color: ClayTokens.clayDarkTextTertiary)),
                 ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                decoration: BoxDecoration(
-                  color: ClayTokens.clayPrimaryLight.withAlpha(25),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: ClayTokens.clayPrimaryLight.withAlpha(50)),
-                ),
-                child: Text('Goal: 5', style: TextStyle(fontSize: 10, color: ClayTokens.clayPrimaryLight, fontWeight: FontWeight.w700)),
               ),
             ],
           ),
@@ -732,15 +723,37 @@ class _YearChart extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          ClayAreaChart(
-            values: monthlyCounts.map((c) => c.toDouble()).toList(),
-            labels: _monthShort,
-            strokeColor: const Color(0xFF3B82F6),
-            legendLabel: 'Check-ins per month',
-            showYAxis: true,
-          ),
+          _MonthlyValues(monthlyCounts: monthlyCounts),
         ],
       ),
+    );
+  }
+}
+
+/// Builds the nullable value list for the year chart: past months keep their
+/// real count (including 0 when there were no check-ins), the in-progress
+/// current month only shows when the member has already checked in, and
+/// future months have no point at all.
+class _MonthlyValues extends StatelessWidget {
+  final List<int> monthlyCounts;
+
+  const _MonthlyValues({required this.monthlyCounts});
+
+  @override
+  Widget build(BuildContext context) {
+    final current = DateTime.now().month - 1;
+    final values = List<double?>.generate(12, (i) {
+      if (i > current) return null;
+      if (i == current && monthlyCounts[i] == 0) return null;
+      return monthlyCounts[i].toDouble();
+    });
+    return ClayAreaChart(
+      values: values,
+      labels: _monthShort,
+      strokeColor: const Color(0xFF3B82F6),
+      legendLabel: 'Check-ins per month',
+      showYAxis: false,
+      showValueLabels: true,
     );
   }
 }
@@ -790,6 +803,7 @@ class _GrowthChart extends StatelessWidget {
             labels: _monthShort,
             strokeColor: ClayTokens.clayPrimaryLight,
             emptyMessage: 'No weight data yet',
+            showValueLabels: true,
           ),
         ],
       ),

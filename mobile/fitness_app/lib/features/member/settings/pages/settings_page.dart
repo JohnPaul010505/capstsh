@@ -3,33 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared/providers/auth_provider.dart';
-import 'package:shared/services/supabase_client.dart';
 import '../../../../app/design_tokens.dart';
-import '../../bmi/data/bmi_info.dart';
+import '../../bmi/providers/bmi_history_provider.dart';
 import '../../../shared/widgets/pressable.dart';
 import '../../../shared/widgets/skeleton.dart';
 import '../../../shared/widgets/animations.dart';
-
-/// Reads the member's latest body measurement and resolves a BMI.
-/// Returns [null] when there's no measurement yet (brand-new members always
-/// pass onboarding first, so a value is normally present).
-final latestBmiProvider = FutureProvider<BmiInfo?>((ref) async {
-  final userId = SupabaseClientService().client.auth.currentUser!.id;
-  final rows = await SupabaseClientService()
-      .client
-      .from('body_measurements')
-      .select('height_cm, weight_kg, measured_at')
-      .eq('member_id', userId)
-      .order('measured_at', ascending: false)
-      .limit(1);
-  if (rows.isEmpty) return null;
-  return bmiFromMeasurement(
-    heightCm: rows.first['height_cm'] as num?,
-    weightKg: rows.first['weight_kg'] as num?,
-    measuredAt:
-        DateTime.tryParse(rows.first['measured_at'] as String? ?? '')?.toLocal() ?? DateTime.now(),
-  );
-});
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -103,7 +81,7 @@ class _SettingsContent extends ConsumerWidget {
               onTap: () => context.pop(),
               child: const Icon(CupertinoIcons.chevron_back, color: Color(0xFFFFFFFF), size: 24),
             ),
-            const Text('Settings', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF))),
+            const Text('Settings', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF), decoration: TextDecoration.none)),
             const SizedBox(width: 24),
           ],
         ),
@@ -161,10 +139,11 @@ class _SettingsContent extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(name, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF))),
+                      Text(name, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF), decoration: TextDecoration.none)),
                       if (email.isNotEmpty)
                         Text(email, style: const TextStyle(
                           fontSize: 12, color: Color(0xFF636366),
+                          decoration: TextDecoration.none,
                         )),
                     ],
                   ),
@@ -174,7 +153,7 @@ class _SettingsContent extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 24),
-        Text('Features', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: const Color(0xFF8E8E93), letterSpacing: 0)),
+        Text('Features', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: const Color(0xFF8E8E93), letterSpacing: 0, decoration: TextDecoration.none)),
         const SizedBox(height: 8),
         _SettingItem(index: 1, icon: CupertinoIcons.gear, iconColor: const Color(0xFF0A84FF), label: 'BMI', subtitle: bmiInfo == null ? null : '${bmiInfo.bmi.toStringAsFixed(1)} \u00b7 ${bmiInfo.label}', onTap: () => context.push('/member/bmi')),
         _SettingItem(index: 2, icon: CupertinoIcons.bubble_left, iconColor: const Color(0xFF30D158), label: 'Feedback', onTap: () => context.push('/member/feedback')),
@@ -184,20 +163,47 @@ class _SettingsContent extends ConsumerWidget {
         const SizedBox(height: 8),
         Consumer(
           builder: (_, ref, __) => PressableCard(
-            onTap: () => ref.read(authProvider.notifier).signOut(),
+            onTap: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  backgroundColor: ClayTokens.clayDarkSurface,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  title: const Text('Sign Out', style: TextStyle(color: Color(0xFFFFFFFF), fontSize: 17, fontWeight: FontWeight.w700, decoration: TextDecoration.none)),
+                  content: const Text('Are you sure you want to sign out?', style: TextStyle(color: Color(0xFF8E8E93), fontSize: 14, decoration: TextDecoration.none)),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(false),
+                      child: const Text('No', style: TextStyle(color: Color(0xFF8E8E93), fontSize: 14, fontWeight: FontWeight.w600, decoration: TextDecoration.none)),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(true),
+                      child: const Text('Yes', style: TextStyle(color: Color(0xFFFF453A), fontSize: 14, fontWeight: FontWeight.w600, decoration: TextDecoration.none)),
+                    ),
+                  ],
+                ),
+              );
+              if (confirm == true) {
+                ref.read(authProvider.notifier).signOut();
+                if (context.mounted) {
+                  context.go('/login');
+                }
+              }
+            },
             color: const Color(0xFF1C1C1E),
             borderRadius: BorderRadius.circular(12),
             padding: const EdgeInsets.symmetric(vertical: 14),
-            child: Row(
-              children: [
-                const Icon(CupertinoIcons.square_arrow_right, color: Color(0xFFFF453A), size: 20),
-                const SizedBox(width: 12),
-                const Text('Sign Out', style: TextStyle(
-                  color: Color(0xFFFF453A), fontSize: 14, fontWeight: FontWeight.w600,
-                )),
-                const Spacer(),
-                Icon(CupertinoIcons.chevron_right, color: const Color(0xFFFF453A).withAlpha(100), size: 20),
-              ],
+            child: Center(
+              child: Text(
+                'Sign Out',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Color(0xFFFF453A),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  decoration: TextDecoration.none,
+                ),
+              ),
             ),
           ),
         ),
@@ -248,7 +254,6 @@ class _SettingItem extends StatelessWidget {
                     color: Color(0xFF8E8E93), fontSize: 13,
                   )),
                 ),
-              const Icon(CupertinoIcons.chevron_right, color: Color(0xFF8E8E93), size: 20),
             ],
           ),
         ),

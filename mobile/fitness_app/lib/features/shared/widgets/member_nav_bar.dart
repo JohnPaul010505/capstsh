@@ -11,7 +11,7 @@ class MemberNavBar extends StatelessWidget {
     required this.onTap,
   });
 
-  static const _raise = 24.4;
+  static const _raise = 27.0;
 
   static const _tabs = <({IconData inactive, IconData active, String label})>[
     (inactive: Icons.home_outlined, active: Icons.home, label: 'Home'),
@@ -81,7 +81,7 @@ class MemberNavBar extends StatelessWidget {
                           behavior: HitTestBehavior.opaque,
                           onTap: () => onTap(2),
                           child: Padding(
-                            padding: EdgeInsets.only(top: circleD - 18),
+                            padding: EdgeInsets.only(top: circleD - 21),
                             child: Text(
                               _tabs[i].label,
                               textAlign: TextAlign.center,

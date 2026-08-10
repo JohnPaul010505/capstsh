@@ -29,6 +29,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
   final _searchController = TextEditingController();
   String _query = '';
   bool _showPrevCards = false;
+  bool _showCompletionMessage = false;
 
   @override
   void initState() {
@@ -45,7 +46,13 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
 
   void _showPreviousCards() {
     if (!_showPrevCards) {
-      setState(() => _showPrevCards = true);
+      setState(() {
+        _showPrevCards = true;
+        final session = ref.read(workoutSessionProvider);
+        if (session.completedSessionCount >= 3) {
+          _showCompletionMessage = true;
+        }
+      });
     }
   }
 
@@ -547,6 +554,41 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
               ],
             ),
             const SizedBox(height: 3),
+            if (session.sessionCount <= 2)
+              Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF7C3AED), Color(0xFFC56BF0)],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFC56BF0).withAlpha(60),
+                      blurRadius: 12,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.emoji_events_outlined, size: 18, color: Colors.white),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Congratulations for Completing Workout',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 3),
             const Text(
               "Great job! Here's your session summary.",
               style: TextStyle(fontSize: 10, color: Color(0xFFB4B4D0)),
@@ -848,11 +890,51 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
     );
   }
 
+  Widget _buildCongratsBanner(String message) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF7C3AED), Color(0xFFC56BF0)],
+        ),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFC56BF0).withAlpha(60),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.emoji_events_outlined, size: 18, color: Colors.white),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   List<Widget> _buildPreviousSessionCards(WorkoutSessionState session) {
     final previous = session.completedSessions.length > 1
         ? session.completedSessions.sublist(0, session.completedSessions.length - 1)
         : <CompletedSession>[];
-    return previous.map((s) {
+    final widgets = <Widget>[];
+    if (_showCompletionMessage) {
+      widgets.add(_buildCongratsBanner('Congratulations for Completing all the Workouts'));
+    }
+    widgets.addAll(previous.map((s) {
       return Container(
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(16),
@@ -1028,7 +1110,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
           ],
         ),
       );
-    }).toList();
+    }).toList());
+    return widgets;
   }
 
   Widget _summaryStat({required IconData icon, required String value, required Color color}) {

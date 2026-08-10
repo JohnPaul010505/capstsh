@@ -8,7 +8,6 @@ import '../features/member/meals/pages/meal_log_page.dart';
 import '../features/member/workout/pages/workout_page.dart';
 import '../features/member/chat/pages/chat_page.dart';
 import '../features/member/settings/pages/settings_page.dart';
-import '../features/member/measurements/pages/measurements_page.dart';
 import '../features/member/bmi/pages/bmi_page.dart';
 import '../features/member/goals/pages/goals_page.dart';
 import '../features/member/feedback/pages/feedback_page.dart';
@@ -26,7 +25,6 @@ import 'package:circle_nav_bar/circle_nav_bar.dart';
 final _trainerShellKey = GlobalKey<NavigatorState>();
 
 Page<dynamic> _iosPush(Widget child) => CustomTransitionPage(
-  key: ValueKey(child.hashCode),
   child: child,
   transitionsBuilder: (_, animation, __, child) {
     final scale = Tween<double>(begin: 0.95, end: 1.0).animate(
@@ -95,7 +93,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/member/settings', pageBuilder: (_, __) => _iosPush(const SettingsPage())),
       GoRoute(path: '/member/goals', pageBuilder: (_, __) => _iosPush(const GoalsPage())),
       GoRoute(path: '/member/feedback', pageBuilder: (_, __) => _iosPush(const FeedbackPage())),
-      GoRoute(path: '/member/measurements', pageBuilder: (_, __) => _iosPush(const MeasurementsPage())),
       GoRoute(path: '/member/bmi', pageBuilder: (_, __) => _iosPush(const BmiPage())),
       GoRoute(path: '/member/notifications', pageBuilder: (_, __) => _iosPush(const NotificationsPage())),
       ShellRoute(

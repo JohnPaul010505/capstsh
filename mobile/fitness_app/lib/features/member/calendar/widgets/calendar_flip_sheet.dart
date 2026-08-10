@@ -335,7 +335,7 @@ class _BackFace extends StatelessWidget {
       if (groupIndex > 0) {
         widgets.add(const SizedBox(height: 16));
       }
-      final sessionName = entry.key;
+      final sessionName = entry.key == 'Workout S1' ? 'Workout' : entry.key;
       final exercises = entry.value;
       final totalDurationSeconds = exercises
           .map((e) => (e['duration_seconds'] as int?) ?? 0)

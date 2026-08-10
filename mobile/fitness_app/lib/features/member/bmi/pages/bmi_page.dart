@@ -1,22 +1,124 @@
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:shared/services/supabase_client.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../shared/widgets/animations.dart';
+import '../../home/pages/home_page.dart';
 import '../data/bmi_info.dart';
 import '../providers/bmi_history_provider.dart';
 
-/// BMI page: shows the member's current BMI (from the onboarding value) plus a
-/// growth-over-time chart built from every recorded body measurement.
-class BmiPage extends ConsumerWidget {
+/// BMI page: shows the member's current BMI with an inline "Update" flow
+/// (live height/weight calculator) plus a full measurement history.
+class BmiPage extends ConsumerStatefulWidget {
   const BmiPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<BmiPage> createState() => _BmiPageState();
+}
+
+class _BmiPageState extends ConsumerState<BmiPage> {
+  final _heightController = TextEditingController();
+  final _weightController = TextEditingController();
+  bool _editing = false;
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _heightController.dispose();
+    _weightController.dispose();
+    super.dispose();
+  }
+
+  void _startEditing() {
+    setState(() {
+      _editing = true;
+      _error = null;
+      _heightController.clear();
+      _weightController.clear();
+    });
+  }
+
+  void _cancelEditing() {
+    setState(() {
+      _editing = false;
+      _saving = false;
+      _error = null;
+      _heightController.clear();
+      _weightController.clear();
+    });
+  }
+
+  BmiInfo? _liveBmi() {
+    final heightCm = double.tryParse(_heightController.text);
+    final weightKg = double.tryParse(_weightController.text);
+    if (heightCm == null || weightKg == null) return null;
+    return bmiFromMeasurement(
+      heightCm: heightCm,
+      weightKg: weightKg,
+      measuredAt: DateTime.now(),
+    );
+  }
+
+  String? _validate() {
+    final heightCm = double.tryParse(_heightController.text);
+    final weightKg = double.tryParse(_weightController.text);
+    if (heightCm == null || heightCm <= 0) return 'Enter a valid height (cm).';
+    if (weightKg == null || weightKg <= 0) return 'Enter a valid weight (kg).';
+    return null;
+  }
+
+  Future<void> _save() async {
+    final validationError = _validate();
+    if (validationError != null) {
+      setState(() => _error = validationError);
+      return;
+    }
+
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    final heightCm = double.tryParse(_heightController.text);
+    final weightKg = double.tryParse(_weightController.text);
+    final userId = SupabaseClientService().client.auth.currentUser!.id;
+    try {
+      await SupabaseClientService().client.from('body_measurements').insert({
+        'member_id': userId,
+        'height_cm': heightCm,
+        'weight_kg': weightKg,
+        'measured_at': DateTime.now().toIso8601String(),
+      });
+      ref.invalidate(bmiHistoryProvider);
+      ref.invalidate(bmiRawRowsProvider);
+      ref.invalidate(latestBmiProvider);
+      ref.invalidate(homeDataProvider);
+      if (mounted) {
+        setState(() {
+          _editing = false;
+          _saving = false;
+          _heightController.clear();
+          _weightController.clear();
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _saving = false;
+          _error = 'Could not save. Please try again.';
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final historyAsync = ref.watch(bmiHistoryProvider);
+    final rowsAsync = ref.watch(bmiRawRowsProvider);
 
     return CupertinoPageScaffold(
       backgroundColor: ClayTokens.clayDarkBase,
@@ -34,9 +136,14 @@ class BmiPage extends ConsumerWidget {
                       _buildHeroCard(history.last),
                       const SizedBox(height: 16),
                     ],
-                    _buildChartCard(history),
-                    const SizedBox(height: 16),
-                    _buildRecordButton(context),
+                    if (_editing)
+                      _buildUpdateEditor()
+                    else
+                      _buildUpdateButton(),
+                    const SizedBox(height: 24),
+                    _buildHistoryHeader(),
+                    const SizedBox(height: 8),
+                    _buildHistoryList(rowsAsync),
                     const SizedBox(height: 24),
                   ],
                 ),
@@ -139,54 +246,9 @@ class BmiPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildChartCard(List<BmiInfo> history) {
+  Widget _buildUpdateButton() {
     return StaggeredFadeIn(
       index: 1,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(12, 16, 16, 12),
-        decoration: BoxDecoration(
-          color: ClayTokens.clayDarkSurface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: ClayTokens.clayDarkBorder),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(left: 4, bottom: 12),
-              child: Text(
-                'GROWTH OVER TIME',
-                style: ClayTokens.darkLabelSmall.copyWith(color: ClayTokens.clayDarkTextTertiary),
-              ),
-            ),
-            SizedBox(
-              height: 220,
-              child: history.length < 2
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.show_chart, color: Color(0xFF7070A0), size: 28),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Record another measurement to see your trend',
-                            textAlign: TextAlign.center,
-                            style: ClayTokens.darkBodySmall.copyWith(color: ClayTokens.clayDarkTextTertiary),
-                          ),
-                        ],
-                      ),
-                    )
-                  : _BmiLineChart(history: history),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRecordButton(BuildContext context) {
-    return StaggeredFadeIn(
-      index: 2,
       child: Container(
         width: double.infinity,
         decoration: BoxDecoration(
@@ -201,7 +263,7 @@ class BmiPage extends ConsumerWidget {
           ],
         ),
         child: TextButton(
-          onPressed: () => context.push('/member/measurements'),
+          onPressed: _startEditing,
           style: TextButton.styleFrom(
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(vertical: 13),
@@ -209,10 +271,10 @@ class BmiPage extends ConsumerWidget {
           child: const Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.add, size: 18),
+              Icon(Icons.edit_outlined, size: 18),
               SizedBox(width: 6),
               Text(
-                'Record new measurement',
+                'Update',
                 style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
               ),
             ],
@@ -221,124 +283,359 @@ class BmiPage extends ConsumerWidget {
       ),
     );
   }
-}
 
-class _BmiLineChart extends StatelessWidget {
-  final List<BmiInfo> history;
-
-  const _BmiLineChart({required this.history});
-
-  @override
-  Widget build(BuildContext context) {
-    final spots = <FlSpot>[
-      for (var i = 0; i < history.length; i++) FlSpot(i.toDouble(), history[i].bmi),
-    ];
-    final values = history.map((h) => h.bmi).toList();
-    final minBmi = values.reduce((a, b) => a < b ? a : b);
-    final maxBmi = values.reduce((a, b) => a > b ? a : b);
-    final minY = (minBmi - 1).floorToDouble();
-    final maxY = (maxBmi + 1).ceilToDouble();
-    final color = bmiCategoryColor(history.last.bmi);
-
-    return LineChart(
-      LineChartData(
-        minX: 0,
-        maxX: (history.length - 1).toDouble(),
-        minY: minY,
-        maxY: maxY,
-        gridData: FlGridData(
-          show: true,
-          drawVerticalLine: false,
-          horizontalInterval: 1,
-          getDrawingHorizontalLine: (_) => FlLine(
-            color: ClayTokens.clayDarkBorder.withValues(alpha: 0.6),
-            strokeWidth: 1,
-            dashArray: [4, 4],
-          ),
+  Widget _buildUpdateEditor() {
+    final live = _liveBmi();
+    return StaggeredFadeIn(
+      index: 1,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: ClayTokens.clayDarkSurface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: ClayTokens.clayDarkBorder),
         ),
-        borderData: FlBorderData(show: false),
-        titlesData: FlTitlesData(
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 30,
-              interval: 1,
-              getTitlesWidget: (value, meta) => Text(
-                value.toInt().toString(),
-                textAlign: TextAlign.right,
-                style: ClayTokens.labelSmall.copyWith(color: ClayTokens.clayDarkTextTertiary, fontSize: 9),
-              ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Update your body details',
+              style: ClayTokens.darkTitleLarge.copyWith(fontWeight: FontWeight.w700),
             ),
-          ),
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 26,
-              interval: 1,
-              getTitlesWidget: (value, meta) {
-                final i = value.toInt();
-                if (i < 0 || i >= history.length) return const SizedBox.shrink();
-                final hideMiddle = history.length > 4 && i != 0 && i != history.length - 1;
-                if (hideMiddle) return const SizedBox.shrink();
-                return Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Text(
-                    DateFormat('MMM d').format(history[i].measuredAt),
-                    style: ClayTokens.labelSmall.copyWith(color: ClayTokens.clayDarkTextTertiary, fontSize: 9),
+            const SizedBox(height: 12),
+            _buildField(_heightController, 'Height (cm)', TextInputType.numberWithOptions(decimal: true)),
+            const SizedBox(height: 8),
+            _buildField(_weightController, 'Weight (kg)', TextInputType.numberWithOptions(decimal: true)),
+            if (_error != null) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Icon(CupertinoIcons.exclamationmark_circle, color: Color(0xFFEF4444), size: 14),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      _error!,
+                      style: ClayTokens.darkBodySmall.copyWith(color: ClayTokens.clayError),
+                    ),
                   ),
-                );
-              },
-            ),
-          ),
-        ),
-        lineTouchData: LineTouchData(
-          touchTooltipData: LineTouchTooltipData(
-            getTooltipItems: (touchedSpots) => touchedSpots.map((spot) {
-              final i = spot.x.toInt();
-              return LineTooltipItem(
-                '${DateFormat('MMM d, yyyy').format(history[i].measuredAt)}\nBMI ${history[i].bmi.toStringAsFixed(1)}',
-                ClayTokens.labelSmall.copyWith(
-                  color: ClayTokens.clayDarkTextInverse,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 11,
-                ),
-              );
-            }).toList(),
-          ),
-        ),
-        lineBarsData: [
-          LineChartBarData(
-            spots: spots,
-            isCurved: true,
-            curveSmoothness: 0.25,
-            color: color,
-            barWidth: 3,
-            isStrokeCapRound: true,
-            dotData: FlDotData(
-              show: true,
-              getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
-                radius: 4,
-                color: color,
-                strokeWidth: 2,
-                strokeColor: ClayTokens.clayDarkSurface,
-              ),
-            ),
-            belowBarData: BarAreaData(
-              show: true,
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  color.withValues(alpha: 0.25),
-                  color.withValues(alpha: 0.02),
                 ],
               ),
+            ],
+            const SizedBox(height: 16),
+            _buildLiveCalculator(live),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 44,
+                    child: CupertinoButton(
+                      color: ClayTokens.clayDarkSurfaceElevated,
+                      borderRadius: BorderRadius.circular(12),
+                      onPressed: _saving ? null : _cancelEditing,
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(
+                          color: Color(0xFFB4B4D0),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(colors: [Color(0xFF5E3AEE), Color(0xFFC56BF0)]),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      borderRadius: BorderRadius.circular(12),
+                      onPressed: _saving ? null : _save,
+                      child: _saving
+                          ? const Center(
+                              child: CupertinoActivityIndicator(color: Colors.white),
+                            )
+                          : const Center(
+                              child: Text(
+                                'Save',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLiveCalculator(BmiInfo? live) {
+    if (live == null) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: ClayTokens.clayDarkSurfaceElevated,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: ClayTokens.clayDarkBorder),
+        ),
+        child: const Text(
+          'Enter your height and weight to see your BMI.',
+          style: TextStyle(fontSize: 12, color: Color(0xFF7070A0)),
+        ),
+      );
+    }
+    final color = bmiCategoryColor(live.bmi);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withAlpha(14),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withAlpha(60)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'BMI',
+                  style: ClayTokens.darkLabelSmall.copyWith(color: ClayTokens.clayDarkTextTertiary),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  live.bmi.toStringAsFixed(1),
+                  style: ClayTokens.darkDisplayMedium.copyWith(fontSize: 28, color: color),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: color.withAlpha(25),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: color.withAlpha(60)),
+            ),
+            child: Text(
+              live.label,
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildHistoryHeader() {
+    return StaggeredFadeIn(
+      index: 2,
+      child: Padding(
+        padding: const EdgeInsets.only(left: 4),
+        child: Text(
+          'History',
+          style: ClayTokens.headlineMedium.copyWith(
+            fontWeight: FontWeight.w700,
+            color: ClayTokens.clayDarkTextPrimary,
+            letterSpacing: -0.36,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHistoryList(AsyncValue<List<Map<String, dynamic>>> rowsAsync) {
+    return StaggeredFadeIn(
+      index: 3,
+      child: rowsAsync.when(
+        data: (rows) {
+          if (rows.isEmpty) {
+            return Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: ClayTokens.clayDarkSurface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: ClayTokens.clayDarkBorder),
+              ),
+              child: const Column(
+                children: [
+                  Icon(Icons.history, color: Color(0xFF7070A0), size: 28),
+                  SizedBox(height: 8),
+                  Text(
+                    'No measurements yet.\nTap Update to record your first one.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 12, color: Color(0xFF7070A0), height: 1.5),
+                  ),
+                ],
+              ),
+            );
+          }
+          return Container(
+            decoration: BoxDecoration(
+              color: ClayTokens.clayDarkSurface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: ClayTokens.clayDarkBorder),
+            ),
+            child: Column(
+              children: rows.asMap().entries.map((entry) {
+                final m = entry.value;
+                final isLast = entry.key == rows.length - 1;
+                return Column(
+                  children: [
+                    _historyRow(m),
+                    if (!isLast)
+                      const SizedBox(height: 0.5),
+                  ],
+                );
+              }).toList(),
+            ),
+          );
+        },
+        loading: () => const Padding(
+          padding: EdgeInsets.all(16),
+          child: Center(child: CupertinoActivityIndicator()),
+        ),
+        error: (e, _) => Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            'Error: $e',
+            style: ClayTokens.bodyMedium.copyWith(color: ClayTokens.clayError),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _historyRow(Map<String, dynamic> m) {
+    final measuredAt =
+        DateTime.tryParse(m['measured_at']?.toString() ?? '')?.toLocal() ?? DateTime.now();
+    final heightCm = m['height_cm'] as num?;
+    final weightKg = m['weight_kg'] as num?;
+    final info = bmiFromMeasurement(
+      heightCm: heightCm,
+      weightKg: weightKg,
+      measuredAt: measuredAt,
+    );
+    final color = info == null ? ClayTokens.clayDarkTextTertiary : bmiCategoryColor(info.bmi);
+    final detail = [
+      if (heightCm != null) '${heightCm.toStringAsFixed(0)} cm',
+      if (weightKg != null) '${weightKg.toStringAsFixed(1)} kg',
+      if (info != null) 'BMI ${info.bmi.toStringAsFixed(1)}',
+    ].join(' · ');
+
+    return Row(
+      children: [
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      DateFormat('MMM d, yyyy').format(measuredAt),
+                      style: ClayTokens.titleLarge.copyWith(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: ClayTokens.clayDarkTextPrimary,
+                        letterSpacing: -0.41,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    if (info != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: color.withAlpha(25),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: color.withAlpha(60)),
+                        ),
+                        child: Text(
+                          info.label,
+                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: color),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  detail,
+                  style: ClayTokens.titleMedium.copyWith(
+                    fontSize: 13,
+                    color: ClayTokens.clayDarkTextTertiary,
+                    letterSpacing: -0.24,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        CupertinoButton(
+          padding: const EdgeInsets.all(16),
+          onPressed: () async {
+            await SupabaseClientService().client
+                .from('body_measurements')
+                .delete()
+                .eq('id', m['id']);
+            ref.invalidate(bmiHistoryProvider);
+            ref.invalidate(bmiRawRowsProvider);
+            ref.invalidate(latestBmiProvider);
+            ref.invalidate(homeDataProvider);
+          },
+          child: Icon(CupertinoIcons.trash, color: ClayTokens.clayError, size: 20),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildField(TextEditingController controller, String label, TextInputType keyboardType, {int maxLines = 1}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 2, bottom: 6),
+          child: Text(
+            label,
+            style: ClayTokens.darkLabelMedium.copyWith(color: ClayTokens.clayDarkTextSecondary),
+          ),
+        ),
+        CupertinoTextField(
+          controller: controller,
+          placeholder: label,
+          placeholderStyle: ClayTokens.bodyMedium.copyWith(color: ClayTokens.clayDarkTextTertiary),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          decoration: BoxDecoration(
+            color: ClayTokens.clayDarkSurfaceElevated,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          keyboardType: keyboardType,
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*$')),
+          ],
+          maxLines: maxLines,
+          cursorColor: ClayTokens.clayPrimary,
+          style: ClayTokens.bodyMedium.copyWith(color: ClayTokens.clayDarkTextPrimary),
+          onChanged: (_) {
+            if (_error != null) setState(() => _error = null);
+            setState(() {});
+          },
+        ),
+      ],
     );
   }
 }

@@ -14,6 +14,12 @@ class FitnessApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       theme: clayThemeData,
       routerConfig: routerConfig,
+      builder: (context, child) => DefaultTextStyle(
+        // Safety net: guarantees no text anywhere ever inherits an
+        // underline from an ambient theme default (yellow line under text).
+        style: const TextStyle(decoration: TextDecoration.none),
+        child: child!,
+      ),
     );
   }
 }
