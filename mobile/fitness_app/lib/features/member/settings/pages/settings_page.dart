@@ -68,6 +68,7 @@ class _SettingsContent extends ConsumerWidget {
     final email = profile?.email ?? '';
     final gender = profile?.gender as String?;
     final initials = name.split(' ').map((n) => n[0]).take(2).join();
+    final avatarUrl = profile?.avatarUrl;
     final bmiInfo = ref.watch(latestBmiProvider).valueOrNull;
 
     return ListView(
@@ -104,17 +105,39 @@ class _SettingsContent extends ConsumerWidget {
                       width: 52, height: 52,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFFBF5AF2), Color(0xFFD6A5FF)],
-                        ),
+                        color: avatarUrl == null ? null : Colors.transparent,
+                        gradient: avatarUrl == null
+                            ? const LinearGradient(
+                                colors: [Color(0xFFBF5AF2), Color(0xFFD6A5FF)],
+                              )
+                            : null,
                         boxShadow: [
                           BoxShadow(color: Colors.black.withAlpha(40), blurRadius: 8, offset: const Offset(0, 2)),
                         ],
                       ),
                       alignment: Alignment.center,
-                      child: Text(initials, style: const TextStyle(
-                        color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700,
-                      )),
+                      child: avatarUrl == null
+                          ? Text(initials, style: const TextStyle(
+                              color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700,
+                            ))
+                          : (avatarUrl!.startsWith('assets/')
+                              ? Image.asset(
+                                  avatarUrl,
+                                  width: 52,
+                                  height: 52,
+                                  fit: BoxFit.cover,
+                                )
+                              : ClipOval(
+                                  child: Image.network(
+                                    avatarUrl,
+                                    width: 52,
+                                    height: 52,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => Text(initials, style: const TextStyle(
+                                      color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700,
+                                    )),
+                                  ),
+                                )),
                     ),
                     if (gender == 'male')
                       Positioned(
@@ -145,6 +168,11 @@ class _SettingsContent extends ConsumerWidget {
                           fontSize: 12, color: Color(0xFF636366),
                           decoration: TextDecoration.none,
                         )),
+                      const SizedBox(height: 8),
+                      TextButton(
+                        onPressed: () {},
+                        child: const Text('Change Profile', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFD8B4FE), decoration: TextDecoration.none)),
+                      ),
                     ],
                   ),
                 ),

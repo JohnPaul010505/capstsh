@@ -96,13 +96,20 @@ class ClayAvatar extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(radius),
         child: imageUrl != null
-            ? Image.network(
-                imageUrl!,
-                width: _size,
-                height: _size,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _buildInitials(isDark),
-              )
+            ? imageUrl!.startsWith('assets/')
+                ? Image.asset(
+                    imageUrl!,
+                    width: _size,
+                    height: _size,
+                    fit: BoxFit.cover,
+                  )
+                : Image.network(
+                    imageUrl!,
+                    width: _size,
+                    height: _size,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _buildInitials(isDark),
+                  )
             : _buildInitials(isDark),
       ),
     );

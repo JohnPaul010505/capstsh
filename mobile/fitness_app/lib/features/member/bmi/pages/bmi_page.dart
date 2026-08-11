@@ -292,7 +292,7 @@ class _BmiPageState extends ConsumerState<BmiPage> {
           color: ClayTokens.clayDarkSurface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: ClayTokens.clayDarkBorder),
-        ),do it
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

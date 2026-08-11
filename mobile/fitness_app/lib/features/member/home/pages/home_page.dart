@@ -277,6 +277,7 @@ class HomeContent extends StatelessWidget {
     final name = profile?.fullName ?? 'there';
     final firstName = name.split(' ').first;
     final initials = name.isNotEmpty ? name.split(' ').map((n) => n[0]).take(2).join() : '?';
+    final avatarUrl = profile?.avatarUrl;
     final hour = DateTime.now().hour;
     final greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
@@ -295,6 +296,7 @@ class HomeContent extends StatelessWidget {
               greeting: greeting,
               firstName: firstName,
               initials: initials,
+              imageUrl: avatarUrl,
               onAvatarTap: () => context.push('/member/settings'),
             ),
             const SizedBox(height: 12),
@@ -327,12 +329,14 @@ class _GreetingRow extends StatelessWidget {
   final String greeting;
   final String firstName;
   final String initials;
+  final String? imageUrl;
   final VoidCallback onAvatarTap;
 
   const _GreetingRow({
     required this.greeting,
     required this.firstName,
     required this.initials,
+    this.imageUrl,
     required this.onAvatarTap,
   });
 
@@ -357,6 +361,7 @@ class _GreetingRow extends StatelessWidget {
           ],
         ),
         ClayAvatar(
+          imageUrl: imageUrl,
           initials: initials,
           size: ClayAvatarSize.md,
           onTap: onAvatarTap,

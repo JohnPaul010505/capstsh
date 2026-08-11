@@ -85,7 +85,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
     final password = _passwordController.text;
 
     if (code.isEmpty) {
-      setState(() => _error = 'Please enter your member code');
+      setState(() => _error = 'Please enter your code');
       _fadeController.forward(from: 0);
       return;
     }
@@ -250,7 +250,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
                                   StaggeredFadeIn(
                                     index: 3,
                                     child: Semantics(
-                                      label: 'Member code input',
+                                      label: 'code input',
                                       child: _FloatingLabelInput(
                                         controller: _codeController,
                                         focusNode: _codeFocus,
@@ -263,7 +263,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
                                   StaggeredFadeIn(
                                     index: 5,
                                     child: Semantics(
-                                      label: 'Password input',
+                                      label: 'password input',
                                       child: _FloatingLabelInput(
                                         controller: _passwordController,
                                         focusNode: _passwordFocus,

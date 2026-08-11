@@ -54,4 +54,23 @@ class AuthNotifier extends StateNotifier<AsyncValue<Profile?>> {
     await _authService.signOut();
     state = const AsyncValue.data(null);
   }
+
+  Future<void> completeOnboarding({
+    required String gender,
+    required double heightCm,
+    required double weightKg,
+    String? profileAsset,
+  }) async {
+    try {
+      await _authService.completeOnboarding(
+        gender: gender,
+        heightCm: heightCm,
+        weightKg: weightKg,
+        profileAsset: profileAsset,
+      );
+      await refreshProfile();
+    } catch (e) {
+      state = AsyncValue.error(e, StackTrace.current);
+    }
+  }
 }

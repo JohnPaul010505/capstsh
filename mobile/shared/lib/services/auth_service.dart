@@ -70,5 +70,25 @@ class AuthService {
     return Profile.fromJson(response);
   }
 
+  Future<void> completeOnboarding({
+    required String gender,
+    required double heightCm,
+    required double weightKg,
+    String? profileAsset,
+  }) async {
+    final user = _client.auth.currentUser;
+    if (user == null) return;
+    await _client.from('profiles').update({
+      'gender': gender,
+      'avatar_url': profileAsset,
+    }).eq('id', user.id);
+    await _client.from('body_measurements').insert({
+      'member_id': user.id,
+      'weight_kg': weightKg,
+      'height_cm': heightCm,
+      'measured_at': DateTime.now().toUtc().toIso8601String(),
+    });
+  }
+
   Session? get currentSession => _client.auth.currentSession;
 }
