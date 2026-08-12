@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:shared/services/supabase_client.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../shared/widgets/animations.dart';
+import '../../../shared/widgets/app_glow_background.dart';
 import '../data/bmi_info.dart';
 import '../providers/bmi_history_provider.dart';
 
@@ -120,8 +121,9 @@ class _BmiPageState extends ConsumerState<BmiPage> {
 
     return CupertinoPageScaffold(
       backgroundColor: ClayTokens.clayDarkBase,
-      child: SafeArea(
-        child: Column(
+      child: AppGlowBackground(
+        child: SafeArea(
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(context),
@@ -160,7 +162,8 @@ class _BmiPageState extends ConsumerState<BmiPage> {
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildHeader(BuildContext context) {

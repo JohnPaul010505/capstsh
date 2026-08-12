@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared/services/supabase_client.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../shared/widgets/clay/clay_card.dart';
+import '../../../shared/widgets/app_glow_background.dart';
 
 final dashboardStatsProvider = FutureProvider((ref) async {
   final userId = SupabaseClientService().client.auth.currentUser!.id;
@@ -34,8 +35,9 @@ class DashboardPage extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: ClayTokens.clayDarkBase,
-      body: SafeArea(
-        child: Column(
+      body: AppGlowBackground(
+        child: SafeArea(
+          child: Column(
           children: [
             _buildNavBar(),
             Expanded(
@@ -91,6 +93,7 @@ class DashboardPage extends ConsumerWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }

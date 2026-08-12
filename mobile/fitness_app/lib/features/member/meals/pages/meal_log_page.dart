@@ -8,6 +8,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared/services/supabase_client.dart';
 import '../../../shared/widgets/pressable.dart';
 import '../../../shared/widgets/animations.dart';
+import '../../../shared/widgets/app_glow_background.dart';
+import '../../../../app/design_tokens.dart';
 
 final todayMealsProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
   final userId = SupabaseClientService().client.auth.currentUser!.id;
@@ -123,9 +125,10 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
     final mealsAsync = ref.watch(todayMealsProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF000000),
-      body: SafeArea(
-        child: ListView(
+      backgroundColor: ClayTokens.clayDarkBase,
+      body: AppGlowBackground(
+        child: SafeArea(
+          child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 14),
           physics: const ClampingScrollPhysics(),
           children: [
@@ -236,7 +239,8 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildAddForm() {

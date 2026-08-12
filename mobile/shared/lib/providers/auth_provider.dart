@@ -73,4 +73,13 @@ class AuthNotifier extends StateNotifier<AsyncValue<Profile?>> {
       state = AsyncValue.error(e, StackTrace.current);
     }
   }
+
+  Future<void> updateProfileAsset(String profileAsset) async {
+    try {
+      await _authService.updateProfileAsset(profileAsset);
+      await refreshProfile();
+    } catch (e) {
+      state = AsyncValue.error(e, StackTrace.current);
+    }
+  }
 }

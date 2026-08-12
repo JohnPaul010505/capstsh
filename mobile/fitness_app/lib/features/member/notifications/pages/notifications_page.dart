@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared/services/supabase_client.dart';
 import '../../../../app/design_tokens.dart';
+import '../../../shared/widgets/app_glow_background.dart';
 
 final notificationsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
   final userId = SupabaseClientService().client.auth.currentUser!.id;
@@ -24,8 +25,9 @@ class NotificationsPage extends ConsumerWidget {
 
     return CupertinoPageScaffold(
       backgroundColor: ClayTokens.clayDarkBase,
-      child: SafeArea(
-        child: Column(
+      child: AppGlowBackground(
+        child: SafeArea(
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(context, 'Notifications'),
@@ -141,7 +143,8 @@ class NotificationsPage extends ConsumerWidget {
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildHeader(BuildContext context, String title) {

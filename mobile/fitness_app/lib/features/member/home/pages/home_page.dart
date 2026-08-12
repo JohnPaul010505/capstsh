@@ -10,6 +10,7 @@ import '../../../shared/widgets/animations.dart';
 import '../../onboarding/pages/onboarding_splash_screen.dart';
 import '../../onboarding/providers/onboarding_provider.dart';
 import '../../../../app/design_tokens.dart';
+import '../../../shared/widgets/app_glow_background.dart';
 import '../../../shared/widgets/clay/clay_card.dart';
 import '../../../shared/widgets/clay/clay_button.dart';
 import '../../../shared/widgets/clay/clay_avatar.dart';
@@ -206,19 +207,21 @@ class _HomePageState extends ConsumerState<HomePage> {
 
     return Scaffold(
       backgroundColor: ClayTokens.clayDarkBase,
-      body: SafeArea(
-        child: onboardingAsync.when(
-          skipLoadingOnRefresh: true,
-          data: (needsOnboarding) => needsOnboarding
-              ? const OnboardingSplashScreen()
-              : dataAsync.when(
-                  skipLoadingOnRefresh: true,
-                  data: (data) => HomeContent(data: data, profile: profile),
-                  loading: () => const _LoadingState(),
-                  error: (e, _) => _ErrorState(message: e.toString()),
-                ),
-          loading: () => const _LoadingState(),
-          error: (e, _) => _ErrorState(message: e.toString()),
+      body: AppGlowBackground(
+        child: SafeArea(
+          child: onboardingAsync.when(
+            skipLoadingOnRefresh: true,
+            data: (needsOnboarding) => needsOnboarding
+                ? const OnboardingSplashScreen()
+                : dataAsync.when(
+                    skipLoadingOnRefresh: true,
+                    data: (data) => HomeContent(data: data, profile: profile),
+                    loading: () => const _LoadingState(),
+                    error: (e, _) => _ErrorState(message: e.toString()),
+                  ),
+            loading: () => const _LoadingState(),
+            error: (e, _) => _ErrorState(message: e.toString()),
+          ),
         ),
       ),
     );
@@ -246,7 +249,7 @@ class _ErrorState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.cloud_download_outlined, color: Color(0xFF8E8E93), size: 48),
+            Icon(Icons.cloud_download_outlined, color: Color(0xFF8E8E93), size: 48),
             const SizedBox(height: 12),
             Text('Something went wrong', style: ClayTokens.titleMedium),
             const SizedBox(height: 4),
@@ -303,15 +306,15 @@ class HomeContent extends StatelessWidget {
             if (showMembershipCard)
               StaggeredFadeIn(index: 0, child: _MembershipCard(membership: membership, openSession: openSession)),
             if (showMembershipCard) const SizedBox(height: 8),
-            StaggeredFadeIn(index: offset, child: _WeekChart(weekCounts: weekCounts, maxCount: maxCount)),
+            StaggeredFadeIn(index: offset, child: _MonthSummary(totalWorkouts: totalWorkouts, activeDays: activeDays)),
             const SizedBox(height: 8),
-            StaggeredFadeIn(index: 1 + offset, child: _YearChart(
+            StaggeredFadeIn(index: 1 + offset, child: _WeekChart(weekCounts: weekCounts, maxCount: maxCount)),
+            const SizedBox(height: 8),
+            StaggeredFadeIn(index: 2 + offset, child: _YearChart(
               monthlyCounts: monthlyCounts,
               totalWorkouts: totalWorkouts,
               yearLabel: '${DateTime.now().year}',
             )),
-            const SizedBox(height: 8),
-            StaggeredFadeIn(index: 2 + offset, child: _MonthSummary(totalWorkouts: totalWorkouts, activeDays: activeDays)),
             const SizedBox(height: 8),
             StaggeredFadeIn(index: 3 + offset, child: _GrowthChart(monthlyWeights: monthlyWeights)),
             const SizedBox(height: 8),
@@ -349,7 +352,7 @@ class _GreetingRow extends StatelessWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(firstName, style: ClayTokens.displaySmall.copyWith(letterSpacing: 0)),
+            Text(firstName, style: ClayTokens.displaySmall.copyWith(letterSpacing: 0, color: Color(0xFFA78BFA))),
             const SizedBox(height: 2),
             Row(
               children: [
@@ -364,6 +367,7 @@ class _GreetingRow extends StatelessWidget {
           imageUrl: imageUrl,
           initials: initials,
           size: ClayAvatarSize.md,
+          backgroundColor: Colors.transparent,
           onTap: onAvatarTap,
         ),
       ],
@@ -484,6 +488,7 @@ class _WeekChartState extends State<_WeekChart> {
     return ClayCard(
       variant: ClayCardVariant.outlined,
       padding: ClayCardPadding.medium,
+      backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -533,11 +538,11 @@ class _WeekChartState extends State<_WeekChart> {
                       margin: const EdgeInsets.symmetric(horizontal: 3),
                       decoration: BoxDecoration(
                         borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-                        color: isFuture
-                            ? ClayTokens.clayDarkTextTertiary.withAlpha(50)
-                            : isToday
-                                ? const Color(0xFF64D2FF)
-                                : const Color(0xFF0A84FF),
+                      color: isFuture
+                          ? ClayTokens.clayDarkTextTertiary.withAlpha(50)
+                          : isToday
+                              ? ClayTokens.clayPrimaryDark
+                              : ClayTokens.clayPrimaryDark,
                       ),
                     ),
                   ),
@@ -552,10 +557,10 @@ class _WeekChartState extends State<_WeekChart> {
               return Expanded(
                 child: Text(labels[i],
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 10, fontWeight: FontWeight.w500,
-                    color: isToday ? const Color(0xFF64D2FF) : ClayTokens.clayDarkTextTertiary,
-                  ),
+                   style: TextStyle(
+                     fontSize: 10, fontWeight: FontWeight.w500,
+                     color: isToday ? ClayTokens.clayPrimaryDark : ClayTokens.clayDarkTextTertiary,
+                   ),
                 ),
               );
             }),
@@ -622,6 +627,7 @@ class _TrainerCard extends StatelessWidget {
     return ClayCard(
       variant: ClayCardVariant.outlined,
       padding: ClayCardPadding.medium,
+      backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
       child: Column(
         children: [
           Row(
@@ -658,7 +664,7 @@ class _TrainerCard extends StatelessWidget {
           ClayButton(
             label: 'Ask a question',
             onPressed: () => context.go('/member/chat'),
-            style: ClayButtonStyle.ghost,
+            style: ClayButtonStyle.primary,
             fullWidth: true,
             size: ClayButtonSize.small,
           ),
@@ -702,6 +708,7 @@ class _YearChart extends StatelessWidget {
     return ClayCard(
       variant: ClayCardVariant.outlined,
       padding: ClayCardPadding.medium,
+      backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -711,9 +718,13 @@ class _YearChart extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('This Month', style: ClayTokens.titleMedium.copyWith(color: ClayTokens.clayDarkTextPrimary)),
-                  const SizedBox(height: 2),
-                  Text(yearLabel, style: TextStyle(fontSize: 10, color: ClayTokens.clayDarkTextTertiary)),
+                  Row(
+                    children: [
+                      Text('This Month', style: ClayTokens.titleMedium.copyWith(color: ClayTokens.clayDarkTextPrimary)),
+                      const SizedBox(width: 6),
+                      Text(yearLabel, style: TextStyle(fontSize: 13, color: ClayTokens.clayPrimaryDark, fontWeight: FontWeight.w700)),
+                    ],
+                  ),
                 ],
               ),
               Container(
@@ -755,7 +766,7 @@ class _MonthlyValues extends StatelessWidget {
     return ClayAreaChart(
       values: values,
       labels: _monthShort,
-      strokeColor: const Color(0xFF3B82F6),
+      strokeColor: ClayTokens.clayPrimaryDark,
       legendLabel: 'Check-ins per month',
       showYAxis: false,
       showValueLabels: true,
@@ -776,6 +787,7 @@ class _GrowthChart extends StatelessWidget {
     return ClayCard(
       variant: ClayCardVariant.outlined,
       padding: ClayCardPadding.medium,
+      backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -806,7 +818,7 @@ class _GrowthChart extends StatelessWidget {
           ClayAreaChart(
             values: monthlyWeights,
             labels: _monthShort,
-            strokeColor: ClayTokens.clayPrimaryLight,
+            strokeColor: ClayTokens.clayPrimaryDark,
             emptyMessage: 'No weight data yet',
             showValueLabels: true,
           ),
@@ -839,8 +851,8 @@ class _MonthSummary extends StatelessWidget {
         const SizedBox(width: 8),
         _StatCard(
           icon: Icons.calendar_month,
-          iconBg: const Color(0xFF64D2FF).withAlpha(30),
-          iconColor: const Color(0xFF64D2FF),
+          iconBg: ClayTokens.clayPrimaryDark.withAlpha(30),
+          iconColor: ClayTokens.clayPrimaryDark,
           valueWidget: AnimatedCountUp(
             target: activeDays,
             style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: ClayTokens.clayDarkTextPrimary),

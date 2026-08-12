@@ -15,10 +15,10 @@ class ClayColors {
   static const Color clayPrimary = Color(0xFF7C3AED);
   static const Color clayPrimaryLight = Color(0xFFA78BFA);
   static const Color clayPrimaryDark = Color(0xFF6D28D9);
-  static const Color claySecondary = Color(0xFFDB2777);
-  static const Color claySecondaryLight = Color(0xFFF0ABFC);
-  static const Color clayAccent = Color(0xFF10B981);
-  static const Color clayAccentLight = Color(0xFF6EE7B7);
+  static const Color claySecondary = Color(0xFFA78BFA);
+  static const Color claySecondaryLight = Color(0xFFD6A5FF);
+  static const Color clayAccent = Color(0xFF7C3AED);
+  static const Color clayAccentLight = Color(0xFFA78BFA);
   static const Color clayWarning = Color(0xFFF59E0B);
   static const Color clayWarningLight = Color(0xFFFDE68A);
   static const Color clayError = Color(0xFFEF4444);

@@ -6,6 +6,7 @@ import '../../../../app/design_tokens.dart';
 import '../../../shared/widgets/clay/clay_card.dart';
 import '../../../shared/widgets/clay/clay_button.dart';
 import '../../../shared/widgets/clay/clay_avatar.dart';
+import '../../../shared/widgets/app_glow_background.dart';
 
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
@@ -17,8 +18,9 @@ class ProfilePage extends ConsumerWidget {
     return Scaffold(
       backgroundColor: ClayTokens.clayDarkBase,
       body: authState.when(
-        data: (profile) => SafeArea(
-          child: Column(
+        data: (profile) => AppGlowBackground(
+          child: SafeArea(
+            child: Column(
             children: [
               _buildNavBar(),
               Expanded(
@@ -83,6 +85,7 @@ class ProfilePage extends ConsumerWidget {
             ],
           ),
         ),
+      ),
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
           child: Text(

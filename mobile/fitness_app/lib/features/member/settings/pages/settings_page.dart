@@ -8,6 +8,7 @@ import '../../bmi/providers/bmi_history_provider.dart';
 import '../../../shared/widgets/pressable.dart';
 import '../../../shared/widgets/skeleton.dart';
 import '../../../shared/widgets/animations.dart';
+import '../../../shared/widgets/app_glow_background.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -17,9 +18,10 @@ class SettingsPage extends ConsumerWidget {
     final authState = ref.watch(authProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF000000),
-      body: SafeArea(
-        child: authState.when(
+      backgroundColor: ClayTokens.clayDarkBase,
+      body: AppGlowBackground(
+        child: SafeArea(
+          child: authState.when(
           data: (profile) => _SettingsContent(profile: profile),
           loading: () => const Padding(
             padding: EdgeInsets.symmetric(horizontal: 14),
@@ -53,7 +55,8 @@ class SettingsPage extends ConsumerWidget {
           error: (e, _) => Center(child: Text('Error: $e', style: const TextStyle(color: Color(0xFF636366)))),
         ),
       ),
-    );
+    ),
+  );
   }
 }
 

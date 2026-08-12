@@ -111,7 +111,7 @@ class _AreaChartPainter extends CustomPainter {
 
   /// Reserved band at the bottom for the month labels. The plot area maps
   /// above it so dots/lines never collide with label text.
-  static const double _labelBand = 16;
+  static const double _labelBand = 20;
 
   /// Top padding carved out so the highest dot still leaves room for a value
   /// label above it.
@@ -302,7 +302,7 @@ class _AreaChartPainter extends CustomPainter {
         text: TextSpan(
           text: labels[i],
           style: TextStyle(
-            fontSize: 9,
+            fontSize: 8,
             color: ClayTokens.clayDarkTextTertiary,
           ),
         ),

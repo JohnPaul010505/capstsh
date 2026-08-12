@@ -10,6 +10,7 @@ import '../../../shared/widgets/pressable.dart';
 import '../../../shared/widgets/animations.dart';
 import '../../../shared/widgets/proof_video_viewer.dart';
 import '../../../../app/design_tokens.dart';
+import '../../../shared/widgets/app_glow_background.dart';
 
 /// Workout session flow (client-side, in-memory — nothing persisted yet):
 ///  1. Add exercises via the catalog autocomplete (must match one of the 140).
@@ -163,8 +164,9 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
       },
       child: Scaffold(
         backgroundColor: ClayTokens.clayDarkBase,
-        body: SafeArea(
-          child: Stack(
+        body: AppGlowBackground(
+          child: SafeArea(
+            child: Stack(
             children: [
               ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -197,7 +199,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildHeader(WorkoutSessionState session) {

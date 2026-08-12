@@ -96,44 +96,42 @@ class _OnboardingSplashScreenState extends ConsumerState<OnboardingSplashScreen>
       body: Stack(
         children: [
           const Positioned(top: -80, right: -60, child: _GlowBlob(size: 220, colors: [Color(0x337C3AED), Color(0x007C3AED)])),
-          const Positioned(top: 40, left: -70, child: _GlowBlob(size: 200, colors: [Color(0x33DB2777), Color(0x00DB2777)])),
-          const Positioned(top: 260, right: -90, child: _GlowBlob(size: 260, colors: [Color(0x2210B981), Color(0x0010B981)])),
+          const Positioned(top: 40, left: -70, child: _GlowBlob(size: 200, colors: [Color(0x33A78BFA), Color(0x00A78BFA)])),
+          const Positioned(top: 260, right: -90, child: _GlowBlob(size: 260, colors: [Color(0x33A78BFA), Color(0x00A78BFA)])),
           SafeArea(
-            child: Column(
-              children: [
-                const SizedBox(height: 14),
-                _buildLogoHero(),
-                const SizedBox(height: 14),
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.fromLTRB(18, 0, 18, 32),
-                    physics: const ClampingScrollPhysics(),
-                    children: [
-                       ClayCard(
-                         variant: ClayCardVariant.outlined,
-                         padding: ClayCardPadding.large,
-                         backgroundColor: ClayTokens.clayDarkSurface,
-                         child: Column(
-                           crossAxisAlignment: CrossAxisAlignment.center,
-                           children: [
-                             if (_step == 0) ...[
-                               _buildWelcomeStep()
-                             ] else if (_step == 1) ...[
-                               _buildStatsStep(bmiCategory, bmiColor)
-                             ] else if (_step == 2) ...[
-                               _buildGenderStep()
-                             ] else if (_step == 3) ...[
-                               _buildProfileStep()
-                             ],
-                           ],
-                         ),
-                       ),
-                      const SizedBox(height: 16),
-                      StepIndicator(currentStep: _step, totalSteps: 4),
-                    ],
-                  ),
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(18, 24, 18, 32),
+                physics: const ClampingScrollPhysics(),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildLogoHero(),
+                    const SizedBox(height: 24),
+                    ClayCard(
+                      variant: ClayCardVariant.outlined,
+                      padding: ClayCardPadding.large,
+                      backgroundColor: ClayTokens.clayDarkSurface,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          if (_step == 0) ...[
+                            _buildWelcomeStep()
+                          ] else if (_step == 1) ...[
+                            _buildStatsStep(bmiCategory, bmiColor)
+                          ] else if (_step == 2) ...[
+                            _buildGenderStep()
+                          ] else if (_step == 3) ...[
+                            _buildProfileStep()
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    StepIndicator(currentStep: _step, totalSteps: 4),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ],
@@ -198,7 +196,7 @@ class _OnboardingSplashScreenState extends ConsumerState<OnboardingSplashScreen>
               colors: [Color(0xFFA78BFA), Color(0xFFF0ABFC)],
             ).createShader(bounds),
             blendMode: BlendMode.srcIn,
-            child: Text('FITSIGHT', style: ClayTokens.darkHeadlineLarge.copyWith(letterSpacing: 6, fontWeight: FontWeight.w900)),
+            child: Text('Triple J', style: ClayTokens.darkHeadlineLarge.copyWith(letterSpacing: 6, fontWeight: FontWeight.w900)),
           ),
         ],
       ),
@@ -408,7 +406,7 @@ class _OnboardingSplashScreenState extends ConsumerState<OnboardingSplashScreen>
     );
   }
 
-Widget _buildProfileStep() {
+  Widget _buildProfileStep() {
     final profiles = _gender == 'male'
         ? ['L1.gif', 'L2.gif', 'L3.gif']
         : ['W1.gif', 'W2.gif', 'W3.gif'];
@@ -422,10 +420,9 @@ Widget _buildProfileStep() {
           children: List.generate(profiles.length, (index) {
             final asset = 'assets/profiles/${profiles[index]}';
             final isSelected = _selectedProfile == asset;
-            // Pink for female selector, purple for male selector
             final selectionColor = _gender == 'female'
-                ? ClayTokens.claySecondary   // pink-ish secondary
-                : ClayTokens.clayPrimary;     // purple
+                ? ClayTokens.claySecondary
+                : ClayTokens.clayPrimary;
             return Expanded(
               child: GestureDetector(
                 onTap: () => setState(() => _selectedProfile = asset),

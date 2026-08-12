@@ -90,5 +90,13 @@ class AuthService {
     });
   }
 
+  Future<void> updateProfileAsset(String profileAsset) async {
+    final user = _client.auth.currentUser;
+    if (user == null) return;
+    await _client.from('profiles').update({
+      'avatar_url': profileAsset,
+    }).eq('id', user.id);
+  }
+
   Session? get currentSession => _client.auth.currentSession;
 }

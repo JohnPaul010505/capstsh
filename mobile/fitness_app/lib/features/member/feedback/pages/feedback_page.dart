@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:shared/services/supabase_client.dart';
 import '../../../../app/design_tokens.dart';
+import '../../../shared/widgets/app_glow_background.dart';
 
 final feedbackListProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
   final userId = SupabaseClientService().client.auth.currentUser!.id;
@@ -53,8 +54,9 @@ class _FeedbackPageState extends ConsumerState<FeedbackPage> {
 
     return CupertinoPageScaffold(
       backgroundColor: ClayTokens.clayDarkBase,
-      child: SafeArea(
-        child: Column(
+      child: AppGlowBackground(
+        child: SafeArea(
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader('Feedback'),
@@ -136,7 +138,8 @@ class _FeedbackPageState extends ConsumerState<FeedbackPage> {
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildSubmitCard() {

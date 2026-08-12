@@ -20,6 +20,7 @@ import '../features/trainer/chat/pages/chat_room_page.dart';
 import '../features/trainer/profile/pages/profile_page.dart' as trainer_profile;
 import '../features/shared/checkin/checkin_page.dart';
 import '../features/shared/widgets/member_nav_bar.dart';
+import '../features/member/onboarding/pages/onboarding_splash_screen.dart';
 import 'package:circle_nav_bar/circle_nav_bar.dart';
 
 final _trainerShellKey = GlobalKey<NavigatorState>();
@@ -42,8 +43,16 @@ Page<dynamic> _iosPush(Widget child) => CustomTransitionPage(
   reverseTransitionDuration: const Duration(milliseconds: 250),
 );
 
+final needsOnboardingSyncProvider = Provider<bool>((ref) {
+  final profile = ref.watch(authProvider).valueOrNull;
+  if (profile == null || profile.role != 'member') return false;
+  final gender = profile.gender;
+  return gender == null || gender.trim().isEmpty;
+});
+
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
+  final needsOnboarding = ref.read(needsOnboardingSyncProvider);
 
   return GoRouter(
     initialLocation: '/login',
@@ -55,10 +64,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (!isLoggedIn && !isLoginRoute) return '/login';
       if (isLoggedIn && isLoginRoute) {
         if (profile?.role == 'trainer') return '/trainer/dashboard';
+        if (needsOnboarding) return '/member/onboarding';
         return '/member/home';
       }
       if (isLoggedIn && profile != null) {
         final loc = state.matchedLocation;
+        if (needsOnboarding && loc != '/member/onboarding') return '/member/onboarding';
         if (profile.role == 'member' && loc.startsWith('/trainer')) return '/member/home';
         if (profile.role == 'member' && loc.startsWith('/admin')) return '/member/home';
         if (profile.role == 'trainer' && loc.startsWith('/member')) return '/trainer/dashboard';
@@ -69,6 +80,10 @@ final routerProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(path: '/login', pageBuilder: (_, __) => _iosPush(const LoginPage())),
+      GoRoute(
+        path: '/member/onboarding',
+        pageBuilder: (_, __) => _iosPush(const OnboardingSplashScreen()),
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
             MemberShell(navigationShell: navigationShell),

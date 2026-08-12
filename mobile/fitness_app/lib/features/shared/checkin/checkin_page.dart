@@ -9,6 +9,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:shared/providers/auth_provider.dart';
 import 'package:shared/services/supabase_client.dart';
 import '../../../app/design_tokens.dart';
+import '../../../features/shared/widgets/app_glow_background.dart';
 
 class CheckinPage extends ConsumerStatefulWidget {
   final bool showBack;
@@ -131,8 +132,9 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
     }
     return CupertinoPageScaffold(
       backgroundColor: ClayTokens.clayDarkBase,
-      child: SafeArea(
-        child: Column(
+      child: AppGlowBackground(
+        child: SafeArea(
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(
@@ -275,7 +277,8 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildSuccessScreen() {

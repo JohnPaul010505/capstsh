@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/services/supabase_client.dart';
 import '../../../shared/widgets/animations.dart';
 import '../../../shared/widgets/clay/clay_input.dart';
+import '../../../shared/widgets/app_glow_background.dart';
 import '../../../../app/design_tokens.dart';
 
 final trainerChatProvider = FutureProvider.autoDispose<Map<String, dynamic>?>((ref) async {
@@ -165,9 +166,10 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     final chatAsync = ref.watch(trainerChatProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF000000),
-      body: SafeArea(
-        child: chatAsync.when(
+      backgroundColor: ClayTokens.clayDarkBase,
+      body: AppGlowBackground(
+        child: SafeArea(
+          child: chatAsync.when(
           data: (data) {
             if (data == null) {
               return Padding(
@@ -352,6 +354,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           error: (e, _) => Center(child: Text('Error: $e', style: const TextStyle(color: Color(0xFF636366)))),
         ),
       ),
-    );
+    ),
+  );
   }
 }
