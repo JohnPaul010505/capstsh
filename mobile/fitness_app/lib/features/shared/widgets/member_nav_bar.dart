@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../app/design_tokens.dart';
 
 class MemberNavBar extends StatelessWidget {
@@ -73,7 +74,7 @@ class MemberNavBar extends StatelessWidget {
                             child: Text(
                               _tabs[i].label,
                               textAlign: TextAlign.center,
-                              style: TextStyle(
+                              style: GoogleFonts.dmSans(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w600,
                                 color: ClayTokens.clayDarkTextSecondary,
@@ -101,7 +102,7 @@ class MemberNavBar extends StatelessWidget {
                             const SizedBox(height: 3),
                             Text(
                               _tabs[i].label,
-                              style: TextStyle(
+                              style: GoogleFonts.dmSans(
                                 fontSize: 10,
                                 fontWeight: isActive
                                     ? FontWeight.w700

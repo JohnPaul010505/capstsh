@@ -152,12 +152,12 @@ async function main() {
     workoutDays.push(s)
   }
 
-  // Past 7 months of the current year: ~55% of business days
+  // Past 7 months of the current year: ~85% of business days
   for (let mo = 0; mo < today.getMonth(); mo++) {
     const start = new Date(today.getFullYear(), mo, 1)
     const end = new Date(today.getFullYear(), mo + 1, 0)
     for (const day of businessDays(start, end)) {
-      if (rand() > 0.55) continue
+      if (rand() > 0.85) continue
       const s = pushSession(day, randInt(8, 20), randInt(0, 59), randInt(60, 180), true)
       workoutDays.push(s)
     }
@@ -188,15 +188,18 @@ async function main() {
   // ---- workout_logs ----
   const workouts = []
   let w = 0
-  const pushWorkout = (loggedAt, name, sets, reps, weight) => {
+  const pushWorkout = (loggedAt, workoutName, name, sets, reps, weight) => {
     workouts.push({
       id: uuid('1c01e0b2', w++),
       member_id: memberId,
+      workout_name: workoutName,
       exercise_name: name,
       sets,
       reps,
       weight_kg: weight || null,
-      duration_minutes: randInt(30, 90),
+      duration_seconds: randInt(30, 90),
+      total_calories: randInt(80, 200),
+      proof_url: `https://example.com/proof/m002/${loggedAt.toISOString().split('T')[0]}/${workoutName}/${name}.mp4`,
       logged_at: loggedAt.toISOString(),
     })
   }
@@ -204,20 +207,28 @@ async function main() {
   // Today (Aug 3): intentionally NOT seeded — the member adds their own
   // exercise from the workout page.
 
-  // Past days: ~60% of workout days get 2–4 exercises inside the session window
+  // Past days: ~85% of workout days get 1–2 sessions with 2–4 exercises each
   for (const { checkIn, checkOut } of workoutDays) {
-    if (rand() > 0.6) continue
-    const nEx = randInt(2, 4)
-    const base = new Date(checkIn.getTime() + randInt(10, 30) * 60000)
-    for (let e = 0; e < nEx; e++) {
-      const [name, sets, reps, weight] = pick(EXERCISES)
-      const loggedAt = new Date(base.getTime() + e * randInt(8, 15) * 60000)
-      if (checkOut && loggedAt > checkOut) break
-      pushWorkout(loggedAt, name, sets, reps, weight)
+    if (rand() > 0.85) continue
+    const nSessions = randInt(1, 2)
+    let sessionOffset = randInt(10, 30) // minutes after check-in for first session
+    for (let s = 0; s < nSessions; s++) {
+      const workoutName = `Workout S${s + 1}`
+      const nEx = randInt(2, 4)
+      const base = new Date(checkIn.getTime() + sessionOffset * 60000)
+      for (let e = 0; e < nEx; e++) {
+        const [name, sets, reps, weight] = pick(EXERCISES)
+        // e * 37s offset ensures unique logged_at even when two exercises
+        // share the same exercise_name and minute-level timestamp.
+        const loggedAt = new Date(base.getTime() + e * randInt(8, 15) * 60000 + e * 37000)
+        if (checkOut && loggedAt > checkOut) break
+        pushWorkout(loggedAt, workoutName, name, sets, reps, weight)
+      }
+      sessionOffset += randInt(90, 150) // gap between sessions
     }
   }
   await upsertChunks('workout_logs', workouts)
-  console.log(`Workouts: ${workouts.length} logs, all proof-free`)
+  console.log(`Workouts: ${workouts.length} logs with workout_name, duration_seconds, total_calories, proof_url`)
 
   console.log('M002 seed complete. Password untouched (stays 123456789).')
 }
