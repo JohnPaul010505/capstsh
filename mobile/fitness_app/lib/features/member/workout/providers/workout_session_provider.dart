@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shared/services/supabase_client.dart';
 import 'package:shared/services/workout_service.dart';
+import 'package:shared/providers/body_measurement_provider.dart';
 import 'package:shared/models/workout_log.dart';
 import '../../../shared/services/interaction_monitor.dart';
 import '../data/met_exercise_catalog.dart';
@@ -213,8 +214,8 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
   /// Member's weight in kg, fetched from the latest body_measurement.
   double _weightKg = 70;
 
-  WorkoutSessionNotifier() : super(const WorkoutSessionState()) {
-    _loadWeight();
+  WorkoutSessionNotifier({double? weightKg}) : super(const WorkoutSessionState()) {
+    _weightKg = weightKg ?? 70;
     _initPrefs();
   }
 
@@ -267,28 +268,6 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
     final seconds = start == null ? 0 : end.difference(start).inSeconds;
     final hours = seconds / 3600.0;
     return exercise.met * _weightKg * hours;
-  }
-
-  Future<void> _loadWeight() async {
-    try {
-      final client = SupabaseClientService().client;
-      final userId = client.auth.currentUser?.id;
-      if (userId == null) return;
-      final res = await client
-          .from('body_measurements')
-          .select('weight_kg')
-          .eq('member_id', userId)
-          .order('measured_at', ascending: false)
-          .limit(1)
-          .maybeSingle();
-      final w = (res?['weight_kg'] as num?)?.toDouble();
-      if (w != null && w > 0) {
-        _weightKg = w;
-        state = _copyWith(weightKg: w);
-      }
-    } catch (_) {
-      // Keep the 70 kg default if the measurement can't be loaded.
-    }
   }
 
   Future<void> _loadSessionHistory() async {
@@ -696,6 +675,8 @@ InteractionMonitor.instance.ensureStarted();
 // when the user leaves the workout tab (go_router disposes the page). An
 // autoDispose provider would cancel the clock and wipe the exercise list.
 final workoutSessionProvider =
-    StateNotifierProvider<WorkoutSessionNotifier, WorkoutSessionState>(
-  (_) => WorkoutSessionNotifier(),
-);
+    StateNotifierProvider<WorkoutSessionNotifier, WorkoutSessionState>((ref) {
+  final measurement = ref.read(latestBodyMeasurementProvider).valueOrNull;
+  final weightKg = measurement?['weight_kg'] as num?;
+  return WorkoutSessionNotifier(weightKg: weightKg?.toDouble() ?? 70);
+});

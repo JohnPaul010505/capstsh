@@ -10,6 +10,7 @@ import '../../../shared/widgets/animations.dart';
 import '../../../shared/widgets/app_glow_background.dart';
 import '../data/bmi_info.dart';
 import '../providers/bmi_history_provider.dart';
+import 'package:shared/providers/body_measurement_provider.dart';
 
 /// BMI page: shows the member's current BMI with an inline "Update" flow
 /// (live height/weight calculator) plus a full measurement history.
@@ -96,6 +97,7 @@ class _BmiPageState extends ConsumerState<BmiPage> {
       ref.invalidate(bmiHistoryProvider);
       ref.invalidate(bmiRawRowsProvider);
       ref.invalidate(latestBmiProvider);
+      ref.invalidate(latestBodyMeasurementProvider);
       if (mounted) {
         setState(() {
           _editing = false;
@@ -196,6 +198,9 @@ class _BmiPageState extends ConsumerState<BmiPage> {
 
   Widget _buildHeroCard(BmiInfo latest) {
     final color = bmiCategoryColor(latest.bmi);
+    final measurement = ref.watch(latestBodyMeasurementProvider).valueOrNull;
+    final heightCm = measurement?['height_cm'] as num?;
+    final weightKg = measurement?['weight_kg'] as num?;
     return StaggeredFadeIn(
       index: 0,
       child: Container(
@@ -236,6 +241,16 @@ class _BmiPageState extends ConsumerState<BmiPage> {
                 style: ClayTokens.darkDisplayMedium.copyWith(fontSize: 44, color: color),
               ),
             ),
+            if (heightCm != null || weightKg != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                [
+                  if (heightCm != null) '${heightCm.toStringAsFixed(0)} cm',
+                  if (weightKg != null) '${weightKg.toStringAsFixed(1)} kg',
+                ].join('  ·  '),
+                style: ClayTokens.darkBodySmall.copyWith(color: ClayTokens.clayDarkTextTertiary),
+              ),
+            ],
             const SizedBox(height: 4),
             Text(
               'Updated ${DateFormat('MMM d, yyyy').format(latest.measuredAt)}',
@@ -596,6 +611,7 @@ class _BmiPageState extends ConsumerState<BmiPage> {
             ref.invalidate(bmiHistoryProvider);
             ref.invalidate(bmiRawRowsProvider);
             ref.invalidate(latestBmiProvider);
+            ref.invalidate(latestBodyMeasurementProvider);
           },
           child: Icon(CupertinoIcons.trash, color: ClayTokens.clayError, size: 20),
         ),
