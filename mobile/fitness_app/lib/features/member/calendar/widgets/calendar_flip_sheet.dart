@@ -1,7 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../shared/widgets/proof_video_viewer.dart';
 import '../providers/month_entries_provider.dart';
@@ -89,7 +88,6 @@ class _CalendarFlipSheetState extends ConsumerState<CalendarFlipSheet> {
     final isToday = _selectedDate.year == widget.today.year &&
         _selectedDate.month == widget.today.month &&
         _selectedDate.day == widget.today.day;
-    final selectedDateStr = DateFormat('MMM d').format(_selectedDate);
     return Container(
       color: Colors.black38,
       alignment: Alignment.center,
@@ -130,23 +128,6 @@ class _CalendarFlipSheetState extends ConsumerState<CalendarFlipSheet> {
                           ] else if (failed)
                             const Text("couldn't sync", style: TextStyle(fontSize: 10, color: Color(0xFFFF6B61))),
                           const SizedBox(width: 8),
-                          GestureDetector(
-                            onTap: () => Navigator.of(context).pop(_selectedDate),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [Color(0xFF7C3AED), Color(0xFFC56BF0)],
-                                ),
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                              child: Text(
-                                selectedDateStr,
-                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 6),
                           GestureDetector(
                             onTap: () => Navigator.of(context).pop(_selectedDate),
                             child: Container(
@@ -488,6 +469,10 @@ class _WorkoutCard extends StatelessWidget {
                   fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFFF2F5F7),
                 )),
               ),
+              if (durationSeconds != null)
+                _DurationChip(seconds: durationSeconds!),
+              if (durationSeconds != null && calories != null)
+                const SizedBox(width: 6),
               if (calories != null)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -499,6 +484,8 @@ class _WorkoutCard extends StatelessWidget {
                     fontSize: 10, fontWeight: FontWeight.w700, color: const Color(0xFFFF9F0A),
                   )),
                 ),
+              if (durationSeconds != null && calories == null)
+                const SizedBox(width: 6),
               if (hasVideo)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -524,15 +511,13 @@ class _WorkoutCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          Row(
-            children: [
-              if (sets != null) _StatChip(label: '$sets', unit: 'sets'),
-              if (sets != null && reps != null) const SizedBox(width: 6),
-              if (reps != null) _StatChip(label: '$reps', unit: 'reps'),
-               if (reps != null && durationSeconds != null) const SizedBox(width: 6),
-               if (durationSeconds != null) _DurationChip(seconds: durationSeconds!),
-            ],
-          ),
+           Row(
+             children: [
+               if (sets != null) _StatChip(label: '$sets', unit: 'sets'),
+               if (sets != null && reps != null) const SizedBox(width: 6),
+               if (reps != null) _StatChip(label: '$reps', unit: 'reps'),
+             ],
+           ),
           if (hasVideo) ...[
             const SizedBox(height: 10),
             GestureDetector(
@@ -612,9 +597,9 @@ class _DurationChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = seconds < 60
-        ? 's'
-        : ':';
+    final label = seconds < 60
+        ? '${seconds}s'
+        : '${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')} min';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -625,18 +610,14 @@ class _DurationChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(text, style: const TextStyle(
+          Text(label, style: const TextStyle(
             fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFFF2F5F7),
-          )),
-          const SizedBox(width: 3),
-          const Text('min', style: TextStyle(
-            fontSize: 10, fontWeight: FontWeight.w500, color: Color(0xFF8E8E93),
           )),
         ],
       ),
     );
   }
-}
+  }
 class _GlassPillButton extends StatelessWidget {
   final String label;
   final VoidCallback onPressed;

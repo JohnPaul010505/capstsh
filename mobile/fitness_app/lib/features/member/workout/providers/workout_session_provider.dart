@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shared/services/supabase_client.dart';
 import 'package:shared/services/workout_service.dart';
 import 'package:shared/models/workout_log.dart';
@@ -27,11 +29,37 @@ class SessionExercise {
 
   bool get hasProof => proofUrl != null;
   bool get isDone => doneAt != null;
+
+  Map<String, dynamic> toJson() => {
+    'name': name,
+    'category': category,
+    'met': met,
+    'startedAt': startedAt?.toIso8601String(),
+    'proofRecordedAt': proofRecordedAt?.toIso8601String(),
+    'proofUrl': proofUrl,
+    'doneAt': doneAt?.toIso8601String(),
+    'sessionElapsedSeconds': sessionElapsedSeconds,
+  };
+
+  factory SessionExercise.fromJson(Map<String, dynamic> json) {
+    final exercise = SessionExercise(
+      name: json['name'] as String,
+      category: json['category'] as String,
+      met: (json['met'] as num).toDouble(),
+    );
+    exercise.startedAt = json['startedAt'] != null ? DateTime.parse(json['startedAt'] as String) : null;
+    exercise.proofRecordedAt = json['proofRecordedAt'] != null ? DateTime.parse(json['proofRecordedAt'] as String) : null;
+    exercise.proofUrl = json['proofUrl'] as String?;
+    exercise.doneAt = json['doneAt'] != null ? DateTime.parse(json['doneAt'] as String) : null;
+    exercise.sessionElapsedSeconds = json['sessionElapsedSeconds'] as int?;
+    return exercise;
+  }
 }
 
 class CompletedSession {
   final String workoutName;
   final List<String> exerciseNames;
+  final List<String> exerciseCategories;
   final List<int> exerciseCalories;
   final List<String?> exerciseProofUrls;
   final int totalCalories;
@@ -41,12 +69,37 @@ class CompletedSession {
   const CompletedSession({
     required this.workoutName,
     required this.exerciseNames,
+    this.exerciseCategories = const <String>[],
     this.exerciseCalories = const <int>[],
     this.exerciseProofUrls = const <String?>[],
     required this.totalCalories,
     required this.elapsedSeconds,
     required this.completedAt,
   });
+
+  Map<String, dynamic> toJson() => {
+    'workoutName': workoutName,
+    'exerciseNames': exerciseNames,
+    'exerciseCategories': exerciseCategories,
+    'exerciseCalories': exerciseCalories,
+    'exerciseProofUrls': exerciseProofUrls,
+    'totalCalories': totalCalories,
+    'elapsedSeconds': elapsedSeconds,
+    'completedAt': completedAt.toIso8601String(),
+  };
+
+  factory CompletedSession.fromJson(Map<String, dynamic> json) {
+    return CompletedSession(
+      workoutName: json['workoutName'] as String,
+      exerciseNames: List<String>.from(json['exerciseNames'] as List),
+      exerciseCategories: List<String>.from(json['exerciseCategories'] as List? ?? const []),
+      exerciseCalories: List<int>.from(json['exerciseCalories'] as List),
+      exerciseProofUrls: List<String?>.from(json['exerciseProofUrls'] as List),
+      totalCalories: json['totalCalories'] as int,
+      elapsedSeconds: json['elapsedSeconds'] as int,
+      completedAt: DateTime.parse(json['completedAt'] as String),
+    );
+  }
 }
 
 class WorkoutSessionState {
@@ -99,6 +152,44 @@ class WorkoutSessionState {
     final hours = seconds / 3600.0;
     return exercise.met * weightKg * hours;
   }
+
+  Map<String, dynamic> toJson() => {
+    'exercises': exercises.map((e) => e.toJson()).toList(),
+    'isRunning': isRunning,
+    'elapsedSeconds': elapsedSeconds,
+    'startedAt': startedAt?.toIso8601String(),
+    'lastInteractionAt': lastInteractionAt?.toIso8601String(),
+    'idleWarning': idleWarning,
+    'idleWarningSeconds': idleWarningSeconds,
+    'sessionEnded': sessionEnded,
+    'weightKg': weightKg,
+    'latestCalories': latestCalories,
+    'sessionCount': sessionCount,
+    'completedSessionCount': completedSessionCount,
+    'completedSessions': completedSessions.map((s) => s.toJson()).toList(),
+    'showPreviousCards': showPreviousCards,
+    'lastPersistSuccess': lastPersistSuccess,
+  };
+
+  factory WorkoutSessionState.fromJson(Map<String, dynamic> json) {
+    return WorkoutSessionState(
+      exercises: (json['exercises'] as List?)?.map((e) => SessionExercise.fromJson(e as Map<String, dynamic>)).toList() ?? const [],
+      isRunning: json['isRunning'] as bool? ?? false,
+      elapsedSeconds: json['elapsedSeconds'] as int? ?? 0,
+      startedAt: json['startedAt'] != null ? DateTime.parse(json['startedAt'] as String) : null,
+      lastInteractionAt: json['lastInteractionAt'] != null ? DateTime.parse(json['lastInteractionAt'] as String) : null,
+      idleWarning: json['idleWarning'] as bool? ?? false,
+      idleWarningSeconds: json['idleWarningSeconds'] as int? ?? 0,
+      sessionEnded: json['sessionEnded'] as bool? ?? false,
+      weightKg: (json['weightKg'] as num?)?.toDouble() ?? 70,
+      latestCalories: json['latestCalories'] as int?,
+      sessionCount: json['sessionCount'] as int? ?? 0,
+      completedSessionCount: json['completedSessionCount'] as int? ?? 0,
+      completedSessions: (json['completedSessions'] as List?)?.map((s) => CompletedSession.fromJson(s as Map<String, dynamic>)).toList() ?? const [],
+      showPreviousCards: json['showPreviousCards'] as bool? ?? false,
+      lastPersistSuccess: json['lastPersistSuccess'] as bool?,
+    );
+  }
 }
 
 /// Idle-detection constants for a workout session.
@@ -116,13 +207,54 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
   Timer? _ticker;
   Timer? _idleGraceTimer;
   DateTime? _lastTick;
+  SharedPreferences? _prefs;
+  DateTime? _lastPersistAt;
 
   /// Member's weight in kg, fetched from the latest body_measurement.
   double _weightKg = 70;
 
   WorkoutSessionNotifier() : super(const WorkoutSessionState()) {
     _loadWeight();
-    _loadSessionHistory();
+    _initPrefs();
+  }
+
+  Future<void> _initPrefs() async {
+    _prefs = await SharedPreferences.getInstance();
+    final restored = await _tryRestoreState();
+    if (!restored) {
+      await _loadSessionHistory();
+    }
+  }
+
+  Future<bool> _tryRestoreState() async {
+    if (_prefs == null) return false;
+    final raw = _prefs!.getString('workout_session_state');
+    if (raw == null) return false;
+    try {
+      final map = jsonDecode(raw) as Map<String, dynamic>;
+      final restored = WorkoutSessionState.fromJson(map);
+      if (restored.sessionEnded &&
+          restored.elapsedSeconds == 0 &&
+          restored.latestCalories == 0 &&
+          restored.exercises.isEmpty) {
+        debugPrint('Discarding stale workout state (all zeros)');
+        return false;
+      }
+      state = restored;
+      return true;
+    } catch (e) {
+      debugPrint('Failed to restore workout state: $e');
+      return false;
+    }
+  }
+
+  Future<void> _persist() async {
+    _prefs ??= await SharedPreferences.getInstance();
+    try {
+      await _prefs!.setString('workout_session_state', jsonEncode(state.toJson()));
+    } catch (e) {
+      debugPrint('Failed to persist workout state: $e');
+    }
   }
 
   List<SessionExercise> get exercises => state.exercises;
@@ -202,6 +334,7 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
         sessions.add(CompletedSession(
           workoutName: name,
           exerciseNames: exerciseNames,
+          exerciseCategories: exerciseNames.map((n) => getCategoryFor(n)).toList(),
           exerciseCalories: exerciseCalories,
           exerciseProofUrls: exerciseProofUrls,
           totalCalories: totalCalories,
@@ -249,7 +382,7 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
           exerciseName: e.name,
           workoutName: workoutName,
           durationMinutes: e.doneAt!.difference(e.startedAt ?? state.startedAt ?? e.doneAt!).inMinutes,
-          durationSeconds: e.sessionElapsedSeconds,
+          durationSeconds: e.doneAt!.difference(e.startedAt ?? state.startedAt ?? e.doneAt!).inSeconds,
           weightKg: _weightKg,
           proofUrl: e.proofUrl,
           proofType: e.hasProof ? 'video' : null,
@@ -287,6 +420,7 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
       completedSessions: state.completedSessions,
       showPreviousCards: state.showPreviousCards,
     );
+    _persist();
   }
 
   void removeExercise(int index) {
@@ -304,6 +438,7 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
       completedSessions: state.completedSessions,
       showPreviousCards: state.showPreviousCards,
     );
+    _persist();
   }
 
   void startSession() {
@@ -350,10 +485,11 @@ InteractionMonitor.instance.ensureStarted();
         sessionCount: state.sessionCount + 1,
         completedSessionCount: state.completedSessionCount,
         completedSessions: state.completedSessions,
-        showPreviousCards: false,
-        lastPersistSuccess: null,
-      );
-    }
+      showPreviousCards: false,
+      lastPersistSuccess: null,
+    );
+    _persist();
+  }
 
    /// Records that the current exercise has a saved proof video.
   void markProofRecorded(int index, String url) {
@@ -400,6 +536,7 @@ InteractionMonitor.instance.ensureStarted();
     final completed = CompletedSession(
       workoutName: 'Workout S${state.sessionCount + 1}',
       exerciseNames: state.exercises.map((e) => e.name).toList(),
+      exerciseCategories: state.exercises.map((e) => e.category).toList(),
       exerciseCalories: state.exercises.map((e) => _caloriesFor(e).round()).toList(),
       exerciseProofUrls: state.exercises.map((e) => e.proofUrl).toList(),
       totalCalories: totalCalories,
@@ -422,6 +559,7 @@ InteractionMonitor.instance.ensureStarted();
       completedSessions: [...state.completedSessions, completed],
       showPreviousCards: state.showPreviousCards,
     );
+    _persist();
     persistSession().then((ok) {
       state = _copyWith(lastPersistSuccess: ok);
     });
@@ -449,6 +587,11 @@ InteractionMonitor.instance.ensureStarted();
       elapsedSeconds: state.elapsedSeconds + delta,
       lastInteractionAt: lastInteraction,
     );
+    final now2 = DateTime.now();
+    if (_lastPersistAt == null || now2.difference(_lastPersistAt!).inSeconds >= 10) {
+      _lastPersistAt = now2;
+      _persist();
+    }
   }
 
   void _startIdleGrace() {
@@ -462,6 +605,7 @@ InteractionMonitor.instance.ensureStarted();
         return;
       }
       state = _copyWith(idleWarningSeconds: secondsLeft);
+      _persist();
     });
   }
 
@@ -472,6 +616,7 @@ InteractionMonitor.instance.ensureStarted();
     _idleGraceTimer = null;
     _lastTick = DateTime.now();
     state = _copyWith(idleWarning: false, idleWarningSeconds: 0);
+    _persist();
   }
 
   /// Confirm restart: wipe the whole session.
@@ -495,6 +640,7 @@ InteractionMonitor.instance.ensureStarted();
       completedSessions: state.completedSessions,
       showPreviousCards: state.showPreviousCards,
     );
+    _persist();
   }
 
   WorkoutSessionState _copyWith({
@@ -533,6 +679,7 @@ InteractionMonitor.instance.ensureStarted();
 
   void _bump() {
     state = _copyWith(lastInteractionAt: _stampInteraction());
+    _persist();
   }
 
   DateTime _stampInteraction() => InteractionMonitor.instance.lastInteractionAt.value = DateTime.now();

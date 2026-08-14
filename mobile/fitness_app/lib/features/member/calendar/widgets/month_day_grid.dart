@@ -62,7 +62,6 @@ class MonthDayGrid extends StatelessWidget {
           selected.month == visibleMonth.month && d == selected.day;
       final ws = workoutByDay[d] ?? [];
       final ms = mealByDay[d] ?? [];
-      final wsHasVideo = ws.any((w) => w['proof_url'] != null);
       cells.add(Expanded(
         child: GestureDetector(
           onTap: () => onDayTap(DateTime(visibleMonth.year, visibleMonth.month, d)),
@@ -107,16 +106,25 @@ class MonthDayGrid extends StatelessWidget {
                     children: [
                       if (ws.isNotEmpty)
                         Container(
-                          width: 5, height: 5,
+                          width: 4, height: 4,
                           decoration: BoxDecoration(
-                            color: wsHasVideo ? ClayTokens.clayPrimaryLight : ClayColors.clayAccent,
+                            color: const Color(0xFF30D158),
                             shape: BoxShape.circle,
                           ),
                         ),
-                      if (ws.isNotEmpty && ms.isNotEmpty) const SizedBox(width: 3),
+                      if (ws.isNotEmpty && ms.isNotEmpty) const SizedBox(width: 2),
+                      if (ws.any((w) => w['proof_url'] != null))
+                        Container(
+                          width: 4, height: 4,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFF453A),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      if (ws.any((w) => w['proof_url'] != null) && ms.isNotEmpty) const SizedBox(width: 2),
                       if (ms.isNotEmpty)
                         Container(
-                          width: 5, height: 5,
+                          width: 4, height: 4,
                           decoration: BoxDecoration(
                             color: ClayTokens.clayWarning,
                             shape: BoxShape.circle,

@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -92,14 +93,18 @@ class _SettingsContent extends ConsumerWidget {
         const SizedBox(height: 24),
         StaggeredFadeIn(
           index: 0,
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1C1C1E),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFF38383A).withAlpha(100)),
-            ),
-            child: Row(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: ClayTokens.clayPrimaryLight.withAlpha(25),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.white.withAlpha(18)),
+                ),
+                child: Row(
               children: [
                 Stack(
                   clipBehavior: Clip.none,
@@ -142,7 +147,7 @@ class _SettingsContent extends ConsumerWidget {
                                   ),
                                 )),
                     ),
-                    if (gender == 'male')
+                     if (gender == 'male' && avatarUrl == null)
                       Positioned(
                         bottom: -3,
                         right: -3,
@@ -161,10 +166,11 @@ class _SettingsContent extends ConsumerWidget {
                   ],
                 ),
                     const SizedBox(width: 14),
-                Expanded(
+                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      const SizedBox(height: 12),
                       Text(name, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF), decoration: TextDecoration.none)),
                       if (email.isNotEmpty)
                         Text(email, style: const TextStyle(
@@ -172,8 +178,8 @@ class _SettingsContent extends ConsumerWidget {
                           decoration: TextDecoration.none,
                         )),
                       const SizedBox(height: 8),
-                      TextButton(
-                        onPressed: () {},
+                       TextButton(
+                        onPressed: () => _showAvatarPicker(context, ref),
                         child: const Text('Change Profile', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFD8B4FE), decoration: TextDecoration.none)),
                       ),
                     ],
@@ -183,11 +189,15 @@ class _SettingsContent extends ConsumerWidget {
             ),
           ),
         ),
+      ),
+    ),
         const SizedBox(height: 24),
         Text('Features', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: const Color(0xFF8E8E93), letterSpacing: 0, decoration: TextDecoration.none)),
         const SizedBox(height: 8),
         _SettingItem(index: 1, icon: CupertinoIcons.gear, iconColor: const Color(0xFF0A84FF), label: 'BMI', subtitle: bmiInfo == null ? null : '${bmiInfo.bmi.toStringAsFixed(1)} \u00b7 ${bmiInfo.label}', onTap: () => context.push('/member/bmi')),
+        const SizedBox(height: 10),
         _SettingItem(index: 2, icon: CupertinoIcons.bubble_left, iconColor: const Color(0xFF30D158), label: 'Feedback', onTap: () => context.push('/member/feedback')),
+        const SizedBox(height: 10),
         _SettingItem(index: 3, icon: CupertinoIcons.bell, iconColor: const Color(0xFF64D2FF), label: 'Notifications', onTap: () => context.push('/member/notifications')),
         const SizedBox(height: 24),
         const Divider(color: Color(0xFF38383A)),
@@ -221,8 +231,9 @@ class _SettingsContent extends ConsumerWidget {
                 }
               }
             },
-            color: const Color(0xFF1C1C1E),
+            color: ClayTokens.clayPrimaryLight.withAlpha(25),
             borderRadius: BorderRadius.circular(12),
+            border: const Border.fromBorderSide(BorderSide(color: Color(0x18FFFFFF))),
             padding: const EdgeInsets.symmetric(vertical: 14),
             child: Center(
               child: Text(
@@ -240,6 +251,115 @@ class _SettingsContent extends ConsumerWidget {
         ),
         const SizedBox(height: 32),
       ],
+    );
+  }
+
+  void _showAvatarPicker(BuildContext context, WidgetRef ref) {
+    final profile = ref.read(authProvider).valueOrNull;
+    final gender = profile?.gender;
+    final avatarOptions = gender == 'male'
+        ? ['L1', 'L2', 'L3']
+        : gender == 'female'
+            ? ['W1', 'W2', 'W3']
+            : ['L1', 'L2', 'L3', 'W1', 'W2', 'W3'];
+    String? selectedAvatar = profile?.avatarUrl;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setState) => Container(
+          padding: const EdgeInsets.all(20),
+          decoration: const BoxDecoration(
+            color: Color(0xFF14142A),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Choose Profile', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: Color(0xFFFFFFFF))),
+              const SizedBox(height: 16),
+              GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 3,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                children: avatarOptions.map((asset) {
+                  final isSelected = selectedAvatar == asset;
+                  return GestureDetector(
+                    onTap: () => setState(() => selectedAvatar = asset),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: isSelected ? const Color(0xFF7C3AED) : Colors.transparent, width: 3),
+                      ),
+                      child: CircleAvatar(
+                        radius: 36,
+                        backgroundImage: AssetImage('assets/profiles/$asset.gif'),
+                        backgroundColor: Colors.transparent,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      style: TextButton.styleFrom(
+                        foregroundColor: const Color(0xFFB4B4D0),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: Color(0xFF38383A))),
+                      ),
+                      child: const Text('Cancel', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        try {
+                          await ref.read(authProvider.notifier).updateProfile(
+                            fullName: profile?.fullName ?? '',
+                            email: profile?.email ?? '',
+                            gender: gender,
+                            avatarAsset: selectedAvatar != null ? 'assets/profiles/$selectedAvatar.gif' : null,
+                          );
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Profile updated'), backgroundColor: Color(0xFF7C3AED)),
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Failed to update profile: $e'), backgroundColor: const Color(0xFFFF453A)),
+                            );
+                          }
+                        }
+                        if (ctx.mounted) Navigator.of(ctx).pop();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF7C3AED),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('Save', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -266,9 +386,9 @@ class _SettingItem extends StatelessWidget {
         child: PressableCard(
           onTap: onTap,
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
-          color: const Color(0xFF1C1C1E),
+          color: ClayTokens.clayPrimaryLight.withAlpha(25),
           borderRadius: BorderRadius.circular(12),
-          border: const Border.fromBorderSide(BorderSide(color: Color(0xFF38383A))),
+          border: const Border.fromBorderSide(BorderSide(color: Color(0x18FFFFFF))),
           child: Row(
             children: [
               Icon(icon, color: iconColor, size: 20),

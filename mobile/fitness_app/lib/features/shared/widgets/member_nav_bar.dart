@@ -56,21 +56,9 @@ class MemberNavBar extends StatelessWidget {
               child: Container(
                 height: barH,
                 decoration: BoxDecoration(
-                  color: ClayTokens.clayDarkSurface,
+                  color: ClayTokens.clayPrimaryLight.withAlpha(25),
                   borderRadius: BorderRadius.circular(40),
-                  border: Border.all(
-                    color: ClayTokens.clayDarkBorder.withValues(
-                      alpha: 100 / 255,
-                    ),
-                    width: 0.5,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: purple.withValues(alpha: 0.25),
-                      blurRadius: 20,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
+                  border: Border.all(color: Colors.white.withAlpha(18)),
                 ),
                 child: Row(
                   children: List.generate(_tabs.length, (i) {
@@ -156,10 +144,7 @@ class MemberNavBar extends StatelessWidget {
                           offset: const Offset(0, 8),
                         ),
                       ],
-                      border: Border.all(
-                        color: ClayTokens.clayDarkSurface,
-                        width: 4,
-                      ),
+                      border: Border.all(color: Colors.transparent),
                     ),
                     child: const Icon(
                       Icons.qr_code_scanner,

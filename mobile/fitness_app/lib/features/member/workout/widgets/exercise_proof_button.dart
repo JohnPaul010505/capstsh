@@ -52,7 +52,6 @@ class _ExerciseProofTileState extends State<ExerciseProofTile> {
     );
     if (url != null && mounted) {
       widget.onRecorded(url);
-      widget.onDone();
     }
   }
 
@@ -65,7 +64,6 @@ class _ExerciseProofTileState extends State<ExerciseProofTile> {
       );
       if (url != null && mounted) {
         widget.onRecorded(url);
-        widget.onDone();
         return;
       }
       if (!mounted) return;
@@ -112,7 +110,6 @@ class _ExerciseProofTileState extends State<ExerciseProofTile> {
 
       if (!mounted) return;
       widget.onRecorded(pickerUrl);
-      widget.onDone();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -189,8 +189,19 @@ final Map<String, double> metLookup = {
     for (final exercise in category) exercise.name: exercise.met,
 };
 
+final Map<String, String> categoryLookup = {
+  for (final entries in metExerciseCatalog.values)
+    for (final e in entries) e.name: e.category,
+};
+
 /// Returns the MET value for a given exercise name, or a fallback
 /// (moderate resistance training, 5.0) if the exercise isn't in the catalog.
 double getMetValue(String exerciseName, {double fallback = 5.0}) {
   return metLookup[exerciseName] ?? fallback;
+}
+
+/// Returns the category name for a given exercise name, or 'General' if
+/// the exercise isn't in the catalog.
+String getCategoryFor(String exerciseName) {
+  return categoryLookup[exerciseName] ?? 'General';
 }

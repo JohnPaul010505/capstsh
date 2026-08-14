@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import '../providers/workout_session_provider.dart';
 import '../widgets/exercise_proof_button.dart';
 import '../data/met_exercise_catalog.dart';
@@ -251,16 +252,16 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
                 today: DateTime.now(),
               ),
               child: Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
-                  color: ClayTokens.clayDarkSurface,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFF2A2A45)),
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF7C3AED), Color(0xFFC56BF0)],
+                  ),
+                  borderRadius: BorderRadius.circular(999),
                 ),
-                child: const Icon(
-                  Icons.calendar_month,
-                  color: Color(0xFFD6A5FF),
-                  size: 18,
+                child: Text(
+                  DateFormat('MMM d').format(DateTime.now()),
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white),
                 ),
               ),
             ),
@@ -1029,48 +1030,57 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
               ),
             ),
             const SizedBox(height: 12),
-            ...List.generate(s.exerciseNames.length, (i) {
-              final name = s.exerciseNames[i];
-              final kcal = i < s.exerciseCalories.length ? s.exerciseCalories[i] : null;
-              final proofUrl = i < s.exerciseProofUrls.length ? s.exerciseProofUrls[i] : null;
-              final hasVideo = proofUrl != null;
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(6),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.white.withAlpha(10)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 20, height: 20,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: hasVideo
-                                  ? const LinearGradient(colors: [Color(0xFF7C3AED), Color(0xFFC56BF0)])
-                                  : null,
-                              color: hasVideo ? null : const Color(0xFF3A3A4A),
-                            ),
-                            child: Icon(
-                              hasVideo ? Icons.check : Icons.close,
-                              size: 12,
-                              color: hasVideo ? Colors.white : const Color(0xFF8E8E93),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(name, style: const TextStyle(
-                              fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFFF2F5F7),
-                            )),
-                          ),
-                        ],
-                      ),
+             ...List.generate(s.exerciseNames.length, (i) {
+               final name = s.exerciseNames[i];
+               final kcal = i < s.exerciseCalories.length ? s.exerciseCalories[i] : null;
+               final proofUrl = i < s.exerciseProofUrls.length ? s.exerciseProofUrls[i] : null;
+               final hasVideo = proofUrl != null;
+               return Padding(
+                 padding: const EdgeInsets.only(bottom: 8),
+                 child: Container(
+                   padding: const EdgeInsets.all(10),
+                   decoration: BoxDecoration(
+                     color: Colors.white.withAlpha(6),
+                     borderRadius: BorderRadius.circular(12),
+                     border: Border.all(color: Colors.white.withAlpha(10)),
+                   ),
+                   child: Column(
+                     crossAxisAlignment: CrossAxisAlignment.start,
+                     children: [
+                       Row(
+                         children: [
+                           Container(
+                             width: 20, height: 20,
+                             decoration: BoxDecoration(
+                               shape: BoxShape.circle,
+                               gradient: hasVideo
+                                   ? const LinearGradient(colors: [Color(0xFF7C3AED), Color(0xFFC56BF0)])
+                                   : null,
+                               color: hasVideo ? null : const Color(0xFF3A3A4A),
+                             ),
+                             child: Icon(
+                               hasVideo ? Icons.check : Icons.close,
+                               size: 12,
+                               color: hasVideo ? Colors.white : const Color(0xFF8E8E93),
+                             ),
+                           ),
+                           const SizedBox(width: 8),
+                           Expanded(
+                             child: Column(
+                               crossAxisAlignment: CrossAxisAlignment.start,
+                               children: [
+                                 Text(name, style: const TextStyle(
+                                   fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFFF2F5F7),
+                                 )),
+                                 if (i < s.exerciseCategories.length && s.exerciseCategories[i].isNotEmpty)
+                                   Text(s.exerciseCategories[i], style: const TextStyle(
+                                     fontSize: 10, color: Color(0xFF8E8E93),
+                                   )),
+                               ],
+                             ),
+                           ),
+                         ],
+                       ),
                       const SizedBox(height: 8),
                       Row(
                         children: [

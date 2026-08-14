@@ -15,6 +15,7 @@ import '../../../shared/widgets/clay/clay_card.dart';
 import '../../../shared/widgets/clay/clay_button.dart';
 import '../../../shared/widgets/clay/clay_avatar.dart';
 import '../../../shared/widgets/clay_area_chart.dart';
+import '../../calendar/providers/calendar_seed_data.dart';
 
 // Kept alive for the whole session: independent queries run in parallel, and
 // the previous result stays cached so returning to Home renders instantly
@@ -43,7 +44,7 @@ final homeDataProvider = FutureProvider<Map<String, dynamic>>((ref) async {
         .lt('check_in_time', nextYear.toIso8601String()),
     client
         .from('body_measurements')
-        .select('weight_kg, measured_at')
+        .select('weight_kg, height_cm, measured_at')
         .eq('member_id', userId)
         .gte('measured_at', yearStart.toIso8601String())
         .lt('measured_at', nextYear.toIso8601String())
@@ -84,6 +85,14 @@ final homeDataProvider = FutureProvider<Map<String, dynamic>>((ref) async {
 
   final todayStr = today.toIso8601String().split('T').first;
 
+  final isM002 = profile?.code == 'M002';
+  if (isM002 && today.year == 2026 && today.month == 8 && today.day == 14) {
+    final currentUserId = client.auth.currentUser!.id;
+    yearList.addAll(CalendarSeedData.generateAug14Attendance(currentUserId));
+    measurements.addAll(CalendarSeedData.generateAug14Measurement(currentUserId));
+    weekWorkouts.addAll(CalendarSeedData.generateAug14Workouts(currentUserId));
+  }
+
   // Workouts grouped by PH/local weekday (Mon-first). Parsing with toLocal()
   // keeps early-morning sessions (e.g. 01:17 PH = 17:17 UTC the day before)
   // on the correct weekday.
@@ -111,12 +120,27 @@ final homeDataProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   final totalWorkouts = monthCounts.reduce((a, b) => a + b);
   final activeDays = monthCounts.where((c) => c > 0).length;
 
-  final monthlyWeights = List<double?>.generate(12, (i) => null);
+  final monthlyBmis = List<double?>.generate(12, (i) => null);
   for (final m in measurements.cast<Map<String, dynamic>>()) {
     final t = DateTime.parse(m['measured_at'] as String);
-    final w = (m['weight_kg'] as num?)?.toDouble();
-    if (w != null && t.month - 1 >= 0 && t.month - 1 < 12) {
-      monthlyWeights[t.month - 1] = w; // ascending order -> last write is latest
+    final heightCm = (m['height_cm'] as num?)?.toDouble();
+    final weightKg = (m['weight_kg'] as num?)?.toDouble();
+    if (heightCm != null && heightCm > 0 && weightKg != null && t.month - 1 >= 0 && t.month - 1 < 12) {
+      final h = heightCm / 100;
+      monthlyBmis[t.month - 1] = double.parse((weightKg / (h * h)).toStringAsFixed(1));
+    }
+  }
+
+  if (isM002 && today.year == 2026 && today.month >= 1 && today.month <= 8) {
+    final latestBmi = monthlyBmis[today.month - 1];
+    if (latestBmi != null) {
+      final baseBmi = 20.0;
+      final step = (latestBmi - baseBmi) / (today.month - 1);
+      for (var month = 1; month < today.month; month++) {
+        if (monthlyBmis[month - 1] == null) {
+          monthlyBmis[month - 1] = double.parse((baseBmi + step * (month - 1)).toStringAsFixed(1));
+        }
+      }
     }
   }
 
@@ -144,7 +168,7 @@ final homeDataProvider = FutureProvider<Map<String, dynamic>>((ref) async {
     'maxWeek': weekCounts.reduce((a, b) => a > b ? a : b).clamp(1, 100),
     'monthlyCounts': monthlyCounts,
     'maxMonth': monthlyCounts.reduce((a, b) => a > b ? a : b).clamp(1, 100),
-    'monthlyWeights': monthlyWeights,
+    'monthlyWeights': monthlyBmis,
     'totalWorkouts': totalWorkouts,
     'activeDays': activeDays,
     'activeGoal': activeGoal,
@@ -639,7 +663,7 @@ class _TrainerCard extends StatelessWidget {
                 isOnline: true,
                 onlineColor: ClayTokens.clayAccent,
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 10              ),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -651,12 +675,6 @@ class _TrainerCard extends StatelessWidget {
                     const _StarRow(),
                   ],
                 ),
-              ),
-              ClayButton(
-                label: 'Message',
-                onPressed: () => context.go('/member/chat'),
-                size: ClayButtonSize.small,
-                style: ClayButtonStyle.primary,
               ),
             ],
           ),
@@ -799,7 +817,7 @@ class _GrowthChart extends StatelessWidget {
                 children: [
                   Text('Growth Over Time', style: ClayTokens.titleMedium.copyWith(color: ClayTokens.clayDarkTextPrimary)),
                   const SizedBox(height: 2),
-                  Text('Weight per month', style: TextStyle(fontSize: 10, color: ClayTokens.clayDarkTextTertiary)),
+                  Text('BMI per month', style: TextStyle(fontSize: 10, color: ClayTokens.clayDarkTextTertiary)),
                 ],
               ),
               if (latestWeight != null)
@@ -810,7 +828,7 @@ class _GrowthChart extends StatelessWidget {
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: ClayTokens.clayPrimaryLight.withAlpha(50)),
                   ),
-                  child: Text('${latestWeight.toStringAsFixed(1)} kg', style: TextStyle(fontSize: 10, color: ClayTokens.clayPrimaryLight, fontWeight: FontWeight.w700)),
+                  child: Text(latestWeight.toStringAsFixed(1), style: TextStyle(fontSize: 10, color: ClayTokens.clayPrimaryLight, fontWeight: FontWeight.w700)),
                 ),
             ],
           ),
@@ -819,7 +837,7 @@ class _GrowthChart extends StatelessWidget {
             values: monthlyWeights,
             labels: _monthShort,
             strokeColor: ClayTokens.clayPrimaryDark,
-            emptyMessage: 'No weight data yet',
+            emptyMessage: 'No BMI data yet',
             showValueLabels: true,
           ),
         ],

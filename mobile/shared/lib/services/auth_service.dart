@@ -98,5 +98,26 @@ class AuthService {
     }).eq('id', user.id);
   }
 
+  Future<void> updateProfile({
+    required String fullName,
+    required String email,
+    String? phone,
+    String? dateOfBirth,
+    String? gender,
+    String? avatarAsset,
+  }) async {
+    final user = _client.auth.currentUser;
+    if (user == null) return;
+    final data = <String, dynamic>{
+      'full_name': fullName,
+      'email': email,
+      'phone': phone,
+      'date_of_birth': dateOfBirth,
+      'gender': gender,
+    };
+    if (avatarAsset != null) data['avatar_url'] = avatarAsset;
+    await _client.from('profiles').update(data).eq('id', user.id);
+  }
+
   Session? get currentSession => _client.auth.currentSession;
 }
