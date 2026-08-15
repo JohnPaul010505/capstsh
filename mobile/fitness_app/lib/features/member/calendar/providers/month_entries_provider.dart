@@ -4,9 +4,10 @@ import 'package:shared/services/supabase_client.dart';
 import 'calendar_seed_data.dart';
 
 final monthEntriesProvider = FutureProvider.autoDispose
-    .family<Map<String, dynamic>, DateTime>((ref, monthStart) async {
+    .family<Map<String, dynamic>, (String memberId, DateTime monthStart)>((ref, params) async {
+  final memberId = params.$1;
+  final monthStart = params.$2;
   final client = SupabaseClientService().client;
-  final userId = client.auth.currentUser!.id;
   final profile = ref.read(authProvider).valueOrNull;
   final isM002 = profile?.code == 'M002';
   final monthEnd = DateTime(monthStart.year, monthStart.month + 1, 1);
@@ -20,13 +21,13 @@ final monthEntriesProvider = FutureProvider.autoDispose
     client
         .from('workout_logs')
         .select('exercise_name, logged_at, sets, reps, weight_kg, proof_url, workout_name, total_calories, duration_seconds')
-        .eq('member_id', userId)
+        .eq('member_id', memberId)
         .gte('logged_at', startStr)
         .lt('logged_at', endStr),
     client
         .from('meal_logs')
         .select('food_name, meal_type, meal_time')
-        .eq('member_id', userId)
+        .eq('member_id', memberId)
         .gte('meal_time', startStr)
         .lt('meal_time', endStr),
   ]);
@@ -36,7 +37,7 @@ final monthEntriesProvider = FutureProvider.autoDispose
 
   final isAug14 = monthStart.year == 2026 && monthStart.month == 8 && monthStart.day == 14;
   if (isM002 && workouts.isEmpty && isAug14) {
-    workouts = CalendarSeedData.generateAug14Workouts(userId);
+    workouts = CalendarSeedData.generateAug14Workouts(memberId);
   }
 
   return {

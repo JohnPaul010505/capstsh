@@ -6,6 +6,8 @@ import 'package:shared/services/supabase_client.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../shared/widgets/pressable.dart';
 import '../../../shared/widgets/skeleton.dart';
+import '../../../shared/widgets/app_glow_background.dart';
+import '../../../shared/widgets/clay/clay_avatar.dart';
 
 final assignedMembersWithStatsProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
   final client = SupabaseClientService().client;
@@ -22,7 +24,7 @@ final assignedMembersWithStatsProvider = FutureProvider.autoDispose<List<Map<Str
 
   final profiles = await client
       .from('profiles')
-      .select('id, full_name')
+      .select('id, full_name, avatar_url, email, gender, phone, date_of_birth')
       .or(memberIds.map((id) => 'id.eq.$id').join(','));
 
   final profileList = (profiles as List).cast<Map<String, dynamic>>();
@@ -57,6 +59,11 @@ final assignedMembersWithStatsProvider = FutureProvider.autoDispose<List<Map<Str
     result.add({
       'id': mid,
       'full_name': p['full_name'] as String? ?? 'Unknown',
+      'avatar_url': p['avatar_url'] as String?,
+      'email': p['email'] as String? ?? '',
+      'gender': p['gender'] as String? ?? '',
+      'phone': p['phone'] as String? ?? '',
+      'date_of_birth': p['date_of_birth'] as String? ?? '',
       'weight_kg': meas?['weight_kg'],
       'height_cm': meas?['height_cm'],
       'goal': goalTitle,
@@ -66,147 +73,145 @@ final assignedMembersWithStatsProvider = FutureProvider.autoDispose<List<Map<Str
   return result;
 });
 
-class ProgressListPage extends ConsumerWidget {
+class ProgressListPage extends ConsumerStatefulWidget {
   const ProgressListPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ProgressListPage> createState() => _ProgressListPageState();
+}
+
+class _ProgressListPageState extends ConsumerState<ProgressListPage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.invalidate(assignedMembersWithStatsProvider);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final membersAsync = ref.watch(assignedMembersWithStatsProvider);
 
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: Text('Members',
-                style: ClayTokens.headlineMedium.copyWith(fontWeight: FontWeight.w600, color: ClayTokens.clayDarkTextPrimary, letterSpacing: 0.38)),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 14),
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: ClayTokens.clayPrimary.withAlpha(12),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: ClayTokens.clayPrimary.withAlpha(30)),
-              ),
-              child: Row(
-                children: [
-                  Icon(CupertinoIcons.info, color: ClayTokens.clayPrimaryLight, size: 14),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text('Tap any member to view their workouts, meals, and progress charts.',
-                      style: ClayTokens.bodySmall.copyWith(fontSize: 13, fontWeight: FontWeight.w400, color: ClayTokens.clayDarkTextTertiary, letterSpacing: -0.08)),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: membersAsync.when(
-                data: (members) {
-                  if (members.isEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(CupertinoIcons.person_2, color: ClayTokens.clayDarkTextTertiary, size: 48),
-                          const SizedBox(height: 12),
-                          Text('No assigned members yet', style: ClayTokens.bodySmall.copyWith(fontSize: 13, fontWeight: FontWeight.w400, color: ClayTokens.clayDarkTextTertiary, letterSpacing: -0.08)),
-                        ],
-                      ),
-                    );
-                  }
-                  return ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    itemCount: members.length,
-                    itemBuilder: (_, i) {
-                      final m = members[i];
-                      final name = m['full_name'] as String? ?? 'Unknown';
-                      final initials = name.split(' ').map((n) => n[0]).take(2).join();
-                      final goal = m['goal'] as String?;
-                      final weight = m['weight_kg'];
-                      final height = m['height_cm'];
-                      final gradColors = _gradientFor(i);
-
-                      return Semantics(
-                        label: 'View $name progress',
-                        child: PressableCard(
-                          onTap: () => context.push('/trainer/members/${m['id']}'),
-                          padding: const EdgeInsets.all(12),
-                          margin: const EdgeInsets.only(bottom: 8),
-                          color: ClayTokens.clayDarkSurface,
-                          border: Border.all(color: ClayTokens.clayDarkBorder.withAlpha(100)),
-                          borderRadius: BorderRadius.circular(16),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 44, height: 44,
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(colors: gradColors),
-                                  shape: BoxShape.circle,
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(initials, style: ClayTokens.bodySmall.copyWith(
-                                  color: ClayTokens.clayDarkTextPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(name, style: ClayTokens.titleLarge.copyWith(
-                                      fontSize: 15, fontWeight: FontWeight.w500, color: ClayTokens.clayDarkTextPrimary, letterSpacing: -0.24)),
-                                    if (goal != null)
-                                      Text(goal, style: ClayTokens.bodySmall.copyWith(
-                                        fontSize: 13, fontWeight: FontWeight.w400, color: ClayTokens.clayDarkTextTertiary, letterSpacing: -0.08)),
-                                    if (weight != null || height != null)
-                                      Text(
-                                        '${weight != null ? '$weight kg' : ''}${weight != null && height != null ? '  ·  ' : ''}${height != null ? '$height cm' : ''}',
-                                        style: ClayTokens.labelMedium.copyWith(fontSize: 11, fontWeight: FontWeight.w500, color: ClayTokens.clayDarkTextTertiary, letterSpacing: 0.06)),
-                                  ],
-                                ),
-                              ),
-                              Icon(CupertinoIcons.chevron_forward, color: ClayTokens.clayDarkTextTertiary, size: 18),
-                            ],
-                          ),
+      backgroundColor: ClayTokens.clayDarkBase,
+      body: AppGlowBackground(
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildTrainerNavBar('Members'),
+              Expanded(
+                child: membersAsync.when(
+                  data: (members) {
+                    if (members.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(CupertinoIcons.person_2, color: ClayTokens.clayDarkTextTertiary, size: 48),
+                            const SizedBox(height: 12),
+                            Text('No assigned members yet', style: ClayTokens.bodySmall.copyWith(fontSize: 13, fontWeight: FontWeight.w400, color: ClayTokens.clayDarkTextTertiary, letterSpacing: -0.08)),
+                          ],
                         ),
                       );
-                    },
-                  );
-                },
-                loading: () => const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 14),
-                  child: Column(
-                    children: [
-                      SizedBox(height: 8),
-                      SkeletonCard(),
-                      SkeletonCard(),
-                      SkeletonCard(),
-                      SkeletonCard(),
-                    ],
+                    }
+                    return ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      itemCount: members.length,
+                      itemBuilder: (_, i) {
+                        final m = members[i];
+                        final name = m['full_name'] as String? ?? 'Unknown';
+                        final initials = name.split(' ').map((n) => n[0]).take(2).join();
+                        final avatarUrl = m['avatar_url'] as String?;
+                        final weight = m['weight_kg'];
+                        final height = m['height_cm'];
+
+                        return Semantics(
+                          label: 'View $name progress',
+                          child: PressableCard(
+                            onTap: () => context.push('/trainer/members/${m['id']}'),
+                            padding: const EdgeInsets.all(12),
+                            margin: const EdgeInsets.only(bottom: 8),
+                            color: ClayTokens.clayDarkSurface,
+                            border: Border.all(color: ClayTokens.clayDarkBorder.withAlpha(100)),
+                            borderRadius: BorderRadius.circular(16),
+                            child: Row(
+                              children: [
+                                ClayAvatar(
+                                  imageUrl: avatarUrl,
+                                  initials: initials,
+                                  size: ClayAvatarSize.md,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(name, style: ClayTokens.titleLarge.copyWith(
+                                        fontSize: 15, fontWeight: FontWeight.w500, color: ClayTokens.clayDarkTextPrimary, letterSpacing: -0.24)),
+                                      if (weight != null || height != null)
+                                        Text(
+                                          '${weight != null ? '$weight kg' : ''}${weight != null && height != null ? '  ·  ' : ''}${height != null ? '$height cm' : ''}',
+                                          style: ClayTokens.labelMedium.copyWith(fontSize: 11, fontWeight: FontWeight.w500, color: ClayTokens.clayDarkTextTertiary, letterSpacing: 0.06)),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                  loading: () => const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 14),
+                    child: Column(
+                      children: [
+                        SizedBox(height: 8),
+                        SkeletonCard(),
+                        SkeletonCard(),
+                        SkeletonCard(),
+                        SkeletonCard(),
+                      ],
+                    ),
                   ),
+                  error: (e, _) => Center(child: Text('Error: $e', style: ClayTokens.labelMedium.copyWith(fontWeight: FontWeight.w400, color: ClayTokens.clayDarkTextTertiary))),
                 ),
-                error: (e, _) => Center(child: Text('Error: $e', style: ClayTokens.labelMedium.copyWith(fontWeight: FontWeight.w400, color: ClayTokens.clayDarkTextTertiary))),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
+}
 
-  List<Color> _gradientFor(int i) {
-    const palettes = [
-      [Color(0xFFBF5AF2), Color(0xFFD6A5FF)],
-      [Color(0xFF30D158), Color(0xFF56D480)],
-      [Color(0xFFFF9500), Color(0xFFFFCC02)],
-      [Color(0xFF0A84FF), Color(0xFF64B5FF)],
-      [Color(0xFFBF5AF2), Color(0xFF64D2FF)],
-      [Color(0xFF64D2FF), Color(0xFF64B5FF)],
-    ];
-    return palettes[i % palettes.length];
-  }
+Widget _buildTrainerNavBar(String title) {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+    decoration: BoxDecoration(
+      border: Border(
+        bottom: BorderSide(color: ClayTokens.clayDarkBorder, width: 0.5),
+      ),
+    ),
+    child: Row(
+      children: [
+        const SizedBox(width: 32),
+        Expanded(
+          child: Text(
+            title,
+            textAlign: TextAlign.center,
+            style: ClayTokens.titleLarge.copyWith(
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+              color: ClayTokens.clayDarkTextPrimary,
+              letterSpacing: -0.41,
+            ),
+          ),
+        ),
+        const SizedBox(width: 32),
+      ],
+    ),
+  );
 }

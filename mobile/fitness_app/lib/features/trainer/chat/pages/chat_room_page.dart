@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/services/supabase_client.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../shared/widgets/clay/clay_input.dart';
+import '../../../shared/widgets/app_glow_background.dart';
 
 class ChatRoomPage extends ConsumerStatefulWidget {
   final String roomId;
@@ -98,106 +99,128 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage> {
     final userId = SupabaseClientService().client.auth.currentUser!.id;
 
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            Row(
-              children: [
-                GestureDetector(
-                  onTap: () => Navigator.of(context).pop(),
-                  child: Icon(CupertinoIcons.chevron_back, color: ClayTokens.clayDarkTextPrimary, size: 22),
-                ),
-                const SizedBox(width: 12),
-                Text('Chat',
-                  style: ClayTokens.titleLarge.copyWith(fontSize: 17, fontWeight: FontWeight.w600, color: ClayTokens.clayDarkTextPrimary, letterSpacing: -0.41)),
-              ],
-            ),
-            Expanded(
-              child: _loading
-                  ? Center(child: CupertinoActivityIndicator(radius: 12, color: ClayTokens.clayPrimary))
-                  : _messages.isEmpty
-                      ? Center(
-                          child: Text('Start a conversation', style: ClayTokens.bodySmall.copyWith(fontSize: 13, fontWeight: FontWeight.w400, color: ClayTokens.clayDarkTextTertiary, letterSpacing: -0.08)))
-                      : ListView.builder(
-                          controller: _scrollController,
-                          padding: const EdgeInsets.all(12),
-                          itemCount: _messages.length,
-                          itemBuilder: (_, i) {
-                            final msg = _messages[i];
-                            final isMe = msg['sender_id'] == userId;
-                            final content = msg['content'] as String? ?? '';
-                            final time = msg['created_at'] as String? ?? '';
-                            final timeStr = time.length >= 16 ? time.substring(11, 16) : '';
+      backgroundColor: ClayTokens.clayDarkBase,
+      body: AppGlowBackground(
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildTrainerNavBar('Chat'),
+              Expanded(
+                child: _loading
+                    ? Center(child: CupertinoActivityIndicator(radius: 12, color: ClayTokens.clayPrimary))
+                    : _messages.isEmpty
+                        ? Center(
+                            child: Text('Start a conversation', style: ClayTokens.bodySmall.copyWith(fontSize: 13, fontWeight: FontWeight.w400, color: ClayTokens.clayDarkTextTertiary, letterSpacing: -0.08)))
+                        : ListView.builder(
+                            controller: _scrollController,
+                            padding: const EdgeInsets.all(12),
+                            itemCount: _messages.length,
+                            itemBuilder: (_, i) {
+                              final msg = _messages[i];
+                              final isMe = msg['sender_id'] == userId;
+                              final content = msg['content'] as String? ?? '';
+                              final time = msg['created_at'] as String? ?? '';
+                              final timeStr = time.length >= 16 ? time.substring(11, 16) : '';
 
-                            return Column(
-                              crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  constraints: BoxConstraints(
-                                    maxWidth: MediaQuery.of(context).size.width * 0.75),
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-                                  decoration: BoxDecoration(
-                                    color: isMe ? ClayTokens.clayPrimary : ClayTokens.clayDarkSurfaceElevated,
-                                    borderRadius: BorderRadius.only(
-                                      topLeft: const Radius.circular(14),
-                                      topRight: const Radius.circular(14),
-                                      bottomLeft: isMe ? const Radius.circular(14) : const Radius.circular(3),
-                                      bottomRight: isMe ? const Radius.circular(3) : const Radius.circular(14),
+                              return Column(
+                                crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    constraints: BoxConstraints(
+                                      maxWidth: MediaQuery.of(context).size.width * 0.75),
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                                    decoration: BoxDecoration(
+                                      color: isMe ? ClayTokens.clayPrimary : ClayTokens.clayDarkSurfaceElevated,
+                                      borderRadius: BorderRadius.only(
+                                        topLeft: const Radius.circular(14),
+                                        topRight: const Radius.circular(14),
+                                        bottomLeft: isMe ? const Radius.circular(14) : const Radius.circular(3),
+                                        bottomRight: isMe ? const Radius.circular(3) : const Radius.circular(14),
+                                      ),
                                     ),
+                                    child: Text(content, style: ClayTokens.bodySmall.copyWith(
+                                      fontSize: 13, fontWeight: FontWeight.w400,
+                                      color: isMe ? ClayTokens.clayDarkTextPrimary : ClayTokens.clayDarkTextPrimary,
+                                      letterSpacing: -0.08,
+                                    )),
                                   ),
-                                  child: Text(content, style: ClayTokens.bodySmall.copyWith(
-                                    fontSize: 13, fontWeight: FontWeight.w400,
-                                    color: isMe ? ClayTokens.clayDarkTextPrimary : ClayTokens.clayDarkTextPrimary,
-                                    letterSpacing: -0.08,
-                                  )),
-                                ),
-                                if (timeStr.isNotEmpty)
-                                  Padding(
-                                    padding: EdgeInsets.only(top: 2, left: isMe ? 0 : 2, right: isMe ? 2 : 0),
-                                    child: Text(timeStr, style: ClayTokens.labelMedium.copyWith(fontSize: 11, fontWeight: FontWeight.w400, color: ClayTokens.clayDarkTextTertiary, letterSpacing: -0.08)),
-                                  ),
-                                const SizedBox(height: 6),
-                              ],
-                            );
-                          },
-                        ),
-            ),
-            Container(
-              padding: const EdgeInsets.fromLTRB(14, 10, 14, 16),
-              decoration: BoxDecoration(
-                color: ClayTokens.clayDarkBase,
-                border: Border(top: BorderSide(color: ClayTokens.clayDarkBorder.withAlpha(100))),
+                                  if (timeStr.isNotEmpty)
+                                    Padding(
+                                      padding: EdgeInsets.only(top: 2, left: isMe ? 0 : 2, right: isMe ? 2 : 0),
+                                      child: Text(timeStr, style: ClayTokens.labelMedium.copyWith(fontSize: 11, fontWeight: FontWeight.w400, color: ClayTokens.clayDarkTextTertiary, letterSpacing: -0.08)),
+                                    ),
+                                  const SizedBox(height: 6),
+                                ],
+                              );
+                            },
+                          ),
               ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: ClayInput(
-                      controller: _controller,
-                      label: 'Type a message',
-                      maxLines: 3,
-                      minLines: 1,
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => _sendMessage(),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: _sendMessage,
-                    child: Container(
-                      width: 44, height: 44,
-                      decoration: BoxDecoration(
-                        color: ClayTokens.clayPrimary,
-                        shape: BoxShape.circle,
+              Container(
+                padding: const EdgeInsets.fromLTRB(14, 10, 14, 16),
+                decoration: BoxDecoration(
+                  color: ClayTokens.clayDarkBase,
+                  border: Border(top: BorderSide(color: ClayTokens.clayDarkBorder.withAlpha(100))),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: ClayInput(
+                        controller: _controller,
+                        label: 'Type a message',
+                        maxLines: 3,
+                        minLines: 1,
+                        textInputAction: TextInputAction.send,
+                        onSubmitted: (_) => _sendMessage(),
                       ),
-                      child: Icon(Icons.send, color: Colors.white, size: 16),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: _sendMessage,
+                      child: Container(
+                        width: 44, height: 44,
+                        decoration: BoxDecoration(
+                          color: ClayTokens.clayPrimary,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.send, color: Colors.white, size: 16),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
+}
+
+Widget _buildTrainerNavBar(String title) {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+    decoration: BoxDecoration(
+      border: Border(
+        bottom: BorderSide(color: ClayTokens.clayDarkBorder, width: 0.5),
+      ),
+    ),
+    child: Row(
+      children: [
+        const SizedBox(width: 32),
+        Expanded(
+          child: Text(
+            title,
+            textAlign: TextAlign.center,
+            style: ClayTokens.titleLarge.copyWith(
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+              color: ClayTokens.clayDarkTextPrimary,
+              letterSpacing: -0.41,
+            ),
+          ),
+        ),
+        const SizedBox(width: 32),
+      ],
+    ),
+  );
 }

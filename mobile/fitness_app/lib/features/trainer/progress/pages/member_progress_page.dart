@@ -3,61 +3,138 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:shared/services/supabase_client.dart';
-import '../../../../app/design_tokens.dart';
+import 'package:fitness_app/app/design_tokens.dart';
+import '../../../shared/widgets/app_glow_background.dart';
+import '../../../shared/widgets/clay/clay_card.dart';
+import '../../../shared/widgets/clay/clay_avatar.dart';
+import '../../../shared/widgets/clay_area_chart.dart';
+import '../../../member/calendar/widgets/calendar_flip_sheet.dart';
 
-final memberProfileProvider = FutureProvider.autoDispose.family<Map<String, dynamic>, String>((ref, id) async {
+final memberProgressDataProvider = FutureProvider.autoDispose.family<Map<String, dynamic>, String>((ref, memberId) async {
   final client = SupabaseClientService().client;
-  final response = await client.from('profiles').select('id, full_name').eq('id', id).single();
-  return response;
+  final today = DateTime.now();
+  final weekStart = today.subtract(Duration(days: today.weekday - 1));
+  final weekEnd = weekStart.add(const Duration(days: 7));
+  final yearStart = DateTime(today.year, 1, 1);
+  final nextYear = DateTime(today.year + 1, 1, 1);
+  final currentMonthStart = DateTime(today.year, today.month, 1);
+  final nextMonthStart = DateTime(today.year, today.month + 1, 1);
+
+  final results = await Future.wait([
+    client
+        .from('workout_logs')
+        .select('logged_at')
+        .eq('member_id', memberId)
+        .gte('logged_at', weekStart.toUtc().toIso8601String())
+        .lt('logged_at', weekEnd.toUtc().toIso8601String()),
+    client
+        .from('workout_logs')
+        .select('logged_at')
+        .eq('member_id', memberId)
+        .gte('logged_at', yearStart.toUtc().toIso8601String())
+        .lt('logged_at', nextYear.toUtc().toIso8601String()),
+    client
+        .from('body_measurements')
+        .select('weight_kg, height_cm, measured_at')
+        .eq('member_id', memberId)
+        .gte('measured_at', yearStart.toUtc().toIso8601String())
+        .lt('measured_at', nextYear.toUtc().toIso8601String())
+        .order('measured_at', ascending: true),
+    client
+        .from('workout_logs')
+        .select('exercise_name, logged_at, sets, reps, weight_kg, proof_url, workout_name, total_calories, duration_seconds')
+        .eq('member_id', memberId)
+        .gte('logged_at', currentMonthStart.toUtc().toIso8601String())
+        .lt('logged_at', nextMonthStart.toUtc().toIso8601String())
+        .order('logged_at', ascending: false),
+    client
+        .from('meal_logs')
+        .select('food_name, meal_type, meal_time')
+        .eq('member_id', memberId)
+        .gte('meal_time', currentMonthStart.toUtc().toIso8601String())
+        .lt('meal_time', nextMonthStart.toUtc().toIso8601String())
+        .order('meal_time', ascending: false),
+    client
+        .from('profiles')
+        .select('id, full_name, email, avatar_url')
+        .eq('id', memberId)
+        .single(),
+  ]);
+
+  final weekWorkouts = results[0] as List;
+  final yearWorkouts = results[1] as List;
+  final measurements = results[2] as List;
+  final monthMeals = results[4] as List;
+  final profile = results[5] as Map<String, dynamic>;
+
+  final weekCounts = List.generate(7, (i) => 0);
+  for (final w in weekWorkouts.cast<Map<String, dynamic>>()) {
+    final t = DateTime.tryParse(w['logged_at'] as String? ?? '')?.toLocal();
+    if (t != null && !t.isBefore(weekStart) && t.isBefore(weekEnd)) {
+      weekCounts[t.weekday - 1]++;
+    }
+  }
+
+  final monthlyCounts = List.generate(12, (i) => 0);
+  for (final w in yearWorkouts.cast<Map<String, dynamic>>()) {
+    final t = DateTime.tryParse(w['logged_at'] as String? ?? '')?.toLocal();
+    if (t != null && t.year == today.year && t.month >= 1 && t.month <= 12) {
+      monthlyCounts[t.month - 1]++;
+    }
+  }
+
+  final monthlyBmis = List<double?>.generate(12, (i) => null);
+  for (final m in measurements.cast<Map<String, dynamic>>()) {
+    final t = DateTime.parse(m['measured_at'] as String);
+    final heightCm = (m['height_cm'] as num?)?.toDouble();
+    final weightKg = (m['weight_kg'] as num?)?.toDouble();
+    if (heightCm != null && heightCm > 0 && weightKg != null && t.month - 1 >= 0 && t.month - 1 < 12) {
+      final h = heightCm / 100;
+      monthlyBmis[t.month - 1] = double.parse((weightKg / (h * h)).toStringAsFixed(1));
+    }
+  }
+
+  return {
+    'profile': profile,
+    'weekCounts': weekCounts,
+    'maxWeek': weekCounts.reduce((a, b) => a > b ? a : b).clamp(1, 100),
+    'monthlyCounts': monthlyCounts,
+    'monthlyWeights': monthlyBmis,
+    'monthMeals': monthMeals,
+    'today': today,
+  };
 });
 
-final memberWorkoutsProvider = FutureProvider.autoDispose.family<List<Map<String, dynamic>>, String>((ref, id) async {
-  final today = DateTime.now().toIso8601String().split('T')[0];
-  final response = await SupabaseClientService()
-      .client
-      .from('workout_logs')
-      .select()
-      .eq('member_id', id)
-      .gte('logged_at', '${today}T00:00:00')
-      .lt('logged_at', '${today}T23:59:59')
-      .order('logged_at', ascending: false);
-  return (response as List).cast<Map<String, dynamic>>();
-});
-
-final memberMealsProvider = FutureProvider.autoDispose.family<List<Map<String, dynamic>>, String>((ref, id) async {
-  final today = DateTime.now().toIso8601String().split('T')[0];
-  final response = await SupabaseClientService()
-      .client
-      .from('meal_logs')
-      .select('food_name, calories, meal_type, meal_time')
-      .eq('member_id', id)
-      .gte('meal_time', '${today}T00:00:00')
-      .lt('meal_time', '${today}T23:59:59')
-      .order('meal_time', ascending: false);
-  return (response as List).cast<Map<String, dynamic>>();
-});
-
-final memberWeightProvider = FutureProvider.autoDispose.family<List<Map<String, dynamic>>, String>((ref, id) async {
-  final response = await SupabaseClientService()
-      .client
-      .from('body_measurements')
-      .select('weight_kg, measured_at')
-      .eq('member_id', id)
-      .order('measured_at', ascending: false)
-      .limit(10);
-  return (response as List).cast<Map<String, dynamic>>();
-});
-
-final memberGoalsProvider = FutureProvider.autoDispose.family<List<Map<String, dynamic>>, String>((ref, id) async {
-  final response = await SupabaseClientService()
-      .client
-      .from('goals')
-      .select('title, status, created_at')
-      .eq('member_id', id)
-      .order('created_at', ascending: false);
-  return (response as List).cast<Map<String, dynamic>>();
-});
+Widget _buildTrainerNavBar(String title) {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+    decoration: BoxDecoration(
+      border: Border(
+        bottom: BorderSide(color: ClayTokens.clayDarkBorder, width: 0.5),
+      ),
+    ),
+    child: Row(
+      children: [
+        const SizedBox(width: 32),
+        Expanded(
+          child: Text(
+            title,
+            textAlign: TextAlign.center,
+            style: ClayTokens.titleLarge.copyWith(
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+              color: ClayTokens.clayDarkTextPrimary,
+              letterSpacing: -0.41,
+            ),
+          ),
+        ),
+        const SizedBox(width: 32),
+      ],
+    ),
+  );
+}
 
 class MemberProgressPage extends ConsumerStatefulWidget {
   final String id;
@@ -68,7 +145,6 @@ class MemberProgressPage extends ConsumerStatefulWidget {
 }
 
 class _MemberProgressPageState extends ConsumerState<MemberProgressPage> {
-  final _feedbackController = TextEditingController();
   StreamSubscription? _workoutSub;
   StreamSubscription? _mealSub;
 
@@ -78,6 +154,7 @@ class _MemberProgressPageState extends ConsumerState<MemberProgressPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _subscribeWorkouts();
       _subscribeMeals();
+      ref.invalidate(memberProgressDataProvider(widget.id));
     });
   }
 
@@ -90,7 +167,7 @@ class _MemberProgressPageState extends ConsumerState<MemberProgressPage> {
         .eq('member_id', widget.id)
         .order('logged_at', ascending: false)
         .limit(1)
-        .listen((_) => ref.invalidate(memberWorkoutsProvider(widget.id)));
+        .listen((_) => ref.invalidate(memberProgressDataProvider(widget.id)));
   }
 
   void _subscribeMeals() {
@@ -102,245 +179,192 @@ class _MemberProgressPageState extends ConsumerState<MemberProgressPage> {
         .eq('member_id', widget.id)
         .order('meal_time', ascending: false)
         .limit(1)
-        .listen((_) => ref.invalidate(memberMealsProvider(widget.id)));
-  }
-
-  Future<void> _submitFeedback() async {
-    final text = _feedbackController.text.trim();
-    if (text.isEmpty) return;
-    try {
-      final userId = SupabaseClientService().client.auth.currentUser!.id;
-      await SupabaseClientService().client.from('trainer_feedback').insert({
-        'trainer_id': userId,
-        'member_id': widget.id,
-        'content': text,
-      });
-      _feedbackController.clear();
-      if (mounted) _showSnack('Feedback sent');
-    } catch (_) {
-      if (mounted) _showSnack('Error sending feedback');
-    }
-  }
-
-  void _showSnack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), duration: const Duration(seconds: 2)),
-    );
+        .listen((_) => ref.invalidate(memberProgressDataProvider(widget.id)));
   }
 
   @override
   void dispose() {
     _workoutSub?.cancel();
     _mealSub?.cancel();
-    _feedbackController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final profileAsync = ref.watch(memberProfileProvider(widget.id));
-    final workoutsAsync = ref.watch(memberWorkoutsProvider(widget.id));
-    final mealsAsync = ref.watch(memberMealsProvider(widget.id));
-    final weightAsync = ref.watch(memberWeightProvider(widget.id));
-    final goalsAsync = ref.watch(memberGoalsProvider(widget.id));
+    final dataAsync = ref.watch(memberProgressDataProvider(widget.id));
 
     return Scaffold(
-      body: SafeArea(
-        child: profileAsync.when(
-          data: (profile) {
-            final name = profile['full_name'] as String? ?? 'Member';
-            final initials = name.split(' ').map((n) => n[0]).take(2).join();
-            return ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              physics: const ClampingScrollPhysics(),
-              children: [
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    GestureDetector(
-                      onTap: () => context.pop(),
-                      child: Icon(CupertinoIcons.chevron_back, color: ClayTokens.clayDarkTextPrimary, size: 22),
-                    ),
-                    const SizedBox(width: 12),
-                    Container(
-                      width: 36, height: 36,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: ClayTokens.clayDarkSurfaceElevated,
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(initials, style: ClayTokens.titleLarge.copyWith(fontSize: 15, fontWeight: FontWeight.w600, color: ClayTokens.clayDarkTextPrimary)),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(name, style: ClayTokens.titleLarge.copyWith(fontWeight: FontWeight.w600, color: ClayTokens.clayDarkTextPrimary, letterSpacing: -0.24)),
-                  ],
-                ),
-                const SizedBox(height: 16),
+      backgroundColor: ClayTokens.clayDarkBase,
+      body: AppGlowBackground(
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildTrainerNavBar('Member Progress'),
+              Expanded(
+                child: dataAsync.when(
+                  data: (data) {
+                    final profile = data['profile'] as Map<String, dynamic>;
+                    final name = profile['full_name'] as String? ?? 'Member';
+                    final email = profile['email'] as String? ?? '';
+                    final initials = name.split(' ').map((n) => n[0]).take(2).join();
+                    final avatarUrl = profile['avatar_url'] as String?;
+                    final weekCounts = data['weekCounts'] as List<int>;
+                    final maxWeek = data['maxWeek'] as int;
+                    final monthlyCounts = data['monthlyCounts'] as List<int>;
+                    final monthlyWeights = data['monthlyWeights'] as List<double?>;
 
-                // Weight trend
-                Text('Weight Trend', style: ClayTokens.bodySmall.copyWith(fontSize: 13, fontWeight: FontWeight.w600, color: ClayTokens.clayDarkTextPrimary, letterSpacing: -0.08)),
-                const SizedBox(height: 8),
-                weightAsync.when(
-                  data: (weights) => _WeightChart(weights: weights),
-                  loading: () => const _ChartSkeleton(),
-                  error: (_, __) => const _ChartSkeleton(),
-                ),
+                    return ListView(
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      physics: const ClampingScrollPhysics(),
+                      children: [
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            GestureDetector(
+                              onTap: () => context.pop(),
+                              child: Icon(Icons.chevron_left, color: ClayTokens.clayDarkTextPrimary, size: 22),
+                            ),
+                            const SizedBox(width: 12),
+                            ClayAvatar(
+                              imageUrl: avatarUrl,
+                              initials: initials,
+                              size: ClayAvatarSize.md,
+                              backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(30),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(name, style: ClayTokens.titleLarge.copyWith(fontWeight: FontWeight.w600, color: ClayTokens.clayDarkTextPrimary, letterSpacing: -0.24)),
+                                  if (email.isNotEmpty)
+                                    Text(email, style: ClayTokens.bodySmall.copyWith(fontSize: 12, color: ClayTokens.clayDarkTextTertiary, letterSpacing: -0.08)),
+                                ],
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () => showCalendarFlipSheet(
+                                context,
+                                selected: DateTime.now(),
+                                today: DateTime.now(),
+                                memberId: widget.id,
+                              ),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [Color(0xFF7C3AED), Color(0xFFC56BF0)],
+                                  ),
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Text(
+                                  DateFormat('MMM d').format(DateTime.now()),
+                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
 
-                // Today's Workouts
-                const SizedBox(height: 14),
-                Text("Today's Workouts", style: ClayTokens.bodySmall.copyWith(fontSize: 13, fontWeight: FontWeight.w600, color: ClayTokens.clayDarkTextPrimary, letterSpacing: -0.08)),
-                const SizedBox(height: 8),
-                workoutsAsync.when(
-                  data: (workouts) => workouts.isEmpty
-                      ? Padding(padding: const EdgeInsets.symmetric(vertical: 12),
-                          child: Text('No workouts logged today', style: ClayTokens.bodySmall.copyWith(fontSize: 13, fontWeight: FontWeight.w400, color: ClayTokens.clayDarkTextTertiary, letterSpacing: -0.08)))
-                      : Column(
-                          children: workouts.map((w) => _WorkoutTile(workout: w)).toList(),
-                        ),
-                  loading: () => Center(child: Padding(
-                    padding: EdgeInsets.all(12), child: CupertinoActivityIndicator(radius: 12, color: ClayTokens.clayPrimary))),
-                  error: (e, _) => Text('Error: $e', style: ClayTokens.labelMedium.copyWith(fontSize: 11, fontWeight: FontWeight.w400, color: ClayTokens.clayDarkTextTertiary, letterSpacing: -0.08)),
+                        _WeekChart(weekCounts: weekCounts, maxCount: maxWeek),
+                        const SizedBox(height: 8),
+                        _MonthChart(monthlyCounts: monthlyCounts),
+                        const SizedBox(height: 8),
+                        _GrowthChart(monthlyWeights: monthlyWeights),
+                        const SizedBox(height: 8),
+                      ],
+                    );
+                  },
+                  loading: () => Center(child: CupertinoActivityIndicator(radius: 12, color: ClayTokens.clayPrimary)),
+                  error: (e, _) => Center(child: Text('Error: $e', style: ClayTokens.labelMedium.copyWith(fontWeight: FontWeight.w400, color: ClayTokens.clayDarkTextTertiary))),
                 ),
-
-                // Today's Meals
-                const SizedBox(height: 14),
-                Text("Today's Meals", style: ClayTokens.bodySmall.copyWith(fontSize: 13, fontWeight: FontWeight.w600, color: ClayTokens.clayDarkTextPrimary, letterSpacing: -0.08)),
-                const SizedBox(height: 8),
-                mealsAsync.when(
-                  data: (meals) => meals.isEmpty
-                      ? Padding(padding: const EdgeInsets.symmetric(vertical: 12),
-                          child: Text('No meals logged today', style: ClayTokens.bodySmall.copyWith(fontSize: 13, fontWeight: FontWeight.w400, color: ClayTokens.clayDarkTextTertiary, letterSpacing: -0.08)))
-                      : Column(
-                          children: meals.map((m) => _MealTile(meal: m)).toList(),
-                        ),
-                  loading: () => Center(child: Padding(
-                    padding: EdgeInsets.all(12), child: CupertinoActivityIndicator(radius: 12, color: ClayTokens.clayPrimary))),
-                  error: (e, _) => Text('Error: $e', style: ClayTokens.labelMedium.copyWith(fontSize: 11, fontWeight: FontWeight.w400, color: ClayTokens.clayDarkTextTertiary, letterSpacing: -0.08)),
-                ),
-
-                // Goals
-                const SizedBox(height: 14),
-                Text('Goals', style: ClayTokens.bodySmall.copyWith(fontSize: 13, fontWeight: FontWeight.w600, color: ClayTokens.clayDarkTextPrimary, letterSpacing: -0.08)),
-                const SizedBox(height: 8),
-                goalsAsync.when(
-                  data: (goals) => goals.isEmpty
-                      ? Padding(padding: const EdgeInsets.symmetric(vertical: 12),
-                          child: Text('No goals set', style: ClayTokens.bodySmall.copyWith(fontSize: 13, fontWeight: FontWeight.w400, color: ClayTokens.clayDarkTextTertiary, letterSpacing: -0.08)))
-                      : Column(
-                          children: goals.map((g) => _GoalTile(goal: g)).toList(),
-                        ),
-                  loading: () => Center(child: Padding(
-                    padding: EdgeInsets.all(12), child: CupertinoActivityIndicator(radius: 12, color: ClayTokens.clayPrimary))),
-                  error: (e, _) => Text('Error: $e', style: ClayTokens.labelMedium.copyWith(fontSize: 11, fontWeight: FontWeight.w400, color: ClayTokens.clayDarkTextTertiary, letterSpacing: -0.08)),
-                ),
-
-                // Submit feedback
-                const SizedBox(height: 14),
-                Text('Send Feedback', style: ClayTokens.bodySmall.copyWith(fontSize: 13, fontWeight: FontWeight.w600, color: ClayTokens.clayDarkTextPrimary, letterSpacing: -0.08)),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: ClayTokens.clayDarkSurface,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: ClayTokens.clayDarkBorder.withAlpha(100)),
-                  ),
-                  child: Column(
-                    children: [
-                      TextField(
-                        controller: _feedbackController,
-                        decoration: const InputDecoration(
-                          hintText: 'Write feedback for this member…',
-                          filled: true,
-                        ),
-                        maxLines: 3,
-                        style: ClayTokens.bodySmall.copyWith(fontSize: 13, fontWeight: FontWeight.w400, color: ClayTokens.clayDarkTextPrimary, letterSpacing: -0.08),
-                      ),
-                      const SizedBox(height: 8),
-                      GestureDetector(
-                        onTap: _submitFeedback,
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          decoration: BoxDecoration(
-                            color: ClayTokens.clayPrimary,
-                            borderRadius: const BorderRadius.all(Radius.circular(10)),
-                          ),
-                          child: Text('Send Feedback',
-                            textAlign: TextAlign.center,
-                            style: ClayTokens.titleLarge.copyWith(fontSize: 15, color: ClayTokens.clayDarkTextPrimary, fontWeight: FontWeight.w600, letterSpacing: -0.24)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-              ],
-            );
-          },
-          loading: () => Center(child: CupertinoActivityIndicator(radius: 12, color: ClayTokens.clayPrimary)),
-          error: (e, _) => Center(child: Text('Error: $e', style: ClayTokens.labelMedium.copyWith(fontWeight: FontWeight.w400, color: ClayTokens.clayDarkTextTertiary))),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _WeightChart extends StatelessWidget {
-  final List<Map<String, dynamic>> weights;
+class _WeekChart extends StatefulWidget {
+  final List<int> weekCounts;
+  final int maxCount;
 
-  const _WeightChart({required this.weights});
+  const _WeekChart({required this.weekCounts, required this.maxCount});
+
+  @override
+  State<_WeekChart> createState() => _WeekChartState();
+}
+
+class _WeekChartState extends State<_WeekChart> {
+  int? _selectedDay;
 
   @override
   Widget build(BuildContext context) {
-    if (weights.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: ClayTokens.clayDarkSurface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: ClayTokens.clayDarkBorder.withAlpha(100)),
-        ),
-        child: Center(child: Text('No weight data', style: ClayTokens.bodySmall.copyWith(fontSize: 13, fontWeight: FontWeight.w400, color: ClayTokens.clayDarkTextTertiary, letterSpacing: -0.08))),
-      );
-    }
+    final labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final today = DateTime.now().weekday - 1;
 
-    final reversed = weights.reversed.toList();
-    final maxW = reversed.map((w) => (w['weight_kg'] as num?)?.toDouble() ?? 0).reduce((a, b) => a > b ? a : b);
-    final minW = reversed.map((w) => (w['weight_kg'] as num?)?.toDouble() ?? 0).reduce((a, b) => a < b ? a : b);
-    final range = (maxW - minW).clamp(0.5, 100.0);
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: ClayTokens.clayDarkSurface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: ClayTokens.clayDarkBorder.withAlpha(100)),
-      ),
+    return ClayCard(
+      variant: ClayCardVariant.outlined,
+      padding: ClayCardPadding.medium,
+      backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('This Week', style: ClayTokens.titleMedium.copyWith(color: ClayTokens.clayDarkTextPrimary)),
+                  const SizedBox(height: 1),
+                  if (_selectedDay != null)
+                    AnimatedOpacity(
+                      duration: ClayTokens.normal,
+                      opacity: 1.0,
+                      child: Text(
+                        '${labels[_selectedDay!]}: ${widget.weekCounts[_selectedDay!]} workout${widget.weekCounts[_selectedDay!] == 1 ? '' : 's'}',
+                        style: TextStyle(fontSize: 10, color: ClayTokens.clayPrimaryLight, fontWeight: FontWeight.w600),
+                      ),
+                    )
+                  else
+                    Text('Tap a bar for details', style: TextStyle(fontSize: 10, color: ClayTokens.clayDarkTextTertiary)),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
           SizedBox(
             height: 60,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
-              children: List.generate(reversed.length, (i) {
-                final w = (reversed[i]['weight_kg'] as num?)?.toDouble() ?? 0;
-                final pct = ((w - minW) / range).clamp(0.0, 1.0);
-                final h = (pct * 54 + 6).clamp(6.0, 60.0);
+              children: List.generate(7, (i) {
+                final count = widget.weekCounts[i];
+                final pct = widget.maxCount > 0 ? (count / widget.maxCount) : 0.0;
+                final barHeight = (pct * 52).clamp(2.0, 52.0);
+                final isToday = i == today;
+                final isFuture = i > today;
+                final isSelected = i == _selectedDay;
+
                 return Expanded(
                   child: GestureDetector(
-                    onTap: () => _showWeight(context, i, w),
-                    child: Container(
-                      height: h,
-                      margin: const EdgeInsets.symmetric(horizontal: 2),
+                    onTap: () => setState(() => _selectedDay = _selectedDay == i ? null : i),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOutCubic,
+                      height: isSelected ? (barHeight + 6).clamp(2.0, 58.0) : barHeight,
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
                       decoration: BoxDecoration(
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(3)),
-                        gradient: LinearGradient(
-                          colors: [ClayTokens.clayPrimary, ClayTokens.clayPrimaryLight],
-                          begin: Alignment.bottomCenter,
-                          end: Alignment.topCenter,
-                        ),
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                        color: isFuture
+                            ? ClayTokens.clayDarkTextTertiary.withAlpha(50)
+                            : isToday
+                                ? ClayTokens.clayPrimaryDark
+                                : ClayTokens.clayPrimaryDark,
                       ),
                     ),
                   ),
@@ -348,170 +372,137 @@ class _WeightChart extends StatelessWidget {
               }),
             ),
           ),
-          const SizedBox(height: 4),
-          Text('${reversed.length} measurements · Tap bar for weight',
-            style: ClayTokens.labelMedium.copyWith(fontSize: 11, fontWeight: FontWeight.w500, color: ClayTokens.clayDarkTextTertiary, letterSpacing: 0.06)),
+          const SizedBox(height: 5),
+          Row(
+            children: List.generate(7, (i) {
+              final isToday = i == today;
+              return Expanded(
+                child: Text(labels[i],
+                  textAlign: TextAlign.center,
+                   style: TextStyle(
+                     fontSize: 10, fontWeight: FontWeight.w500,
+                     color: isToday ? ClayTokens.clayPrimaryDark : ClayTokens.clayDarkTextTertiary,
+                   ),
+                ),
+              );
+            }),
+          ),
         ],
       ),
     );
   }
-
-  void _showWeight(BuildContext context, int i, double w) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Entry ${i + 1}: ${w.toStringAsFixed(1)} kg'), duration: const Duration(seconds: 1)),
-    );
-  }
 }
 
-class _ChartSkeleton extends StatelessWidget {
-  const _ChartSkeleton();
+class _MonthChart extends StatelessWidget {
+  final List<int> monthlyCounts;
+
+  const _MonthChart({required this.monthlyCounts});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 80,
-      decoration: BoxDecoration(
-        color: ClayTokens.clayDarkSurface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: ClayTokens.clayDarkBorder.withAlpha(100)),
-      ),
-      child: Center(child: CupertinoActivityIndicator(radius: 10, color: ClayTokens.clayPrimary)),
-    );
-  }
-}
+    final current = DateTime.now().month - 1;
+    final values = List<double?>.generate(12, (i) {
+      if (i > current) return null;
+      if (i == current && monthlyCounts[i] == 0) return null;
+      return monthlyCounts[i].toDouble();
+    });
 
-class _WorkoutTile extends StatelessWidget {
-  final Map<String, dynamic> workout;
-  const _WorkoutTile({required this.workout});
-
-  @override
-  Widget build(BuildContext context) {
-    final name = workout['exercise_name'] as String? ?? 'Exercise';
-    final sets = workout['sets'] as int?;
-    final reps = workout['reps'] as int?;
-    final weight = workout['weight_kg'] as double?;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      margin: const EdgeInsets.only(bottom: 6),
-      decoration: BoxDecoration(
-        color: ClayTokens.clayDarkSurface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: ClayTokens.clayDarkBorder.withAlpha(100)),
-      ),
-      child: Row(
+    return ClayCard(
+      variant: ClayCardVariant.outlined,
+      padding: ClayCardPadding.medium,
+      backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 28, height: 28,
-            decoration: BoxDecoration(
-              color: ClayTokens.clayPrimary.withAlpha(25),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(CupertinoIcons.person, color: ClayTokens.clayPrimary, size: 14),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('This Month', style: ClayTokens.titleMedium.copyWith(color: ClayTokens.clayDarkTextPrimary)),
+                  const SizedBox(height: 2),
+                  Text(DateTime.now().year.toString(), style: TextStyle(fontSize: 13, color: ClayTokens.clayPrimaryDark, fontWeight: FontWeight.w700)),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                decoration: BoxDecoration(
+                  color: ClayTokens.clayPrimaryLight.withAlpha(25),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: ClayTokens.clayPrimaryLight.withAlpha(50)),
+                ),
+                child: Text('Total: ${monthlyCounts.reduce((a, b) => a + b)}', style: TextStyle(fontSize: 10, color: ClayTokens.clayPrimaryLight, fontWeight: FontWeight.w700)),
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          Expanded(child: Text(name, style: ClayTokens.bodySmall.copyWith(fontSize: 13, fontWeight: FontWeight.w500, color: ClayTokens.clayDarkTextPrimary, letterSpacing: -0.08))),
-          if (sets != null)
-            Text('$sets×$reps', style: ClayTokens.labelMedium.copyWith(fontSize: 11, fontWeight: FontWeight.w600, color: ClayTokens.clayPrimary, letterSpacing: -0.08)),
-          if (weight != null) ...[
-            const SizedBox(width: 4),
-            Text('${weight}kg', style: ClayTokens.labelMedium.copyWith(fontSize: 11, fontWeight: FontWeight.w500, color: ClayTokens.clayDarkTextTertiary, letterSpacing: 0.06)),
-          ],
+          const SizedBox(height: 12),
+          ClayAreaChart(
+            values: values,
+            labels: _monthShort,
+            strokeColor: ClayTokens.clayPrimaryDark,
+            legendLabel: 'Workouts per month',
+            showYAxis: false,
+            showValueLabels: true,
+          ),
         ],
       ),
     );
   }
 }
 
-class _MealTile extends StatelessWidget {
-  final Map<String, dynamic> meal;
-  const _MealTile({required this.meal});
+class _GrowthChart extends StatelessWidget {
+  final List<double?> monthlyWeights;
+
+  const _GrowthChart({required this.monthlyWeights});
 
   @override
   Widget build(BuildContext context) {
-    final name = meal['food_name'] as String? ?? '';
-    final calories = meal['calories'] as int?;
-    final type = meal['meal_type'] as String? ?? '';
+    final weights = monthlyWeights.whereType<double>().toList();
+    final latestWeight = weights.isEmpty ? null : weights.last;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      margin: const EdgeInsets.only(bottom: 6),
-      decoration: BoxDecoration(
-        color: ClayTokens.clayDarkSurface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: ClayTokens.clayDarkBorder.withAlpha(100)),
-      ),
-      child: Row(
+    return ClayCard(
+      variant: ClayCardVariant.outlined,
+      padding: ClayCardPadding.medium,
+      backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 28, height: 28,
-            decoration: BoxDecoration(
-              color: ClayTokens.clayWarning.withAlpha(25),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(CupertinoIcons.tray, color: ClayTokens.clayWarning, size: 14),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Growth Over Time', style: ClayTokens.titleMedium.copyWith(color: ClayTokens.clayDarkTextPrimary)),
+                  const SizedBox(height: 2),
+                  Text('BMI per month', style: TextStyle(fontSize: 10, color: ClayTokens.clayDarkTextTertiary)),
+                ],
+              ),
+              if (latestWeight != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: ClayTokens.clayPrimaryLight.withAlpha(25),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: ClayTokens.clayPrimaryLight.withAlpha(50)),
+                  ),
+                  child: Text(latestWeight.toStringAsFixed(1), style: TextStyle(fontSize: 10, color: ClayTokens.clayPrimaryLight, fontWeight: FontWeight.w700)),
+                ),
+            ],
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name, style: ClayTokens.bodySmall.copyWith(fontSize: 13, fontWeight: FontWeight.w500, color: ClayTokens.clayDarkTextPrimary, letterSpacing: -0.08)),
-                if (type.isNotEmpty)
-                  Text(type[0].toUpperCase() + type.substring(1),
-                    style: ClayTokens.labelMedium.copyWith(fontSize: 11, fontWeight: FontWeight.w400, color: ClayTokens.clayDarkTextTertiary, letterSpacing: 0.06)),
-              ],
-            ),
+          const SizedBox(height: 12),
+          ClayAreaChart(
+            values: monthlyWeights,
+            labels: _monthShort,
+            strokeColor: ClayTokens.clayPrimaryDark,
+            emptyMessage: 'No BMI data yet',
+            showValueLabels: true,
           ),
-          if (calories != null)
-            Text('$calories kcal', style: ClayTokens.labelMedium.copyWith(fontSize: 11, fontWeight: FontWeight.w600, color: ClayTokens.clayWarning, letterSpacing: -0.08)),
         ],
       ),
     );
   }
 }
 
-class _GoalTile extends StatelessWidget {
-  final Map<String, dynamic> goal;
-  const _GoalTile({required this.goal});
-
-  @override
-  Widget build(BuildContext context) {
-    final title = goal['title'] as String? ?? '';
-    final status = goal['status'] as String? ?? 'active';
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      margin: const EdgeInsets.only(bottom: 6),
-      decoration: BoxDecoration(
-        color: ClayTokens.clayDarkSurface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: ClayTokens.clayDarkBorder.withAlpha(100)),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            status == 'completed' ? CupertinoIcons.checkmark_circle : CupertinoIcons.flag,
-            color: status == 'completed' ? ClayTokens.clayAccent : ClayTokens.clayWarning,
-            size: 16,
-          ),
-          const SizedBox(width: 8),
-          Expanded(child: Text(title, style: ClayTokens.bodySmall.copyWith(fontSize: 13, fontWeight: FontWeight.w500, color: ClayTokens.clayDarkTextPrimary, letterSpacing: -0.08))),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: status == 'completed'
-                  ? ClayTokens.clayAccent.withAlpha(20)
-                  : ClayTokens.clayWarning.withAlpha(20),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Text(status, style: ClayTokens.labelMedium.copyWith(
-              fontSize: 11, fontWeight: FontWeight.w600,
-              color: status == 'completed' ? ClayTokens.clayAccent : ClayTokens.clayWarning,
-              letterSpacing: -0.08,
-            )),
-          ),
-        ],
-      ),
-    );
-  }
-}
+const _monthShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

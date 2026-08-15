@@ -21,7 +21,7 @@ import '../features/trainer/profile/pages/profile_page.dart' as trainer_profile;
 import '../features/shared/checkin/checkin_page.dart';
 import '../features/shared/widgets/member_nav_bar.dart';
 import '../features/member/onboarding/pages/onboarding_splash_screen.dart';
-import 'package:circle_nav_bar/circle_nav_bar.dart';
+import '../features/shared/widgets/trainer_nav_bar.dart';
 
 final _trainerShellKey = GlobalKey<NavigatorState>();
 
@@ -205,39 +205,9 @@ class _TrainerShellState extends State<TrainerShell> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: widget.child,
-      bottomNavigationBar: CircleNavBar(
-        activeIcons: const [
-          Icon(Icons.dashboard, color: Colors.white),
-          Icon(Icons.people, color: Colors.white),
-          Icon(Icons.message, color: Colors.white),
-          Icon(Icons.person, color: Colors.white),
-        ],
-        inactiveIcons: const [
-          Icon(Icons.dashboard, color: Colors.white38),
-          Icon(Icons.people, color: Colors.white38),
-          Icon(Icons.message, color: Colors.white38),
-          Icon(Icons.person, color: Colors.white38),
-        ],
-        color: const Color(0xFF1C1C35),
-        circleColor: const Color(0xFF7C3AED),
-        height: 60,
-        circleWidth: 56,
-        activeIndex: _currentIndex,
+      bottomNavigationBar: TrainerNavBar(
+        currentIndex: _currentIndex,
         onTap: _onTap,
-        tabCurve: Curves.easeOutCubic,
-        iconCurve: Curves.easeOutBack,
-        tabDurationMillSec: 500,
-        iconDurationMillSec: 450,
-        padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16, top: 4),
-        cornerRadius: const BorderRadius.only(
-          topLeft: Radius.circular(16),
-          topRight: Radius.circular(16),
-          bottomRight: Radius.circular(16),
-          bottomLeft: Radius.circular(16),
-        ),
-        shadowColor: const Color(0xFF7C3AED).withValues(alpha: 0.3),
-        circleShadowColor: const Color(0xFF7C3AED).withValues(alpha: 0.4),
-        elevation: 8,
       ),
     );
   }

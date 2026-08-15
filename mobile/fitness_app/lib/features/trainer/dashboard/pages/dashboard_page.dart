@@ -8,6 +8,7 @@ import '../../../shared/widgets/skeleton.dart';
 import '../../../shared/widgets/animations.dart';
 import '../../../shared/widgets/clay/clay_card.dart';
 import '../../../shared/widgets/clay/clay_avatar.dart';
+import '../../../shared/widgets/app_glow_background.dart';
 
 final trainerDashboardProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   final client = SupabaseClientService().client;
@@ -128,64 +129,77 @@ class DashboardPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final dataAsync = ref.watch(trainerDashboardProvider);
-    final name = SupabaseClientService().client.auth.currentUser?.userMetadata?['full_name'] as String? ?? 'Coach';
 
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Dashboard',
-                        style: ClayTokens.headlineMedium.copyWith(fontWeight: FontWeight.w600, color: ClayTokens.clayDarkTextPrimary, letterSpacing: 0.38)),
-                      Text(name,
-                        style: ClayTokens.bodySmall.copyWith(fontSize: 13, fontWeight: FontWeight.w400, color: ClayTokens.clayDarkTextTertiary)),
-                    ],
+      backgroundColor: ClayTokens.clayDarkBase,
+      body: AppGlowBackground(
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildTrainerNavBar('Dashboard'),
+              Expanded(
+                child: dataAsync.when(
+                  data: (data) => _DashboardContent(data: data),
+                  loading: () => const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 14),
+                    child: Column(
+                      children: [
+                        SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Expanded(child: SkeletonBox(height: 70)),
+                            SizedBox(width: 8),
+                            Expanded(child: SkeletonBox(height: 70)),
+                            SizedBox(width: 8),
+                            Expanded(child: SkeletonBox(height: 70)),
+                          ],
+                        ),
+                        SizedBox(height: 14),
+                        SkeletonBox(width: 180, height: 14),
+                        SizedBox(height: 10),
+                        SkeletonBox(height: 90),
+                      ],
+                    ),
                   ),
-                  Icon(CupertinoIcons.bell, color: ClayTokens.clayDarkTextTertiary, size: 20),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: dataAsync.when(
-                data: (data) => _DashboardContent(data: data),
-                loading: () => const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 14),
-                  child: Column(
-                    children: [
-                      SizedBox(height: 14),
-                      Row(
-                        children: [
-                          Expanded(child: SkeletonBox(height: 70)),
-                          SizedBox(width: 8),
-                          Expanded(child: SkeletonBox(height: 70)),
-                          SizedBox(width: 8),
-                          Expanded(child: SkeletonBox(height: 70)),
-                        ],
-                      ),
-                      SizedBox(height: 14),
-                      SkeletonBox(width: 180, height: 14),
-                      SizedBox(height: 10),
-                      SkeletonBox(height: 90),
-                    ],
-                  ),
+                  error: (e, _) => Center(child: Text('Error: $e', style: ClayTokens.labelMedium.copyWith(fontWeight: FontWeight.w400, color: ClayTokens.clayDarkTextTertiary))),
                 ),
-                error: (e, _) => Center(child: Text('Error: $e', style: ClayTokens.labelMedium.copyWith(fontWeight: FontWeight.w400, color: ClayTokens.clayDarkTextTertiary))),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
+}
+
+Widget _buildTrainerNavBar(String title) {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+    decoration: BoxDecoration(
+      border: Border(
+        bottom: BorderSide(color: ClayTokens.clayDarkBorder, width: 0.5),
+      ),
+    ),
+    child: Row(
+      children: [
+        const SizedBox(width: 32),
+        Expanded(
+          child: Text(
+            title,
+            textAlign: TextAlign.center,
+            style: ClayTokens.titleLarge.copyWith(
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+              color: ClayTokens.clayDarkTextPrimary,
+              letterSpacing: -0.41,
+            ),
+          ),
+        ),
+        const SizedBox(width: 32),
+      ],
+    ),
+  );
 }
 
 class _DashboardContent extends StatelessWidget {

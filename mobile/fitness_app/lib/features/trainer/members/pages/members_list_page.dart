@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared/models/profile.dart';
 import 'package:shared/services/supabase_client.dart';
 import '../../../../app/design_tokens.dart';
+import '../../../shared/widgets/app_glow_background.dart';
 
 final assignedMembersProvider = FutureProvider<List<Profile>>((ref) async {
   final client = SupabaseClientService().client;
@@ -27,81 +28,107 @@ class MembersListPage extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: ClayTokens.clayDarkBase,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: Text('My Members',
-                style: ClayTokens.headlineSmall.copyWith(color: ClayTokens.clayDarkTextPrimary)),
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: membersAsync.when(
-                data: (members) {
-                  if (members.isEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.group_outlined, color: ClayTokens.clayDarkTextTertiary, size: 48),
-                          const SizedBox(height: 12),
-                          Text('No assigned members yet', style: ClayTokens.bodySmall.copyWith(color: ClayTokens.clayDarkTextTertiary)),
-                        ],
-                      ),
-                    );
-                  }
-                  return ListView.separated(
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    itemCount: members.length,
-                    separatorBuilder: (_, __) => Container(
-                      height: 0.5,
-                      color: ClayTokens.clayDarkDivider,
-                      margin: const EdgeInsets.only(left: 60),
-                    ),
-                    itemBuilder: (_, i) {
-                      final member = members[i];
-                      return GestureDetector(
-                        onTap: () => context.push('/trainer/members/${member.id}'),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 36, height: 36,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: ClayTokens.clayDarkSurface,
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(member.fullName[0], style: ClayTokens.titleMedium.copyWith(color: ClayTokens.clayDarkTextPrimary)),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(member.fullName, style: ClayTokens.bodyLarge.copyWith(color: ClayTokens.clayDarkTextPrimary)),
-                                    Text(member.email, style: ClayTokens.bodySmall.copyWith(color: ClayTokens.clayDarkTextTertiary)),
-                                  ],
-                                ),
-                              ),
-                              Icon(Icons.chevron_right, color: ClayTokens.clayDarkTextTertiary, size: 18),
-                            ],
-                          ),
+      body: AppGlowBackground(
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildTrainerNavBar('My Members'),
+              Expanded(
+                child: membersAsync.when(
+                  data: (members) {
+                    if (members.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.group_outlined, color: ClayTokens.clayDarkTextTertiary, size: 48),
+                            const SizedBox(height: 12),
+                            Text('No assigned members yet', style: ClayTokens.bodySmall.copyWith(color: ClayTokens.clayDarkTextTertiary)),
+                          ],
                         ),
                       );
-                    },
-                  );
-                },
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => Center(child: Text('Error: $e', style: ClayTokens.bodySmall.copyWith(color: ClayTokens.clayError))),
+                    }
+                    return ListView.separated(
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      itemCount: members.length,
+                      separatorBuilder: (_, __) => Container(
+                        height: 0.5,
+                        color: ClayTokens.clayDarkDivider,
+                        margin: const EdgeInsets.only(left: 60),
+                      ),
+                      itemBuilder: (_, i) {
+                        final member = members[i];
+                        return GestureDetector(
+                          onTap: () => context.push('/trainer/members/${member.id}'),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 36, height: 36,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: ClayTokens.clayDarkSurface,
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(member.fullName[0], style: ClayTokens.titleMedium.copyWith(color: ClayTokens.clayDarkTextPrimary)),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(member.fullName, style: ClayTokens.bodyLarge.copyWith(color: ClayTokens.clayDarkTextPrimary)),
+                                      Text(member.email, style: ClayTokens.bodySmall.copyWith(color: ClayTokens.clayDarkTextTertiary)),
+                                    ],
+                                  ),
+                                ),
+                                Icon(Icons.chevron_right, color: ClayTokens.clayDarkTextTertiary, size: 18),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (e, _) => Center(child: Text('Error: $e', style: ClayTokens.bodySmall.copyWith(color: ClayTokens.clayError))),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
+}
+
+Widget _buildTrainerNavBar(String title) {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+    decoration: BoxDecoration(
+      border: Border(
+        bottom: BorderSide(color: ClayTokens.clayDarkBorder, width: 0.5),
+      ),
+    ),
+    child: Row(
+      children: [
+        const SizedBox(width: 32),
+        Expanded(
+          child: Text(
+            title,
+            textAlign: TextAlign.center,
+            style: ClayTokens.titleLarge.copyWith(
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+              color: ClayTokens.clayDarkTextPrimary,
+              letterSpacing: -0.41,
+            ),
+          ),
+        ),
+        const SizedBox(width: 32),
+      ],
+    ),
+  );
 }

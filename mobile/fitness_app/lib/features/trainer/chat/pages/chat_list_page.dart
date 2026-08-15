@@ -6,6 +6,7 @@ import 'package:shared/services/supabase_client.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../shared/widgets/pressable.dart';
 import '../../../shared/widgets/skeleton.dart';
+import '../../../shared/widgets/app_glow_background.dart';
 
 final chatRoomsWithProfilesProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
   final client = SupabaseClientService().client;
@@ -43,115 +44,145 @@ final chatRoomsWithProfilesProvider = FutureProvider.autoDispose<List<Map<String
   return result;
 });
 
-class ChatListPage extends ConsumerWidget {
+class ChatListPage extends ConsumerStatefulWidget {
   const ChatListPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ChatListPage> createState() => _ChatListPageState();
+}
+
+class _ChatListPageState extends ConsumerState<ChatListPage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.invalidate(chatRoomsWithProfilesProvider);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final roomsAsync = ref.watch(chatRoomsWithProfilesProvider);
 
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Conversations',
-                    style: ClayTokens.headlineMedium.copyWith(fontWeight: FontWeight.w600, color: ClayTokens.clayDarkTextPrimary, letterSpacing: 0.38)),
-                  roomsAsync.when(
-                    data: (rooms) => Text('${rooms.length} members',
-                      style: ClayTokens.bodySmall.copyWith(fontSize: 13, fontWeight: FontWeight.w400, color: ClayTokens.clayDarkTextTertiary, letterSpacing: -0.08)),
-                    loading: () => const SizedBox(),
-                    error: (_, __) => const SizedBox(),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: roomsAsync.when(
-                data: (rooms) {
-                  if (rooms.isEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(CupertinoIcons.bubble_left, color: ClayTokens.clayDarkTextTertiary, size: 48),
-                          const SizedBox(height: 12),
-                          Text('No conversations yet', style: ClayTokens.bodySmall.copyWith(fontSize: 13, fontWeight: FontWeight.w400, color: ClayTokens.clayDarkTextTertiary, letterSpacing: -0.08)),
-                        ],
-                      ),
-                    );
-                  }
-                  return ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    itemCount: rooms.length,
-                    itemBuilder: (_, i) {
-                      final r = rooms[i];
-                      final name = r['full_name'] as String? ?? 'Unknown';
-                      final initials = name.split(' ').map((n) => n[0]).take(2).join();
-                      return Semantics(
-                        label: 'Chat with $name',
-                        child: PressableCard(
-                          onTap: () => context.push('/trainer/chat/${r['roomId']}'),
-                          padding: const EdgeInsets.all(12),
-                          margin: const EdgeInsets.only(bottom: 8),
-                          color: ClayTokens.clayDarkSurface,
-                          border: Border.all(color: ClayTokens.clayDarkBorder.withAlpha(100)),
-                          borderRadius: BorderRadius.circular(16),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 48, height: 48,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: ClayTokens.clayDarkSurfaceElevated,
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(initials, style: ClayTokens.bodySmall.copyWith(
-                                  color: ClayTokens.clayDarkTextPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(name, style: ClayTokens.titleLarge.copyWith(
-                                      fontSize: 15, fontWeight: FontWeight.w500, color: ClayTokens.clayDarkTextPrimary, letterSpacing: -0.24)),
-                                    const SizedBox(height: 2),
-                                    Text('Tap to open conversation',
-                                      style: ClayTokens.bodySmall.copyWith(fontSize: 13, fontWeight: FontWeight.w400, color: ClayTokens.clayDarkTextTertiary, letterSpacing: -0.08)),
-                                  ],
-                                ),
-                              ),
-                              Icon(CupertinoIcons.chevron_forward, color: ClayTokens.clayDarkTextTertiary, size: 18),
-                            ],
-                          ),
+      backgroundColor: ClayTokens.clayDarkBase,
+      body: AppGlowBackground(
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildTrainerNavBar('Conversations'),
+              Expanded(
+                child: roomsAsync.when(
+                  data: (rooms) {
+                    if (rooms.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(CupertinoIcons.bubble_left, color: ClayTokens.clayDarkTextTertiary, size: 48),
+                            const SizedBox(height: 12),
+                            Text('No conversations yet', style: ClayTokens.bodySmall.copyWith(fontSize: 13, fontWeight: FontWeight.w400, color: ClayTokens.clayDarkTextTertiary, letterSpacing: -0.08)),
+                          ],
                         ),
                       );
-                    },
-                  );
-                },
-                loading: () => const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 14),
-                  child: Column(
-                    children: [
-                      SizedBox(height: 8),
-                      SkeletonCard(),
-                      SkeletonCard(),
-                      SkeletonCard(),
-                    ],
+                    }
+                    return ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      itemCount: rooms.length,
+                      itemBuilder: (_, i) {
+                        final r = rooms[i];
+                        final name = r['full_name'] as String? ?? 'Unknown';
+                        final initials = name.split(' ').map((n) => n[0]).take(2).join();
+                        return Semantics(
+                          label: 'Chat with $name',
+                          child: PressableCard(
+                            onTap: () => context.push('/trainer/chat/${r['roomId']}'),
+                            padding: const EdgeInsets.all(12),
+                            margin: const EdgeInsets.only(bottom: 8),
+                            color: ClayTokens.clayDarkSurface,
+                            border: Border.all(color: ClayTokens.clayDarkBorder.withAlpha(100)),
+                            borderRadius: BorderRadius.circular(16),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 48, height: 48,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: ClayTokens.clayDarkSurfaceElevated,
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(initials, style: ClayTokens.bodySmall.copyWith(
+                                    color: ClayTokens.clayDarkTextPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(name, style: ClayTokens.titleLarge.copyWith(
+                                        fontSize: 15, fontWeight: FontWeight.w500, color: ClayTokens.clayDarkTextPrimary, letterSpacing: -0.24)),
+                                      const SizedBox(height: 2),
+                                      Text('Tap to open conversation',
+                                        style: ClayTokens.bodySmall.copyWith(fontSize: 13, fontWeight: FontWeight.w400, color: ClayTokens.clayDarkTextTertiary, letterSpacing: -0.08)),
+                                    ],
+                                  ),
+                                ),
+                                Icon(CupertinoIcons.chevron_forward, color: ClayTokens.clayDarkTextTertiary, size: 18),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                  loading: () => const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 14),
+                    child: Column(
+                      children: [
+                        SizedBox(height: 8),
+                        SkeletonCard(),
+                        SkeletonCard(),
+                        SkeletonCard(),
+                      ],
+                    ),
                   ),
+                  error: (e, _) => Center(child: Text('Error: $e', style: ClayTokens.labelMedium.copyWith(fontWeight: FontWeight.w400, color: ClayTokens.clayDarkTextTertiary))),
                 ),
-                error: (e, _) => Center(child: Text('Error: $e', style: ClayTokens.labelMedium.copyWith(fontWeight: FontWeight.w400, color: ClayTokens.clayDarkTextTertiary))),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
+}
+
+Widget _buildTrainerNavBar(String title) {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+    decoration: BoxDecoration(
+      border: Border(
+        bottom: BorderSide(color: ClayTokens.clayDarkBorder, width: 0.5),
+      ),
+    ),
+    child: Row(
+      children: [
+        const SizedBox(width: 32),
+        Expanded(
+          child: Text(
+            title,
+            textAlign: TextAlign.center,
+            style: ClayTokens.titleLarge.copyWith(
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+              color: ClayTokens.clayDarkTextPrimary,
+              letterSpacing: -0.41,
+            ),
+          ),
+        ),
+        const SizedBox(width: 32),
+      ],
+    ),
+  );
 }

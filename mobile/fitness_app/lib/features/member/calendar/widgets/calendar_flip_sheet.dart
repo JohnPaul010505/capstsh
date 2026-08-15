@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../shared/widgets/proof_video_viewer.dart';
+import 'package:shared/services/supabase_client.dart';
 import '../providers/month_entries_provider.dart';
 import '../widgets/flip_card.dart';
 import '../widgets/glow_card.dart';
@@ -14,13 +15,14 @@ Future<DateTime> showCalendarFlipSheet(
   BuildContext context, {
   required DateTime selected,
   required DateTime today,
+  String? memberId,
 }) {
   return showModalBottomSheet<DateTime>(
     context: context,
     backgroundColor: Colors.transparent,
     isScrollControlled: true,
     isDismissible: false,
-    builder: (_) => CalendarFlipSheet(selected: selected, today: today),
+    builder: (_) => CalendarFlipSheet(selected: selected, today: today, memberId: memberId),
   ).then((value) => value ?? selected);
 }
 
@@ -29,8 +31,9 @@ Future<DateTime> showCalendarFlipSheet(
 class CalendarFlipSheet extends ConsumerStatefulWidget {
   final DateTime selected;
   final DateTime today;
+  final String? memberId;
 
-  const CalendarFlipSheet({super.key, required this.selected, required this.today});
+  const CalendarFlipSheet({super.key, required this.selected, required this.today, this.memberId});
 
   @override
   ConsumerState<CalendarFlipSheet> createState() => _CalendarFlipSheetState();
@@ -73,7 +76,8 @@ class _CalendarFlipSheetState extends ConsumerState<CalendarFlipSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final entriesAsync = ref.watch(monthEntriesProvider(_visibleMonth));
+    final effectiveMemberId = widget.memberId ?? SupabaseClientService().client.auth.currentUser!.id;
+    final entriesAsync = ref.watch(monthEntriesProvider((effectiveMemberId, _visibleMonth)));
     final entries = entriesAsync.valueOrNull;
     final workouts =
         entries == null

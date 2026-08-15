@@ -10,6 +10,7 @@ import '../../home/pages/home_page.dart';
 import '../../../shared/widgets/pressable.dart';
 import '../../../shared/widgets/animations.dart';
 import '../../../shared/widgets/proof_video_viewer.dart';
+import 'package:shared/services/supabase_client.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../shared/widgets/app_glow_background.dart';
 
@@ -96,7 +97,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
   void _invalidateProviders() {
     final now = DateTime.now();
     final monthStart = DateTime(now.year, now.month, 1);
-    ref.invalidate(monthEntriesProvider(monthStart));
+    final userId = SupabaseClientService().client.auth.currentUser!.id;
+    ref.invalidate(monthEntriesProvider((userId, monthStart)));
     ref.invalidate(homeDataProvider);
   }
 

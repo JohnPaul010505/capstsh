@@ -6,6 +6,7 @@ import 'package:shared/services/supabase_client.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../shared/widgets/clay/clay_card.dart';
 import '../../../shared/widgets/clay/clay_avatar.dart';
+import '../../../shared/widgets/app_glow_background.dart';
 
 final memberDetailProvider = FutureProvider.family<Profile?, String>((ref, id) async {
   final client = SupabaseClientService().client;
@@ -13,84 +14,136 @@ final memberDetailProvider = FutureProvider.family<Profile?, String>((ref, id) a
   return Profile.fromJson(response);
 });
 
-class MemberDetailPage extends ConsumerWidget {
+class MemberDetailPage extends ConsumerStatefulWidget {
   final String id;
   const MemberDetailPage({super.key, required this.id});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final memberAsync = ref.watch(memberDetailProvider(id));
+  ConsumerState<MemberDetailPage> createState() => _MemberDetailPageState();
+}
+
+class _MemberDetailPageState extends ConsumerState<MemberDetailPage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.invalidate(memberDetailProvider(widget.id));
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final memberAsync = ref.watch(memberDetailProvider(widget.id));
 
     return Scaffold(
       backgroundColor: ClayTokens.clayDarkBase,
-      body: SafeArea(
-        child: memberAsync.when(
-          data: (member) {
-            return ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              children: [
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    GestureDetector(
-                      onTap: () => context.pop(),
-                      child: Icon(Icons.chevron_left, color: ClayTokens.clayDarkTextPrimary, size: 22),
-                    ),
-                    const SizedBox(width: 12),
-                    ClayAvatar(
-                      initials: member!.fullName[0],
-                      size: ClayAvatarSize.md,
-                    ),
-                    const SizedBox(width: 10),
-                    Text(member.fullName, style: ClayTokens.titleLarge.copyWith(color: ClayTokens.clayDarkTextPrimary)),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                ClayCard(
-                  variant: ClayCardVariant.outlined,
-                  padding: ClayCardPadding.medium,
-                  child: Row(
-                    children: [
-                      ClayAvatar(
-                        initials: member.fullName[0],
-                        size: ClayAvatarSize.lg,
-                        backgroundColor: ClayTokens.clayPrimary,
-                        textColor: ClayTokens.clayDarkTextPrimary,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+      body: AppGlowBackground(
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildTrainerNavBar('Member Detail'),
+              Expanded(
+                child: memberAsync.when(
+                  data: (member) {
+                    return ListView(
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      children: [
+                        const SizedBox(height: 8),
+                        Row(
                           children: [
+                            GestureDetector(
+                              onTap: () => context.pop(),
+                              child: Icon(Icons.chevron_left, color: ClayTokens.clayDarkTextPrimary, size: 22),
+                            ),
+                            const SizedBox(width: 12),
+                            ClayAvatar(
+                              initials: member!.fullName[0],
+                              size: ClayAvatarSize.md,
+                            ),
+                            const SizedBox(width: 10),
                             Text(member.fullName, style: ClayTokens.titleLarge.copyWith(color: ClayTokens.clayDarkTextPrimary)),
-                            Text(member.email, style: ClayTokens.bodySmall.copyWith(color: ClayTokens.clayDarkTextTertiary)),
                           ],
                         ),
-                      ),
-                    ],
-                  ),
+                        const SizedBox(height: 16),
+                        ClayCard(
+                          variant: ClayCardVariant.outlined,
+                          padding: ClayCardPadding.medium,
+                          child: Row(
+                            children: [
+                              ClayAvatar(
+                                initials: member.fullName[0],
+                                size: ClayAvatarSize.lg,
+                                backgroundColor: ClayTokens.clayPrimary,
+                                textColor: ClayTokens.clayDarkTextPrimary,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(member.fullName, style: ClayTokens.titleLarge.copyWith(color: ClayTokens.clayDarkTextPrimary)),
+                                    Text(member.email, style: ClayTokens.bodySmall.copyWith(color: ClayTokens.clayDarkTextTertiary)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        ClayCard(
+                          variant: ClayCardVariant.outlined,
+                          padding: ClayCardPadding.none,
+                          child: Column(
+                            children: [
+                              _DetailTile(icon: Icons.directions_walk, title: 'View Workouts', onTap: () {}),
+                              _DetailTile(icon: Icons.trending_up, title: 'View Progress', onTap: () {}),
+                              _DetailTile(icon: Icons.flag_outlined, title: 'Goals', onTap: () {}),
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (e, _) => Center(child: Text('Error: $e', style: ClayTokens.bodySmall.copyWith(color: ClayTokens.clayError))),
                 ),
-                const SizedBox(height: 12),
-                ClayCard(
-                  variant: ClayCardVariant.outlined,
-                  padding: ClayCardPadding.none,
-                  child: Column(
-                    children: [
-                      _DetailTile(icon: Icons.directions_walk, title: 'View Workouts', onTap: () {}),
-                      _DetailTile(icon: Icons.trending_up, title: 'View Progress', onTap: () {}),
-                      _DetailTile(icon: Icons.flag_outlined, title: 'Goals', onTap: () {}),
-                    ],
-                  ),
-                ),
-              ],
-            );
-          },
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text('Error: $e', style: ClayTokens.bodySmall.copyWith(color: ClayTokens.clayError))),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
+}
+
+Widget _buildTrainerNavBar(String title) {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+    decoration: BoxDecoration(
+      border: Border(
+        bottom: BorderSide(color: ClayTokens.clayDarkBorder, width: 0.5),
+      ),
+    ),
+    child: Row(
+      children: [
+        const SizedBox(width: 32),
+        Expanded(
+          child: Text(
+            title,
+            textAlign: TextAlign.center,
+            style: ClayTokens.titleLarge.copyWith(
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+              color: ClayTokens.clayDarkTextPrimary,
+              letterSpacing: -0.41,
+            ),
+          ),
+        ),
+        const SizedBox(width: 32),
+      ],
+    ),
+  );
 }
 
 class _DetailTile extends StatelessWidget {
