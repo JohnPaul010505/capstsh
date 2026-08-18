@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:fitness_app/app/design_tokens.dart';
@@ -94,15 +93,6 @@ class ProfilePage extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  Text('Features', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: ClayTokens.clayDarkTextTertiary, letterSpacing: 0.4)),
-                  const SizedBox(height: 8),
-                  _SettingItem(
-                    icon: CupertinoIcons.bell,
-                    iconColor: ClayTokens.clayPrimary,
-                    label: 'Notifications',
-                    onTap: () => context.push('/trainer/notifications'),
-                  ),
-                  const SizedBox(height: 24),
                   const Divider(color: Color(0xFF38383A)),
                   const SizedBox(height: 8),
                   InkWell(
@@ -170,39 +160,6 @@ class ProfilePage extends ConsumerWidget {
             ),
             error: (e, _) => Center(child: Text('Error: $e', style: TextStyle(color: ClayTokens.clayError))),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SettingItem extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String label;
-  final VoidCallback onTap;
-
-  const _SettingItem({required this.icon, required this.iconColor, required this.label, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
-        decoration: BoxDecoration(
-          color: ClayTokens.clayPrimaryLight.withAlpha(25),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withAlpha(18)),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: iconColor, size: 20),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(label, style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 14)),
-            ),
-          ],
         ),
       ),
     );

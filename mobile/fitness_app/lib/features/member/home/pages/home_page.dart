@@ -1,13 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared/providers/auth_provider.dart';
-import 'package:shared/services/supabase_client.dart';
+import 'package:shared/services/supabase_client.dart'
+    show SupabaseClientService;
 import '../../../shared/widgets/skeleton.dart';
-import '../../../shared/widgets/animations.dart';
+import '../../../shared/widgets/animations.dart'
+    show StaggeredFadeIn, AnimatedCountUp, AnimatedPulseDot;
 import '../../onboarding/pages/onboarding_splash_screen.dart';
 import '../../onboarding/providers/onboarding_provider.dart';
 import '../../../../app/design_tokens.dart';
@@ -17,7 +18,7 @@ import '../../../shared/widgets/clay/clay_button.dart';
 import '../../../shared/widgets/clay/clay_avatar.dart';
 import '../../../shared/widgets/clay_area_chart.dart';
 import '../../calendar/providers/calendar_seed_data.dart';
-import '../../notifications/providers/notifications_provider.dart';
+import '../../../shared/widgets/notification_popup.dart';
 
 // Kept alive for the whole session: independent queries run in parallel, and
 // the previous result stays cached so returning to Home renders instantly
@@ -287,14 +288,32 @@ class _ErrorState extends StatelessWidget {
   }
 }
 
-class HomeContent extends StatelessWidget {
+class HomeContent extends StatefulWidget {
   final Map<String, dynamic> data;
   final dynamic profile;
 
   const HomeContent({super.key, required this.data, this.profile});
 
   @override
+  State<HomeContent> createState() => _HomeContentState();
+}
+
+class _HomeContentState extends State<HomeContent> {
+  bool _isNotificationOpen = false;
+  final _bellKey = GlobalKey();
+
+  void _toggleNotifications() {
+    setState(() => _isNotificationOpen = !_isNotificationOpen);
+  }
+
+  void _closeNotifications() {
+    setState(() => _isNotificationOpen = false);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final data = widget.data;
+    final profile = widget.profile;
     final weekCounts = data['weekCounts'] as List<int>;
     final monthlyCounts = data['monthlyCounts'] as List<int>;
     final monthlyWeights = data['monthlyWeights'] as List<double?>;
@@ -327,6 +346,15 @@ class HomeContent extends StatelessWidget {
               initials: initials,
               imageUrl: avatarUrl,
               onAvatarTap: () => context.push('/member/settings'),
+              onBellTap: _toggleNotifications,
+              isNotificationOpen: _isNotificationOpen,
+              bellKey: _bellKey,
+            ),
+            NotificationPopup(
+              isOpen: _isNotificationOpen,
+              isMember: true,
+              onClose: _closeNotifications,
+              bellKey: _bellKey,
             ),
             const SizedBox(height: 12),
             if (showMembershipCard)
@@ -360,6 +388,9 @@ class _GreetingRow extends ConsumerWidget {
   final String initials;
   final String? imageUrl;
   final VoidCallback onAvatarTap;
+  final VoidCallback onBellTap;
+  final bool isNotificationOpen;
+  final GlobalKey bellKey;
 
   const _GreetingRow({
     required this.greeting,
@@ -367,12 +398,13 @@ class _GreetingRow extends ConsumerWidget {
     required this.initials,
     this.imageUrl,
     required this.onAvatarTap,
+    required this.onBellTap,
+    required this.isNotificationOpen,
+    required this.bellKey,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final unreadAsync = ref.watch(memberUnreadCountStreamProvider);
-
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -393,35 +425,7 @@ class _GreetingRow extends ConsumerWidget {
         ),
         Row(
           children: [
-            unreadAsync.when(
-              data: (count) => Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  GestureDetector(
-                    onTap: () => context.push('/member/notifications'),
-                    child: Icon(CupertinoIcons.bell, color: ClayTokens.clayDarkTextPrimary, size: 22),
-                  ),
-                  if (count > 0)
-                    Positioned(
-                      right: -4,
-                      top: -4,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                        decoration: BoxDecoration(
-                          color: ClayTokens.clayError,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          '$count',
-                          style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.white),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              loading: () => const SizedBox(width: 22, height: 22),
-              error: (_, __) => const SizedBox(width: 22, height: 22),
-            ),
+            NotificationBell(key: bellKey, isMember: true, onTap: onBellTap, isActive: isNotificationOpen),
             const SizedBox(width: 12),
             ClayAvatar(
               imageUrl: imageUrl,

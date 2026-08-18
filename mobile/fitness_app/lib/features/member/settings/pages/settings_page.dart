@@ -197,8 +197,6 @@ class _SettingsContent extends ConsumerWidget {
         _SettingItem(index: 1, icon: CupertinoIcons.gear, iconColor: const Color(0xFF0A84FF), label: 'BMI', subtitle: bmiInfo == null ? null : '${bmiInfo.bmi.toStringAsFixed(1)} \u00b7 ${bmiInfo.label}', onTap: () => context.push('/member/bmi')),
         const SizedBox(height: 10),
         _SettingItem(index: 2, icon: CupertinoIcons.bubble_left, iconColor: const Color(0xFF30D158), label: 'Feedback', onTap: () => context.push('/member/feedback')),
-        const SizedBox(height: 10),
-        _SettingItem(index: 3, icon: CupertinoIcons.bell, iconColor: const Color(0xFF64D2FF), label: 'Notifications', onTap: () => context.push('/member/notifications')),
         const SizedBox(height: 24),
         const Divider(color: Color(0xFF38383A)),
         const SizedBox(height: 8),

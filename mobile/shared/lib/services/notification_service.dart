@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:async';
 import 'supabase_client.dart';
 import '../models/notification_model.dart';
 
@@ -30,5 +31,35 @@ class NotificationService {
         .eq('user_id', userId)
         .eq('read', false);
     return (response as List).length;
+  }
+
+  Stream<int> unreadCountStream(String userId) {
+    final controller = StreamController<int>();
+    
+    // Emit initial count
+    unreadCount(userId).then((count) => controller.add(count));
+
+    final channel = _client.channel('notifications_$userId');
+    channel.onPostgresChanges(
+      event: PostgresChangeEvent.insert,
+      schema: 'public',
+      table: 'notifications',
+      filter: PostgresChangeFilter(
+        type: PostgresChangeFilterType.eq,
+        column: 'user_id',
+        value: userId,
+      ),
+      callback: (payload) {
+        // Re-fetch count when a new notification arrives
+        unreadCount(userId).then((count) => controller.add(count));
+      },
+    ).subscribe();
+
+    // Close controller when stream is cancelled
+    controller.onCancel = () {
+      _client.removeChannel(channel);
+    };
+
+    return controller.stream;
   }
 }

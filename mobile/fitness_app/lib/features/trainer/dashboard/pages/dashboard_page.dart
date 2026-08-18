@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:shared/services/supabase_client.dart';
 import 'package:shared/providers/auth_provider.dart';
 import '../../../../app/design_tokens.dart';
@@ -9,7 +8,7 @@ import '../../../shared/widgets/skeleton.dart';
 import '../../../shared/widgets/animations.dart';
 import '../../../shared/widgets/app_glow_background.dart';
 import '../../../shared/widgets/clay/clay_card.dart';
-import '../../../trainer/notifications/providers/notifications_provider.dart';
+import '../../../shared/widgets/notification_popup.dart';
 
 final trainerDashboardProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   final client = SupabaseClientService().client;
@@ -100,15 +99,27 @@ final trainerDashboardProvider = FutureProvider.autoDispose<Map<String, dynamic>
   };
 });
 
-class DashboardPage extends ConsumerWidget {
+class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final dataAsync = ref.watch(trainerDashboardProvider);
-    final authAsync = ref.watch(authProvider);
-    final unreadAsync = ref.watch(trainerUnreadCountStreamProvider);
+  State<DashboardPage> createState() => _DashboardPageState();
+}
 
+class _DashboardPageState extends State<DashboardPage> {
+  bool _isNotificationOpen = false;
+  final _bellKey = GlobalKey();
+
+  void _toggleNotifications() {
+    setState(() => _isNotificationOpen = !_isNotificationOpen);
+  }
+
+  void _closeNotifications() {
+    setState(() => _isNotificationOpen = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final hour = DateTime.now().hour;
     final greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
@@ -128,104 +139,92 @@ class DashboardPage extends ConsumerWidget {
                 ),
                 child: Row(
                   children: [
-                    authAsync.when(
-                      data: (profile) {
-                        final fullName = profile?.fullName ?? 'Trainer';
-                        final name = fullName.split(' ').first;
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(name,
-                                style: ClayTokens.titleLarge.copyWith(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w600,
-                                  color: ClayTokens.clayDarkTextPrimary,
-                                  letterSpacing: -0.41,
-                                )),
-                            const SizedBox(height: 2),
-                            Text(greeting,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: ClayTokens.clayDarkTextTertiary,
-                                  fontWeight: FontWeight.w500,
-                                )),
-                          ],
+                    Consumer(
+                      builder: (context, ref, _) {
+                        final authAsync = ref.watch(authProvider);
+                        return authAsync.when(
+                          data: (profile) {
+                            final fullName = profile?.fullName ?? 'Trainer';
+                            final name = fullName.split(' ').first;
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(name,
+                                    style: ClayTokens.titleLarge.copyWith(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w600,
+                                      color: ClayTokens.clayDarkTextPrimary,
+                                      letterSpacing: -0.41,
+                                    )),
+                                const SizedBox(height: 2),
+                                Text(greeting,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: ClayTokens.clayDarkTextTertiary,
+                                      fontWeight: FontWeight.w500,
+                                    )),
+                              ],
+                            );
+                          },
+                          loading: () => Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SkeletonBox(width: 80, height: 20, borderRadius: 4),
+                              const SizedBox(height: 2),
+                              SkeletonBox(width: 60, height: 12, borderRadius: 4),
+                            ],
+                          ),
+                          error: (_, __) => Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Trainer', style: ClayTokens.titleLarge),
+                              Text(greeting, style: ClayTokens.bodySmall),
+                            ],
+                          ),
                         );
                       },
-                      loading: () => Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SkeletonBox(width: 80, height: 20, borderRadius: 4),
-                          const SizedBox(height: 2),
-                          SkeletonBox(width: 60, height: 12, borderRadius: 4),
-                        ],
-                      ),
-                      error: (_, __) => Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Trainer', style: ClayTokens.titleLarge),
-                          Text(greeting, style: ClayTokens.bodySmall),
-                        ],
-                      ),
                     ),
                     const Spacer(),
-                    GestureDetector(
-                      onTap: () => GoRouter.of(context).push('/trainer/notifications'),
-                      child: unreadAsync.when(
-                        data: (count) => Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            Icon(CupertinoIcons.bell, color: ClayTokens.clayDarkTextPrimary, size: 22),
-                            if (count > 0)
-                              Positioned(
-                                right: -4,
-                                top: -4,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                                  decoration: BoxDecoration(
-                                    color: ClayTokens.clayError,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    '$count',
-                                    style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.white),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                        loading: () => const SizedBox(width: 22, height: 22),
-                        error: (_, __) => Icon(CupertinoIcons.bell, color: ClayTokens.clayDarkTextPrimary, size: 22),
-                      ),
-                    ),
+                    NotificationBell(key: _bellKey, isMember: false, onTap: _toggleNotifications, isActive: _isNotificationOpen),
                   ],
                 ),
               ),
+              NotificationPopup(
+                isOpen: _isNotificationOpen,
+                isMember: false,
+                onClose: _closeNotifications,
+                bellKey: _bellKey,
+              ),
               Expanded(
-                child: dataAsync.when(
-                  data: (data) => _DashboardContent(data: data),
-                  loading: () => const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 14),
-                    child: Column(
-                      children: [
-                        SizedBox(height: 14),
-                        Row(
+                child: Consumer(
+                  builder: (context, ref, _) {
+                    final dataAsync = ref.watch(trainerDashboardProvider);
+                    return dataAsync.when(
+                      data: (data) => _DashboardContent(data: data),
+                      loading: () => const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 14),
+                        child: Column(
                           children: [
-                            Expanded(child: SkeletonBox(height: 70)),
-                            SizedBox(width: 8),
-                            Expanded(child: SkeletonBox(height: 70)),
-                            SizedBox(width: 8),
-                            Expanded(child: SkeletonBox(height: 70)),
+                            SizedBox(height: 14),
+                            Row(
+                              children: [
+                                Expanded(child: SkeletonBox(height: 70)),
+                                SizedBox(width: 8),
+                                Expanded(child: SkeletonBox(height: 70)),
+                                SizedBox(width: 8),
+                                Expanded(child: SkeletonBox(height: 70)),
+                              ],
+                            ),
+                            SizedBox(height: 14),
+                            SkeletonBox(width: 180, height: 14),
+                            SizedBox(height: 10),
+                            SkeletonBox(height: 90),
                           ],
                         ),
-                        SizedBox(height: 14),
-                        SkeletonBox(width: 180, height: 14),
-                        SizedBox(height: 10),
-                        SkeletonBox(height: 90),
-                      ],
-                    ),
-                  ),
-                  error: (e, _) => Center(child: Text('Error: $e', style: ClayTokens.labelMedium.copyWith(fontWeight: FontWeight.w400, color: ClayTokens.clayDarkTextTertiary))),
+                      ),
+                      error: (e, _) => Center(child: Text('Error: $e', style: ClayTokens.labelMedium.copyWith(fontWeight: FontWeight.w400, color: ClayTokens.clayDarkTextTertiary))),
+                    );
+                  },
                 ),
               ),
             ],

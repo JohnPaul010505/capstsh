@@ -11,6 +11,7 @@ const DAY = 24 * 60 * 60 * 1000
 export default function InactiveReportPage() {
   const [tab, setTab] = useState<'reports' | 'analytics'>('reports')
   const [subTab, setSubTab] = useState<'members' | 'trainers'>('members')
+  const [notifiedUserIds, setNotifiedUserIds] = useState<Set<string>>(new Set())
 
   const { data: inactiveMembers } = useQuery({
     queryKey: ['report-inactive-members'],
@@ -148,22 +149,22 @@ export default function InactiveReportPage() {
     },
   })
 
-  const handleNotify = async (userId: string) => {
+  const handleNotify = async (userId: string, daysInactive: number) => {
     try {
       const res = await fetch('/api/notifications/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId,
-          title: 'Inactivity Notice',
-          body: 'You have been flagged for inactivity. Please check in to the gym.',
+          title: 'Stay on Track!',
+          body: `You've been inactive for a while in ${daysInactive} days. Let's get moving again!`,
         }),
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.error || 'Failed to send notification')
       }
-      window.location.href = '/notifications'
+      setNotifiedUserIds(prev => new Set(prev).add(userId))
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to send notification')
     }
@@ -251,10 +252,14 @@ export default function InactiveReportPage() {
                     </td>
                     <td className="px-5 py-3 text-right">
                       <button
-                        onClick={() => handleNotify(r.userId)}
-                        className="px-3 py-1.5 rounded-lg text-xs font-medium bg-[#7C3AED]/20 text-[#C084FC] border border-[#7C3AED]/40 hover:bg-[#7C3AED]/30 transition-colors"
+                        onClick={() => handleNotify(r.userId, r.daysInactive)}
+                        disabled={notifiedUserIds.has(r.userId)}
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
+                          {notifiedUserIds.has(r.userId)
+                            ? 'bg-white/[0.08] text-[#55557A] border border-white/10 cursor-not-allowed'
+                            : 'bg-[#7C3AED]/20 text-[#C084FC] border border-[#7C3AED]/40 hover:bg-[#7C3AED]/30'}"
                       >
-                        Notify
+                        {notifiedUserIds.has(r.userId) ? 'Sent' : 'Notify'}
                       </button>
                     </td>
                   </tr>
