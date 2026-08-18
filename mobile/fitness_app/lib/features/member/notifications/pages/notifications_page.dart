@@ -93,7 +93,7 @@ class NotificationsPage extends ConsumerWidget {
                                           ),
                                           const SizedBox(height: 2),
                                           Text(
-                                            n['message'] ?? '',
+                                            n['body'] ?? '',
                                             style: ClayTokens.titleMedium.copyWith(
                                               fontSize: 15,
                                               color: ClayTokens.clayDarkTextSecondary,

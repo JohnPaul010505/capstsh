@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:fitness_app/app/design_tokens.dart';
 
 import 'package:shared/services/supabase_client.dart';
 import 'package:shared/providers/auth_provider.dart';
 import '../../../shared/widgets/app_glow_background.dart';
-import '../../../shared/widgets/pressable.dart';
 import '../../../shared/widgets/skeleton.dart';
 
 final trainerProfileProvider = FutureProvider.autoDispose.family<Map<String, dynamic>, String>((ref, id) async {
@@ -15,68 +15,6 @@ final trainerProfileProvider = FutureProvider.autoDispose.family<Map<String, dyn
   return response;
 });
 
-Widget _infoRow({
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Container(
-            width: 24, height: 24,
-            decoration: BoxDecoration(
-              color: ClayTokens.clayPrimary.withAlpha(25),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Icon(icon, color: ClayTokens.clayDarkTextTertiary, size: 14),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: ClayTokens.labelSmall.copyWith(color: ClayTokens.clayDarkTextSecondary, fontSize: 10)),
-                const SizedBox(height: 2),
-                Text(value, style: ClayTokens.labelMedium.copyWith(color: ClayTokens.clayDarkTextPrimary, fontWeight: FontWeight.w600)),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-Widget _buildTrainerNavBar(String title) {
-  return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-    decoration: BoxDecoration(
-      border: Border(
-        bottom: BorderSide(color: ClayTokens.clayDarkBorder, width: 0.5),
-      ),
-    ),
-    child: Row(
-      children: [
-        const SizedBox(width: 32),
-        Expanded(
-          child: Text(
-            title,
-            textAlign: TextAlign.center,
-            style: ClayTokens.titleLarge.copyWith(
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
-              color: ClayTokens.clayDarkTextPrimary,
-              letterSpacing: -0.41,
-            ),
-          ),
-        ),
-        const SizedBox(width: 32),
-      ],
-    ),
-  );
-}
-
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
 
@@ -84,168 +22,187 @@ class ProfilePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final currentUserId = SupabaseClientService().client.auth.currentUser!.id;
     final profileAsync = ref.watch(trainerProfileProvider(currentUserId));
-    final profile = profileAsync.value;
-    final email = profile?['email'] as String? ?? '';
-    final createdAt = profile?['created_at'] as String? ?? '';
-    final since = createdAt.length >= 10 ? createdAt.substring(0, 10) : '';
-    final specialty = profile?['specialty'] as String?;
-    final availableDays = profile?['available_days'] as String?;
 
     return Scaffold(
       backgroundColor: ClayTokens.clayDarkBase,
       body: AppGlowBackground(
         child: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildTrainerNavBar('Profile'),
-              Expanded(
-                child: profileAsync.when(
-                  data: (profile) {
-                    final name = profile['full_name'] as String? ?? 'Trainer';
-                    final initials = name.split(' ').map((n) => n[0]).take(2).join();
-                    return ListView(
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      physics: const ClampingScrollPhysics(),
+          child: profileAsync.when(
+            data: (profile) {
+              final name = profile['full_name'] as String? ?? 'Trainer';
+              final email = profile['email'] as String? ?? '';
+              final createdAt = profile['created_at'] as String? ?? '';
+              final since = createdAt.length >= 10 ? createdAt.substring(0, 10) : '';
+              final initials = name.split(' ').map((n) => n[0]).take(2).join();
+
+              return ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                children: [
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const SizedBox(width: 24),
+                      const Text('Profile', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF), decoration: TextDecoration.none)),
+                      const SizedBox(width: 24),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: ClayTokens.clayPrimaryLight.withAlpha(25),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white.withAlpha(18)),
+                    ),
+                    child: Row(
                       children: [
-                        const SizedBox(height: 16),
-                        Center(
+                        Container(
+                          width: 52,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: ClayTokens.clayPrimaryLight.withAlpha(35),
+                            border: Border.all(color: ClayTokens.clayPrimary.withAlpha(50)),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(initials, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: ClayTokens.clayPrimary)),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
                           child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Stack(
+                              Text(name, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF), decoration: TextDecoration.none)),
+                              const SizedBox(height: 4),
+                              if (email.isNotEmpty)
+                                Text(email, style: const TextStyle(fontSize: 12, color: Color(0xFF8E8E93), decoration: TextDecoration.none)),
+                              const SizedBox(height: 4),
+                              Row(
                                 children: [
-                                  Container(
-                                    width: 72, height: 72,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: ClayTokens.clayDarkSurfaceElevated,
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: Text(initials, style: ClayTokens.headlineMedium.copyWith(
-                                      fontSize: 22, color: ClayTokens.clayDarkTextPrimary, fontWeight: FontWeight.w600)),
-                                    ),
-                                  Positioned(
-                                    right: 0, bottom: 0,
-                                    child: Container(
-                                      width: 22, height: 22,
-                                      decoration: BoxDecoration(
-                                        color: ClayTokens.clayPrimary,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Icon(CupertinoIcons.person, color: ClayTokens.clayDarkTextPrimary, size: 10),
-                                    ),
-                                  ),
+                                  Text('Trainer', style: TextStyle(fontSize: 12, color: ClayTokens.clayPrimary, fontWeight: FontWeight.w600)),
+                                  if (since.isNotEmpty) ...[
+                                    const SizedBox(width: 8),
+                                    Text('· Since $since', style: const TextStyle(fontSize: 12, color: Color(0xFF8E8E93), decoration: TextDecoration.none)),
+                                  ],
                                 ],
                               ),
-                              const SizedBox(height: 12),
-                              Text(name, style: ClayTokens.headlineMedium.copyWith(fontWeight: FontWeight.w600, color: ClayTokens.clayDarkTextPrimary, letterSpacing: 0.38)),
-                              const SizedBox(height: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: ClayTokens.clayPrimary,
-                                  borderRadius: const BorderRadius.all(Radius.circular(20)),
-                                ),
-                                child: Text('TRAINER',
-                                  style: ClayTokens.labelSmall.copyWith(color: ClayTokens.clayDarkTextPrimary, fontWeight: FontWeight.w600, letterSpacing: 0.8)),
-                              ),
-                              if (specialty != null && specialty.isNotEmpty) ...[
-                                const SizedBox(height: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: ClayTokens.clayDarkSurface,
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(color: ClayTokens.clayDarkBorder.withAlpha(100)),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(CupertinoIcons.bolt, color: ClayTokens.clayDarkTextTertiary, size: 12),
-                                      const SizedBox(width: 5),
-                                      Text(specialty, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w400, color: ClayTokens.clayDarkTextTertiary)),
-                                    ],
-                                  ),
-                                ),
-                              ],
                             ],
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: ClayTokens.clayDarkSurface,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: ClayTokens.clayDarkBorder.withAlpha(100)),
-                          ),
-                          child: Column(
-                            children: [
-                              _infoRow(icon: CupertinoIcons.mail, label: 'Email', value: email),
-                              _infoRow(icon: CupertinoIcons.shield, label: 'Role', value: 'Trainer'),
-                              if (since.isNotEmpty)
-                                _infoRow(icon: CupertinoIcons.calendar, label: 'Since', value: since),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: ClayTokens.clayDarkSurface,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: ClayTokens.clayDarkBorder.withAlpha(100)),
-                          ),
-                          child: Column(
-                            children: [
-                              if (specialty != null && specialty.isNotEmpty)
-                                _infoRow(icon: CupertinoIcons.star, label: 'Specialty', value: specialty),
-                              if (availableDays != null && availableDays.isNotEmpty)
-                                _infoRow(icon: CupertinoIcons.calendar, label: 'Available', value: availableDays),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        Consumer(
-                          builder: (_, ref, __) => PressableCard(
-                            onTap: () => ref.read(authProvider.notifier).signOut(),
-                            padding: const EdgeInsets.symmetric(vertical: 13),
-                            color: ClayTokens.clayError.withAlpha(15),
-                            borderRadius: BorderRadius.circular(13),
-                            border: Border.all(color: ClayTokens.clayError.withAlpha(50)),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(CupertinoIcons.square_arrow_right, color: ClayTokens.clayError, size: 16),
-                                const SizedBox(width: 8),
-                                Text('Sign Out',
-                                  style: ClayTokens.bodyMedium.copyWith(color: ClayTokens.clayError, fontSize: 14, fontWeight: FontWeight.w600, letterSpacing: -0.24)),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 32),
                       ],
-                    );
-                  },
-                  loading: () => const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 14),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          SkeletonBox(width: 72, height: 72, borderRadius: 36),
-                          SizedBox(height: 12),
-                          SkeletonBox(width: 140, height: 18),
-                          SizedBox(height: 8),
-                          SkeletonBox(width: 80, height: 24, borderRadius: 12),
-                          SizedBox(height: 24),
-                          SkeletonBox(height: 50),
-                        ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text('Features', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: ClayTokens.clayDarkTextTertiary, letterSpacing: 0.4)),
+                  const SizedBox(height: 8),
+                  _SettingItem(
+                    icon: CupertinoIcons.bell,
+                    iconColor: ClayTokens.clayPrimary,
+                    label: 'Notifications',
+                    onTap: () => context.push('/trainer/notifications'),
+                  ),
+                  const SizedBox(height: 24),
+                  const Divider(color: Color(0xFF38383A)),
+                  const SizedBox(height: 8),
+                  InkWell(
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (ctx) => AlertDialog(
+                          backgroundColor: ClayTokens.clayDarkSurface,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          title: Text('Sign Out', style: TextStyle(color: ClayTokens.clayDarkTextPrimary, fontSize: 17, fontWeight: FontWeight.w700)),
+                          content: Text('Are you sure you want to sign out?', style: TextStyle(color: ClayTokens.clayDarkTextSecondary, fontSize: 14)),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(ctx).pop(),
+                              child: Text('No', style: TextStyle(color: ClayTokens.clayDarkTextTertiary, fontSize: 14, fontWeight: FontWeight.w600)),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                Navigator.of(ctx).pop();
+                                ref.read(authProvider.notifier).signOut();
+                                if (context.mounted) {
+                                  context.go('/login');
+                                }
+                              },
+                              child: Text('Yes', style: TextStyle(color: ClayTokens.clayError, fontSize: 14, fontWeight: FontWeight.w600)),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      decoration: BoxDecoration(
+                        color: ClayTokens.clayPrimaryLight.withAlpha(25),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white.withAlpha(18)),
+                      ),
+                      child: Center(
+                        child: Text(
+                          'Sign Out',
+                          style: TextStyle(color: ClayTokens.clayError, fontSize: 14, fontWeight: FontWeight.w600),
+                        ),
                       ),
                     ),
-                  error: (e, _) => Center(child: Text('Error: $e', style: ClayTokens.labelMedium.copyWith(fontWeight: FontWeight.w400, color: ClayTokens.clayDarkTextTertiary))),
-                ),
+                  ),
+                  const SizedBox(height: 32),
+                ],
+              );
+            },
+            loading: () => const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 14),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SkeletonBox(width: 52, height: 52, borderRadius: 26),
+                  SizedBox(height: 12),
+                  SkeletonBox(width: 140, height: 18),
+                  SizedBox(height: 8),
+                  SkeletonBox(width: 200, height: 14),
+                  SizedBox(height: 24),
+                  SkeletonBox(height: 50),
+                ],
               ),
-            ],
+            ),
+            error: (e, _) => Center(child: Text('Error: $e', style: TextStyle(color: ClayTokens.clayError))),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SettingItem extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+  final VoidCallback onTap;
+
+  const _SettingItem({required this.icon, required this.iconColor, required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
+        decoration: BoxDecoration(
+          color: ClayTokens.clayPrimaryLight.withAlpha(25),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withAlpha(18)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: iconColor, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(label, style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 14)),
+            ),
+          ],
         ),
       ),
     );

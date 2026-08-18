@@ -16,7 +16,7 @@ const navItems = [
   { to: '/memberships', label: 'Memberships', icon: CreditCard },
   { to: '/qr', label: 'QR', icon: QrCode },
   { to: '/attendance', label: 'Attendance', icon: CalendarCheck },
-  { to: '/reports', label: 'Reports', icon: BarChart3, end: true },
+  { to: '/reports/inactive', label: 'Reports', icon: BarChart3, end: true },
   { to: '/reports/feedback', label: 'Coach Feedback', icon: MessageSquare },
   { to: '/predictions', label: 'Predictions', icon: TrendingUp },
   { to: '/settings', label: 'Settings', icon: Settings },

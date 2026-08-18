@@ -12,6 +12,7 @@ import '../features/member/bmi/pages/bmi_page.dart';
 import '../features/member/goals/pages/goals_page.dart';
 import '../features/member/feedback/pages/feedback_page.dart';
 import '../features/member/notifications/pages/notifications_page.dart';
+import '../features/trainer/notifications/pages/notifications_page.dart';
 import '../features/trainer/dashboard/pages/dashboard_page.dart' as trainer;
 import '../features/trainer/progress/pages/progress_list_page.dart';
 import '../features/trainer/progress/pages/member_progress_page.dart';
@@ -122,12 +123,13 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(path: ':id', pageBuilder: (_, state) => _iosPush(MemberProgressPage(id: state.pathParameters['id']!))),
             ],
           ),
-          GoRoute(path: '/trainer/checkin', pageBuilder: (_, __) => _iosPush(const CheckinPage())),
+          GoRoute(path: '/trainer/checkin', pageBuilder: (_, __) => _iosPush(const CheckinPage(showBack: false))),
           GoRoute(path: '/trainer/chat', pageBuilder: (_, __) => _iosPush(const ChatListPage())),
           GoRoute(path: '/trainer/chat/:roomId', pageBuilder: (_, state) => _iosPush(ChatRoomPage(roomId: state.pathParameters['roomId']!))),
           GoRoute(path: '/trainer/profile', pageBuilder: (_, __) => _iosPush(const trainer_profile.ProfilePage())),
         ],
       ),
+      GoRoute(path: '/trainer/notifications', pageBuilder: (_, __) => _iosPush(const TrainerNotificationsPage())),
     ],
   );
 });
@@ -186,8 +188,9 @@ class _TrainerShellState extends State<TrainerShell> {
   int _trainerIndex() {
     final location = GoRouterState.of(context).matchedLocation;
     if (location.startsWith('/trainer/members')) return 1;
-    if (location.startsWith('/trainer/chat')) return 2;
-    if (location.startsWith('/trainer/profile')) return 3;
+    if (location.startsWith('/trainer/chat')) return 3;
+    if (location.startsWith('/trainer/profile')) return 4;
+    if (location.startsWith('/trainer/checkin')) return 2;
     return 0;
   }
 
@@ -196,8 +199,9 @@ class _TrainerShellState extends State<TrainerShell> {
     switch (index) {
       case 0: context.go('/trainer/dashboard');
       case 1: context.go('/trainer/members');
-      case 2: context.go('/trainer/chat');
-      case 3: context.go('/trainer/profile');
+      case 2: context.go('/trainer/checkin');
+      case 3: context.go('/trainer/chat');
+      case 4: context.go('/trainer/profile');
     }
   }
 

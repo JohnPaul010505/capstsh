@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared/services/supabase_client.dart';
 import '../../../../app/design_tokens.dart';
-import '../../../shared/widgets/pressable.dart';
 import '../../../shared/widgets/skeleton.dart';
 import '../../../shared/widgets/app_glow_background.dart';
 import '../../../shared/widgets/clay/clay_avatar.dart';
@@ -24,7 +23,7 @@ final assignedMembersWithStatsProvider = FutureProvider.autoDispose<List<Map<Str
 
   final profiles = await client
       .from('profiles')
-      .select('id, full_name, avatar_url, email, gender, phone, date_of_birth')
+      .select('id, full_name, avatar_url')
       .or(memberIds.map((id) => 'id.eq.$id').join(','));
 
   final profileList = (profiles as List).cast<Map<String, dynamic>>();
@@ -60,10 +59,6 @@ final assignedMembersWithStatsProvider = FutureProvider.autoDispose<List<Map<Str
       'id': mid,
       'full_name': p['full_name'] as String? ?? 'Unknown',
       'avatar_url': p['avatar_url'] as String?,
-      'email': p['email'] as String? ?? '',
-      'gender': p['gender'] as String? ?? '',
-      'phone': p['phone'] as String? ?? '',
-      'date_of_birth': p['date_of_birth'] as String? ?? '',
       'weight_kg': meas?['weight_kg'],
       'height_cm': meas?['height_cm'],
       'goal': goalTitle,
@@ -116,53 +111,57 @@ class _ProgressListPageState extends ConsumerState<ProgressListPage> {
                         ),
                       );
                     }
-                    return ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      itemCount: members.length,
-                      itemBuilder: (_, i) {
-                        final m = members[i];
-                        final name = m['full_name'] as String? ?? 'Unknown';
-                        final initials = name.split(' ').map((n) => n[0]).take(2).join();
-                        final avatarUrl = m['avatar_url'] as String?;
-                        final weight = m['weight_kg'];
-                        final height = m['height_cm'];
+                     return ListView.builder(
+                       padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
+                       itemCount: members.length,
+                       itemBuilder: (_, i) {
+                         final m = members[i];
+                         final name = m['full_name'] as String? ?? 'Unknown';
+                         final initials = name.split(' ').map((n) => n[0]).take(2).join();
+                         final avatarUrl = m['avatar_url'] as String?;
+                         final weight = m['weight_kg'];
+                         final height = m['height_cm'];
 
-                        return Semantics(
-                          label: 'View $name progress',
-                          child: PressableCard(
-                            onTap: () => context.push('/trainer/members/${m['id']}'),
-                            padding: const EdgeInsets.all(12),
-                            margin: const EdgeInsets.only(bottom: 8),
-                            color: ClayTokens.clayDarkSurface,
-                            border: Border.all(color: ClayTokens.clayDarkBorder.withAlpha(100)),
-                            borderRadius: BorderRadius.circular(16),
-                            child: Row(
-                              children: [
-                                ClayAvatar(
-                                  imageUrl: avatarUrl,
-                                  initials: initials,
-                                  size: ClayAvatarSize.md,
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(name, style: ClayTokens.titleLarge.copyWith(
-                                        fontSize: 15, fontWeight: FontWeight.w500, color: ClayTokens.clayDarkTextPrimary, letterSpacing: -0.24)),
-                                      if (weight != null || height != null)
-                                        Text(
-                                          '${weight != null ? '$weight kg' : ''}${weight != null && height != null ? '  ·  ' : ''}${height != null ? '$height cm' : ''}',
-                                          style: ClayTokens.labelMedium.copyWith(fontSize: 11, fontWeight: FontWeight.w500, color: ClayTokens.clayDarkTextTertiary, letterSpacing: 0.06)),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    );
+                         return Semantics(
+                           label: 'View $name progress',
+                           child: GestureDetector(
+                             onTap: () => context.push('/trainer/members/${m['id']}'),
+                             child: Container(
+                               padding: const EdgeInsets.all(12),
+                               margin: const EdgeInsets.only(bottom: 8),
+                               decoration: BoxDecoration(
+                                 color: ClayTokens.clayDarkSurface,
+                                 borderRadius: BorderRadius.circular(16),
+                                 border: Border.all(color: ClayTokens.clayDarkBorder.withAlpha(100)),
+                               ),
+                               child: Row(
+                                 children: [
+                                   ClayAvatar(
+                                     imageUrl: avatarUrl,
+                                     initials: initials,
+                                     size: ClayAvatarSize.md,
+                                   ),
+                                   const SizedBox(width: 10),
+                                   Expanded(
+                                     child: Column(
+                                       crossAxisAlignment: CrossAxisAlignment.start,
+                                       children: [
+                                         Text(name, style: ClayTokens.titleLarge.copyWith(
+                                           fontSize: 15, fontWeight: FontWeight.w500, color: ClayTokens.clayDarkTextPrimary, letterSpacing: -0.24)),
+                                         if (weight != null || height != null)
+                                           Text(
+                                             '${weight != null ? '$weight kg' : ''}${weight != null && height != null ? '  ·  ' : ''}${height != null ? '$height cm' : ''}',
+                                             style: ClayTokens.labelMedium.copyWith(fontSize: 11, fontWeight: FontWeight.w500, color: ClayTokens.clayDarkTextTertiary, letterSpacing: 0.06)),
+                                       ],
+                                     ),
+                                   ),
+                                 ],
+                               ),
+                             ),
+                           ),
+                         );
+                       },
+                     );
                   },
                   loading: () => const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 14),

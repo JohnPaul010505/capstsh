@@ -11,6 +11,7 @@ import AttendancePage from '@/features/attendance/pages/AttendancePage'
 import WorkoutsPage from '@/features/workouts/pages/WorkoutsPage'
 import MembershipsPage from '@/features/memberships/pages/MembershipsPage'
 import ReportsPage from '@/features/reports/pages/ReportsPage'
+import InactiveReportPage from '@/features/reports/pages/InactiveReportPage'
 import CoachFeedbackPage from '@/features/reports/pages/CoachFeedbackPage'
 import PredictionsPage from '@/features/predictions/pages/PredictionsPage'
 import QRPage from '@/features/qr/pages/QRPage'
@@ -42,6 +43,7 @@ function AppRoutes() {
         <Route path="/workouts" element={<WorkoutsPage />} />
         <Route path="/memberships" element={<MembershipsPage />} />
         <Route path="/reports" element={<ReportsPage />} />
+        <Route path="/reports/inactive" element={<InactiveReportPage />} />
         <Route path="/reports/feedback" element={<CoachFeedbackPage />} />
         <Route path="/predictions" element={<PredictionsPage />} />
         <Route path="/qr" element={<QRPage />} />

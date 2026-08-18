@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared/providers/auth_provider.dart';
@@ -16,6 +17,7 @@ import '../../../shared/widgets/clay/clay_button.dart';
 import '../../../shared/widgets/clay/clay_avatar.dart';
 import '../../../shared/widgets/clay_area_chart.dart';
 import '../../calendar/providers/calendar_seed_data.dart';
+import '../../notifications/providers/notifications_provider.dart';
 
 // Kept alive for the whole session: independent queries run in parallel, and
 // the previous result stays cached so returning to Home renders instantly
@@ -352,7 +354,7 @@ class HomeContent extends StatelessWidget {
   }
 }
 
-class _GreetingRow extends StatelessWidget {
+class _GreetingRow extends ConsumerWidget {
   final String greeting;
   final String firstName;
   final String initials;
@@ -368,7 +370,9 @@ class _GreetingRow extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final unreadAsync = ref.watch(memberUnreadCountStreamProvider);
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -387,12 +391,46 @@ class _GreetingRow extends StatelessWidget {
             ),
           ],
         ),
-        ClayAvatar(
-          imageUrl: imageUrl,
-          initials: initials,
-          size: ClayAvatarSize.md,
-          backgroundColor: Colors.transparent,
-          onTap: onAvatarTap,
+        Row(
+          children: [
+            unreadAsync.when(
+              data: (count) => Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  GestureDetector(
+                    onTap: () => context.push('/member/notifications'),
+                    child: Icon(CupertinoIcons.bell, color: ClayTokens.clayDarkTextPrimary, size: 22),
+                  ),
+                  if (count > 0)
+                    Positioned(
+                      right: -4,
+                      top: -4,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: ClayTokens.clayError,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '$count',
+                          style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              loading: () => const SizedBox(width: 22, height: 22),
+              error: (_, __) => const SizedBox(width: 22, height: 22),
+            ),
+            const SizedBox(width: 12),
+            ClayAvatar(
+              imageUrl: imageUrl,
+              initials: initials,
+              size: ClayAvatarSize.md,
+              backgroundColor: Colors.transparent,
+              onTap: onAvatarTap,
+            ),
+          ],
         ),
       ],
     );

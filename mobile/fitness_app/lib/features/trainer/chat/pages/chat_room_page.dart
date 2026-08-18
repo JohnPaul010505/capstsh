@@ -6,6 +6,7 @@ import 'package:shared/services/supabase_client.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../shared/widgets/clay/clay_input.dart';
 import '../../../shared/widgets/app_glow_background.dart';
+import '../../../shared/widgets/clay/clay_avatar.dart';
 
 class ChatRoomPage extends ConsumerStatefulWidget {
   final String roomId;
@@ -21,6 +22,8 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage> {
   StreamSubscription? _subscription;
   List<Map<String, dynamic>> _messages = [];
   bool _loading = true;
+  String? _otherMemberName;
+  String? _otherMemberAvatarUrl;
 
   @override
   void initState() {
@@ -31,8 +34,36 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage> {
 
   Future<void> _loadMessages() async {
     try {
-      final response = await SupabaseClientService()
-          .client
+      final client = SupabaseClientService().client;
+      final userId = client.auth.currentUser!.id;
+
+      final roomResponse = await client
+          .from('chat_rooms')
+          .select('participant_one, participant_two')
+          .eq('id', widget.roomId)
+          .single();
+
+      final otherId = (roomResponse['participant_one'] as String?) == userId
+          ? roomResponse['participant_two'] as String?
+          : roomResponse['participant_one'] as String?;
+
+      if (otherId != null) {
+        try {
+          final profile = await client
+              .from('profiles')
+              .select('full_name, avatar_url')
+              .eq('id', otherId)
+              .single();
+          if (mounted) {
+            setState(() {
+              _otherMemberName = profile['full_name'] as String? ?? 'Member';
+              _otherMemberAvatarUrl = profile['avatar_url'] as String?;
+            });
+          }
+        } catch (_) {}
+      }
+
+      final response = await client
           .from('chat_messages')
           .select()
           .eq('room_id', widget.roomId)
@@ -104,7 +135,36 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage> {
         child: SafeArea(
           child: Column(
             children: [
-              _buildTrainerNavBar('Chat'),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                decoration: BoxDecoration(
+                  border: Border(bottom: BorderSide(color: ClayTokens.clayDarkBorder, width: 0.5)),
+                ),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Icon(CupertinoIcons.back, color: ClayTokens.clayDarkTextPrimary, size: 24),
+                    ),
+                    const SizedBox(width: 10),
+                    if (_otherMemberName != null)
+                      Expanded(
+                        child: Row(
+                          children: [
+                            ClayAvatar(
+                              imageUrl: _otherMemberAvatarUrl,
+                              initials: _otherMemberName!.split(' ').map((n) => n[0]).take(2).join(),
+                              size: ClayAvatarSize.md,
+                            ),
+                            const SizedBox(width: 10),
+                            Text(_otherMemberName!, style: ClayTokens.titleLarge.copyWith(
+                              fontSize: 15, fontWeight: FontWeight.w500, color: ClayTokens.clayDarkTextPrimary, letterSpacing: -0.24)),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
               Expanded(
                 child: _loading
                     ? Center(child: CupertinoActivityIndicator(radius: 12, color: ClayTokens.clayPrimary))
@@ -194,33 +254,4 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage> {
       ),
     );
   }
-}
-
-Widget _buildTrainerNavBar(String title) {
-  return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-    decoration: BoxDecoration(
-      border: Border(
-        bottom: BorderSide(color: ClayTokens.clayDarkBorder, width: 0.5),
-      ),
-    ),
-    child: Row(
-      children: [
-        const SizedBox(width: 32),
-        Expanded(
-          child: Text(
-            title,
-            textAlign: TextAlign.center,
-            style: ClayTokens.titleLarge.copyWith(
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
-              color: ClayTokens.clayDarkTextPrimary,
-              letterSpacing: -0.41,
-            ),
-          ),
-        ),
-        const SizedBox(width: 32),
-      ],
-    ),
-  );
 }

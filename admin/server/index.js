@@ -201,6 +201,25 @@ app.post('/api/unassign-trainer', async (req, res) => {
   }
 })
 
+app.post('/api/notifications/send', async (req, res) => {
+  const { userId, title, body } = req.body
+  if (!userId || !title || !body) return res.status(400).json({ error: 'Missing userId, title, or body' })
+
+  try {
+    const { error } = await adminClient.from('notifications').insert({
+      user_id: userId,
+      title,
+      body,
+    })
+    if (error) throw error
+
+    res.json({ success: true })
+  } catch (err) {
+    console.error('Send notification error:', err)
+    res.status(500).json({ error: err?.message || 'Failed to send notification' })
+  }
+})
+
 app.post('/api/notifications/broadcast', async (req, res) => {
   const { title, body, targetRole } = req.body
   if (!title || !body) return res.status(400).json({ error: 'Missing title or body' })

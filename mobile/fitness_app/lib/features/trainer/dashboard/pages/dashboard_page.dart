@@ -3,12 +3,13 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared/services/supabase_client.dart';
+import 'package:shared/providers/auth_provider.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../shared/widgets/skeleton.dart';
 import '../../../shared/widgets/animations.dart';
-import '../../../shared/widgets/clay/clay_card.dart';
-import '../../../shared/widgets/clay/clay_avatar.dart';
 import '../../../shared/widgets/app_glow_background.dart';
+import '../../../shared/widgets/clay/clay_card.dart';
+import '../../../trainer/notifications/providers/notifications_provider.dart';
 
 final trainerDashboardProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   final client = SupabaseClientService().client;
@@ -25,7 +26,6 @@ final trainerDashboardProvider = FutureProvider.autoDispose<Map<String, dynamic>
     return {
       'totalMembers': 0, 'canChat': 0, 'expiringSoon': 0,
       'weekCounts': List.generate(7, (_) => 0),
-      'memberRows': <Map<String, dynamic>>[],
     };
   }
 
@@ -92,34 +92,11 @@ final trainerDashboardProvider = FutureProvider.autoDispose<Map<String, dynamic>
     }
   }
 
-  final today = DateTime(now.year, now.month, now.day);
-  final memberRows = memberIds.map((mid) {
-    final last = lastCheckIn[mid];
-    final lastDay = last == null ? null : DateTime(last.year, last.month, last.day);
-    final daysInactive = lastDay == null ? 999 : today.difference(lastDay).inDays;
-    final planName = planMap[mid] ?? 'Daily';
-    return {
-      'id': mid,
-      'full_name': profileMap[mid] ?? 'Unknown',
-      'lastCheckIn': last?.toIso8601String(),
-      'daysInactive': daysInactive,
-      'planName': planName,
-      'flagged': daysInactive >= 7 || (planName == 'Daily' && daysInactive >= 4),
-    };
-  }).toList()
-    ..sort((a, b) {
-      final fa = a['flagged'] == true;
-      final fb = b['flagged'] == true;
-      if (fa != fb) return fa ? -1 : 1;
-      return (b['daysInactive'] as int).compareTo(a['daysInactive'] as int);
-    });
-
   return {
     'totalMembers': totalMembers,
     'canChat': canChat,
     'expiringSoon': expiringSoon,
     'weekCounts': weekCounts,
-    'memberRows': memberRows,
   };
 });
 
@@ -129,6 +106,11 @@ class DashboardPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final dataAsync = ref.watch(trainerDashboardProvider);
+    final authAsync = ref.watch(authProvider);
+    final unreadAsync = ref.watch(trainerUnreadCountStreamProvider);
+
+    final hour = DateTime.now().hour;
+    final greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
     return Scaffold(
       backgroundColor: ClayTokens.clayDarkBase,
@@ -137,7 +119,88 @@ class DashboardPage extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildTrainerNavBar('Dashboard'),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(color: ClayTokens.clayDarkBorder, width: 0.5),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    authAsync.when(
+                      data: (profile) {
+                        final fullName = profile?.fullName ?? 'Trainer';
+                        final name = fullName.split(' ').first;
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(name,
+                                style: ClayTokens.titleLarge.copyWith(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w600,
+                                  color: ClayTokens.clayDarkTextPrimary,
+                                  letterSpacing: -0.41,
+                                )),
+                            const SizedBox(height: 2),
+                            Text(greeting,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: ClayTokens.clayDarkTextTertiary,
+                                  fontWeight: FontWeight.w500,
+                                )),
+                          ],
+                        );
+                      },
+                      loading: () => Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SkeletonBox(width: 80, height: 20, borderRadius: 4),
+                          const SizedBox(height: 2),
+                          SkeletonBox(width: 60, height: 12, borderRadius: 4),
+                        ],
+                      ),
+                      error: (_, __) => Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Trainer', style: ClayTokens.titleLarge),
+                          Text(greeting, style: ClayTokens.bodySmall),
+                        ],
+                      ),
+                    ),
+                    const Spacer(),
+                    GestureDetector(
+                      onTap: () => GoRouter.of(context).push('/trainer/notifications'),
+                      child: unreadAsync.when(
+                        data: (count) => Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            Icon(CupertinoIcons.bell, color: ClayTokens.clayDarkTextPrimary, size: 22),
+                            if (count > 0)
+                              Positioned(
+                                right: -4,
+                                top: -4,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                  decoration: BoxDecoration(
+                                    color: ClayTokens.clayError,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    '$count',
+                                    style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.white),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        loading: () => const SizedBox(width: 22, height: 22),
+                        error: (_, __) => Icon(CupertinoIcons.bell, color: ClayTokens.clayDarkTextPrimary, size: 22),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               Expanded(
                 child: dataAsync.when(
                   data: (data) => _DashboardContent(data: data),
@@ -173,35 +236,6 @@ class DashboardPage extends ConsumerWidget {
   }
 }
 
-Widget _buildTrainerNavBar(String title) {
-  return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-    decoration: BoxDecoration(
-      border: Border(
-        bottom: BorderSide(color: ClayTokens.clayDarkBorder, width: 0.5),
-      ),
-    ),
-    child: Row(
-      children: [
-        const SizedBox(width: 32),
-        Expanded(
-          child: Text(
-            title,
-            textAlign: TextAlign.center,
-            style: ClayTokens.titleLarge.copyWith(
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
-              color: ClayTokens.clayDarkTextPrimary,
-              letterSpacing: -0.41,
-            ),
-          ),
-        ),
-        const SizedBox(width: 32),
-      ],
-    ),
-  );
-}
-
 class _DashboardContent extends StatelessWidget {
   final Map<String, dynamic> data;
 
@@ -213,7 +247,6 @@ class _DashboardContent extends StatelessWidget {
     final canChat = data['canChat'] as int;
     final expiringSoon = data['expiringSoon'] as int;
     final weekCounts = data['weekCounts'] as List<int>;
-    final memberRows = data['memberRows'] as List<dynamic>;
     final maxCount = weekCounts.reduce((a, b) => a > b ? a : 1).clamp(1, 100);
     final today = DateTime.now().weekday - 1;
     final labels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -297,29 +330,28 @@ class _DashboardContent extends StatelessWidget {
                         margin: const EdgeInsets.symmetric(horizontal: 2),
                         decoration: BoxDecoration(
                           borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-                          color: isFuture
-                              ? ClayTokens.clayDarkTextTertiary.withAlpha(30)
-                              : isToday
-                                  ? const Color(0xFF00F5B0)
-                                  : ClayTokens.clayPrimary,
+                        color: isFuture
+                            ? ClayTokens.clayDarkTextTertiary.withAlpha(50)
+                            : isToday
+                                ? ClayTokens.clayPrimaryDark
+                                : ClayTokens.clayPrimaryDark,
                         ),
                       ),
                     );
                   }),
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
               Row(
                 children: List.generate(7, (i) {
+                  final isToday = i == today;
                   return Expanded(
                     child: Text(labels[i],
                       textAlign: TextAlign.center,
-                      style: ClayTokens.labelMedium.copyWith(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: i == today ? const Color(0xFF00F5B0) : ClayTokens.clayDarkTextTertiary,
-                        letterSpacing: 0.06,
-                      ),
+                       style: TextStyle(
+                         fontSize: 10, fontWeight: FontWeight.w500,
+                         color: isToday ? ClayTokens.clayPrimaryDark : ClayTokens.clayDarkTextTertiary,
+                       ),
                     ),
                   );
                 }),
@@ -327,14 +359,6 @@ class _DashboardContent extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 16),
-        StaggeredFadeIn(
-          index: 4,
-          child: Text('Members',
-            style: ClayTokens.titleLarge.copyWith(fontSize: 17, fontWeight: FontWeight.w500, color: ClayTokens.clayDarkTextPrimary, letterSpacing: -0.41)),
-        ),
-        const SizedBox(height: 10),
-        ...memberRows.map((m) => _MemberRow(member: m as Map<String, dynamic>)),
         const SizedBox(height: 16),
       ],
     );
@@ -352,97 +376,29 @@ class _StatPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color bg;
-    Color border;
+    late Color bg;
     switch (style) {
       case _StatStyle.purple:
-        bg = ClayTokens.clayPrimary.withAlpha(15);
-        border = ClayTokens.clayPrimary.withAlpha(40);
+        bg = ClayTokens.clayPrimaryLight.withAlpha(25);
+        break;
       case _StatStyle.green:
-        bg = ClayTokens.clayAccent.withAlpha(15);
-        border = ClayTokens.clayAccent.withAlpha(40);
+        bg = ClayTokens.clayAccent.withAlpha(25);
+        break;
       case _StatStyle.amber:
-        bg = ClayTokens.clayWarning.withAlpha(15);
-        border = ClayTokens.clayWarning.withAlpha(40);
+        bg = ClayTokens.clayWarning.withAlpha(25);
+        break;
     }
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: border),
-      ),
-      child: Column(
+
+    return ClayCard(
+      variant: ClayCardVariant.elevated,
+      padding: ClayCardPadding.small,
+      backgroundColor: bg,
+      child: Row(
         children: [
           valueWidget,
-          const SizedBox(height: 2),
-          Text(label, style: ClayTokens.labelMedium.copyWith(fontSize: 11, fontWeight: FontWeight.w500, color: ClayTokens.clayDarkTextTertiary, letterSpacing: 0.06)),
+          const SizedBox(width: 6),
+          Text(label, style: TextStyle(fontSize: 11, color: ClayTokens.clayDarkTextTertiary, fontWeight: FontWeight.w500)),
         ],
-      ),
-    );
-  }
-}
-
-class _MemberRow extends StatelessWidget {
-  final Map<String, dynamic> member;
-
-  const _MemberRow({required this.member});
-
-  @override
-  Widget build(BuildContext context) {
-    final name = member['full_name'] as String? ?? 'Member';
-    final plan = member['planName'] as String? ?? 'Daily';
-    final days = member['daysInactive'] as int;
-    final flagged = member['flagged'] == true;
-    final initials = name.split(' ').map((n) => n[0]).take(2).join();
-    final subtitle = days >= 999
-        ? 'Never checked in'
-        : 'Last check-in ${days}d ago';
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: ClayCard(
-        variant: ClayCardVariant.outlined,
-        padding: ClayCardPadding.small,
-        onTap: () => context.push('/trainer/members/${member['id']}'),
-        child: Row(
-          children: [
-            ClayAvatar(initials: initials, size: ClayAvatarSize.md),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(name, style: ClayTokens.titleMedium.copyWith(color: ClayTokens.clayDarkTextPrimary)),
-                  const SizedBox(height: 1),
-                  Text(subtitle, style: ClayTokens.bodySmall.copyWith(color: ClayTokens.clayDarkTextTertiary)),
-                ],
-              ),
-            ),
-            Text(plan, style: ClayTokens.labelSmall.copyWith(color: ClayTokens.clayDarkTextTertiary)),
-            const SizedBox(width: 8),
-            if (flagged)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                decoration: BoxDecoration(
-                  color: ClayTokens.clayWarning.withAlpha(20),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: ClayTokens.clayWarning.withAlpha(50)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.warning_amber, size: 11, color: ClayTokens.clayWarning),
-                    const SizedBox(width: 3),
-                    Text(
-                      days >= 7 ? 'INACTIVE' : 'ABSENT',
-                      style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: ClayTokens.clayWarning),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-        ),
       ),
     );
   }
