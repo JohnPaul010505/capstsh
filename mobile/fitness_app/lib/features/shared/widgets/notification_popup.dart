@@ -253,8 +253,6 @@ class _PopupOverlayState extends ConsumerState<_PopupOverlay> {
 
     // Fixed card width
     const cardWidth = 340.0;
-    // Fixed card height
-    const cardHeight = 500.0;
     final cardLeft = (widget.position.dx + widget.size.width / 2) - (cardWidth / 2);
     final clampedCardLeft = cardLeft.clamp(8.0, screenWidth - cardWidth - 8);
 
@@ -279,22 +277,21 @@ class _PopupOverlayState extends ConsumerState<_PopupOverlay> {
           left: arrowLeft,
           child: CustomPaint(
             size: const Size(arrowWidth, arrowHeight),
-            painter: _ArrowPainter(ClayTokens.clayDarkBorder.withAlpha(70)), // match card background
+            painter: _ArrowPainter(ClayTokens.clayPrimaryLight.withAlpha(50)), // match card background
           ),
         ),
         Positioned(
           top: cardTop + arrowHeight,
           left: clampedCardLeft,
           width: cardWidth,
-          height: cardHeight,
           child: Material(
             color: Colors.transparent,
             child: Container(
-              constraints: const BoxConstraints(minHeight: 500, maxHeight: 500),
+              constraints: const BoxConstraints(minHeight: 100),
               decoration: BoxDecoration(
-                color: ClayTokens.clayDarkSurfaceElevated,
+                color: ClayTokens.clayPrimaryLight.withAlpha(50),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: ClayTokens.clayDarkBorder.withAlpha(100)),
+                border: Border.all(color: ClayTokens.clayPrimaryLight.withAlpha(50)),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withAlpha(100),
@@ -313,7 +310,7 @@ class _PopupOverlayState extends ConsumerState<_PopupOverlay> {
                       color: ClayTokens.clayDarkBase,
                       borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                       border: Border(
-                        bottom: BorderSide(color: ClayTokens.clayDarkBorder.withAlpha(100)),
+                        bottom: BorderSide(color: ClayTokens.clayPrimaryLight.withAlpha(50)),
                       ),
                     ),
                     child: Row(
@@ -426,10 +423,10 @@ class _NotificationItem extends StatelessWidget {
         decoration: BoxDecoration(
           color: notification.read
               ? Colors.transparent
-              : ClayTokens.clayPrimaryLight.withAlpha(15),
+              : ClayTokens.clayPrimaryLight.withAlpha(50),
           border: Border(
             bottom: BorderSide(
-              color: ClayTokens.clayDarkBorder.withAlpha(70),
+              color: ClayTokens.clayPrimaryLight.withAlpha(50),
               width: 0.5,
             ),
           ),
@@ -478,7 +475,7 @@ class _NotificationDetail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: ClayTokens.clayDarkSurfaceElevated,
+      color: ClayTokens.clayDarkBase,
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
