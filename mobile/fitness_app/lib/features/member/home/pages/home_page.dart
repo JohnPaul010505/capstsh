@@ -19,6 +19,7 @@ import '../../../shared/widgets/clay/clay_avatar.dart';
 import '../../../shared/widgets/clay_area_chart.dart';
 import '../../calendar/providers/calendar_seed_data.dart';
 import '../../../shared/widgets/notification_popup.dart';
+import '../../../shared/widgets/activity_status_badge.dart';
 
 // Kept alive for the whole session: independent queries run in parallel, and
 // the previous result stays cached so returning to Home renders instantly
@@ -360,7 +361,7 @@ class _HomeContentState extends State<HomeContent> {
             if (showMembershipCard)
               StaggeredFadeIn(index: 0, child: _MembershipCard(membership: membership, openSession: openSession)),
             if (showMembershipCard) const SizedBox(height: 8),
-            StaggeredFadeIn(index: offset, child: _MonthSummary(totalWorkouts: totalWorkouts, activeDays: activeDays)),
+            StaggeredFadeIn(index: offset, child: _MonthSummary(totalWorkouts: totalWorkouts, activeDays: activeDays, memberId: profile.id)),
             const SizedBox(height: 8),
             StaggeredFadeIn(index: 1 + offset, child: _WeekChart(weekCounts: weekCounts, maxCount: maxCount)),
             const SizedBox(height: 8),
@@ -409,19 +410,21 @@ class _GreetingRow extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(firstName, style: ClayTokens.displaySmall.copyWith(letterSpacing: 0, color: Color(0xFFA78BFA))),
-            const SizedBox(height: 2),
-            Row(
-              children: [
-                const AnimatedPulseDot(),
-                const SizedBox(width: 5),
-                Text(greeting, style: const TextStyle(fontSize: 11, color: Color(0xFF8E8E93), fontWeight: FontWeight.w500)),
-              ],
-            ),
-          ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(firstName, style: ClayTokens.displaySmall.copyWith(letterSpacing: 0, color: Color(0xFFA78BFA))),
+              const SizedBox(height: 2),
+              Row(
+                children: [
+                  const AnimatedPulseDot(),
+                  const SizedBox(width: 5),
+                  Text(greeting, style: const TextStyle(fontSize: 11, color: Color(0xFF8E8E93), fontWeight: FontWeight.w500)),
+                ],
+              ),
+            ],
+          ),
         ),
         Row(
           children: [
@@ -643,37 +646,71 @@ class _StatCard extends StatelessWidget {
   final Color iconColor;
   final Widget valueWidget;
   final String label;
+  final Widget? trailing;
 
   const _StatCard({
     required this.icon, required this.iconBg, required this.iconColor,
-    required this.valueWidget, required this.label,
+    required this.valueWidget, required this.label, this.trailing,
   });
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: ClayCard(
-        variant: ClayCardVariant.elevated,
-        padding: ClayCardPadding.small,
-        child: Row(
-          children: [
-            Container(
-              width: 30, height: 30,
-              decoration: BoxDecoration(
-                color: iconBg,
-                borderRadius: BorderRadius.circular(9),
+      child: SizedBox(
+        height: 86,
+        child: ClayCard(
+          variant: ClayCardVariant.outlined,
+          padding: ClayCardPadding.medium,
+          backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                height: 34,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 34, height: 34,
+                          decoration: BoxDecoration(
+                            color: iconBg,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(icon, size: 20, color: iconColor),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Baseline(
+                            baseline: 18,
+                            baselineType: TextBaseline.alphabetic,
+                            child: valueWidget,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (trailing != null)
+                      Positioned(
+                        right: 0,
+                        top: -8,
+                        child: trailing!,
+                      ),
+                  ],
+                ),
               ),
-              child: Icon(icon, size: 15, color: iconColor),
-            ),
-            const SizedBox(width: 7),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                valueWidget,
-                Text(label, style: TextStyle(fontSize: 9, color: ClayTokens.clayDarkTextTertiary)),
-              ],
-            ),
-          ],
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: ClayTokens.clayDarkTextPrimary,
+                  letterSpacing: 0.1,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -891,12 +928,18 @@ class _GrowthChart extends StatelessWidget {
 class _MonthSummary extends StatelessWidget {
   final int totalWorkouts;
   final int activeDays;
+  final String memberId;
 
-  const _MonthSummary({required this.totalWorkouts, required this.activeDays});
+  const _MonthSummary({
+    required this.totalWorkouts,
+    required this.activeDays,
+    required this.memberId,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         _StatCard(
           icon: Icons.fitness_center,
@@ -908,7 +951,6 @@ class _MonthSummary extends StatelessWidget {
           ),
           label: 'Workouts this month',
         ),
-        const SizedBox(width: 8),
         _StatCard(
           icon: Icons.calendar_month,
           iconBg: ClayTokens.clayPrimaryDark.withAlpha(30),
@@ -918,6 +960,7 @@ class _MonthSummary extends StatelessWidget {
             style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: ClayTokens.clayDarkTextPrimary),
           ),
           label: 'Active days',
+          trailing: ActivityStatusBadgeCompact(memberId: memberId, size: 50),
         ),
       ],
     );

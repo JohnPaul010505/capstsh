@@ -11,6 +11,7 @@ import '../../../shared/widgets/clay/clay_card.dart';
 import '../../../shared/widgets/clay/clay_avatar.dart';
 import '../../../shared/widgets/clay_area_chart.dart';
 import '../../../member/calendar/widgets/calendar_flip_sheet.dart';
+import '../../../shared/widgets/activity_status_badge.dart';
 
 final memberProgressDataProvider = FutureProvider.autoDispose.family<Map<String, dynamic>, String>((ref, memberId) async {
   final client = SupabaseClientService().client;
@@ -250,18 +251,25 @@ class _MemberProgressPageState extends ConsumerState<MemberProgressPage> {
                                 today: DateTime.now(),
                                 memberId: widget.id,
                               ),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [Color(0xFF7C3AED), Color(0xFFC56BF0)],
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  ActivityStatusBadgeSmall(memberId: widget.id, size: 45),
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      gradient: const LinearGradient(
+                                        colors: [Color(0xFF7C3AED), Color(0xFFC56BF0)],
+                                      ),
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: Text(
+                                      DateFormat('MMM d').format(DateTime.now()),
+                                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white),
+                                    ),
                                   ),
-                                  borderRadius: BorderRadius.circular(999),
-                                ),
-                                child: Text(
-                                  DateFormat('MMM d').format(DateTime.now()),
-                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white),
-                                ),
+                                ],
                               ),
                             ),
                           ],

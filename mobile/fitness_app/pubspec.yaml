@@ -40,3 +40,4 @@ flutter:
     - assets/.env
     - assets/
     - assets/profiles/
+    - assets/animations/

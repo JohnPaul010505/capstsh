@@ -5,6 +5,7 @@ import 'package:shared/models/profile.dart';
 import 'package:shared/services/supabase_client.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../shared/widgets/app_glow_background.dart';
+import '../../../shared/widgets/activity_status_badge.dart';
 
 final assignedMembersProvider = FutureProvider<List<Profile>>((ref) async {
   final client = SupabaseClientService().client;
@@ -84,6 +85,8 @@ class MembersListPage extends ConsumerWidget {
                                     ],
                                   ),
                                 ),
+                                ActivityStatusBadgeCompact(memberId: member.id, size: 22),
+                                const SizedBox(width: 8),
                                 Icon(Icons.chevron_right, color: ClayTokens.clayDarkTextTertiary, size: 18),
                               ],
                             ),

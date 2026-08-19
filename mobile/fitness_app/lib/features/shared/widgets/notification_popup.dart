@@ -33,7 +33,7 @@ class NotificationBell extends ConsumerWidget {
           clipBehavior: Clip.none,
           children: [
             Icon(
-              CupertinoIcons.bell,
+              isActive ? Icons.notifications : Icons.notifications_outlined,
               color: isActive ? ClayTokens.clayPrimary : ClayTokens.clayDarkTextPrimary,
               size: 22,
             ),
@@ -57,7 +57,7 @@ class NotificationBell extends ConsumerWidget {
         ),
       ),
       loading: () => const SizedBox(width: 22, height: 22),
-      error: (_, __) => Icon(CupertinoIcons.bell, color: ClayTokens.clayDarkTextPrimary, size: 22),
+      error: (_, __) => Icon(Icons.notifications_outlined, color: ClayTokens.clayDarkTextPrimary, size: 22),
     );
   }
 }
@@ -277,7 +277,7 @@ class _PopupOverlayState extends ConsumerState<_PopupOverlay> {
           left: arrowLeft,
           child: CustomPaint(
             size: const Size(arrowWidth, arrowHeight),
-            painter: _ArrowPainter(ClayTokens.clayPrimaryLight.withAlpha(50)), // match card background
+            painter: _ArrowPainter(ClayTokens.clayDarkBase), // same as header
           ),
         ),
         Positioned(
@@ -287,11 +287,11 @@ class _PopupOverlayState extends ConsumerState<_PopupOverlay> {
           child: Material(
             color: Colors.transparent,
             child: Container(
-              constraints: const BoxConstraints(minHeight: 100),
+              height: 500,
               decoration: BoxDecoration(
-                color: ClayTokens.clayPrimaryLight.withAlpha(50),
+                color: ClayTokens.clayDarkSurface,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: ClayTokens.clayPrimaryLight.withAlpha(50)),
+                border: Border.all(color: ClayTokens.clayDarkBorder.withAlpha(50)),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withAlpha(100),
@@ -310,7 +310,7 @@ class _PopupOverlayState extends ConsumerState<_PopupOverlay> {
                       color: ClayTokens.clayDarkBase,
                       borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                       border: Border(
-                        bottom: BorderSide(color: ClayTokens.clayPrimaryLight.withAlpha(50)),
+                        bottom: BorderSide(color: ClayTokens.clayDarkBorder.withAlpha(50)),
                       ),
                     ),
                     child: Row(
@@ -423,11 +423,11 @@ class _NotificationItem extends StatelessWidget {
         decoration: BoxDecoration(
           color: notification.read
               ? Colors.transparent
-              : ClayTokens.clayPrimaryLight.withAlpha(50),
+              : ClayTokens.clayDarkSurfaceElevated,
           border: Border(
             bottom: BorderSide(
-              color: ClayTokens.clayPrimaryLight.withAlpha(50),
-              width: 0.5,
+              color: ClayTokens.clayDarkBorder.withAlpha(100),
+              width: 1.0,
             ),
           ),
         ),
@@ -475,7 +475,7 @@ class _NotificationDetail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: ClayTokens.clayDarkBase,
+      color: ClayTokens.clayDarkSurface,
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

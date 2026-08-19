@@ -20,3 +20,4 @@ export 'services/meal_service.dart';
 export 'services/feedback_service.dart';
 export 'providers/auth_provider.dart';
 export 'providers/body_measurement_provider.dart';
+export 'providers/activity_status_provider.dart';

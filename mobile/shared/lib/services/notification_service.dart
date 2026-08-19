@@ -53,7 +53,36 @@ class NotificationService {
         // Re-fetch count when a new notification arrives
         unreadCount(userId).then((count) => controller.add(count));
       },
-    ).subscribe();
+    );
+    channel.onPostgresChanges(
+      event: PostgresChangeEvent.update,
+      schema: 'public',
+      table: 'notifications',
+      filter: PostgresChangeFilter(
+        type: PostgresChangeFilterType.eq,
+        column: 'user_id',
+        value: userId,
+      ),
+      callback: (payload) {
+        // Re-fetch count when a notification is updated (e.g., marked as read)
+        unreadCount(userId).then((count) => controller.add(count));
+      },
+    );
+    channel.onPostgresChanges(
+      event: PostgresChangeEvent.delete,
+      schema: 'public',
+      table: 'notifications',
+      filter: PostgresChangeFilter(
+        type: PostgresChangeFilterType.eq,
+        column: 'user_id',
+        value: userId,
+      ),
+      callback: (payload) {
+        // Re-fetch count when a notification is deleted
+        unreadCount(userId).then((count) => controller.add(count));
+      },
+    );
+    channel.subscribe();
 
     // Close controller when stream is cancelled
     controller.onCancel = () {
