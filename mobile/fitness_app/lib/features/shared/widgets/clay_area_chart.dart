@@ -135,7 +135,7 @@ class _AreaChartPainter extends CustomPainter {
     final gridPaint = Paint()
       ..color = ClayTokens.clayDarkBorder.withValues(alpha: 0.5)
       ..strokeWidth = 1;
-    for (final f in [0.25, 0.5, 0.75]) {
+    for (final f in [0.0, 0.25, 0.5, 0.75, 1.0]) {
       final y = topPad + f * plotHeight;
       for (double x = gutter; x < size.width; x += 6) {
         canvas.drawLine(
@@ -185,7 +185,7 @@ class _AreaChartPainter extends CustomPainter {
     // Line
     final linePaint = Paint()
       ..color = strokeColor
-      ..strokeWidth = 2
+      ..strokeWidth = 3
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
@@ -296,14 +296,15 @@ class _AreaChartPainter extends CustomPainter {
     double plotBottom,
     double Function(int) xFor,
   ) {
-    final top = plotBottom + 3;
+    final top = plotBottom + 8;
     for (var i = 0; i < labels.length; i++) {
       final tp = TextPainter(
         text: TextSpan(
           text: labels[i],
           style: TextStyle(
             fontSize: 8,
-            color: ClayTokens.clayDarkTextTertiary,
+            fontWeight: FontWeight.w800,
+            color: Colors.white,
           ),
         ),
         textDirection: TextDirection.ltr,

@@ -189,16 +189,59 @@ class HomePage extends ConsumerStatefulWidget {
   ConsumerState<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends ConsumerState<HomePage> {
+class _HomePageState extends ConsumerState<HomePage> with WidgetsBindingObserver {
   GoRouter? _router;
   bool _wasHome = true;
+  StreamSubscription? _attendanceSub;
+  StreamSubscription? _workoutSub;
+  Timer? _periodicInvalidateTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // Refresh on every visit while showing the cached data instantly.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) ref.invalidate(homeDataProvider);
+    });
+    _startRealtimeListeners();
+    _startPeriodicInvalidation();
+  }
+
+  void _startRealtimeListeners() {
+    final userId = SupabaseClientService().client.auth.currentUser?.id;
+    if (userId == null) return;
+
+    final client = SupabaseClientService().client;
+
+    // Attendance realtime listener
+    _attendanceSub = client
+        .from('attendance')
+        .stream(primaryKey: ['id'])
+        .eq('member_id', userId)
+        .listen((_) {
+          if (mounted) ref.invalidate(homeDataProvider);
+        });
+
+    // Workout logs realtime listener
+    _workoutSub = client
+        .from('workout_logs')
+        .stream(primaryKey: ['id'])
+        .eq('member_id', userId)
+        .listen((_) {
+          if (mounted) ref.invalidate(homeDataProvider);
+        });
+  }
+
+  void _startPeriodicInvalidation() {
+    _periodicInvalidateTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (mounted) {
+        // Only invalidate if the page is currently visible
+        final isHome = _router?.routerDelegate.currentConfiguration.uri.path == '/member/home';
+        if (isHome) {
+          ref.invalidate(homeDataProvider);
+        }
+      }
     });
   }
 
@@ -222,8 +265,19 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      ref.invalidate(homeDataProvider);
+    }
+  }
+
+  @override
   void dispose() {
     _router?.routerDelegate.removeListener(_onRouteChanged);
+    _attendanceSub?.cancel();
+    _workoutSub?.cancel();
+    _periodicInvalidateTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
@@ -333,7 +387,11 @@ class _HomeContentState extends State<HomeContent> {
     final maxCount = weekCounts.reduce((a, b) => a > b ? a : b).clamp(1, 100);
 
     final planName = membership?['plan_name'] as String?;
-    final showMembershipCard = membership != null && (planName != 'Daily' || openSession != null);
+    final endDate = membership?['end_date'] as String?;
+    final status = membership?['status'] as String? ?? 'active';
+    final parsedEndDate = endDate != null ? DateTime.tryParse(endDate) : null;
+    final isExpired = parsedEndDate != null && parsedEndDate.isBefore(DateTime.now());
+    final showMembershipCard = membership != null && status == 'active' && !isExpired && (planName != 'Daily' || openSession != null);
     final offset = showMembershipCard ? 1 : 0;
 
     return ListView(
@@ -493,7 +551,6 @@ class _MembershipCardState extends State<_MembershipCard> {
 
     final isActive = status == 'active';
     final isDaily = plan == 'Daily';
-    final statusColor = isActive ? ClayTokens.clayAccent : ClayTokens.clayWarning;
 
     final subtitle = isDaily && openSession != null
         ? 'Expires in ${_formatCountdown(DateTime.parse(openSession['expires_at'] as String))}'
@@ -502,13 +559,14 @@ class _MembershipCardState extends State<_MembershipCard> {
     return ClayCard(
       variant: ClayCardVariant.outlined,
       padding: ClayCardPadding.medium,
+      backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
       child: Row(
         children: [
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('MEMBERSHIP', style: ClayTokens.labelSmall.copyWith(color: ClayTokens.clayDarkTextTertiary)),
+                Text('MEMBERSHIP', style: ClayTokens.labelSmall.copyWith(color: ClayTokens.clayPrimaryLight)),
                 const SizedBox(height: 3),
                 Text(plan, style: ClayTokens.titleLarge.copyWith(color: ClayTokens.clayDarkTextPrimary)),
                 const SizedBox(height: 2),
@@ -521,13 +579,13 @@ class _MembershipCardState extends State<_MembershipCard> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
             decoration: BoxDecoration(
-              color: statusColor.withAlpha(25),
+              color: isActive ? ClayTokens.clayAccent.withAlpha(25) : ClayTokens.clayWarning.withAlpha(25),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: statusColor.withAlpha(60)),
+              border: Border.all(color: isActive ? ClayTokens.clayAccent.withAlpha(60) : ClayTokens.clayWarning.withAlpha(60)),
             ),
             child: Text(
               isActive ? 'ACTIVE' : status.toUpperCase(),
-              style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: statusColor),
+              style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: isActive ? Colors.white : ClayTokens.clayWarning),
             ),
           ),
         ],
@@ -567,7 +625,7 @@ class _WeekChartState extends State<_WeekChart> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('This Week', style: ClayTokens.titleMedium.copyWith(color: ClayTokens.clayDarkTextPrimary)),
+                  Text('This Week', style: ClayTokens.titleMedium.copyWith(fontWeight: FontWeight.w800, color: const Color(0xFFA78BFA))),
                   const SizedBox(height: 1),
                   if (_selectedDay != null)
                     AnimatedOpacity(
@@ -622,13 +680,12 @@ class _WeekChartState extends State<_WeekChart> {
           const SizedBox(height: 5),
           Row(
             children: List.generate(7, (i) {
-              final isToday = i == today;
               return Expanded(
                 child: Text(labels[i],
                   textAlign: TextAlign.center,
                    style: TextStyle(
-                     fontSize: 10, fontWeight: FontWeight.w500,
-                     color: isToday ? ClayTokens.clayPrimaryDark : ClayTokens.clayDarkTextTertiary,
+                     fontSize: 10, fontWeight: FontWeight.w800,
+                     color: Colors.white,
                    ),
                 ),
               );
@@ -812,14 +869,14 @@ class _YearChart extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
+Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      Text('This Month', style: ClayTokens.titleMedium.copyWith(color: ClayTokens.clayDarkTextPrimary)),
+                      Text('This Month', style: ClayTokens.titleMedium.copyWith(fontWeight: FontWeight.w800, color: const Color(0xFFA78BFA))),
                       const SizedBox(width: 6),
-                      Text(yearLabel, style: TextStyle(fontSize: 13, color: ClayTokens.clayPrimaryDark, fontWeight: FontWeight.w700)),
+                      Text(yearLabel, style: TextStyle(fontSize: 13, fontFamily: ClayTypography.headingFamily, fontWeight: FontWeight.w800, color: const Color(0xFFA78BFA))),
                     ],
                   ),
                 ],
@@ -827,12 +884,11 @@ class _YearChart extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                 decoration: BoxDecoration(
-                  color: ClayTokens.clayPrimaryLight.withAlpha(25),
+                  color: ClayTokens.clayPrimary,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: ClayTokens.clayPrimaryLight.withAlpha(50)),
                 ),
-                child: Text('Total: $totalWorkouts', style: TextStyle(fontSize: 10, color: ClayTokens.clayPrimaryLight, fontWeight: FontWeight.w700)),
-              ),
+                child: Text('Total: $totalWorkouts', style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w700)),
+                  ),
             ],
           ),
           const SizedBox(height: 12),
@@ -860,13 +916,16 @@ class _MonthlyValues extends StatelessWidget {
       if (i == current && monthlyCounts[i] == 0) return null;
       return monthlyCounts[i].toDouble();
     });
-    return ClayAreaChart(
-      values: values,
-      labels: _monthShort,
-      strokeColor: ClayTokens.clayPrimaryDark,
-      legendLabel: 'Check-ins per month',
-      showYAxis: false,
-      showValueLabels: true,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 3),
+      child: ClayAreaChart(
+        values: values,
+        labels: _monthShort,
+        strokeColor: ClayTokens.clayPrimaryDark,
+        legendLabel: 'Check-ins per month',
+        showYAxis: false,
+        showValueLabels: true,
+      ),
     );
   }
 }
@@ -887,37 +946,39 @@ class _GrowthChart extends StatelessWidget {
       backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Growth Over Time', style: ClayTokens.titleMedium.copyWith(color: ClayTokens.clayDarkTextPrimary)),
-                  const SizedBox(height: 2),
-                  Text('BMI per month', style: TextStyle(fontSize: 10, color: ClayTokens.clayDarkTextTertiary)),
-                ],
-              ),
-              if (latestWeight != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: ClayTokens.clayPrimaryLight.withAlpha(25),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: ClayTokens.clayPrimaryLight.withAlpha(50)),
+children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Growth Over Time', style: ClayTokens.titleMedium.copyWith(fontWeight: FontWeight.w800, color: const Color(0xFFA78BFA))),
+                          const SizedBox(height: 2),
+                          Text('BMI per month', style: TextStyle(fontSize: 10, fontFamily: ClayTypography.headingFamily, fontWeight: FontWeight.w800, color: const Color(0xFFA78BFA))),
+                        ],
+                      ),
+                      if (latestWeight != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: ClayTokens.clayPrimary,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(latestWeight.toStringAsFixed(1), style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w700)),
+                        ),
+                    ],
                   ),
-                  child: Text(latestWeight.toStringAsFixed(1), style: TextStyle(fontSize: 10, color: ClayTokens.clayPrimaryLight, fontWeight: FontWeight.w700)),
-                ),
-            ],
-          ),
           const SizedBox(height: 12),
-          ClayAreaChart(
-            values: monthlyWeights,
-            labels: _monthShort,
-            strokeColor: ClayTokens.clayPrimaryDark,
-            emptyMessage: 'No BMI data yet',
-            showValueLabels: true,
+          Padding(
+            padding: const EdgeInsets.only(bottom: 3),
+            child: ClayAreaChart(
+              values: monthlyWeights,
+              labels: _monthShort,
+              strokeColor: ClayTokens.clayPrimaryDark,
+              emptyMessage: 'No BMI data yet',
+              showValueLabels: true,
+            ),
           ),
         ],
       ),
