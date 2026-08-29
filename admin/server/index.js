@@ -7,7 +7,7 @@ import cors from 'cors'
 import { createClient } from '@supabase/supabase-js'
 
 const app = express()
-app.use(cors({ origin: ['http://localhost:5173', 'http://localhost:3000'], credentials: true }))
+app.use(cors({ origin: '*', credentials: true }))
 app.use(express.json())
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL
@@ -23,7 +23,7 @@ const adminClient = createClient(supabaseUrl, serviceRoleKey, {
 })
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', routes: ['enroll', 'users', 'delete-user', 'assign-trainer', 'unassign-trainer', 'backfill-auth', 'backfill-codes', 'ai/predictions'] })
+  res.json({ status: 'ok', routes: ['enroll', 'users', 'delete-user', 'assign-trainer', 'unassign-trainer', 'backfill-auth', 'backfill-codes', 'ai/predictions', 'ai/identify-food'] })
 })
 
 app.post('/api/enroll', async (req, res) => {
@@ -336,7 +336,7 @@ app.post('/api/ai/predictions', async (req, res) => {
   if (!member_id) return res.status(400).json({ error: 'Missing member_id' })
 
   try {
-    const response = await fetch(`http://localhost:8000/api/ai/predictions`, {
+    const response = await fetch(`http://localhost:8001/api/ai/predictions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(req.body),
@@ -410,6 +410,28 @@ app.post('/api/ai/predictions', async (req, res) => {
   }
 
   res.json(results)
+})
+
+app.post('/api/ai/identify-food', async (req, res) => {
+  const { image_url, top_k = 3 } = req.body
+  if (!image_url) return res.status(400).json({ error: 'Missing image_url' })
+
+  try {
+    const response = await fetch(`http://localhost:8001/api/ai/identify-food`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image_url, top_k }),
+      signal: AbortSignal.timeout(30000),
+    })
+    if (response.ok) {
+      const data = await response.json()
+      return res.json(data)
+    }
+    const err = await response.json().catch(() => ({ error: 'AI service error' }))
+    return res.status(response.status).json(err)
+  } catch (e) {
+    return res.status(502).json({ error: `AI service unreachable: ${e.message}` })
+  }
 })
 
 function simpleTrend(values, steps) {

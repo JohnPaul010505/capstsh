@@ -8,7 +8,7 @@ GEMINI_ENABLED = bool(GEMINI_API_KEY)
 if GEMINI_ENABLED:
     import google.generativeai as genai
     genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    model = genai.GenerativeModel("gemini-3.6-flash")
 
 def food_recommendations_ai(meal_type: str, recent_logs: list[dict], profile: dict) -> Optional[list[dict]]:
     if not GEMINI_ENABLED:
