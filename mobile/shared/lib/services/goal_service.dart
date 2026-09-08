@@ -34,4 +34,8 @@ class GoalService {
         .single();
     return Goal.fromJson(response);
   }
+
+  Future<void> deleteGoal(String id) async {
+    await _client.from('goals').delete().eq('id', id);
+  }
 }

@@ -187,10 +187,12 @@ class WorkoutSummary extends ConsumerWidget {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(name, style: const TextStyle(
-                              fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFFF2F5F7),
-                            )),
+                          Row(
+                            children: [
+                              Text(name, style: const TextStyle(
+                                fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFFF2F5F7),
+                              )),
+                            ],
                           ),
                         ],
                       ),

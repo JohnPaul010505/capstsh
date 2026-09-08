@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,6 +8,8 @@ import 'package:shared/services/supabase_client.dart';
 import 'package:shared/providers/auth_provider.dart';
 import '../../../shared/widgets/app_glow_background.dart';
 import '../../../shared/widgets/skeleton.dart';
+import '../../../shared/widgets/pressable.dart';
+import '../../../shared/widgets/animations.dart';
 
 final trainerProfileProvider = FutureProvider.autoDispose.family<Map<String, dynamic>, String>((ref, id) async {
   final client = SupabaseClientService().client;
@@ -95,6 +98,10 @@ class ProfilePage extends ConsumerWidget {
                   const SizedBox(height: 24),
                   const Divider(color: Color(0xFF38383A)),
                   const SizedBox(height: 8),
+                  Text('Features', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF8E8E93), decoration: TextDecoration.none)),
+                  const SizedBox(height: 8),
+                  _SettingItem(index: 1, icon: CupertinoIcons.flag, iconColor: Color(0xFFBF5AF2), label: 'Create Plan', onTap: () => context.go('/trainer/set-plan')),
+                  const SizedBox(height: 24),
                   InkWell(
                     onTap: () {
                       showDialog(
@@ -139,7 +146,7 @@ class ProfilePage extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 8),
                 ],
               );
             },
@@ -159,6 +166,48 @@ class ProfilePage extends ConsumerWidget {
               ),
             ),
             error: (e, _) => Center(child: Text('Error: $e', style: TextStyle(color: ClayTokens.clayError))),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SettingItem extends StatelessWidget {
+  final int index;
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+  final VoidCallback onTap;
+
+  const _SettingItem({
+    required this.index, required this.icon, required this.iconColor, required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return StaggeredFadeIn(
+      index: index,
+      child: Semantics(
+        label: label,
+        child: PressableCard(
+          onTap: onTap,
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
+          color: ClayTokens.clayPrimaryLight.withAlpha(25),
+          borderRadius: BorderRadius.circular(12),
+          border: const Border.fromBorderSide(BorderSide(color: Color(0x18FFFFFF))),
+          child: Row(
+            children: [
+              Icon(icon, color: iconColor, size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(label, style: const TextStyle(
+                  color: Color(0xFFFFFFFF), fontSize: 14,
+                )),
+              ),
+              const Icon(Icons.chevron_right, color: Color(0xFF8E8E93), size: 18),
+            ],
           ),
         ),
       ),

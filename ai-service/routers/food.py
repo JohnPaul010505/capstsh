@@ -2,11 +2,11 @@ from fastapi import APIRouter
 from schemas import MemberIdentifier, FoodRecommendation
 from services.gemini import food_recommendations_ai
 from services import db
-from datetime import date
+from typing import Any
 
 router = APIRouter()
 
-FALLBACKS: dict[str, list[dict]] = {
+FALLBACKS: dict[str, list[dict[str, Any]]] = {
     "breakfast": [
         {"food_name": "Oatmeal with Berries", "portion": "1 bowl (200g)", "calories": 280, "protein_g": 10, "carbs_g": 45, "fat_g": 6, "reason": "High fiber, slow-release energy"},
         {"food_name": "Greek Yogurt Parfait", "portion": "1 cup (250g)", "calories": 220, "protein_g": 20, "carbs_g": 25, "fat_g": 5, "reason": "Rich in protein and probiotics"},

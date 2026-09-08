@@ -10,7 +10,7 @@ void main() async {
   await dotenv.load(fileName: 'assets/.env');
   await SupabaseClientService().initialize(
     supabaseUrl: dotenv.env['SUPABASE_URL']!,
-    anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
+    publishableKey: dotenv.env['SUPABASE_ANON_KEY']!,
   );
   InteractionMonitor.instance.ensureStarted();
   runApp(const ProviderScope(child: FitnessApp()));

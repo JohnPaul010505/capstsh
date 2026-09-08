@@ -434,6 +434,49 @@ app.post('/api/ai/identify-food', async (req, res) => {
   }
 })
 
+app.get('/api/ai/search-met', async (req, res) => {
+  const { q } = req.query
+  if (!q || typeof q !== 'string' || q.length < 2) {
+    return res.json({ matches: [] })
+  }
+  try {
+    const response = await fetch(`http://localhost:8001/api/ai/search-met?q=${encodeURIComponent(q)}`, {
+      signal: AbortSignal.timeout(8000),
+    })
+    if (response.ok) {
+      const data = await response.json()
+      return res.json(data)
+    }
+    const err = await response.json().catch(() => ({ error: 'AI service error' }))
+    return res.status(response.status).json(err)
+  } catch (e) {
+    return res.status(502).json({ error: `AI service unreachable: ${e.message}` })
+  }
+})
+
+app.post('/api/ai/estimate-met', async (req, res) => {
+  const { exercise_name } = req.body
+  if (!exercise_name || typeof exercise_name !== 'string') {
+    return res.status(400).json({ error: 'exercise_name is required' })
+  }
+  try {
+    const response = await fetch(`http://localhost:8001/api/ai/estimate-met`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ exercise_name }),
+      signal: AbortSignal.timeout(30000),
+    })
+    if (response.ok) {
+      const data = await response.json()
+      return res.json(data)
+    }
+    const err = await response.json().catch(() => ({ error: 'AI service error' }))
+    return res.status(response.status).json(err)
+  } catch (e) {
+    return res.status(502).json({ error: `AI service unreachable: ${e.message}` })
+  }
+})
+
 function simpleTrend(values, steps) {
   const n = values.length
   const xMean = (n - 1) / 2

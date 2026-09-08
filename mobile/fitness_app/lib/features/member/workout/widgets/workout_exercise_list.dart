@@ -139,9 +139,13 @@ class _ExerciseCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        name,
-                        style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF)),
+                      Row(
+                        children: [
+                          Text(
+                            name,
+                            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF)),
+                          ),
+                        ],
                       ),
                       Text(
                         '${exercise.category} · MET ${exercise.met}',

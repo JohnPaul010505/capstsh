@@ -4,6 +4,7 @@ from services.ml import predict_trend, retention_risk
 from services import db
 from datetime import datetime, timezone
 from collections import Counter
+from typing import Any
 
 router = APIRouter()
 
@@ -11,13 +12,13 @@ router = APIRouter()
 async def get_predictions(req: PredictionRequest):
     results = []
     try:
-        mdata = db.select("body_measurements", "weight_kg, body_fat_pct, measured_at", member_id=req.member_id, order="measured_at.asc")
+        mdata = db.select("body_measurements", "weight_kg, body_fat_pct, measured_at", member_id=req.member_id, order="measured_at.asc")  # type: ignore[assignment]
     except Exception:
         mdata = []
     if mdata:
         weights = [m.get("weight_kg", 0) for m in mdata if m.get("weight_kg")]
         if weights:
-            pred = predict_trend(weights, req.days_ahead)
+            pred = predict_trend([float(x) for x in weights], req.days_ahead)  # type: ignore[arg-type]
             results.append(PredictionResult(
                 prediction_type="weight", current_value=weights[-1],
                 predicted_value=pred["predicted_value"], unit="kg",
@@ -25,14 +26,14 @@ async def get_predictions(req: PredictionRequest):
             ))
         bfs = [m.get("body_fat_pct", 0) for m in mdata if m.get("body_fat_pct")]
         if bfs:
-            pred = predict_trend(bfs, req.days_ahead)
+            pred = predict_trend([float(x) for x in bfs], req.days_ahead)  # type: ignore[arg-type]
             results.append(PredictionResult(
                 prediction_type="body_fat", current_value=bfs[-1],
                 predicted_value=pred["predicted_value"], unit="%",
                 days_ahead=req.days_ahead, confidence=pred["confidence"]
             ))
     try:
-        att_data = db.select("attendance", "check_in_time", member_id=req.member_id, order="check_in_time.desc", limit=30)
+        att_data = db.select("attendance", "check_in_time", member_id=req.member_id, order="check_in_time.desc", limit=30)  # type: ignore[assignment]
     except Exception:
         att_data = []
     if att_data:
@@ -55,7 +56,7 @@ async def get_predictions(req: PredictionRequest):
                 days_since = (datetime.now(timezone.utc) - last).days
             except Exception:
                 pass
-        ret = retention_risk(weekly_rates, days_since)
+        ret = retention_risk(weekly_rates, days_since)  # type: ignore[arg-type]
         results.append(PredictionResult(
             prediction_type="retention_risk", current_value=weekly_rates[-1] if weekly_rates else 0.5,
             predicted_value=ret["score"], unit="score (0-1)",

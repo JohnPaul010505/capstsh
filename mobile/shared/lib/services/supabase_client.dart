@@ -9,8 +9,8 @@ class SupabaseClientService {
 
   Future<void> initialize({
     required String supabaseUrl,
-    required String anonKey,
+    required String publishableKey,
   }) async {
-    await Supabase.initialize(url: supabaseUrl, anonKey: anonKey);
+    await Supabase.initialize(url: supabaseUrl, publishableKey: publishableKey);
   }
 }

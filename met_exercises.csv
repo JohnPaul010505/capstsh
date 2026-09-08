@@ -1,0 +1,141 @@
+name,category,met_value
+Bench Press,Chest,6.0
+Incline Bench Press,Chest,6.0
+Decline Bench Press,Chest,6.0
+Dumbbell Bench Press,Chest,6.0
+Incline Dumbbell Press,Chest,6.0
+Chest Fly Machine,Chest,5.0
+Dumbbell Fly,Chest,5.0
+Cable Fly,Chest,5.0
+Pec Deck,Chest,5.0
+Push-up,Chest,8.0
+Weighted Push-up,Chest,8.5
+Chest Dips,Chest,8.0
+Lat Pulldown,Back,5.0
+Pull-up,Back,8.0
+Chin-up,Back,8.0
+Assisted Pull-up,Back,5.5
+Barbell Row,Back,6.0
+Dumbbell Row,Back,6.0
+Seated Cable Row,Back,5.5
+T-Bar Row,Back,6.0
+Machine Row,Back,5.5
+Deadlift,Back,6.5
+Rack Pull,Back,6.0
+Straight Arm Pulldown,Back,5.0
+Overhead Press,Shoulders,6.0
+Dumbbell Shoulder Press,Shoulders,6.0
+Arnold Press,Shoulders,6.0
+Lateral Raise,Shoulders,5.0
+Front Raise,Shoulders,5.0
+Rear Delt Fly,Shoulders,5.0
+Face Pull,Shoulders,5.0
+Upright Row,Shoulders,5.5
+Shrugs,Shoulders,5.0
+Machine Shoulder Press,Shoulders,5.5
+Barbell Curl,Biceps,5.0
+Dumbbell Curl,Biceps,5.0
+Hammer Curl,Biceps,5.0
+Concentration Curl,Biceps,4.5
+Preacher Curl,Biceps,5.0
+Cable Curl,Biceps,5.0
+EZ Bar Curl,Biceps,5.0
+Incline Curl,Biceps,5.0
+Tricep Pushdown,Triceps,5.0
+Skull Crusher,Triceps,5.5
+Close Grip Bench Press,Triceps,6.0
+Tricep Dips,Triceps,7.5
+Overhead Extension,Triceps,5.0
+Rope Pushdown,Triceps,5.0
+Kickback,Triceps,4.5
+Bench Dip,Triceps,6.5
+Squat,Legs,6.5
+Front Squat,Legs,6.5
+Hack Squat,Legs,6.0
+Goblet Squat,Legs,6.0
+Bulgarian Split Squat,Legs,6.5
+Leg Press,Legs,6.0
+Walking Lunge,Legs,6.5
+Reverse Lunge,Legs,6.0
+Step-up,Legs,6.5
+Leg Extension,Legs,5.0
+Leg Curl,Legs,5.0
+Romanian Deadlift,Legs,6.5
+Stiff Leg Deadlift,Legs,6.5
+Hip Thrust,Legs,6.0
+Glute Bridge,Legs,5.0
+Standing Calf Raise,Legs,4.5
+Seated Calf Raise,Legs,4.5
+Sumo Squat,Legs,6.5
+Plank,Core,3.8
+Side Plank,Core,3.8
+Sit-up,Core,4.5
+Crunch,Core,4.0
+Bicycle Crunch,Core,6.0
+Russian Twist,Core,5.0
+Mountain Climber,Core,8.0
+Hanging Leg Raise,Core,6.0
+Reverse Crunch,Core,5.0
+Cable Crunch,Core,5.5
+Ab Wheel Rollout,Core,6.0
+V-up,Core,6.0
+Walking 3 km/h,Cardio Machines,2.8
+Walking 5 km/h,Cardio Machines,3.5
+Walking 6 km/h,Cardio Machines,4.8
+Incline Walking,Cardio Machines,6.0
+Jogging 8 km/h,Cardio Machines,8.3
+Running 10 km/h,Cardio Machines,9.8
+Running 12 km/h,Cardio Machines,11.5
+Sprinting,Cardio Machines,16.0
+Elliptical,Cardio Machines,5.5
+Rowing Machine Moderate,Cardio Machines,7.0
+Rowing Machine Vigorous,Cardio Machines,8.5
+Stair Climber,Cardio Machines,8.8
+Cycling Light,Cardio Machines,4.0
+Cycling Moderate,Cardio Machines,6.8
+Cycling Vigorous,Cardio Machines,8.8
+Air Bike,Cardio Machines,9.0
+Battle Rope,Functional Training,8.5
+Burpee,Functional Training,10.0
+Box Jump,Functional Training,9.0
+Kettlebell Swing,Functional Training,9.5
+Farmer Carry,Functional Training,7.0
+Tire Flip,Functional Training,9.0
+Sled Push,Functional Training,8.5
+Sled Pull,Functional Training,8.5
+Medicine Ball Slam,Functional Training,8.0
+Jump Rope Moderate,Functional Training,11.0
+Jump Rope Fast,Functional Training,12.3
+Bear Crawl,Functional Training,8.0
+Thruster,CrossFit / HIIT,9.0
+Wall Ball,CrossFit / HIIT,8.5
+Clean and Press,CrossFit / HIIT,8.5
+Snatch,CrossFit / HIIT,8.5
+Power Clean,CrossFit / HIIT,8.5
+Push Press,CrossFit / HIIT,8.0
+Push Jerk,CrossFit / HIIT,8.5
+Turkish Get-Up,CrossFit / HIIT,7.5
+EMOM Workout,CrossFit / HIIT,10.0
+AMRAP Workout,CrossFit / HIIT,10.5
+Tabata Workout,CrossFit / HIIT,11.0
+HIIT Circuit,CrossFit / HIIT,10.0
+Air Squat,Bodyweight,5.5
+Jump Squat,Bodyweight,8.0
+Walking Push-up,Bodyweight,8.0
+Pike Push-up,Bodyweight,8.0
+Superman,Bodyweight,3.5
+Bird Dog,Bodyweight,3.5
+Glute Kickback,Bodyweight,4.0
+Donkey Kick,Bodyweight,4.0
+High Knees,Bodyweight,9.0
+Jumping Jack,Bodyweight,8.0
+Lunges,Bodyweight,6.0
+Wall Sit,Bodyweight,4.5
+Stretching,Mobility & Recovery,2.3
+Dynamic Stretching,Mobility & Recovery,3.0
+Foam Rolling,Mobility & Recovery,2.0
+Yoga (Hatha),Mobility & Recovery,2.5
+Power Yoga,Mobility & Recovery,4.0
+Pilates,Mobility & Recovery,3.0
+Cool Down Walking,Mobility & Recovery,2.8
+Mobility Drills,Mobility & Recovery,3.0

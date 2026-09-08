@@ -1,16 +1,20 @@
 import os
 import json
-from typing import Optional
+from typing import Any, Optional
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GEMINI_ENABLED = bool(GEMINI_API_KEY)
 
 if GEMINI_ENABLED:
-    import google.generativeai as genai
-    genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel("gemini-3.6-flash")
+    import google.generativeai as genai  # type: ignore
+    genai.configure(api_key=GEMINI_API_KEY)  # type: ignore
+    model = genai.GenerativeModel("gemini-3.6-flash")  # type: ignore
 
-def food_recommendations_ai(meal_type: str, recent_logs: list[dict], profile: dict) -> Optional[list[dict]]:
+def food_recommendations_ai(
+    meal_type: str,
+    recent_logs: list[dict[str, Any]],
+    profile: dict[str, Any]
+) -> Optional[list[dict[str, Any]]]:
     if not GEMINI_ENABLED:
         return None
     try:
@@ -24,14 +28,18 @@ Recent meals: {logs_text or 'none'}.
 Suggest 3 healthier {meal_type or 'meal'} options. Return JSON array with: 
 food_name, portion, calories, protein_g, carbs_g, fat_g, reason.
 Keep it realistic and specific. Return ONLY valid JSON, no markdown."""
-        resp = model.generate_content(prompt)
+        resp = model.generate_content(prompt)  # type: ignore
         text = resp.text.strip().removeprefix("```json").removesuffix("```").strip()
         return json.loads(text)
     except Exception as e:
         print(f"Gemini food error: {e}")
         return None
 
-def goal_adjustments_ai(goals: list[dict], measurements: list[dict], profile: dict) -> Optional[list[dict]]:
+def goal_adjustments_ai(
+    goals: list[dict[str, Any]],
+    measurements: list[dict[str, Any]],
+    profile: dict[str, Any]
+) -> Optional[list[dict[str, Any]]]:
     if not GEMINI_ENABLED:
         return None
     try:
@@ -42,7 +50,7 @@ Goals: {goals_text or 'none'}.
 Recent measurements: {meas_text or 'none'}.
 Suggest 3 goal adjustments. Return JSON array with: goal_type, current_value, suggested_value, reason.
 Return ONLY valid JSON, no markdown."""
-        resp = model.generate_content(prompt)
+        resp = model.generate_content(prompt)  # type: ignore
         text = resp.text.strip().removeprefix("```json").removesuffix("```").strip()
         return json.loads(text)
     except Exception as e:

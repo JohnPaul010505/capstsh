@@ -8,6 +8,7 @@ import 'package:shared/services/workout_service.dart';
 import 'package:shared/providers/body_measurement_provider.dart';
 import 'package:shared/models/workout_log.dart';
 import '../../../shared/services/interaction_monitor.dart';
+import '../data/met_exercise_repository.dart' as repo;
 import '../data/met_exercise_catalog.dart';
 
 /// A single exercise added to the current session. Everything lives in memory
@@ -384,8 +385,26 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
         .key;
     if (category.isEmpty) return;
     final met = getMetValue(name);
+    _addExerciseInternal(SessionExercise(
+      name: name,
+      category: category,
+      met: met,
+    ));
+  }
+
+  /// Adds an exercise from the repository.
+  void addExerciseFromRepository(repo.MetExercise exercise) {
+    _addExerciseInternal(SessionExercise(
+      name: exercise.name,
+      category: exercise.category,
+      met: exercise.metValue,
+    ));
+  }
+
+  void _addExerciseInternal(SessionExercise exercise) {
+    if (state.isRunning || state.sessionEnded) return;
     state = WorkoutSessionState(
-      exercises: [...state.exercises, SessionExercise(name: name, category: category, met: met)],
+      exercises: [...state.exercises, exercise],
       isRunning: state.isRunning,
       elapsedSeconds: state.elapsedSeconds,
       startedAt: state.startedAt,

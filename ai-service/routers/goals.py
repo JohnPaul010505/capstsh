@@ -2,23 +2,24 @@ from fastapi import APIRouter
 from schemas import GoalAdjustRequest, GoalSuggestion
 from services.gemini import goal_adjustments_ai
 from services import db
+from typing import Any
 
 router = APIRouter()
 
 @router.post("/goal-adjustments", response_model=list[GoalSuggestion])
 async def get_goal_adjustments(req: GoalAdjustRequest):
     try:
-        goals = db.select("fitness_goals", "*", member_id=req.member_id)
+        goals = db.select("fitness_goals", "*", member_id=req.member_id)  # type: ignore[assignment]
     except Exception:
         goals = []
     try:
-        measurements = db.select("body_measurements", "*", member_id=req.member_id, order="measured_at.desc", limit=10)
+        measurements = db.select("body_measurements", "*", member_id=req.member_id, order="measured_at.desc", limit=10)  # type: ignore[assignment]
     except Exception:
         measurements = []
-    profile = {}
+    profile: dict[str, Any] = {}
     try:
         p = db.select_single("profiles", "full_name, age", id=req.member_id)
-        if p: profile = p
+        if p: profile = p  # type: ignore[assignment]
     except Exception:
         pass
     ai_result = goal_adjustments_ai(goals, measurements, profile)
@@ -26,9 +27,9 @@ async def get_goal_adjustments(req: GoalAdjustRequest):
         return [GoalSuggestion(**r) for r in ai_result[:3]]
     suggestions = []
     for g in goals:
-        c = g.get("current_value", 0) or 0
-        t = g.get("target_value", 0) or 0
-        pct = g.get("progress_pct", 0) or 0
+        c = float(g.get("current_value", 0) or 0)
+        t = float(g.get("target_value", 0) or 0)
+        pct = float(g.get("progress_pct", 0) or 0)
         if pct >= 100:
             suggestions.append(GoalSuggestion(
                 goal_type=g["goal_type"], current_value=c, suggested_value=t * 1.15,

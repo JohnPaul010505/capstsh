@@ -19,6 +19,8 @@ import '../features/trainer/progress/pages/member_progress_page.dart';
 import '../features/trainer/chat/pages/chat_list_page.dart';
 import '../features/trainer/chat/pages/chat_room_page.dart';
 import '../features/trainer/profile/pages/profile_page.dart' as trainer_profile;
+import 'package:fitness_app/features/trainer/set_plan/pages/create_plan_screen.dart';
+import 'package:fitness_app/features/trainer/set_plan/pages/plan_test.dart';
 import '../features/shared/checkin/checkin_page.dart';
 import '../features/shared/widgets/member_nav_bar.dart';
 import '../features/member/onboarding/pages/onboarding_splash_screen.dart';
@@ -29,12 +31,14 @@ final _trainerShellKey = GlobalKey<NavigatorState>();
 Page<dynamic> _iosPush(Widget child) => CustomTransitionPage(
   child: child,
   transitionsBuilder: (_, animation, __, child) {
-    final scale = Tween<double>(begin: 0.95, end: 1.0).animate(
-      CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-    );
-    final fade = Tween<double>(begin: 0.6, end: 1.0).animate(
-      CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-    );
+    final scale = Tween<double>(
+      begin: 0.95,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic));
+    final fade = Tween<double>(
+      begin: 0.6,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic));
     return FadeTransition(
       opacity: fade,
       child: ScaleTransition(scale: scale, child: child),
@@ -70,17 +74,30 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
       if (isLoggedIn && profile != null) {
         final loc = state.matchedLocation;
-        if (needsOnboarding && loc != '/member/onboarding') return '/member/onboarding';
-        if (profile.role == 'member' && loc.startsWith('/trainer')) return '/member/home';
-        if (profile.role == 'member' && loc.startsWith('/admin')) return '/member/home';
-        if (profile.role == 'trainer' && loc.startsWith('/member')) return '/trainer/dashboard';
-        if (profile.role == 'trainer' && loc.startsWith('/admin')) return '/trainer/dashboard';
+        if (needsOnboarding && loc != '/member/onboarding') {
+          return '/member/onboarding';
+        }
+        if (profile.role == 'member' && loc.startsWith('/trainer')) {
+          return '/member/home';
+        }
+        if (profile.role == 'member' && loc.startsWith('/admin')) {
+          return '/member/home';
+        }
+        if (profile.role == 'trainer' && loc.startsWith('/member')) {
+          return '/trainer/dashboard';
+        }
+        if (profile.role == 'trainer' && loc.startsWith('/admin')) {
+          return '/trainer/dashboard';
+        }
         if (profile.role == 'admin') return '/member/home';
       }
       return null;
     },
     routes: [
-      GoRoute(path: '/login', pageBuilder: (_, __) => _iosPush(const LoginPage())),
+      GoRoute(
+        path: '/login',
+        pageBuilder: (_, __) => _iosPush(const LoginPage()),
+      ),
       GoRoute(
         path: '/member/onboarding',
         pageBuilder: (_, __) => _iosPush(const OnboardingSplashScreen()),
@@ -89,47 +106,118 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state, navigationShell) =>
             MemberShell(navigationShell: navigationShell),
         branches: [
-          StatefulShellBranch(routes: [
-            GoRoute(path: '/member/home', pageBuilder: (_, __) => _iosPush(const HomePage())),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(path: '/member/workout', pageBuilder: (_, __) => _iosPush(const WorkoutPage())),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(path: '/member/checkin', pageBuilder: (_, __) => _iosPush(const CheckinPage(showBack: false))),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(path: '/member/meals', pageBuilder: (_, __) => _iosPush(const MealLogPage())),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(path: '/member/chat', pageBuilder: (_, __) => _iosPush(const ChatPage())),
-          ]),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/member/home',
+                pageBuilder: (_, __) => _iosPush(const HomePage()),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/member/workout',
+                pageBuilder: (_, __) => _iosPush(const WorkoutPage()),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/member/checkin',
+                pageBuilder: (_, __) =>
+                    _iosPush(const CheckinPage(showBack: false)),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/member/meals',
+                pageBuilder: (_, __) => _iosPush(const MealLogPage()),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/member/chat',
+                pageBuilder: (_, __) => _iosPush(const ChatPage()),
+              ),
+            ],
+          ),
         ],
       ),
-      GoRoute(path: '/member/settings', pageBuilder: (_, __) => _iosPush(const SettingsPage())),
-      GoRoute(path: '/member/goals', pageBuilder: (_, __) => _iosPush(const GoalsPage())),
-      GoRoute(path: '/member/feedback', pageBuilder: (_, __) => _iosPush(const FeedbackPage())),
-      GoRoute(path: '/member/bmi', pageBuilder: (_, __) => _iosPush(const BmiPage())),
-      GoRoute(path: '/member/notifications', pageBuilder: (_, __) => _iosPush(const NotificationsPage())),
+      GoRoute(
+        path: '/member/settings',
+        pageBuilder: (_, __) => _iosPush(const SettingsPage()),
+      ),
+      GoRoute(
+        path: '/member/goals',
+        pageBuilder: (_, __) => _iosPush(const GoalsPage()),
+      ),
+      GoRoute(
+        path: '/member/feedback',
+        pageBuilder: (_, __) => _iosPush(const FeedbackPage()),
+      ),
+      GoRoute(
+        path: '/member/bmi',
+        pageBuilder: (_, __) => _iosPush(const BmiPage()),
+      ),
+      GoRoute(
+        path: '/member/notifications',
+        pageBuilder: (_, __) => _iosPush(const NotificationsPage()),
+      ),
       ShellRoute(
         navigatorKey: _trainerShellKey,
         builder: (_, __, child) => TrainerShell(child: child),
         routes: [
-          GoRoute(path: '/trainer/dashboard', pageBuilder: (_, __) => _iosPush(const trainer.DashboardPage())),
+          GoRoute(
+            path: '/trainer/dashboard',
+            pageBuilder: (_, __) => _iosPush(const trainer.DashboardPage()),
+          ),
           GoRoute(
             path: '/trainer/members',
             pageBuilder: (_, __) => _iosPush(const ProgressListPage()),
             routes: [
-              GoRoute(path: ':id', pageBuilder: (_, state) => _iosPush(MemberProgressPage(id: state.pathParameters['id']!))),
+              GoRoute(
+                path: ':id',
+                pageBuilder: (_, state) => _iosPush(
+                  MemberProgressPage(id: state.pathParameters['id']!),
+                ),
+              ),
             ],
           ),
-          GoRoute(path: '/trainer/checkin', pageBuilder: (_, __) => _iosPush(const CheckinPage(showBack: false))),
-          GoRoute(path: '/trainer/chat', pageBuilder: (_, __) => _iosPush(const ChatListPage())),
-          GoRoute(path: '/trainer/chat/:roomId', pageBuilder: (_, state) => _iosPush(ChatRoomPage(roomId: state.pathParameters['roomId']!))),
-          GoRoute(path: '/trainer/profile', pageBuilder: (_, __) => _iosPush(const trainer_profile.ProfilePage())),
+          GoRoute(
+            path: '/trainer/checkin',
+            pageBuilder: (_, __) =>
+                _iosPush(const CheckinPage(showBack: false)),
+          ),
+          GoRoute(
+            path: '/trainer/chat',
+            pageBuilder: (_, __) => _iosPush(const ChatListPage()),
+          ),
+          GoRoute(
+            path: '/trainer/chat/:roomId',
+            pageBuilder: (_, state) =>
+                _iosPush(ChatRoomPage(roomId: state.pathParameters['roomId']!)),
+          ),
+          GoRoute(
+            path: '/trainer/profile',
+            pageBuilder: (_, __) =>
+                _iosPush(const trainer_profile.ProfilePage()),
+          ),
+          GoRoute(
+            path: '/trainer/set-plan',
+            pageBuilder: (_, __) => _iosPush(const CreatePlanScreen()),
+          ),
         ],
       ),
-      GoRoute(path: '/trainer/notifications', pageBuilder: (_, __) => _iosPush(const TrainerNotificationsPage())),
+      GoRoute(
+        path: '/trainer/notifications',
+        pageBuilder: (_, __) => _iosPush(const TrainerNotificationsPage()),
+      ),
     ],
   );
 });
@@ -197,11 +285,16 @@ class _TrainerShellState extends State<TrainerShell> {
   void _onTap(int index) {
     setState(() => _currentIndex = index);
     switch (index) {
-      case 0: context.go('/trainer/dashboard');
-      case 1: context.go('/trainer/members');
-      case 2: context.go('/trainer/checkin');
-      case 3: context.go('/trainer/chat');
-      case 4: context.go('/trainer/profile');
+      case 0:
+        context.go('/trainer/dashboard');
+      case 1:
+        context.go('/trainer/members');
+      case 2:
+        context.go('/trainer/checkin');
+      case 3:
+        context.go('/trainer/chat');
+      case 4:
+        context.go('/trainer/profile');
     }
   }
 

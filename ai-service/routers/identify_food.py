@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, HttpUrl
-from typing import Literal, List
+from pydantic import BaseModel
+from typing import List, Any
 import os
 import httpx
 import json
@@ -9,7 +9,7 @@ from io import BytesIO
 import numpy as np
 from PIL import Image as PILImage
 
-import google.generativeai as genai
+import google.generativeai as genai  # type: ignore
 
 from services import db
 
@@ -18,8 +18,8 @@ logger = logging.getLogger(__name__)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 BLUR_THRESHOLD = float(os.getenv("BLUR_THRESHOLD", "100.0"))
 if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel("gemini-3.6-flash")
+    genai.configure(api_key=GEMINI_API_KEY)  # type: ignore
+    model = genai.GenerativeModel("gemini-3.6-flash")  # type: ignore
 
 
 class IdentifyFoodRequest(BaseModel):
@@ -62,12 +62,12 @@ def _is_blurry(image: PILImage.Image, threshold: float = BLUR_THRESHOLD) -> bool
     return float(laplacian.var()) < threshold
 
 
-def _build_nutrition_lookup() -> dict[str, dict]:
+def _build_nutrition_lookup() -> dict[str, dict[str, Any]]:
     try:
-        rows = db.select("nutrition_foods", "food_name,aliases,category,serving_label,serving_size_g,calories_kcal,protein_g,carbs_g,fat_g,source")
+        rows = db.select("nutrition_foods", "food_name,aliases,category,serving_label,serving_size_g,calories_kcal,protein_g,carbs_g,fat_g,source")  # type: ignore[assignment]
     except Exception:
         rows = []
-    lookup: dict[str, dict] = {}
+    lookup: dict[str, dict[str, Any]] = {}
     for row in rows:
         name = (row.get("food_name") or "").strip().lower()
         if name:
@@ -79,7 +79,7 @@ def _build_nutrition_lookup() -> dict[str, dict]:
     return lookup
 
 
-def _match_nutrition(name: str, lookup: dict[str, dict]) -> dict | None:
+def _match_nutrition(name: str, lookup: dict[str, dict[str, Any]]) -> dict[str, Any] | None:
     key = name.strip().lower()
     return lookup.get(key)
 
@@ -114,7 +114,7 @@ async def identify_food(req: IdentifyFoodRequest):
 
     # Build known foods list for prompt constraint
     try:
-        rows = db.select("nutrition_foods", "food_name")
+        rows = db.select("nutrition_foods", "food_name")  # type: ignore[assignment]
         known_foods = [r["food_name"] for r in rows if r.get("food_name")]
     except Exception:
         known_foods = []
@@ -139,24 +139,24 @@ If the food is not in the known list, still return your best guess for "name" bu
     nutrition_lookup = _build_nutrition_lookup()
 
     try:
-        response = model.generate_content([prompt, img])
+        response = model.generate_content([prompt, img])  # type: ignore
         text = response.text.strip()
     except Exception as e:
         logger.error("Gemini vision error: %s", e)
         raise HTTPException(status_code=502, detail=f"Vision model error: {e}")
 
     # Extract JSON from response
-    candidates_raw = []
+    candidates_raw: list[dict[str, Any]] = []
     try:
-        parsed = json.loads(text)
-        candidates_raw = parsed.get("candidates", [])
+        parsed: dict[str, Any] = json.loads(text)
+        candidates_raw = parsed.get("candidates", [])  # type: ignore[assignment]
     except json.JSONDecodeError:
         start = text.find("{")
         end = text.rfind("}")
         if start != -1 and end != -1 and end > start:
             try:
-                parsed = json.loads(text[start:end + 1])
-                candidates_raw = parsed.get("candidates", [])
+                parsed = json.loads(text[start:end + 1])  # type: ignore[assignment]
+                candidates_raw = parsed.get("candidates", [])  # type: ignore[assignment]
             except json.JSONDecodeError:
                 pass
 
