@@ -51,10 +51,18 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
                   vertical: 16,
                 ),
                 children: [
-                  const CreateGoalCard(),
+                  CreateGoalCard(
+                    onGoalAdded: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text('Goal created'),
+                          backgroundColor: const Color(0xFF22C55E),
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                  ),
                   const SizedBox(height: 24),
-                  _buildMyGoalsHeader(),
-                  const SizedBox(height: 12),
                   goalsAsync.when(
                     data: (goals) => goals.isEmpty
                         ? const EmptyGoalsState()
@@ -66,10 +74,8 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
                             child: Column(
                               children: goals.asMap().entries.map((entry) {
                                 final g = entry.value;
-                                final isLast = entry.key == goals.length - 1;
                                 return GoalCard(
                                   goal: g,
-                                  isLast: isLast,
                                   onToggleStatus: () async {
                                     final currentStatus = g['status'] as String? ?? 'active';
                                     final newStatus = currentStatus == 'active' ? 'completed' : 'active';
@@ -156,34 +162,4 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
     );
   }
 
-  Widget _buildMyGoalsHeader() {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            'My Goals',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: textPrimary,
-              letterSpacing: -0.36,
-            ),
-          ),
-        ),
-        CupertinoButton(
-          padding: EdgeInsets.zero,
-          onPressed: () {},
-          child: Text(
-            'View All',
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              color: primaryPurple,
-              fontSize: 14,
-            ),
-          ),
-        ),
-        Icon(CupertinoIcons.chevron_right, color: primaryPurple, size: 18),
-      ],
-    );
-  }
 }
