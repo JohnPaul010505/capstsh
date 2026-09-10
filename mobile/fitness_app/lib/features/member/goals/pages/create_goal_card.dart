@@ -446,15 +446,8 @@ class _CreateGoalCardState extends ConsumerState<CreateGoalCard> {
       children: [
         Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: primaryPurple.withAlpha(20),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: primaryPurple, size: 18),
-            ),
-            const SizedBox(width: 12),
+            Icon(icon, color: textSecondary, size: 16),
+            const SizedBox(width: 10),
             Expanded(
               child: Text(
                 label,
@@ -468,8 +461,7 @@ class _CreateGoalCardState extends ConsumerState<CreateGoalCard> {
           ],
         ),
         const SizedBox(height: 8),
-        _DropdownField(
-          title: label,
+        DropdownField(
           value: value,
           items: items,
           iconBuilder: iconBuilder,
@@ -536,15 +528,14 @@ class _CreateGoalCardState extends ConsumerState<CreateGoalCard> {
   }
 }
 
-class _DropdownField extends StatefulWidget {
-  final String title;
+class DropdownField extends StatefulWidget {
   final String? value;
   final List<String> items;
   final IconData Function(String) iconBuilder;
   final ValueChanged<String?> onChanged;
 
-  const _DropdownField({
-    required this.title,
+  const DropdownField({
+    super.key,
     required this.value,
     required this.items,
     required this.iconBuilder,
@@ -552,205 +543,231 @@ class _DropdownField extends StatefulWidget {
   });
 
   @override
-  State<_DropdownField> createState() => _DropdownFieldState();
+  State<DropdownField> createState() => _DropdownFieldState();
 }
 
-class _DropdownFieldState extends State<_DropdownField> {
+class _DropdownFieldState extends State<DropdownField> {
   bool _open = false;
+  OverlayEntry? _overlayEntry;
+  final LayerLink _layerLink = LayerLink();
 
-  Future<void> _showPicker() async {
+  @override
+  void dispose() {
+    _overlayEntry?.remove();
+    super.dispose();
+  }
+
+  void _openMenu() {
+    if (_overlayEntry != null) return;
     setState(() => _open = true);
-    final selected = await showModalBottomSheet<String>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      barrierColor: Colors.black54,
-      builder: (_) => _SelectionSheet(
-        title: widget.title,
-        items: widget.items,
-        selected: widget.value,
-        iconBuilder: widget.iconBuilder,
+    _overlayEntry = _buildOverlay();
+    Overlay.of(context).insert(_overlayEntry!);
+  }
+
+  void _close() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+    if (_open) setState(() => _open = false);
+  }
+
+  OverlayEntry _buildOverlay() {
+    final box = context.findRenderObject() as RenderBox;
+    final targetLocal = box.localToGlobal(Offset.zero);
+    final screenHeight = MediaQuery.of(context).size.height;
+    final spaceBelow = screenHeight - targetLocal.dy - box.size.height;
+    final menuHeight = widget.items.length * 52.0 + 12;
+
+    return OverlayEntry(
+      builder: (_) => Stack(
+        children: [
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: _close,
+            ),
+          ),
+          CompositedTransformFollower(
+            link: _layerLink,
+            offset: Offset.zero,
+            showWhenUnlinked: false,
+            child: _DropdownMenu(
+              value: widget.value,
+              items: widget.items,
+              iconBuilder: widget.iconBuilder,
+              onChanged: (value) {
+                widget.onChanged(value);
+                _close();
+              },
+              width: box.size.width,
+              prefersBelow: spaceBelow >= menuHeight,
+            ),
+          ),
+        ],
       ),
     );
-    if (mounted) setState(() => _open = false);
-    if (selected != null) widget.onChanged(selected);
   }
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: _showPicker,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeInOut,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        decoration: BoxDecoration(
-          color: inputDark,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: _open ? primaryPurple.withAlpha(80) : Colors.transparent,
+    return CompositedTransformTarget(
+      link: _layerLink,
+      child: GestureDetector(
+        onTap: _openMenu,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          decoration: BoxDecoration(
+            color: inputDark,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: _open ? primaryPurple.withAlpha(80) : Colors.transparent,
+            ),
           ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: primaryPurple.withAlpha(15),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
+          child: Row(
+            children: [
+              Icon(
                 widget.iconBuilder(widget.value ?? ''),
                 color: highlightPurple,
                 size: 16,
               ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                widget.value ?? 'Select...',
-                style: TextStyle(
-                  color: textPrimary,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  widget.value ?? 'Select...',
+                  style: TextStyle(
+                    color: textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
-            ),
-            AnimatedRotation(
-              turns: _open ? 0.5 : 0,
-              duration: const Duration(milliseconds: 200),
-              child: Icon(
-                CupertinoIcons.chevron_down,
-                color: textSecondary,
-                size: 16,
+              AnimatedRotation(
+                turns: _open ? 0.5 : 0,
+                duration: const Duration(milliseconds: 200),
+                child: Icon(
+                  CupertinoIcons.chevron_down,
+                  color: textSecondary,
+                  size: 16,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _SelectionSheet extends StatelessWidget {
-  final String title;
+class _DropdownMenu extends StatelessWidget {
+  final String? value;
   final List<String> items;
-  final String? selected;
   final IconData Function(String) iconBuilder;
+  final ValueChanged<String?> onChanged;
+  final double width;
+  final bool prefersBelow;
 
-  const _SelectionSheet({
-    required this.title,
+  const _DropdownMenu({
+    required this.value,
     required this.items,
-    required this.selected,
     required this.iconBuilder,
+    required this.onChanged,
+    required this.width,
+    required this.prefersBelow,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: cardDark,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      child: SafeArea(
-        top: false,
+    final menu = Material(
+      color: Colors.transparent,
+      child: Container(
+        width: width,
+        decoration: BoxDecoration(
+          color: cardDark,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: primaryPurple.withAlpha(20)),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+          children: items
+              .map(
+                (item) => _MenuItem(
+                  item: item,
+                  iconBuilder: iconBuilder,
+                  isSelected: item == value,
+                  onTap: () => onChanged(item),
+                ),
+              )
+              .toList(),
+        ),
+      ),
+    );
+
+    if (prefersBelow) {
+      return menu;
+    }
+
+    final overlay = Overlay.of(context);
+    final box = overlay.context.findRenderObject() as RenderBox?;
+    final top = box?.localToGlobal(Offset.zero).dy ?? 0;
+    final estimatedHeight = items.length * 52.0 + 12;
+    final flippedTop = (top - estimatedHeight).clamp(0.0, top);
+
+    return Positioned(
+      top: flippedTop,
+      left: 0,
+      child: menu,
+    );
+  }
+}
+
+class _MenuItem extends StatelessWidget {
+  final String item;
+  final IconData Function(String) iconBuilder;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _MenuItem({
+    required this.item,
+    required this.iconBuilder,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: isSelected ? primaryPurple.withAlpha(15) : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
           children: [
-            const SizedBox(height: 10),
-            Center(
-              child: Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: textSecondary.withAlpha(60),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
+            Icon(
+              iconBuilder(item),
+              color: isSelected ? highlightPurple : textSecondary,
+              size: 16,
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+            const SizedBox(width: 10),
+            Expanded(
               child: Text(
-                title,
+                item,
                 style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                  color: textPrimary,
+                  fontSize: 14,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                  color: isSelected ? textPrimary : textSecondary,
                 ),
               ),
             ),
-            Flexible(
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: items.map((item) {
-                    final isSelected = item == selected;
-                    return GestureDetector(
-                      onTap: () => Navigator.pop(context, item),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 150),
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 2,
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 12,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? primaryPurple.withAlpha(15)
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? primaryPurple.withAlpha(25)
-                                    : primaryPurple.withAlpha(10),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Icon(
-                                iconBuilder(item),
-                                color: isSelected
-                                    ? highlightPurple
-                                    : textSecondary,
-                                size: 18,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                item,
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: isSelected
-                                      ? FontWeight.w600
-                                      : FontWeight.w400,
-                                  color: isSelected
-                                      ? textPrimary
-                                      : textSecondary,
-                                ),
-                              ),
-                            ),
-                            if (isSelected)
-                              Icon(
-                                CupertinoIcons.checkmark_circle_fill,
-                                color: highlightPurple,
-                                size: 20,
-                              ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
+            if (isSelected)
+              Icon(
+                CupertinoIcons.checkmark_circle_fill,
+                color: highlightPurple,
+                size: 18,
               ),
-            ),
-            const SizedBox(height: 12),
           ],
         ),
       ),
