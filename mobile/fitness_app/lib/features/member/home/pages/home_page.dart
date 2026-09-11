@@ -472,13 +472,13 @@ class _GreetingRow extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(firstName, style: ClayTokens.displaySmall.copyWith(letterSpacing: 0, color: Color(0xFFA78BFA))),
+              Text(firstName, style: ClayTokens.displaySmall.copyWith(letterSpacing: 0, color: Colors.white)),
               const SizedBox(height: 2),
               Row(
                 children: [
                   const AnimatedPulseDot(),
                   const SizedBox(width: 5),
-                  Text(greeting, style: const TextStyle(fontSize: 11, color: Color(0xFF8E8E93), fontWeight: FontWeight.w500)),
+                  Text(greeting, style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w500)),
                 ],
               ),
             ],
@@ -637,7 +637,7 @@ class _WeekChartState extends State<_WeekChart> {
                       ),
                     )
                   else
-                    Text('Tap a bar for details', style: TextStyle(fontSize: 10, color: ClayTokens.clayDarkTextTertiary)),
+                     Text('Tap a bar for details', style: TextStyle(fontSize: 10, color: Colors.white)),
                 ],
               ),
             ],
@@ -699,75 +699,66 @@ class _WeekChartState extends State<_WeekChart> {
 
 class _StatCard extends StatelessWidget {
   final IconData icon;
-  final Color iconBg;
   final Color iconColor;
   final Widget valueWidget;
   final String label;
   final Widget? trailing;
 
   const _StatCard({
-    required this.icon, required this.iconBg, required this.iconColor,
-    required this.valueWidget, required this.label, this.trailing,
+    required this.icon, required this.iconColor,
+    required this.valueWidget,
+    required this.label, this.trailing,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: SizedBox(
-        height: 86,
-        child: ClayCard(
-          variant: ClayCardVariant.outlined,
-          padding: ClayCardPadding.medium,
-          backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                height: 34,
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 34, height: 34,
-                          decoration: BoxDecoration(
-                            color: iconBg,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(icon, size: 20, color: iconColor),
+    return SizedBox(
+      height: 86,
+      child: ClayCard(
+        variant: ClayCardVariant.outlined,
+        padding: ClayCardPadding.medium,
+        backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              height: 34,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Row(
+                    children: [
+                      Icon(icon, size: 20, color: iconColor),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Baseline(
+                          baseline: 18,
+                          baselineType: TextBaseline.alphabetic,
+                          child: valueWidget,
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Baseline(
-                            baseline: 18,
-                            baselineType: TextBaseline.alphabetic,
-                            child: valueWidget,
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (trailing != null)
-                      Positioned(
-                        right: 0,
-                        top: -8,
-                        child: trailing!,
                       ),
-                  ],
-                ),
+                    ],
+                  ),
+                  if (trailing != null)
+                    Positioned(
+                      right: 0,
+                      top: -8,
+                      child: trailing!,
+                    ),
+                ],
               ),
-              const SizedBox(height: 2),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: ClayTokens.clayDarkTextPrimary,
-                  letterSpacing: 0.1,
-                ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: ClayTokens.clayDarkTextPrimary,
+                letterSpacing: 0.1,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -869,7 +860,7 @@ class _YearChart extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-Column(
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
@@ -878,6 +869,11 @@ Column(
                       const SizedBox(width: 6),
                       Text(yearLabel, style: TextStyle(fontSize: 13, fontFamily: ClayTypography.headingFamily, fontWeight: FontWeight.w800, color: const Color(0xFFA78BFA))),
                     ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Check-ins per month',
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.white),
                   ),
                 ],
               ),
@@ -922,7 +918,6 @@ class _MonthlyValues extends StatelessWidget {
         values: values,
         labels: _monthShort,
         strokeColor: ClayTokens.clayPrimaryDark,
-        legendLabel: 'Check-ins per month',
         showYAxis: false,
         showValueLabels: true,
       ),
@@ -955,7 +950,7 @@ children: [
                         children: [
                           Text('Growth Over Time', style: ClayTokens.titleMedium.copyWith(fontWeight: FontWeight.w800, color: const Color(0xFFA78BFA))),
                           const SizedBox(height: 2),
-                          Text('BMI per month', style: TextStyle(fontSize: 10, fontFamily: ClayTypography.headingFamily, fontWeight: FontWeight.w800, color: const Color(0xFFA78BFA))),
+                           Text('BMI per month', style: TextStyle(fontSize: 10, fontFamily: ClayTypography.headingFamily, fontWeight: FontWeight.w800, color: Colors.white)),
                         ],
                       ),
                       if (latestWeight != null)
@@ -1000,28 +995,30 @@ class _MonthSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _StatCard(
-          icon: Icons.fitness_center,
-          iconBg: ClayTokens.clayPrimaryLight.withAlpha(30),
-          iconColor: ClayTokens.clayPrimaryLight,
-          valueWidget: AnimatedCountUp(
-            target: totalWorkouts,
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: ClayTokens.clayDarkTextPrimary),
+        Expanded(
+          child: _StatCard(
+            icon: Icons.fitness_center,
+            iconColor: ClayTokens.clayPrimaryLight,
+            valueWidget: AnimatedCountUp(
+              target: totalWorkouts,
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: ClayTokens.clayDarkTextPrimary),
+            ),
+            label: 'Workouts this month',
           ),
-          label: 'Workouts this month',
         ),
-        _StatCard(
-          icon: Icons.calendar_month,
-          iconBg: ClayTokens.clayPrimaryDark.withAlpha(30),
-          iconColor: ClayTokens.clayPrimaryDark,
-          valueWidget: AnimatedCountUp(
-            target: activeDays,
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: ClayTokens.clayDarkTextPrimary),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _StatCard(
+            icon: Icons.calendar_month,
+            iconColor: ClayTokens.clayPrimaryDark,
+            valueWidget: AnimatedCountUp(
+              target: activeDays,
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: ClayTokens.clayDarkTextPrimary),
+            ),
+            label: 'Active days',
+            trailing: ActivityStatusBadgeCompact(memberId: memberId, size: 50),
           ),
-          label: 'Active days',
-          trailing: ActivityStatusBadgeCompact(memberId: memberId, size: 50),
         ),
       ],
     );

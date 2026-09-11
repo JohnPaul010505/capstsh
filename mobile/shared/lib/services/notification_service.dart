@@ -91,4 +91,17 @@ class NotificationService {
 
     return controller.stream;
   }
+
+  Future<void> createNotification({
+    required String userId,
+    required String title,
+    String? body,
+  }) async {
+    await _client.from('notifications').insert({
+      'user_id': userId,
+      'title': title,
+      'body': body,
+      'read': false,
+    });
+  }
 }

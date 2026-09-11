@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared/services/supabase_client.dart';
+import '../../../../app/design_tokens.dart';
 import '../../../shared/widgets/app_glow_background.dart';
+import '../../../shared/widgets/clay/clay_card.dart';
 
 class CreatePlanScreen extends ConsumerStatefulWidget {
   const CreatePlanScreen({super.key});
@@ -15,6 +17,7 @@ class CreatePlanScreen extends ConsumerStatefulWidget {
 
 class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
   String? selectedClient;
+  String? selectedClientName;
   String? selectedWorkoutType;
   final TextEditingController notesController = TextEditingController();
   final TextEditingController foodSearchController = TextEditingController();
@@ -47,6 +50,7 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
       members = (response as List).cast<Map<String, dynamic>>();
       if (members != null && members!.isNotEmpty) {
         selectedClient = members!.first['id'] as String?;
+        selectedClientName = members!.first['full_name'] as String?;
       }
     });
   }
@@ -162,72 +166,77 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
         ];
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0B0D1A),
+      backgroundColor: ClayTokens.clayDarkBase,
       body: AppGlowBackground(
         child: SafeArea(
           child: Column(
             children: [
               _buildHeader(),
               Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 8),
-                      _ClientSection(
-                        members: membersList,
-                        selectedClient: selectedClient,
-                        onChanged: (value) {
-                          setState(() => selectedClient = value);
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      _NutritionSection(
-                        foods: foods,
-                        searchController: foodSearchController,
-                        onAddFood: _addFood,
-                        onRemoveFood: _removeFood,
-                      ),
-                      const SizedBox(height: 16),
-                      _TrainingSection(
-                        exercises: exercises,
-                        workoutType: selectedWorkoutType,
-                        workoutTypes: const [
-                          'Strength Training',
-                          'Cardio',
-                          'HIIT',
-                          'Full Body',
-                          'Upper Body',
-                          'Lower Body',
-                          'Push',
-                          'Pull',
-                          'Legs',
-                          'Mobility',
-                          'Custom',
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  children: [
+                    ClayCard(
+                      variant: ClayCardVariant.outlined,
+                      padding: ClayCardPadding.large,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _ClientSection(
+                            members: membersList,
+                            selectedClient: selectedClient,
+                            onChanged: (value) {
+                              setState(() => selectedClient = value);
+                            },
+                          ),
+                          const SizedBox(height: 16),
+                          _NutritionSection(
+                            foods: foods,
+                            searchController: foodSearchController,
+                            onAddFood: _addFood,
+                            onRemoveFood: _removeFood,
+                          ),
+                          const SizedBox(height: 16),
+                          _TrainingSection(
+                            exercises: exercises,
+                            workoutType: selectedWorkoutType,
+                            workoutTypes: const [
+                              'Strength Training',
+                              'Cardio',
+                              'HIIT',
+                              'Full Body',
+                              'Upper Body',
+                              'Lower Body',
+                              'Push',
+                              'Pull',
+                              'Legs',
+                              'Mobility',
+                              'Custom',
+                            ],
+                            nameController: exerciseNameController,
+                            setsController: setsController,
+                            repsController: repsController,
+                            weightController: weightController,
+                            onWorkoutTypeChanged: (value) {
+                              setState(() => selectedWorkoutType = value);
+                            },
+                            onAddExercise: _addExercise,
+                            onRemoveExercise: _removeExercise,
+                          ),
+                          const SizedBox(height: 16),
+                          _NotesSection(
+                            controller: notesController,
+                          ),
+                          const SizedBox(height: 20),
+                          _AssignPlanButton(
+                            onPressed: isSaving ? null : _assignPlan,
+                            isLoading: isSaving,
+                          ),
+                          const SizedBox(height: 16),
                         ],
-                        nameController: exerciseNameController,
-                        setsController: setsController,
-                        repsController: repsController,
-                        weightController: weightController,
-                        onWorkoutTypeChanged: (value) {
-                          setState(() => selectedWorkoutType = value);
-                        },
-                        onAddExercise: _addExercise,
-                        onRemoveExercise: _removeExercise,
                       ),
-                      const SizedBox(height: 16),
-                      _NotesSection(
-                        controller: notesController,
-                      ),
-                      const SizedBox(height: 20),
-                      _AssignPlanButton(
-                        onPressed: isSaving ? null : _assignPlan,
-                        isLoading: isSaving,
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -238,61 +247,30 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
   }
 
   Widget _buildHeader() {
-    return Padding(
+    return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: Row(
         children: [
-          Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFF7C3AED).withAlpha(25),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: CupertinoButton(
-              padding: const EdgeInsets.all(10),
-              onPressed: () {
-                if (Navigator.of(context).canPop()) {
-                  context.pop();
-                } else {
-                  context.go('/trainer/dashboard');
-                }
-              },
-              child: const Icon(CupertinoIcons.back, color: Color(0xFF7C3AED), size: 20),
+          CupertinoButton(
+            padding: EdgeInsets.zero,
+            onPressed: () => context.go('/trainer/profile'),
+            child: Icon(
+              CupertinoIcons.back,
+              color: ClayTokens.clayPrimary,
             ),
           ),
-          const SizedBox(width: 14),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Create Plan',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFFFFFFFF),
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Assign a personalized plan',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFFA0A4B8),
-                  ),
-                ),
-              ],
+            child: Text(
+              'Create Plan',
+              textAlign: TextAlign.center,
+              style: ClayTokens.darkHeadlineSmall.copyWith(
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+                letterSpacing: -0.41,
+              ),
             ),
           ),
-          Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFF7C3AED).withAlpha(25),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            padding: const EdgeInsets.all(10),
-            child: const Icon(CupertinoIcons.checkmark, color: Color(0xFF7C3AED), size: 20),
-          ),
+          const SizedBox(width: 32),
         ],
       ),
     );
@@ -315,55 +293,22 @@ class _ClientSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF7C3AED).withAlpha(20),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(CupertinoIcons.person, color: Color(0xFF7C3AED), size: 18),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'CLIENT',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFFFFFFFF),
-                fontSize: 13,
-                letterSpacing: 1.2,
-              ),
-            ),
-          ],
+        Text(
+          'CLIENT',
+          style: ClayTokens.darkTitleSmall.copyWith(
+            letterSpacing: 1.2,
+          ),
         ),
         const SizedBox(height: 10),
-        Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFF15172A),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButtonFormField<String>(
-              initialValue: selectedClient,
-              decoration: const InputDecoration(
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(vertical: 12),
-              ),
-              hint: const Text('Select Client *'),
-              items: members.map((member) {
-                return DropdownMenuItem<String>(
-                  value: member['id'] as String?,
-                  child: Text(
-                    member['full_name'] as String? ?? '',
-                    style: const TextStyle(color: Color(0xFFFFFFFF)),
-                  ),
-                );
-              }).toList(),
-              onChanged: onChanged,
-            ),
-          ),
+        DropdownField<String>(
+          value: selectedClient,
+          items: members.map((member) {
+            final name = member['full_name'] as String? ?? '';
+            final id = member['id'] as String? ?? '';
+            return DropdownItem<String>(label: name, value: id);
+          }).toList(),
+          onChanged: onChanged,
+          placeholder: 'Select Client',
         ),
       ],
     );
@@ -393,33 +338,17 @@ class _NutritionSectionState extends State<_NutritionSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF7C3AED).withAlpha(20),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(CupertinoIcons.flame, color: Color(0xFF7C3AED), size: 18),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'NUTRITION PLAN',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFFFFFFFF),
-                fontSize: 13,
-                letterSpacing: 1.2,
-              ),
-            ),
-          ],
+        Text(
+          'NUTRITION PLAN',
+          style: ClayTokens.darkTitleSmall.copyWith(
+            letterSpacing: 1.2,
+          ),
         ),
         const SizedBox(height: 10),
         Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF15172A),
-            borderRadius: BorderRadius.circular(16),
+            color: ClayTokens.clayDarkSurfaceElevated,
+            borderRadius: BorderRadius.circular(ClayTokens.radiusLg),
           ),
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -437,36 +366,50 @@ class _NutritionSectionState extends State<_NutritionSection> {
               Row(
                 children: [
                   Expanded(
-                    child: Container(
+                    child: CupertinoTextField(
+                      controller: widget.searchController,
+                      placeholder: 'Search or enter food',
+                      placeholderStyle: ClayTokens.darkBodyMedium.copyWith(color: ClayTokens.clayDarkTextTertiary),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1E2035),
-                        borderRadius: BorderRadius.circular(10),
+                        color: ClayTokens.clayDarkBase,
+                        borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: TextField(
-                        controller: widget.searchController,
-                        style: const TextStyle(color: Color(0xFFFFFFFF)),
-                        decoration: const InputDecoration(
-                          border: InputBorder.none,
-                          hintText: 'Search or enter food',
-                          hintStyle: TextStyle(color: Color(0xFFA0A4B8)),
-                        ),
-                        onSubmitted: (_) => widget.onAddFood(),
-                      ),
+                      style: ClayTokens.darkBodyMedium,
+                      cursorColor: ClayTokens.clayPrimary,
+                      onSubmitted: (_) => widget.onAddFood(),
                     ),
                   ),
                   const SizedBox(width: 8),
                   CupertinoButton(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    color: const Color(0xFF7C3AED),
-                    borderRadius: BorderRadius.circular(10),
+                    color: ClayTokens.clayPrimary,
+                    borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
                     onPressed: widget.onAddFood,
-                    child: const Text('Add', style: TextStyle(color: Color(0xFFFFFFFF))),
+                    child: Text('Add', style: ClayTokens.darkBodyMedium.copyWith(color: Color(0xFFFFFFFF))),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
-              if (widget.foods.isNotEmpty) ...[
+              if (widget.foods.isEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: ClayTokens.clayDarkBase,
+                    borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(CupertinoIcons.add_circled, color: ClayTokens.clayPrimaryLight, size: 20),
+                      const SizedBox(width: 10),
+                      Text(
+                        'No foods added yet',
+                        style: ClayTokens.darkBodyMedium.copyWith(color: ClayTokens.clayDarkTextTertiary),
+                      ),
+                    ],
+                  ),
+                )
+              else ...[
                 const Text(
                   'Added Foods',
                   style: TextStyle(
@@ -483,21 +426,21 @@ class _NutritionSectionState extends State<_NutritionSection> {
                     margin: const EdgeInsets.only(bottom: 8),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1E2035),
-                      borderRadius: BorderRadius.circular(12),
+                      color: ClayTokens.clayDarkSurface,
+                      borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
                     ),
                     child: Row(
                       children: [
                         Expanded(
                           child: Text(
                             food['name'] ?? '',
-                            style: const TextStyle(color: Color(0xFFFFFFFF)),
+                            style: ClayTokens.darkBodyMedium,
                           ),
                         ),
                         CupertinoButton(
                           padding: const EdgeInsets.all(4),
                           onPressed: () => widget.onRemoveFood(index),
-                          child: const Icon(CupertinoIcons.delete, color: Color(0xFFFF453A), size: 18),
+                          child: Icon(CupertinoIcons.delete, color: ClayTokens.clayError, size: 18),
                         ),
                       ],
                     ),
@@ -547,33 +490,17 @@ class _TrainingSectionState extends State<_TrainingSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF7C3AED).withAlpha(20),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(CupertinoIcons.heart, color: Color(0xFF7C3AED), size: 18),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'TRAINING PLAN',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFFFFFFFF),
-                fontSize: 13,
-                letterSpacing: 1.2,
-              ),
-            ),
-          ],
+        Text(
+          'TRAINING PLAN',
+          style: ClayTokens.darkTitleSmall.copyWith(
+            letterSpacing: 1.2,
+          ),
         ),
         const SizedBox(height: 10),
         Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF15172A),
-            borderRadius: BorderRadius.circular(16),
+            color: ClayTokens.clayDarkSurfaceElevated,
+            borderRadius: BorderRadius.circular(ClayTokens.radiusLg),
           ),
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -588,29 +515,13 @@ class _TrainingSectionState extends State<_TrainingSection> {
                 ),
               ),
               const SizedBox(height: 8),
-              Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1E2035),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButtonFormField<String>(
-                    initialValue: widget.workoutType,
-                    decoration: const InputDecoration(
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    hint: const Text('Select workout type'),
-                    items: widget.workoutTypes
-                        .map((type) => DropdownMenuItem<String>(
-                              value: type,
-                              child: Text(type, style: const TextStyle(color: Color(0xFFFFFFFF))),
-                            ))
-                        .toList(),
-                    onChanged: widget.onWorkoutTypeChanged,
-                  ),
-                ),
+              DropdownField<String>(
+                value: widget.workoutType,
+                items: widget.workoutTypes.map((type) {
+                  return DropdownItem<String>(label: type, value: type);
+                }).toList(),
+                onChanged: widget.onWorkoutTypeChanged,
+                placeholder: 'Select workout type',
               ),
               const SizedBox(height: 12),
               const Text(
@@ -622,15 +533,34 @@ class _TrainingSectionState extends State<_TrainingSection> {
                 ),
               ),
               const SizedBox(height: 8),
-              ...widget.exercises.asMap().entries.map((entry) {
+              if (widget.exercises.isEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: ClayTokens.clayDarkBase,
+                    borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(CupertinoIcons.add_circled, color: ClayTokens.clayPrimaryLight, size: 20),
+                      const SizedBox(width: 10),
+                      Text(
+                        'No exercises added yet',
+                        style: ClayTokens.darkBodyMedium.copyWith(color: ClayTokens.clayDarkTextTertiary),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                ...widget.exercises.asMap().entries.map((entry) {
                 final index = entry.key;
                 final exercise = entry.value;
                 return Container(
                   margin: const EdgeInsets.only(bottom: 8),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1E2035),
-                    borderRadius: BorderRadius.circular(12),
+                    color: ClayTokens.clayDarkSurface,
+                    borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
                   ),
                   child: Row(
                     children: [
@@ -640,18 +570,12 @@ class _TrainingSectionState extends State<_TrainingSection> {
                           children: [
                             Text(
                               exercise['name'] ?? '',
-                              style: const TextStyle(
-                                color: Color(0xFFFFFFFF),
-                                fontWeight: FontWeight.w600,
-                              ),
+                              style: ClayTokens.darkBodyMedium.copyWith(fontWeight: FontWeight.w600),
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              '${exercise['sets'] ?? 0} sets × ${exercise['reps'] ?? 0} reps${exercise['weight'] != null && exercise['weight'].toString().isNotEmpty ? ' • ${exercise['weight']} kg' : ''}',
-                              style: const TextStyle(
-                                color: Color(0xFFA0A4B8),
-                                fontSize: 12,
-                              ),
+                              '${exercise['sets'] ?? 0} sets Ã— ${exercise['reps'] ?? 0} reps${exercise['weight'] != null && exercise['weight'].toString().isNotEmpty ? ' â€¢ ${exercise['weight']} kg' : ''}',
+                              style: ClayTokens.darkBodySmall,
                             ),
                           ],
                         ),
@@ -659,7 +583,7 @@ class _TrainingSectionState extends State<_TrainingSection> {
                       CupertinoButton(
                         padding: const EdgeInsets.all(4),
                         onPressed: () => widget.onRemoveExercise(index),
-                        child: const Icon(CupertinoIcons.delete, color: Color(0xFFFF453A), size: 18),
+                        child: Icon(CupertinoIcons.delete, color: ClayTokens.clayError, size: 18),
                       ),
                     ],
                   ),
@@ -668,8 +592,8 @@ class _TrainingSectionState extends State<_TrainingSection> {
               const SizedBox(height: 8),
               Container(
                 decoration: BoxDecoration(
-                  border: Border.all(color: const Color(0xFF7C3AED).withAlpha(80)),
-                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: ClayTokens.clayPrimary.withAlpha(128)),
+                  borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
                 ),
                 child: CupertinoButton(
                   padding: const EdgeInsets.symmetric(vertical: 12),
@@ -698,55 +622,55 @@ class _TrainingSectionState extends State<_TrainingSection> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF15172A),
-        title: const Text('Add Exercise', style: TextStyle(color: Color(0xFFFFFFFF))),
+        backgroundColor: ClayTokens.clayDarkCard,
+        title: Text('Add Exercise', style: ClayTokens.darkHeadlineSmall),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: widget.nameController,
-                style: const TextStyle(color: Color(0xFFFFFFFF)),
-                decoration: const InputDecoration(
+                style: ClayTokens.darkBodyMedium,
+                decoration: InputDecoration(
                   labelText: 'Exercise Name',
-                  labelStyle: TextStyle(color: Color(0xFFA0A4B8)),
+                  labelStyle: ClayTokens.darkBodyMedium.copyWith(color: ClayTokens.clayDarkTextTertiary),
                   filled: true,
-                  fillColor: Color(0xFF1E2035),
+                  fillColor: ClayTokens.clayDarkSurfaceElevated,
                 ),
               ),
               const SizedBox(height: 8),
               TextField(
                 controller: widget.setsController,
-                style: const TextStyle(color: Color(0xFFFFFFFF)),
-                decoration: const InputDecoration(
+                style: ClayTokens.darkBodyMedium,
+                decoration: InputDecoration(
                   labelText: 'Sets',
-                  labelStyle: TextStyle(color: Color(0xFFA0A4B8)),
+                  labelStyle: ClayTokens.darkBodyMedium.copyWith(color: ClayTokens.clayDarkTextTertiary),
                   filled: true,
-                  fillColor: Color(0xFF1E2035),
+                  fillColor: ClayTokens.clayDarkSurfaceElevated,
                 ),
                 keyboardType: TextInputType.number,
               ),
               const SizedBox(height: 8),
               TextField(
                 controller: widget.repsController,
-                style: const TextStyle(color: Color(0xFFFFFFFF)),
-                decoration: const InputDecoration(
+                style: ClayTokens.darkBodyMedium,
+                decoration: InputDecoration(
                   labelText: 'Reps',
-                  labelStyle: TextStyle(color: Color(0xFFA0A4B8)),
+                  labelStyle: ClayTokens.darkBodyMedium.copyWith(color: ClayTokens.clayDarkTextTertiary),
                   filled: true,
-                  fillColor: Color(0xFF1E2035),
+                  fillColor: ClayTokens.clayDarkSurfaceElevated,
                 ),
                 keyboardType: TextInputType.number,
               ),
               const SizedBox(height: 8),
               TextField(
                 controller: widget.weightController,
-                style: const TextStyle(color: Color(0xFFFFFFFF)),
-                decoration: const InputDecoration(
+                style: ClayTokens.darkBodyMedium,
+                decoration: InputDecoration(
                   labelText: 'Weight (kg)',
-                  labelStyle: TextStyle(color: Color(0xFFA0A4B8)),
+                  labelStyle: ClayTokens.darkBodyMedium.copyWith(color: ClayTokens.clayDarkTextTertiary),
                   filled: true,
-                  fillColor: Color(0xFF1E2035),
+                  fillColor: ClayTokens.clayDarkSurfaceElevated,
                 ),
                 keyboardType: TextInputType.number,
               ),
@@ -756,15 +680,15 @@ class _TrainingSectionState extends State<_TrainingSection> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel', style: TextStyle(color: Color(0xFFA0A4B8))),
+            child: Text('Cancel', style: ClayTokens.darkBodyMedium.copyWith(color: ClayTokens.clayDarkTextTertiary)),
           ),
           ElevatedButton(
             onPressed: () {
               widget.onAddExercise();
               Navigator.of(ctx).pop();
             },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF7C3AED)),
-            child: const Text('Add Exercise', style: TextStyle(color: Color(0xFFFFFFFF))),
+            style: ElevatedButton.styleFrom(backgroundColor: ClayTokens.clayPrimary),
+            child: Text('Add Exercise', style: ClayTokens.darkBodyMedium.copyWith(color: Color(0xFFFFFFFF))),
           ),
         ],
       ),
@@ -782,33 +706,17 @@ class _NotesSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF7C3AED).withAlpha(20),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(CupertinoIcons.doc_text, color: Color(0xFF7C3AED), size: 18),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'NOTES',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFFFFFFFF),
-                fontSize: 13,
-                letterSpacing: 1.2,
-              ),
-            ),
-          ],
+        Text(
+          'NOTES',
+          style: ClayTokens.darkTitleSmall.copyWith(
+            letterSpacing: 1.2,
+          ),
         ),
         const SizedBox(height: 10),
         Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF15172A),
-            borderRadius: BorderRadius.circular(16),
+            color: ClayTokens.clayDarkSurfaceElevated,
+            borderRadius: BorderRadius.circular(ClayTokens.radiusLg),
           ),
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -826,14 +734,14 @@ class _NotesSection extends StatelessWidget {
               TextField(
                 controller: controller,
                 maxLines: 5,
-                style: const TextStyle(color: Color(0xFFFFFFFF)),
+                style: ClayTokens.darkBodyMedium,
                 decoration: InputDecoration(
                   hintText: 'Add instructions, rest days, intensity, or trainer notes...',
-                  hintStyle: const TextStyle(color: Color(0xFFA0A4B8)),
+                  hintStyle: ClayTokens.darkBodyMedium.copyWith(color: ClayTokens.clayDarkTextTertiary),
                   filled: true,
-                  fillColor: const Color(0xFF1E2035),
+                  fillColor: ClayTokens.clayDarkSurface,
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
                   ),
                 ),
               ),
@@ -863,29 +771,241 @@ class _AssignPlanButton extends StatelessWidget {
         gradient: const LinearGradient(
           colors: [Color(0xFF7C3AED), Color(0xFFA855F7)],
         ),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(ClayTokens.radiusButton),
       ),
       child: CupertinoButton(
         padding: EdgeInsets.zero,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(ClayTokens.radiusButton),
         onPressed: onPressed,
         child: isLoading
             ? const CupertinoActivityIndicator(color: Color(0xFFFFFFFF))
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  Icon(CupertinoIcons.checkmark, color: Color(0xFFFFFFFF), size: 20),
-                  SizedBox(width: 8),
-                  Text(
-                    'Assign Plan',
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFFFFFFFF),
-                    ),
-                  ),
-                ],
+            : const Text(
+                'Assign Plan',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFFFFFFFF),
+                ),
               ),
+      ),
+    );
+  }
+}
+
+class DropdownItem<T> {
+  final String label;
+  final T value;
+  const DropdownItem({required this.label, required this.value});
+}
+
+class DropdownField<T> extends StatefulWidget {
+  final String? placeholder;
+  final T? value;
+  final List<DropdownItem<T>> items;
+  final ValueChanged<T?> onChanged;
+
+  const DropdownField({
+    super.key,
+    this.placeholder,
+    required this.value,
+    required this.items,
+    required this.onChanged,
+  });
+
+  @override
+  State<DropdownField<T>> createState() => _DropdownFieldState<T>();
+}
+
+class _DropdownFieldState<T> extends State<DropdownField<T>> {
+  bool _open = false;
+  OverlayEntry? _overlayEntry;
+  final LayerLink _layerLink = LayerLink();
+
+  @override
+  void dispose() {
+    _overlayEntry?.remove();
+    super.dispose();
+  }
+
+  void _openMenu() {
+    if (_overlayEntry != null) return;
+    setState(() => _open = true);
+    _overlayEntry = _buildOverlay();
+    Overlay.of(context).insert(_overlayEntry!);
+  }
+
+  void _close() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+    if (_open) setState(() => _open = false);
+  }
+
+  OverlayEntry _buildOverlay() {
+    final box = context.findRenderObject() as RenderBox;
+
+    return OverlayEntry(
+      builder: (_) => Stack(
+        children: [
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: _close,
+            ),
+          ),
+          CompositedTransformFollower(
+            link: _layerLink,
+            offset: Offset.zero,
+            showWhenUnlinked: false,
+            child: _DropdownMenu<T>(
+              value: widget.value,
+              items: widget.items,
+              onChanged: (value) {
+                widget.onChanged(value);
+                _close();
+              },
+              width: box.size.width,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    String? selectedLabel;
+    if (widget.value != null) {
+      for (final item in widget.items) {
+        if (item.value == widget.value) {
+          selectedLabel = item.label;
+          break;
+        }
+      }
+    }
+
+    return CompositedTransformTarget(
+      link: _layerLink,
+      child: GestureDetector(
+        onTap: _openMenu,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          decoration: BoxDecoration(
+            color: ClayTokens.clayDarkBase,
+            borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
+            border: Border.all(
+              color: _open ? ClayTokens.clayPrimary.withAlpha(128) : Colors.transparent,
+            ),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  selectedLabel ?? widget.placeholder ?? 'Select...',
+                  style: ClayTokens.darkBodyMedium.copyWith(
+                    color: widget.value != null ? ClayTokens.clayDarkTextPrimary : ClayTokens.clayDarkTextTertiary,
+                  ),
+                ),
+              ),
+              AnimatedRotation(
+                turns: _open ? 0.5 : 0,
+                duration: const Duration(milliseconds: 200),
+                child: Icon(
+                  CupertinoIcons.chevron_down,
+                  color: ClayTokens.clayDarkTextTertiary,
+                  size: 16,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DropdownMenu<T> extends StatelessWidget {
+  final T? value;
+  final List<DropdownItem<T>> items;
+  final ValueChanged<T?> onChanged;
+  final double width;
+
+  const _DropdownMenu({
+    required this.value,
+    required this.items,
+    required this.onChanged,
+    required this.width,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        width: width,
+        decoration: BoxDecoration(
+          color: ClayTokens.clayDarkCard,
+          borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
+          border: Border.all(color: ClayTokens.clayPrimary.withAlpha(40)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: items
+              .map(
+                (item) => _MenuItem<T>(
+                  item: item,
+                  isSelected: item.value == value,
+                  onTap: () => onChanged(item.value),
+                ),
+              )
+              .toList(),
+        ),
+      ),
+    );
+  }
+}
+
+class _MenuItem<T> extends StatelessWidget {
+  final DropdownItem<T> item;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _MenuItem({
+    required this.item,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: isSelected ? ClayTokens.clayPrimary.withAlpha(25) : Colors.transparent,
+          borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                item.label,
+                style: ClayTokens.darkBodyMedium.copyWith(
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                  color: isSelected ? ClayTokens.clayDarkTextPrimary : ClayTokens.clayDarkTextSecondary,
+                ),
+              ),
+            ),
+            if (isSelected)
+              Icon(
+                CupertinoIcons.checkmark_circle_fill,
+                color: ClayTokens.clayPrimaryLight,
+                size: 18,
+              ),
+          ],
+        ),
       ),
     );
   }

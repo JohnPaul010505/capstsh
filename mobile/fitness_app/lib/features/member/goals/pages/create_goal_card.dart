@@ -1,7 +1,10 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/services/supabase_client.dart';
+import 'package:shared/providers/body_measurement_provider.dart';
+import 'package:shared/services/notification_service.dart';
 import '../../../../app/design_tokens.dart';
 import 'date_card.dart';
 
@@ -30,37 +33,6 @@ const List<String> _timeframeValues = [
   'Custom',
 ];
 
-IconData _goalTypeIcon(String type) {
-  switch (type) {
-    case 'Lose Weight':
-      return CupertinoIcons.arrow_down_right;
-    case 'Gain Muscle':
-      return Icons.fitness_center;
-    case 'Maintain Weight':
-      return Icons.balance;
-    default:
-      return CupertinoIcons.flag;
-  }
-}
-
-IconData _timeframeIcon(String timeframe) {
-  switch (timeframe) {
-    case '1 Week':
-    case '2 Weeks':
-      return CupertinoIcons.clock;
-    case '1 Month':
-    case '2 Months':
-    case '3 Months':
-    case '6 Months':
-    case '1 Year':
-      return CupertinoIcons.calendar;
-    case 'Custom':
-      return CupertinoIcons.slider_horizontal_3;
-    default:
-      return CupertinoIcons.calendar;
-  }
-}
-
 class CreateGoalCard extends ConsumerStatefulWidget {
   final VoidCallback? onGoalAdded;
 
@@ -71,7 +43,6 @@ class CreateGoalCard extends ConsumerStatefulWidget {
 }
 
 class _CreateGoalCardState extends ConsumerState<CreateGoalCard> {
-  final _titleController = TextEditingController();
   final _targetController = TextEditingController();
   String? goalType = 'Lose Weight';
   String? timeframe = '1 Month';
@@ -79,78 +50,172 @@ class _CreateGoalCardState extends ConsumerState<CreateGoalCard> {
   DateTime endDate = DateTime.now().add(const Duration(days: 30));
   bool _saving = false;
   bool _justCreated = false;
+  String? _validationMessage;
+  String? _targetError;
+  bool _maintainLocked = false;
 
   @override
   void dispose() {
-    _titleController.dispose();
     _targetController.dispose();
     super.dispose();
   }
 
-  Future<void> _save() async {
-    if (_titleController.text.trim().isEmpty) return;
-    setState(() => _saving = true);
+  Future<void> _validateTarget() async {
+    if (_maintainLocked) return;
     final targetValue = double.tryParse(_targetController.text);
-    if (goalType == 'Gain Muscle' && targetValue != null) {
-      final currentWeight = await _getCurrentWeight();
-      if (currentWeight != null && targetValue <= currentWeight) {
-        if (mounted) {
-          await showDialog(
-            context: context,
-            builder: (_) => AlertDialog(
-              backgroundColor: ClayTokens.clayDarkSurface,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              title: const Text(
-                'Adjust target weight',
-                style: TextStyle(color: Colors.white),
-              ),
-              content: Text(
-                'Your current weight is ${currentWeight.toStringAsFixed(1)} kg. For "Gain Muscle", choose a target above that.',
-                style: const TextStyle(color: Color(0xFFB4B4D0)),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text(
-                    'OK',
-                    style: TextStyle(color: Color(0xFFD6A5FF)),
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-        setState(() => _saving = false);
+    final measurement = await _getCurrentWeightAsync();
+    final currentWeight = measurement?['weight_kg'] as double?;
+    if (goalType == 'Gain Muscle' && targetValue != null && currentWeight != null) {
+      if (targetValue <= currentWeight) {
+        setState(() => _targetError = 'Target must be above your current weight (${currentWeight.toStringAsFixed(1)} kg).');
         return;
       }
     }
-    final userId = SupabaseClientService().client.auth.currentUser!.id;
-    await SupabaseClientService().client.from('goals').insert({
-      'member_id': userId,
-      'title': _titleController.text.trim(),
-      'target_value': targetValue,
-      'goal_type': goalType,
-      'timeframe': timeframe,
-      'start_date': startDate.toIso8601String(),
-      'end_date': endDate.toIso8601String(),
-      'status': 'active',
-    });
-    _titleController.clear();
-    _targetController.clear();
+    if (goalType == 'Lose Weight' && targetValue != null && currentWeight != null) {
+      if (targetValue >= currentWeight) {
+        setState(() => _targetError = 'Target must be below your current weight (${currentWeight.toStringAsFixed(1)} kg).');
+        return;
+      }
+    }
+    setState(() => _targetError = null);
+  }
+
+  Future<Map<String, dynamic>?> _getCurrentWeightAsync() async {
+    final async = ref.read(latestBodyMeasurementProvider.future);
+    return async;
+  }
+
+  Future<double?> _getCurrentWeight() async {
+    final measurement = await _getCurrentWeightAsync();
+    return measurement?['weight_kg'] as double?;
+  }
+
+  Future<void> _save() async {
+    final title = '${goalType ?? 'Fitness'} goal';
+    final targetValue = double.tryParse(_targetController.text);
+    if (targetValue == null || targetValue <= 0) {
+      setState(() => _validationMessage = 'Enter a target weight greater than zero.');
+      return;
+    }
+    if (_targetError != null) {
+      setState(() => _validationMessage = _targetError);
+      return;
+    }
     setState(() {
-      goalType = 'Lose Weight';
-      timeframe = '1 Month';
-      startDate = DateTime.now();
-      endDate = DateTime.now().add(const Duration(days: 30));
-      _justCreated = true;
+      _saving = true;
+      _validationMessage = null;
     });
-    ref.invalidate(goalsProvider);
-    setState(() => _saving = false);
-    widget.onGoalAdded?.call();
-    await Future.delayed(const Duration(seconds: 2));
-    if (mounted) setState(() => _justCreated = false);
+    try {
+      if (goalType == 'Gain Muscle') {
+        final currentWeight = await _getCurrentWeight();
+        if (currentWeight != null && targetValue <= currentWeight) {
+          if (mounted) {
+            await showDialog(
+              context: context,
+              builder: (_) => AlertDialog(
+                backgroundColor: ClayTokens.clayDarkSurface,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                title: const Text(
+                  'Adjust target weight',
+                  style: TextStyle(color: Colors.white),
+                ),
+                content: Text(
+                  'Your current weight is ${currentWeight.toStringAsFixed(1)} kg. For "Gain Muscle", choose a target above that.',
+                  style: const TextStyle(color: Color(0xFFB4B4D0)),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text(
+                      'OK',
+                      style: TextStyle(color: Color(0xFFD6A5FF)),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+          return;
+        }
+      }
+      if (goalType == 'Lose Weight') {
+        final currentWeight = await _getCurrentWeight();
+        if (currentWeight != null && targetValue >= currentWeight) {
+          if (mounted) {
+            await showDialog(
+              context: context,
+              builder: (_) => AlertDialog(
+                backgroundColor: ClayTokens.clayDarkSurface,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                title: const Text(
+                  'Adjust target weight',
+                  style: TextStyle(color: Colors.white),
+                ),
+                content: Text(
+                  'Your current weight is ${currentWeight.toStringAsFixed(1)} kg. For "Lose Weight", choose a target below that.',
+                  style: const TextStyle(color: Color(0xFFB4B4D0)),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text(
+                      'OK',
+                      style: TextStyle(color: Color(0xFFD6A5FF)),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+          return;
+        }
+      }
+
+      final userId = SupabaseClientService().client.auth.currentUser!.id;
+      await SupabaseClientService().client.from('goals').insert({
+        'member_id': userId,
+        'title': title,
+        'target_value': targetValue,
+        'goal_type': goalType,
+        'timeframe': timeframe,
+        'start_date': startDate.toIso8601String(),
+        'end_date': endDate.toIso8601String(),
+        'status': 'active',
+      });
+
+      await NotificationService().createNotification(
+        userId: userId,
+        title: 'Goal Created',
+        body: 'Your $goalType goal has been created successfully.',
+      );
+
+      _targetController.clear();
+      setState(() {
+        goalType = 'Lose Weight';
+        timeframe = '1 Month';
+        startDate = DateTime.now();
+        endDate = DateTime.now().add(const Duration(days: 30));
+        _justCreated = true;
+        _maintainLocked = false;
+        _targetError = null;
+      });
+      ref.invalidate(goalsProvider);
+      widget.onGoalAdded?.call();
+      await Future.delayed(const Duration(seconds: 2));
+      if (mounted) setState(() => _justCreated = false);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _validationMessage = 'Something went wrong. Please try again.');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _saving = false);
+      }
+    }
   }
 
   void _updateEndDate(String selectedTimeframe) {
@@ -218,35 +283,13 @@ class _CreateGoalCardState extends ConsumerState<CreateGoalCard> {
     return 'kg';
   }
 
-  Future<double?> _getCurrentWeight() async {
-    final client = SupabaseClientService().client;
-    final userId = client.auth.currentUser!.id;
-    final rows = await client
-        .from('body_measurements')
-        .select('weight_kg')
-        .eq('member_id', userId)
-        .order('measured_at', ascending: false)
-        .limit(1);
-    if (rows.isEmpty) return null;
-    final v = rows.first['weight_kg'];
-    if (v is num) return v.toDouble();
-    return null;
-  }
-
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
         color: cardDark,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: primaryPurple.withAlpha(30)),
-        boxShadow: [
-          BoxShadow(
-            color: primaryPurple.withAlpha(15),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        border: Border.all(color: Colors.white.withAlpha(14)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -284,62 +327,92 @@ class _CreateGoalCardState extends ConsumerState<CreateGoalCard> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: primaryPurple.withAlpha(20),
-                      borderRadius: BorderRadius.circular(12),
+                  Text(
+                    'Create a goal',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: textPrimary,
                     ),
-                    child: Icon(
-                      CupertinoIcons.plus_circle,
-                      color: primaryPurple,
-                      size: 22,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Create New Goal',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Define your goal and stay consistent',
-                        style: TextStyle(fontSize: 13, color: textSecondary),
-                      ),
-                    ],
                   ),
                 ],
               ),
             const SizedBox(height: 20),
+            if (_validationMessage != null) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEF4444).withAlpha(18),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  _validationMessage!,
+                  style: const TextStyle(
+                    color: Color(0xFFFCA5A5),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
             _buildLabeledDropdown(
-              icon: CupertinoIcons.flag,
               label: 'Goal Type',
               value: goalType,
               items: _goalTypeValues,
-              iconBuilder: _goalTypeIcon,
-              onChanged: (v) => setState(() => goalType = v),
+              onChanged: (v) async {
+                setState(() {
+                  goalType = v;
+                  _targetError = null;
+                  _maintainLocked = false;
+                });
+                if (v == 'Maintain Weight') {
+                  final weight = await _getCurrentWeight();
+                  if (weight != null) {
+                    setState(() {
+                      _targetController.text = weight.toStringAsFixed(1);
+                      _maintainLocked = true;
+                    });
+                  }
+                } else {
+                  setState(() {
+                    _targetController.clear();
+                    _maintainLocked = false;
+                  });
+                }
+                await _validateTarget();
+              },
             ),
             const SizedBox(height: 16),
             _buildLabeledField(
               controller: _targetController,
               label: _getTargetLabel(),
               suffix: _getTargetUnit(),
-              icon: Icons.fitness_center,
+              placeholder: 'Enter your target',
+              enabled: !_maintainLocked,
+              onChanged: (_) => _validateTarget(),
             ),
-            const SizedBox(height: 16),
+            if (_targetError != null) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Icon(CupertinoIcons.exclamationmark_circle, color: Color(0xFFEF4444), size: 14),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      _targetError!,
+                      style: const TextStyle(color: Color(0xFFFCA5A5), fontSize: 13, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 20),
             _buildLabeledDropdown(
-              icon: CupertinoIcons.calendar,
               label: 'Duration',
               value: timeframe,
               items: _timeframeValues,
-              iconBuilder: _timeframeIcon,
               onChanged: (v) {
                 setState(() => timeframe = v);
                 if (v != null) _updateEndDate(v);
@@ -405,24 +478,13 @@ class _CreateGoalCardState extends ConsumerState<CreateGoalCard> {
                   onPressed: _saving ? null : _save,
                   child: _saving
                       ? CupertinoActivityIndicator(color: textPrimary)
-                      : Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              CupertinoIcons.plus,
-                              color: textPrimary,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Add Goal',
-                              style: TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w600,
-                                color: textPrimary,
-                              ),
-                            ),
-                          ],
+                      : Text(
+                          'Add Goal',
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w600,
+                            color: textPrimary,
+                          ),
                         ),
                 ),
               ),
@@ -434,37 +496,26 @@ class _CreateGoalCardState extends ConsumerState<CreateGoalCard> {
   }
 
   Widget _buildLabeledDropdown({
-    required IconData icon,
     required String label,
     required String? value,
     required List<String> items,
-    required IconData Function(String) iconBuilder,
     required ValueChanged<String?> onChanged,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Icon(icon, color: textSecondary, size: 16),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: textPrimary,
-                  fontSize: 14,
-                ),
-              ),
-            ),
-          ],
+        Text(
+          label,
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: textPrimary,
+            fontSize: 14,
+          ),
         ),
         const SizedBox(height: 8),
         DropdownField(
           value: value,
           items: items,
-          iconBuilder: iconBuilder,
           onChanged: onChanged,
         ),
       ],
@@ -475,70 +526,65 @@ class _CreateGoalCardState extends ConsumerState<CreateGoalCard> {
     required TextEditingController controller,
     required String label,
     String? suffix,
-    required IconData icon,
+    required String placeholder,
+    bool enabled = true,
+    ValueChanged<String>? onChanged,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: primaryPurple.withAlpha(20),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: primaryPurple, size: 18),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: textPrimary,
-                  fontSize: 14,
-                ),
-              ),
-            ),
-          ],
+        Text(
+          label,
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: textPrimary,
+            fontSize: 14,
+          ),
         ),
         const SizedBox(height: 8),
         CupertinoTextField(
           controller: controller,
-          placeholder: 'Enter $label',
+          placeholder: placeholder,
           placeholderStyle: TextStyle(color: textSecondary),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
           decoration: BoxDecoration(
             color: inputDark,
             borderRadius: BorderRadius.circular(12),
           ),
-          keyboardType: TextInputType.number,
+          keyboardType: suffix == null
+              ? TextInputType.text
+              : const TextInputType.numberWithOptions(decimal: true),
+          enabled: enabled,
           cursorColor: primaryPurple,
-          style: TextStyle(color: textPrimary),
+          style: TextStyle(color: enabled ? textPrimary : textSecondary),
+          inputFormatters: enabled
+              ? [
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*$')),
+                ]
+              : null,
           suffix: suffix != null
               ? Padding(
                   padding: const EdgeInsets.only(right: 12),
                   child: Text(suffix, style: TextStyle(color: textSecondary)),
                 )
               : null,
+          onChanged: onChanged,
         ),
       ],
     );
   }
+
 }
 
 class DropdownField extends StatefulWidget {
   final String? value;
   final List<String> items;
-  final IconData Function(String) iconBuilder;
   final ValueChanged<String?> onChanged;
 
   const DropdownField({
     super.key,
     required this.value,
     required this.items,
-    required this.iconBuilder,
     required this.onChanged,
   });
 
@@ -593,7 +639,6 @@ class _DropdownFieldState extends State<DropdownField> {
             child: _DropdownMenu(
               value: widget.value,
               items: widget.items,
-              iconBuilder: widget.iconBuilder,
               onChanged: (value) {
                 widget.onChanged(value);
                 _close();
@@ -626,12 +671,6 @@ class _DropdownFieldState extends State<DropdownField> {
           ),
           child: Row(
             children: [
-              Icon(
-                widget.iconBuilder(widget.value ?? ''),
-                color: highlightPurple,
-                size: 16,
-              ),
-              const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   widget.value ?? 'Select...',
@@ -662,7 +701,6 @@ class _DropdownFieldState extends State<DropdownField> {
 class _DropdownMenu extends StatelessWidget {
   final String? value;
   final List<String> items;
-  final IconData Function(String) iconBuilder;
   final ValueChanged<String?> onChanged;
   final double width;
   final bool prefersBelow;
@@ -670,7 +708,6 @@ class _DropdownMenu extends StatelessWidget {
   const _DropdownMenu({
     required this.value,
     required this.items,
-    required this.iconBuilder,
     required this.onChanged,
     required this.width,
     required this.prefersBelow,
@@ -693,7 +730,6 @@ class _DropdownMenu extends StatelessWidget {
               .map(
                 (item) => _MenuItem(
                   item: item,
-                  iconBuilder: iconBuilder,
                   isSelected: item == value,
                   onTap: () => onChanged(item),
                 ),
@@ -723,13 +759,11 @@ class _DropdownMenu extends StatelessWidget {
 
 class _MenuItem extends StatelessWidget {
   final String item;
-  final IconData Function(String) iconBuilder;
   final bool isSelected;
   final VoidCallback onTap;
 
   const _MenuItem({
     required this.item,
-    required this.iconBuilder,
     required this.isSelected,
     required this.onTap,
   });
@@ -746,12 +780,6 @@ class _MenuItem extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(
-              iconBuilder(item),
-              color: isSelected ? highlightPurple : textSecondary,
-              size: 16,
-            ),
-            const SizedBox(width: 10),
             Expanded(
               child: Text(
                 item,

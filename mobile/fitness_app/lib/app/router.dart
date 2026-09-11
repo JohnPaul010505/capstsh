@@ -20,7 +20,6 @@ import '../features/trainer/chat/pages/chat_list_page.dart';
 import '../features/trainer/chat/pages/chat_room_page.dart';
 import '../features/trainer/profile/pages/profile_page.dart' as trainer_profile;
 import 'package:fitness_app/features/trainer/set_plan/pages/create_plan_screen.dart';
-import 'package:fitness_app/features/trainer/set_plan/pages/plan_test.dart';
 import '../features/shared/checkin/checkin_page.dart';
 import '../features/shared/widgets/member_nav_bar.dart';
 import '../features/member/onboarding/pages/onboarding_splash_screen.dart';
@@ -208,11 +207,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             pageBuilder: (_, __) =>
                 _iosPush(const trainer_profile.ProfilePage()),
           ),
-          GoRoute(
-            path: '/trainer/set-plan',
-            pageBuilder: (_, __) => _iosPush(const CreatePlanScreen()),
-          ),
         ],
+      ),
+      GoRoute(
+        path: '/trainer/set-plan',
+        pageBuilder: (_, __) => _iosPush(const CreatePlanScreen()),
       ),
       GoRoute(
         path: '/trainer/notifications',

@@ -1,4 +1,4 @@
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 
 const bgDark = Color(0xFF0B0D1A);
 const cardDark = Color(0xFF15172A);
@@ -22,24 +22,32 @@ class DateCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final formattedDate =
-        '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    const monthNames = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    final formattedDate = '${monthNames[date.month - 1]} ${date.day}, ${date.year}';
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: inputDark,
           borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withAlpha(10)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(CupertinoIcons.calendar, size: 16, color: primaryPurple),
-                const SizedBox(width: 8),
+                Icon(
+                  Icons.calendar_month_outlined,
+                  color: primaryPurple,
+                  size: 15,
+                ),
+                const SizedBox(width: 6),
                 Text(
                   label,
                   style: TextStyle(
