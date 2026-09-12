@@ -13,11 +13,7 @@ class GoalCard extends StatelessWidget {
   final Map<String, dynamic> goal;
   final VoidCallback? onToggleStatus;
 
-  const GoalCard({
-    super.key,
-    required this.goal,
-    this.onToggleStatus,
-  });
+  const GoalCard({super.key, required this.goal, this.onToggleStatus});
 
   @override
   Widget build(BuildContext context) {
@@ -26,16 +22,24 @@ class GoalCard extends StatelessWidget {
     final currentValue = (goal['current_value'] as num?)?.toDouble();
     final status = goal['status'] as String? ?? 'active';
     final goalType = goal['goal_type'] as String? ?? '';
-    final startDate = DateTime.tryParse(goal['start_date']?.toString() ?? '') ?? DateTime.now();
-    final endDate = DateTime.tryParse(goal['end_date']?.toString() ?? '') ?? DateTime.now().add(const Duration(days: 30));
+    final startDate =
+        DateTime.tryParse(goal['start_date']?.toString() ?? '') ??
+        DateTime.now();
+    final endDate =
+        DateTime.tryParse(goal['end_date']?.toString() ?? '') ??
+        DateTime.now().add(const Duration(days: 30));
 
     final progressPct = targetValue != null && targetValue > 0
         ? ((currentValue ?? 0) / targetValue * 100).clamp(0.0, 100.0)
         : 0.0;
-    final remaining = targetValue != null ? (targetValue - (currentValue ?? 0)) : null;
+    final remaining = targetValue != null
+        ? (targetValue - (currentValue ?? 0))
+        : null;
     final daysRemaining = endDate.difference(DateTime.now()).inDays;
     final isOverdue = endDate.isBefore(DateTime.now());
-    final effectiveStatus = isOverdue && status == 'active' ? 'completed' : status;
+    final effectiveStatus = isOverdue && status == 'active'
+        ? 'completed'
+        : status;
 
     final icon = _goalIcon(goalType);
     final unitLabel = _unitLabel(goalType);
@@ -101,7 +105,11 @@ class GoalCard extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Icon(CupertinoIcons.calendar, size: 13, color: textSecondary),
+                        Icon(
+                          CupertinoIcons.calendar,
+                          size: 13,
+                          color: textSecondary,
+                        ),
                         const SizedBox(width: 6),
                         Text(
                           '$daysRemaining days remaining',
@@ -112,7 +120,11 @@ class GoalCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        Icon(CupertinoIcons.clock, size: 13, color: textSecondary),
+                        Icon(
+                          CupertinoIcons.clock,
+                          size: 13,
+                          color: textSecondary,
+                        ),
                         const SizedBox(width: 6),
                         Text(
                           '${_formatDate(startDate)} - ${_formatDate(endDate)}',
@@ -124,11 +136,18 @@ class GoalCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          Icon(CupertinoIcons.chart_bar, size: 13, color: textSecondary),
+                          Icon(
+                            CupertinoIcons.chart_bar,
+                            size: 13,
+                            color: textSecondary,
+                          ),
                           const SizedBox(width: 6),
                           Text(
                             'Remaining: ${remaining.toStringAsFixed(1)} $unitLabel',
-                            style: TextStyle(color: textSecondary, fontSize: 12),
+                            style: TextStyle(
+                              color: textSecondary,
+                              fontSize: 12,
+                            ),
                           ),
                         ],
                       ),
@@ -193,5 +212,4 @@ class GoalCard extends StatelessWidget {
         return '';
     }
   }
-
 }

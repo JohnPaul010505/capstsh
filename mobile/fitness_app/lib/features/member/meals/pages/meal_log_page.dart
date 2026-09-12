@@ -16,6 +16,9 @@ import 'package:shared/models/nutrition_food.dart';
 import '../../../shared/widgets/pressable.dart';
 import '../../../shared/widgets/animations.dart';
 import '../../../shared/widgets/app_glow_background.dart';
+import '../../../shared/widgets/plan_floating_logo.dart';
+import '../../../shared/providers/plan_providers.dart';
+import '../../../shared/widgets/trainer_plan_overlay.dart';
 import '../../../../app/design_tokens.dart';
 
 final todayMealsProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
@@ -497,120 +500,163 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
   @override
   Widget build(BuildContext context) {
     final mealsAsync = ref.watch(todayMealsProvider);
+    final hasPlan = ref.watch(hasActivePlanProvider).value ?? false;
+    final overlay = ref.watch(planOverlayControllerProvider);
 
     return Scaffold(
       backgroundColor: ClayTokens.clayDarkBase,
       body: AppGlowBackground(
         child: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            physics: const ClampingScrollPhysics(),
+          child: Stack(
             children: [
-              const SizedBox(height: 14),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                physics: const ClampingScrollPhysics(),
                 children: [
-                  const Text('FOOD INTAKE', style: TextStyle(
-                    fontSize: 21, fontWeight: FontWeight.w900, color: Color(0xFFFFFFFF),
-                  )),
+                  const SizedBox(height: 14),
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF636366).withAlpha(25),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: const Color(0xFF636366).withAlpha(50)),
-                        ),
-                        child: Text(
-                          DateFormat('MMM d').format(DateTime.now()),
-                          style: const TextStyle(fontSize: 10, color: Color(0xFF636366)),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFBF5AF2).withAlpha(20),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: const Color(0xFFBF5AF2).withAlpha(40)),
-                        ),
-                        child: mealsAsync.when(
-                          data: (meals) => Text('${meals.length} meals',
-                            style: const TextStyle(fontSize: 10, color: Color(0xFFD6A5FF))),
-                          loading: () => const Text('...',
-                            style: TextStyle(fontSize: 10, color: Color(0xFFD6A5FF))),
-                          error: (_, __) => const Text('0 meals',
-                            style: TextStyle(fontSize: 10, color: Color(0xFFD6A5FF))),
-                        ),
+                      const Text('FOOD INTAKE', style: TextStyle(
+                        fontSize: 21, fontWeight: FontWeight.w900, color: Color(0xFFFFFFFF),
+                      )),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF636366).withAlpha(25),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: const Color(0xFF636366).withAlpha(50)),
+                            ),
+                            child: Text(
+                              DateFormat('MMM d').format(DateTime.now()),
+                              style: const TextStyle(fontSize: 10, color: Color(0xFF636366)),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFBF5AF2).withAlpha(20),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: const Color(0xFFBF5AF2).withAlpha(40)),
+                            ),
+                            child: mealsAsync.when(
+                              data: (meals) => Text('${meals.length} meals',
+                                style: const TextStyle(fontSize: 10, color: Color(0xFFD6A5FF))),
+                              loading: () => const Text('...',
+                                style: TextStyle(fontSize: 10, color: Color(0xFFD6A5FF))),
+                              error: (_, __) => const Text('0 meals',
+                                style: TextStyle(fontSize: 10, color: Color(0xFFD6A5FF))),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              mealsAsync.when(
-                data: (meals) => _TodayMacroRing(meals: meals),
-                loading: () => const _TodayMacroRing(meals: []),
-                error: (_, __) => const _TodayMacroRing(meals: []),
-              ),
-              const SizedBox(height: 16),
-              Text('MEALS TODAY', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: const Color(0xFF8E8E93), letterSpacing: 0)),
-              const SizedBox(height: 9),
-              mealsAsync.when(
-                data: (meals) => Column(
-                  children: [
-                    ...meals.asMap().entries.map((entry) => StaggeredFadeIn(
-                      index: entry.key,
-                      child: _MealCard(meal: entry.value),
-                    )),
-                    if (meals.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 24),
-                        child: Text('No meals logged today', style: TextStyle(color: Color(0xFF636366), fontSize: 12)),
-                      ),
-                  ],
-                ),
-                loading: () => const Center(child: Padding(
-                  padding: EdgeInsets.all(24),
-                  child: CircularProgressIndicator(color: Color(0xFFD6A5FF)),
-                )),
-                error: (e, _) => Text('Error: $e', style: const TextStyle(color: Color(0xFF636366))),
-              ),
-              if (_showForm) _buildAddForm(),
-              const SizedBox(height: 8),
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                child: GestureDetector(
-                  onTap: () {
-                    if (_showForm) {
-                      _closeForm();
-                    } else {
-                      setState(() => _showForm = true);
-                    }
-                  },
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFBF5AF2),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                  const SizedBox(height: 12),
+                  mealsAsync.when(
+                    data: (meals) => _TodayMacroRing(meals: meals),
+                    loading: () => const _TodayMacroRing(meals: []),
+                    error: (_, __) => const _TodayMacroRing(meals: []),
+                  ),
+                  const SizedBox(height: 16),
+                  Text('MEALS TODAY', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: const Color(0xFF8E8E93), letterSpacing: 0)),
+                  const SizedBox(height: 9),
+                  mealsAsync.when(
+                    data: (meals) => Column(
                       children: [
-                        Icon(_showForm ? CupertinoIcons.xmark : CupertinoIcons.add, color: Colors.white, size: 17),
-                        const SizedBox(width: 6),
-                        Text(
-                          _showForm ? 'Cancel' : 'Add Food',
-                          style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700),
-                        ),
+                        ...meals.asMap().entries.map((entry) => StaggeredFadeIn(
+                          index: entry.key,
+                          child: _MealCard(meal: entry.value),
+                        )),
+                        if (meals.isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 24),
+                            child: Text('No meals logged today', style: TextStyle(color: Color(0xFF636366), fontSize: 12)),
+                          ),
                       ],
                     ),
+                    loading: () => const Center(child: Padding(
+                      padding: EdgeInsets.all(24),
+                      child: CircularProgressIndicator(color: Color(0xFFD6A5FF)),
+                    )),
+                    error: (e, _) => Text('Error: $e', style: const TextStyle(color: Color(0xFF636366))),
+                  ),
+                  if (_showForm) _buildAddForm(),
+                  const SizedBox(height: 8),
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    child: GestureDetector(
+                      onTap: () {
+                        if (_showForm) {
+                          _closeForm();
+                        } else {
+                          setState(() => _showForm = true);
+                        }
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFBF5AF2),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(_showForm ? CupertinoIcons.xmark : CupertinoIcons.add, color: Colors.white, size: 17),
+                            const SizedBox(width: 6),
+                            Text(
+                              _showForm ? 'Cancel' : 'Add Food',
+                              style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
+              if (hasPlan)
+                Positioned(
+                  right: 16,
+                  bottom: 96,
+                  child: PlanFloatingLogo(
+                    memberId: SupabaseClientService().client.auth.currentUser!.id,
+                    isExpanded: overlay.isOpen,
+                    onTap: () {
+                      final planAsync = ref.read(activePlanProvider);
+                      final plan = planAsync.value;
+                      if (plan == null) return;
+
+                      if (overlay.isOpen) {
+                        overlay.close();
+                      } else {
+                        overlay.openForFood(
+                          SupabaseClientService().client.auth.currentUser!.id,
+                          plan['start_date'] as String? ?? '',
+                        );
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (_) => TrainerPlanFoodOverlay(
+                            planId: plan['id'] as String,
+                            dayNumber: overlay.currentDay,
+                            notes: plan['notes'] as String?,
+                          ),
+                        ).then((_) {
+                          if (overlay.isOpen) {
+                            overlay.close();
+                          }
+                        });
+                      }
+                    },
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
             ],
           ),
         ),

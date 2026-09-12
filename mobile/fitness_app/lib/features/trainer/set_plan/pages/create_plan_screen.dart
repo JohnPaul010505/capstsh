@@ -1,12 +1,16 @@
 // analyzer-workaround-20260907
+import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared/services/supabase_client.dart';
+import 'package:shared/services/notification_service.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../shared/widgets/app_glow_background.dart';
-import '../../../shared/widgets/clay/clay_card.dart';
+import '../data/plan_repository.dart';
+import '../../../shared/widgets/pressable.dart';
+import '../../../../features/member/workout/data/met_exercise_repository.dart';
 
 class CreatePlanScreen extends ConsumerStatefulWidget {
   const CreatePlanScreen({super.key});
@@ -26,11 +30,28 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
   final TextEditingController repsController = TextEditingController();
   final TextEditingController weightController = TextEditingController();
 
-  List<Map<String, dynamic>> foods = [];
-  List<Map<String, dynamic>> exercises = [];
+  int _currentDay = 1;
+  String? _selectedMealType;
+  final Map<int, List<Map<String, dynamic>>> foodsByDay = <int, List<Map<String, dynamic>>>{};
+  final Map<int, List<Map<String, dynamic>>> exercisesByDay = <int, List<Map<String, dynamic>>>{};
 
   bool isSaving = false;
   List<Map<String, dynamic>>? members;
+  Map<String, bool> memberHasActivePlan = <String, bool>{};
+  bool _confirmReplace = false;
+
+  bool _isDayComplete(int day) {
+    final foods = foodsByDay[day] ?? [];
+    final exercises = exercisesByDay[day] ?? [];
+    return foods.length == 3 && exercises.isNotEmpty;
+  }
+
+  bool get _allDaysComplete {
+    for (int day = 1; day <= 7; day++) {
+      if (!_isDayComplete(day)) return false;
+    }
+    return true;
+  }
 
   @override
   void initState() {
@@ -46,8 +67,19 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
         .eq('role', 'member')
         .order('full_name', ascending: true);
     if (!mounted) return;
+    final membersList = (response as List).cast<Map<String, dynamic>>();
+
+    final planChecks = <String, bool>{};
+    for (final member in membersList) {
+      final memberId = member['id'] as String? ?? '';
+      if (memberId.isEmpty) continue;
+      final hasPlan = await PlanRepository().memberHasActivePlan(memberId);
+      planChecks[memberId] = hasPlan;
+    }
+
     setState(() {
-      members = (response as List).cast<Map<String, dynamic>>();
+      members = membersList;
+      memberHasActivePlan = planChecks;
       if (members != null && members!.isNotEmpty) {
         selectedClient = members!.first['id'] as String?;
         selectedClientName = members!.first['full_name'] as String?;
@@ -57,17 +89,40 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
 
   Future<void> _assignPlan() async {
     if (selectedClient == null) return;
+    if (!_allDaysComplete) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please complete all 7 days before assigning.')),
+      );
+      return;
+    }
     setState(() => isSaving = true);
     try {
       final client = SupabaseClientService().client;
+
+      final foodPlan = List.generate(7, (day) {
+        final dayNum = day + 1;
+        return {
+          'day': dayNum,
+          'foods': foodsByDay[dayNum] ?? [],
+        };
+      });
+
+      final exercisePlan = List.generate(7, (day) {
+        final dayNum = day + 1;
+        return {
+          'day': dayNum,
+          'exercises': exercisesByDay[dayNum] ?? [],
+        };
+      });
+
       final planJson = <String, dynamic>{
         'member_id': selectedClient,
-        'food_plan': foods.isNotEmpty ? foods : null,
-        'exercise_plan': exercises.isNotEmpty ? exercises : null,
+        'food_plan': foodPlan,
+        'exercise_plan': exercisePlan,
         'notes': notesController.text.trim().isNotEmpty ? notesController.text.trim() : null,
-        'start_date': DateTime.now().toIso8601String(),
-        'end_date': DateTime.now().add(const Duration(days: 30)).toIso8601String(),
-        'timeframe': '1_month',
+        'start_date': DateTime.now().toIso8601String().split('T').first,
+        'end_date': DateTime.now().add(const Duration(days: 6)).toIso8601String().split('T').first,
+        'timeframe': '7_days',
         'updated_at': DateTime.now().toIso8601String(),
       };
 
@@ -90,12 +145,21 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
         await client
             .from('member_goal_plans')
             .update(planJson)
-            .eq('member_id', selectedClient!);
+            .eq('id', existing['id'] as String);
       } else {
         planJson['created_at'] = DateTime.now().toIso8601String();
         await client.from('member_goal_plans').insert(planJson);
       }
 
+      if (!mounted) return;
+      final notes = notesController.text.trim();
+      if (notes.isNotEmpty && selectedClient != null) {
+        await NotificationService().createNotification(
+          userId: selectedClient!,
+          title: 'Trainer Set a Plan',
+          body: notes,
+        );
+      }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Plan assigned successfully')),
@@ -114,10 +178,17 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
   }
 
   void _addFood() {
+    if (_selectedMealType == null) return;
     if (foodSearchController.text.trim().isEmpty) return;
+    final currentFoods = foodsByDay[_currentDay] ?? [];
+    final addedTypes = currentFoods.map((f) => f['meal_type'] as String? ?? '').toSet();
+    if (addedTypes.contains(_selectedMealType)) return;
+    if (currentFoods.length >= 3) return;
+
     setState(() {
-      foods.add({
+      foodsByDay.putIfAbsent(_currentDay, () => []).add({
         'name': foodSearchController.text.trim(),
+        'meal_type': _selectedMealType,
         'amount': '',
         'unit': '',
         'calories': '',
@@ -130,7 +201,13 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
   }
 
   void _removeFood(int index) {
-    setState(() => foods.removeAt(index));
+    setState(() {
+      final list = foodsByDay[_currentDay];
+      if (list != null && index < list.length) {
+        list.removeAt(index);
+        _selectedMealType = null;
+      }
+    });
   }
 
   void _addExercise() {
@@ -141,7 +218,7 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
     if (name.isEmpty || sets.isEmpty || reps.isEmpty) return;
 
     setState(() {
-      exercises.add({
+      exercisesByDay.putIfAbsent(_currentDay, () => []).add({
         'name': name,
         'sets': sets,
         'reps': reps,
@@ -155,7 +232,12 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
   }
 
   void _removeExercise(int index) {
-    setState(() => exercises.removeAt(index));
+    setState(() {
+      final list = exercisesByDay[_currentDay];
+      if (list != null && index < list.length) {
+        list.removeAt(index);
+      }
+    });
   }
 
   @override
@@ -164,6 +246,10 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
         const [
           {'id': '', 'full_name': 'Loading members...'}
         ];
+
+    final currentFoods = foodsByDay[_currentDay] ?? <Map<String, dynamic>>[];
+    final currentExercises = exercisesByDay[_currentDay] ?? <Map<String, dynamic>>[];
+    final hasActivePlan = selectedClient != null && memberHasActivePlan[selectedClient!] == true;
 
     return Scaffold(
       backgroundColor: ClayTokens.clayDarkBase,
@@ -176,9 +262,13 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
                 child: ListView(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                   children: [
-                    ClayCard(
-                      variant: ClayCardVariant.outlined,
-                      padding: ClayCardPadding.large,
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: ClayTokens.clayPrimaryLight.withAlpha(25),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.white.withAlpha(18)),
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -186,19 +276,92 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
                             members: membersList,
                             selectedClient: selectedClient,
                             onChanged: (value) {
-                              setState(() => selectedClient = value);
+                              setState(() {
+                                selectedClient = value;
+                                _confirmReplace = false;
+                              });
+                            },
+                          ),
+                          if (hasActivePlan) ...[
+                            const SizedBox(height: 10),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFF9500).withAlpha(20),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: const Color(0xFFFF9500).withAlpha(60)),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.warning_amber_rounded, color: Color(0xFFFF9500), size: 18),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      'This member already has an active plan. Creating a new plan will replace it.',
+                                      style: const TextStyle(fontSize: 12, color: Color(0xFFFFCC02)),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            if (!_confirmReplace)
+                              CupertinoButton(
+                                padding: EdgeInsets.zero,
+                                onPressed: () {
+                                  setState(() => _confirmReplace = true);
+                                },
+                                child: const Text(
+                                  'I understand, continue',
+                                  style: TextStyle(fontSize: 12, color: Color(0xFFD6A5FF)),
+                                ),
+                              ),
+                          ] else ...[
+                            const SizedBox(height: 10),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: ClayTokens.clayPrimaryLight.withAlpha(25),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.white.withAlpha(18)),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.info_outline, color: ClayTokens.clayPrimaryLight, size: 18),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      'This member does not have an active plan yet.',
+                                      style: const TextStyle(fontSize: 12, color: Color(0xFFFFFFFF)),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 16),
+                          _DaySelector(
+                            currentDay: _currentDay,
+                            isDayComplete: _isDayComplete,
+                            onDayChanged: (day) {
+                              setState(() => _currentDay = day);
                             },
                           ),
                           const SizedBox(height: 16),
                           _NutritionSection(
-                            foods: foods,
+                            foods: currentFoods,
                             searchController: foodSearchController,
                             onAddFood: _addFood,
                             onRemoveFood: _removeFood,
+                            selectedMealType: _selectedMealType,
+                            onMealTypeChanged: (type) {
+                              setState(() => _selectedMealType = type);
+                            },
                           ),
                           const SizedBox(height: 16),
                           _TrainingSection(
-                            exercises: exercises,
+                            day: _currentDay,
+                            exercises: currentExercises,
                             workoutType: selectedWorkoutType,
                             workoutTypes: const [
                               'Strength Training',
@@ -211,7 +374,6 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
                               'Pull',
                               'Legs',
                               'Mobility',
-                              'Custom',
                             ],
                             nameController: exerciseNameController,
                             setsController: setsController,
@@ -256,23 +418,109 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
             onPressed: () => context.go('/trainer/profile'),
             child: Icon(
               CupertinoIcons.back,
-              color: ClayTokens.clayPrimary,
+              color: Colors.white,
             ),
           ),
           Expanded(
             child: Text(
-              'Create Plan',
+              'CREATE PLAN',
               textAlign: TextAlign.center,
-              style: ClayTokens.darkHeadlineSmall.copyWith(
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
-                letterSpacing: -0.41,
+              style: ClayTokens.displaySmall.copyWith(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.2,
+                color: Colors.white,
               ),
             ),
           ),
           const SizedBox(width: 32),
         ],
       ),
+    );
+  }
+}
+
+class _DaySelector extends StatelessWidget {
+  final int currentDay;
+  final ValueChanged<int> onDayChanged;
+  final bool Function(int) isDayComplete;
+
+  const _DaySelector({
+    required this.currentDay,
+    required this.onDayChanged,
+    required this.isDayComplete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'DAY',
+          style: ClayTokens.displaySmall.copyWith(
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.2,
+            color: Colors.white,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: List.generate(7, (index) {
+            final day = index + 1;
+            final isSelected = day == currentDay;
+            final complete = isDayComplete(day);
+            Color backgroundColor;
+            Color borderColor;
+            Color textColor;
+
+            if (complete && isSelected) {
+              backgroundColor = const Color(0xFF7C3AED);
+              borderColor = const Color(0xFF7C3AED);
+              textColor = Colors.white;
+            } else if (complete) {
+              backgroundColor = const Color(0xFF7C3AED).withAlpha(120);
+              borderColor = const Color(0xFF7C3AED).withAlpha(200);
+              textColor = Colors.white;
+            } else if (isSelected) {
+              backgroundColor = ClayTokens.clayDarkSurfaceElevated;
+              borderColor = ClayTokens.clayPrimary;
+              textColor = ClayTokens.clayPrimary;
+            } else {
+              backgroundColor = ClayTokens.clayDarkSurfaceElevated;
+              borderColor = Colors.white.withAlpha(18);
+              textColor = ClayTokens.clayDarkTextSecondary;
+            }
+
+            return Expanded(
+              child: GestureDetector(
+                onTap: () => onDayChanged(day),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  height: 36,
+                  margin: EdgeInsets.only(right: index < 6 ? 6 : 0),
+                  decoration: BoxDecoration(
+                    color: backgroundColor,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: borderColor),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '$day',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: textColor,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+        ),
+      ],
     );
   }
 }
@@ -295,13 +543,17 @@ class _ClientSection extends StatelessWidget {
       children: [
         Text(
           'CLIENT',
-          style: ClayTokens.darkTitleSmall.copyWith(
+          style: ClayTokens.displaySmall.copyWith(
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
             letterSpacing: 1.2,
+            color: Colors.white,
           ),
         ),
         const SizedBox(height: 10),
         DropdownField<String>(
           value: selectedClient,
+          fillColor: ClayTokens.clayDarkSurfaceElevated,
           items: members.map((member) {
             final name = member['full_name'] as String? ?? '';
             final id = member['id'] as String? ?? '';
@@ -320,12 +572,16 @@ class _NutritionSection extends StatefulWidget {
   final TextEditingController searchController;
   final VoidCallback onAddFood;
   final ValueChanged<int> onRemoveFood;
+  final String? selectedMealType;
+  final ValueChanged<String?> onMealTypeChanged;
 
   const _NutritionSection({
     required this.foods,
     required this.searchController,
     required this.onAddFood,
     required this.onRemoveFood,
+    required this.selectedMealType,
+    required this.onMealTypeChanged,
   });
 
   @override
@@ -333,33 +589,99 @@ class _NutritionSection extends StatefulWidget {
 }
 
 class _NutritionSectionState extends State<_NutritionSection> {
+  static const _mealTypes = ['breakfast', 'lunch', 'dinner'];
+
+  String _mealTypeLabel(String type) {
+    switch (type.toLowerCase()) {
+      case 'breakfast':
+        return 'Breakfast';
+      case 'lunch':
+        return 'Lunch';
+      case 'dinner':
+        return 'Dinner';
+      default:
+        return type;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final addedTypes = widget.foods.map((f) => f['meal_type'] as String? ?? '').toSet();
+    final isFull = widget.foods.length >= 3;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'NUTRITION PLAN',
-          style: ClayTokens.darkTitleSmall.copyWith(
+          style: ClayTokens.displaySmall.copyWith(
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
             letterSpacing: 1.2,
+            color: Colors.white,
           ),
         ),
         const SizedBox(height: 10),
         Container(
           decoration: BoxDecoration(
-            color: ClayTokens.clayDarkSurfaceElevated,
-            borderRadius: BorderRadius.circular(ClayTokens.radiusLg),
+            color: ClayTokens.clayPrimaryLight.withAlpha(25),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withAlpha(18)),
           ),
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Food Item',
+              Row(
+                children: _mealTypes.map((type) {
+                  final isSelected = widget.selectedMealType == type;
+                  final isAdded = addedTypes.contains(type);
+                  return Expanded(
+                    child: GestureDetector(
+                      onTap: isAdded ? null : () => widget.onMealTypeChanged(type),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        height: 36,
+                        margin: EdgeInsets.only(right: type != _mealTypes.last ? 6 : 0),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? ClayTokens.clayPrimary
+                                : isAdded
+                                    ? ClayTokens.clayPrimary.withAlpha(40)
+                                    : ClayTokens.clayDarkSurfaceElevated,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: isSelected
+                                  ? ClayTokens.clayPrimary
+                                  : isAdded
+                                      ? ClayTokens.clayPrimary.withAlpha(120)
+                                      : Colors.white.withAlpha(18),
+                            ),
+                          ),
+                        child: Center(
+                          child: Text(
+                            _mealTypeLabel(type),
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: isSelected || isAdded ? Colors.white : ClayTokens.clayDarkTextSecondary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                widget.selectedMealType != null
+                    ? 'Add ${_mealTypeLabel(widget.selectedMealType!)}'
+                    : 'Select a meal type',
                 style: TextStyle(
                   fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFFFFFFFF),
+                  fontWeight: FontWeight.w400,
+                  color: widget.selectedMealType != null ? const Color(0xFFFFFFFF) : const Color(0xFF8E8E93),
                 ),
               ),
               const SizedBox(height: 8),
@@ -372,12 +694,17 @@ class _NutritionSectionState extends State<_NutritionSection> {
                       placeholderStyle: ClayTokens.darkBodyMedium.copyWith(color: ClayTokens.clayDarkTextTertiary),
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                       decoration: BoxDecoration(
-                        color: ClayTokens.clayDarkBase,
+                        color: ClayTokens.clayDarkSurfaceElevated,
                         borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
                       ),
                       style: ClayTokens.darkBodyMedium,
                       cursorColor: ClayTokens.clayPrimary,
-                      onSubmitted: (_) => widget.onAddFood(),
+                      enabled: widget.selectedMealType != null && !isFull,
+                      onSubmitted: (_) {
+                        if (widget.selectedMealType != null && !isFull) {
+                          widget.onAddFood();
+                        }
+                      },
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -385,17 +712,24 @@ class _NutritionSectionState extends State<_NutritionSection> {
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     color: ClayTokens.clayPrimary,
                     borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
-                    onPressed: widget.onAddFood,
+                    onPressed: (widget.selectedMealType != null && !isFull) ? widget.onAddFood : null,
                     child: Text('Add', style: ClayTokens.darkBodyMedium.copyWith(color: Color(0xFFFFFFFF))),
                   ),
                 ],
               ),
+              if (isFull) ...[
+                const SizedBox(height: 8),
+                const Text(
+                  'All meals added',
+                  style: TextStyle(fontSize: 11, color: Color(0xFF30D158)),
+                ),
+              ],
               const SizedBox(height: 12),
               if (widget.foods.isEmpty)
                 Container(
                   padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
                   decoration: BoxDecoration(
-                    color: ClayTokens.clayDarkBase,
+                    color: ClayTokens.clayDarkSurfaceElevated,
                     borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
                   ),
                   child: Row(
@@ -414,7 +748,7 @@ class _NutritionSectionState extends State<_NutritionSection> {
                   'Added Foods',
                   style: TextStyle(
                     fontSize: 13,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w400,
                     color: Color(0xFFFFFFFF),
                   ),
                 ),
@@ -422,19 +756,37 @@ class _NutritionSectionState extends State<_NutritionSection> {
                 ...widget.foods.asMap().entries.map((entry) {
                   final index = entry.key;
                   final food = entry.value;
+                  final mealType = food['meal_type'] as String? ?? '';
                   return Container(
                     margin: const EdgeInsets.only(bottom: 8),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: ClayTokens.clayDarkSurface,
+                      color: const Color(0xFF7C3AED),
                       borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
                     ),
                     child: Row(
                       children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: ClayTokens.clayPrimary.withAlpha(25),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: ClayTokens.clayPrimary.withAlpha(50)),
+                          ),
+                          child: Text(
+                            _mealTypeLabel(mealType),
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: ClayTokens.clayPrimaryLight,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: Text(
                             food['name'] ?? '',
-                            style: ClayTokens.darkBodyMedium,
+                            style: const TextStyle(color: Colors.white),
                           ),
                         ),
                         CupertinoButton(
@@ -456,6 +808,7 @@ class _NutritionSectionState extends State<_NutritionSection> {
 }
 
 class _TrainingSection extends StatefulWidget {
+  final int day;
   final List<Map<String, dynamic>> exercises;
   final String? workoutType;
   final List<String> workoutTypes;
@@ -468,6 +821,7 @@ class _TrainingSection extends StatefulWidget {
   final ValueChanged<int> onRemoveExercise;
 
   const _TrainingSection({
+    required this.day,
     required this.exercises,
     required this.workoutType,
     required this.workoutTypes,
@@ -485,6 +839,156 @@ class _TrainingSection extends StatefulWidget {
 }
 
 class _TrainingSectionState extends State<_TrainingSection> {
+  final TextEditingController _searchController = TextEditingController();
+  final MetExerciseRepository _repository = MetExerciseRepository();
+  Timer? _debounceTimer;
+  List<MetExercise> _searchResults = [];
+  bool _isSearching = false;
+  String _query = '';
+  bool _showAddButton = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.nameController.addListener(_updateAddButtonVisibility);
+    _updateAddButtonVisibility();
+  }
+
+  @override
+  void didUpdateWidget(covariant _TrainingSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.workoutType != widget.workoutType) {
+      _updateAddButtonVisibility();
+    }
+  }
+
+  void _updateAddButtonVisibility() {
+    final show = widget.workoutType != null &&
+        widget.nameController.text.trim().isNotEmpty;
+    if (_showAddButton != show) {
+      setState(() => _showAddButton = show);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.nameController.removeListener(_updateAddButtonVisibility);
+    _searchController.dispose();
+    _debounceTimer?.cancel();
+    super.dispose();
+  }
+
+  void _onQueryChanged(String value) {
+    setState(() => _query = value);
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
+      _performSearch(value);
+    });
+  }
+
+  Future<void> _performSearch(String query) async {
+    final q = query.trim();
+    if (q.length < 2) {
+      if (mounted) {
+        setState(() {
+          _searchResults = [];
+          _isSearching = false;
+        });
+      }
+      return;
+    }
+
+    if (mounted) setState(() => _isSearching = true);
+
+    try {
+      final response = await _repository.search(q);
+      if (mounted) {
+        setState(() {
+          _searchResults = response.matches;
+          _isSearching = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _searchResults = [];
+          _isSearching = false;
+        });
+      }
+    }
+  }
+
+  void _addExerciseFromSearch(MetExercise exercise) {
+    widget.nameController.text = exercise.name;
+    _searchController.clear();
+    setState(() {
+      _query = '';
+      _searchResults = [];
+    });
+    FocusScope.of(context).unfocus();
+  }
+
+  List<Widget> _buildExerciseItems() {
+    if (widget.exercises.isEmpty) {
+      return [
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+          decoration: BoxDecoration(
+            color: ClayTokens.clayDarkSurfaceElevated,
+            borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
+          ),
+          child: Row(
+            children: [
+              Icon(CupertinoIcons.add_circled, color: ClayTokens.clayPrimaryLight, size: 20),
+              const SizedBox(width: 10),
+              Text(
+                'No exercises added yet',
+                style: ClayTokens.darkBodyMedium.copyWith(color: ClayTokens.clayDarkTextTertiary),
+              ),
+            ],
+          ),
+        ),
+      ];
+    }
+    return widget.exercises.asMap().entries.map((entry) {
+      final index = entry.key;
+      final exercise = entry.value;
+      return Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF7C3AED),
+          borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    exercise['name'] ?? '',
+                    style: ClayTokens.darkBodyMedium.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${exercise['sets'] ?? 0} sets × ${exercise['reps'] ?? 0} reps${exercise['weight'] != null && exercise['weight'].toString().isNotEmpty ? ' • ${exercise['weight']} kg' : ''}',
+                    style: ClayTokens.darkBodySmall,
+                  ),
+                ],
+              ),
+            ),
+            CupertinoButton(
+              padding: const EdgeInsets.all(4),
+              onPressed: () => widget.onRemoveExercise(index),
+              child: Icon(CupertinoIcons.delete, color: ClayTokens.clayError, size: 18),
+            ),
+          ],
+        ),
+      );
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -492,15 +996,19 @@ class _TrainingSectionState extends State<_TrainingSection> {
       children: [
         Text(
           'TRAINING PLAN',
-          style: ClayTokens.darkTitleSmall.copyWith(
+          style: ClayTokens.displaySmall.copyWith(
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
             letterSpacing: 1.2,
+            color: Colors.white,
           ),
         ),
         const SizedBox(height: 10),
         Container(
           decoration: BoxDecoration(
-            color: ClayTokens.clayDarkSurfaceElevated,
-            borderRadius: BorderRadius.circular(ClayTokens.radiusLg),
+            color: ClayTokens.clayPrimaryLight.withAlpha(25),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withAlpha(18)),
           ),
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -510,13 +1018,14 @@ class _TrainingSectionState extends State<_TrainingSection> {
                 'Workout Type',
                 style: TextStyle(
                   fontSize: 14,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w400,
                   color: Color(0xFFFFFFFF),
                 ),
               ),
               const SizedBox(height: 8),
               DropdownField<String>(
                 value: widget.workoutType,
+                fillColor: ClayTokens.clayDarkSurfaceElevated,
                 items: widget.workoutTypes.map((type) {
                   return DropdownItem<String>(label: type, value: type);
                 }).toList(),
@@ -524,174 +1033,220 @@ class _TrainingSectionState extends State<_TrainingSection> {
                 placeholder: 'Select workout type',
               ),
               const SizedBox(height: 12),
+              TextField(
+                controller: _searchController,
+                onChanged: _onQueryChanged,
+                decoration: InputDecoration(
+                  hintText: 'Search exercises…',
+                  hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF7070A0)),
+                  prefixIcon: const Icon(Icons.search, color: Color(0xFF7070A0), size: 18),
+                  filled: true,
+                  fillColor: ClayTokens.clayDarkSurfaceElevated,
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFF2A2A45)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFFA78BFA)),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                ),
+                style: const TextStyle(fontSize: 13, color: Color(0xFFFFFFFF)),
+              ),
+              if (_isSearching) ...[
+                const SizedBox(height: 8),
+                const Center(
+                  child: SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFD6A5FF)),
+                  ),
+                ),
+              ],
+              if (_searchResults.isEmpty && _query.isNotEmpty && !_isSearching) ...[
+                const SizedBox(height: 8),
+                const Text(
+                  'No exercises found. Try a different search term.',
+                  style: TextStyle(fontSize: 11, color: Color(0xFF8E8E93)),
+                ),
+              ],
+              if (_searchResults.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Column(
+                  children: _searchResults.map((e) {
+                    return PressableCard(
+                      onTap: () => _addExerciseFromSearch(e),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      margin: const EdgeInsets.only(bottom: 6),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFBF5AF2).withAlpha(20),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.add,
+                              color: Color(0xFFD6A5FF),
+                              size: 16,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  e.name,
+                                  style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF)),
+                                ),
+                                Text(
+                                  '${e.category} · MET ${e.metValue.toStringAsFixed(1)}',
+                                  style: const TextStyle(fontSize: 10, color: Color(0xFF8E8E93)),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+              const SizedBox(height: 12),
+              TextField(
+                controller: widget.nameController,
+                decoration: InputDecoration(
+                  hintText: 'Exercise name',
+                  hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF7070A0)),
+                  filled: true,
+                  fillColor: ClayTokens.clayDarkSurfaceElevated,
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFF2A2A45)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFFA78BFA)),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                ),
+                style: const TextStyle(fontSize: 13, color: Color(0xFFFFFFFF)),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: widget.setsController,
+                      decoration: InputDecoration(
+                        hintText: 'Sets',
+                        hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF7070A0)),
+                        filled: true,
+                        fillColor: ClayTokens.clayDarkSurfaceElevated,
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Color(0xFF2A2A45)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Color(0xFFA78BFA)),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      ),
+                      style: const TextStyle(fontSize: 13, color: Color(0xFFFFFFFF)),
+                      keyboardType: TextInputType.number,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: widget.repsController,
+                      decoration: InputDecoration(
+                        hintText: 'Reps',
+                        hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF7070A0)),
+                        filled: true,
+                        fillColor: ClayTokens.clayDarkSurfaceElevated,
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Color(0xFF2A2A45)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Color(0xFFA78BFA)),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      ),
+                      style: const TextStyle(fontSize: 13, color: Color(0xFFFFFFFF)),
+                      keyboardType: TextInputType.number,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: widget.weightController,
+                      decoration: InputDecoration(
+                        hintText: 'Weight (kg)',
+                        hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF7070A0)),
+                        filled: true,
+                        fillColor: ClayTokens.clayDarkSurfaceElevated,
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Color(0xFF2A2A45)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Color(0xFFA78BFA)),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      ),
+                      style: const TextStyle(fontSize: 13, color: Color(0xFFFFFFFF)),
+                      keyboardType: TextInputType.number,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              if (_showAddButton)
+                CupertinoButton(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  color: ClayTokens.clayPrimary,
+                  borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
+                  onPressed: () {
+                    widget.onAddExercise();
+                    setState(() => _showAddButton = false);
+                  },
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      Icon(CupertinoIcons.plus, color: Color(0xFFFFFFFF), size: 18),
+                      SizedBox(width: 8),
+                      Text(
+                        'Add',
+                        style: TextStyle(color: Color(0xFFFFFFFF)),
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 12),
               const Text(
                 'Exercises',
                 style: TextStyle(
                   fontSize: 14,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w400,
                   color: Color(0xFFFFFFFF),
                 ),
               ),
               const SizedBox(height: 8),
-              if (widget.exercises.isEmpty)
-                Container(
-                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: ClayTokens.clayDarkBase,
-                    borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(CupertinoIcons.add_circled, color: ClayTokens.clayPrimaryLight, size: 20),
-                      const SizedBox(width: 10),
-                      Text(
-                        'No exercises added yet',
-                        style: ClayTokens.darkBodyMedium.copyWith(color: ClayTokens.clayDarkTextTertiary),
-                      ),
-                    ],
-                  ),
-                )
-              else
-                ...widget.exercises.asMap().entries.map((entry) {
-                final index = entry.key;
-                final exercise = entry.value;
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: ClayTokens.clayDarkSurface,
-                    borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              exercise['name'] ?? '',
-                              style: ClayTokens.darkBodyMedium.copyWith(fontWeight: FontWeight.w600),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${exercise['sets'] ?? 0} sets × ${exercise['reps'] ?? 0} reps${exercise['weight'] != null && exercise['weight'].toString().isNotEmpty ? ' • ${exercise['weight']} kg' : ''}',
-                              style: ClayTokens.darkBodySmall,
-                            ),
-                          ],
-                        ),
-                      ),
-                      CupertinoButton(
-                        padding: const EdgeInsets.all(4),
-                        onPressed: () => widget.onRemoveExercise(index),
-                        child: Icon(CupertinoIcons.delete, color: ClayTokens.clayError, size: 18),
-                      ),
-                    ],
-                  ),
-                );
-              }),
-              const SizedBox(height: 8),
-              Container(
-                decoration: BoxDecoration(
-                  border: Border.all(color: ClayTokens.clayPrimary.withAlpha(128)),
-                  borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
-                ),
-                child: CupertinoButton(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  onPressed: () => _showAddExerciseDialog(context, widget),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      Icon(CupertinoIcons.plus, color: Color(0xFF7C3AED), size: 18),
-                      SizedBox(width: 8),
-                      Text(
-                        'Add Exercise',
-                        style: TextStyle(color: Color(0xFF7C3AED)),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              ..._buildExerciseItems(),
             ],
           ),
         ),
       ],
-    );
-  }
-
-  void _showAddExerciseDialog(BuildContext context, _TrainingSection widget) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: ClayTokens.clayDarkCard,
-        title: Text('Add Exercise', style: ClayTokens.darkHeadlineSmall),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: widget.nameController,
-                style: ClayTokens.darkBodyMedium,
-                decoration: InputDecoration(
-                  labelText: 'Exercise Name',
-                  labelStyle: ClayTokens.darkBodyMedium.copyWith(color: ClayTokens.clayDarkTextTertiary),
-                  filled: true,
-                  fillColor: ClayTokens.clayDarkSurfaceElevated,
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: widget.setsController,
-                style: ClayTokens.darkBodyMedium,
-                decoration: InputDecoration(
-                  labelText: 'Sets',
-                  labelStyle: ClayTokens.darkBodyMedium.copyWith(color: ClayTokens.clayDarkTextTertiary),
-                  filled: true,
-                  fillColor: ClayTokens.clayDarkSurfaceElevated,
-                ),
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: widget.repsController,
-                style: ClayTokens.darkBodyMedium,
-                decoration: InputDecoration(
-                  labelText: 'Reps',
-                  labelStyle: ClayTokens.darkBodyMedium.copyWith(color: ClayTokens.clayDarkTextTertiary),
-                  filled: true,
-                  fillColor: ClayTokens.clayDarkSurfaceElevated,
-                ),
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: widget.weightController,
-                style: ClayTokens.darkBodyMedium,
-                decoration: InputDecoration(
-                  labelText: 'Weight (kg)',
-                  labelStyle: ClayTokens.darkBodyMedium.copyWith(color: ClayTokens.clayDarkTextTertiary),
-                  filled: true,
-                  fillColor: ClayTokens.clayDarkSurfaceElevated,
-                ),
-                keyboardType: TextInputType.number,
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text('Cancel', style: ClayTokens.darkBodyMedium.copyWith(color: ClayTokens.clayDarkTextTertiary)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              widget.onAddExercise();
-              Navigator.of(ctx).pop();
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: ClayTokens.clayPrimary),
-            child: Text('Add Exercise', style: ClayTokens.darkBodyMedium.copyWith(color: Color(0xFFFFFFFF))),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -708,22 +1263,26 @@ class _NotesSection extends StatelessWidget {
       children: [
         Text(
           'NOTES',
-          style: ClayTokens.darkTitleSmall.copyWith(
+          style: ClayTokens.displaySmall.copyWith(
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
             letterSpacing: 1.2,
+            color: Colors.white,
           ),
         ),
         const SizedBox(height: 10),
         Container(
           decoration: BoxDecoration(
-            color: ClayTokens.clayDarkSurfaceElevated,
-            borderRadius: BorderRadius.circular(ClayTokens.radiusLg),
+            color: ClayTokens.clayPrimaryLight.withAlpha(25),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withAlpha(18)),
           ),
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Notes (Optional)',
+                '(Optional)',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -739,7 +1298,7 @@ class _NotesSection extends StatelessWidget {
                   hintText: 'Add instructions, rest days, intensity, or trainer notes...',
                   hintStyle: ClayTokens.darkBodyMedium.copyWith(color: ClayTokens.clayDarkTextTertiary),
                   filled: true,
-                  fillColor: ClayTokens.clayDarkSurface,
+                  fillColor: ClayTokens.clayDarkSurfaceElevated,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
                   ),
@@ -803,6 +1362,7 @@ class DropdownField<T> extends StatefulWidget {
   final T? value;
   final List<DropdownItem<T>> items;
   final ValueChanged<T?> onChanged;
+  final Color? fillColor;
 
   const DropdownField({
     super.key,
@@ -810,6 +1370,7 @@ class DropdownField<T> extends StatefulWidget {
     required this.value,
     required this.items,
     required this.onChanged,
+    this.fillColor,
   });
 
   @override
@@ -892,7 +1453,7 @@ class _DropdownFieldState<T> extends State<DropdownField<T>> {
           curve: Curves.easeInOut,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
           decoration: BoxDecoration(
-            color: ClayTokens.clayDarkBase,
+            color: widget.fillColor ?? ClayTokens.clayDarkBase,
             borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
             border: Border.all(
               color: _open ? ClayTokens.clayPrimary.withAlpha(128) : Colors.transparent,

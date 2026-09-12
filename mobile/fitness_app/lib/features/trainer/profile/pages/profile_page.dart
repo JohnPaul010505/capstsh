@@ -11,7 +11,7 @@ import '../../../shared/widgets/skeleton.dart';
 import '../../../shared/widgets/pressable.dart';
 import '../../../shared/widgets/animations.dart';
 
-final trainerProfileProvider = FutureProvider.autoDispose.family<Map<String, dynamic>, String>((ref, id) async {
+final trainerProfileProvider = FutureProvider.family<Map<String, dynamic>, String>((ref, id) async {
   final client = SupabaseClientService().client;
   final response = await client.from('profiles').select('id, full_name, email, created_at, specialty, available_days').eq('id', id).single();
   return response;
@@ -101,6 +101,8 @@ class ProfilePage extends ConsumerWidget {
                   Text('Features', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF8E8E93), decoration: TextDecoration.none)),
                   const SizedBox(height: 8),
                   _SettingItem(index: 1, icon: CupertinoIcons.flag, iconColor: Color(0xFFBF5AF2), label: 'Create Plan', onTap: () => context.go('/trainer/set-plan')),
+                  const SizedBox(height: 8),
+                  _SettingItem(index: 2, icon: CupertinoIcons.doc_text, iconColor: Color(0xFF0A84FF), label: 'Record', onTap: () => context.go('/trainer/record')),
                   const SizedBox(height: 24),
                   InkWell(
                     onTap: () {

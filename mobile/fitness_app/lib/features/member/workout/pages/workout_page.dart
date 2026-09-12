@@ -9,6 +9,9 @@ import 'package:shared/services/supabase_client.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../shared/widgets/app_glow_background.dart';
 import '../../../shared/widgets/proof_video_viewer.dart';
+import '../../../shared/widgets/plan_floating_logo.dart';
+import '../../../shared/providers/plan_providers.dart';
+import '../../../shared/widgets/trainer_plan_overlay.dart';
 import '../widgets/workout_header.dart';
 import '../widgets/workout_clock_card.dart';
 import '../widgets/workout_add_form.dart';
@@ -201,6 +204,44 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
                 ),
                 if (session.idleWarning)
                   WorkoutIdleOverlay(session: session, notifier: notifier),
+                if (ref.watch(hasActivePlanProvider).value ?? false)
+                  Positioned(
+                    right: 16,
+                    bottom: 96,
+                    child: PlanFloatingLogo(
+                      memberId: SupabaseClientService().client.auth.currentUser!.id,
+                      isExpanded: ref.watch(planOverlayControllerProvider).isOpen,
+                      onTap: () {
+                        final overlay = ref.read(planOverlayControllerProvider);
+                        final planAsync = ref.read(activePlanProvider);
+                        final plan = planAsync.value;
+                        if (plan == null) return;
+
+                        if (overlay.isOpen) {
+                          overlay.close();
+                        } else {
+                          overlay.openForWorkout(
+                            SupabaseClientService().client.auth.currentUser!.id,
+                            plan['start_date'] as String? ?? '',
+                          );
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            backgroundColor: Colors.transparent,
+                            builder: (_) => TrainerPlanWorkoutOverlay(
+                              planId: plan['id'] as String,
+                              dayNumber: overlay.currentDay,
+                              notes: plan['notes'] as String?,
+                            ),
+                          ).then((_) {
+                            if (overlay.isOpen) {
+                              overlay.close();
+                            }
+                          });
+                        }
+                      },
+                    ),
+                  ),
               ],
             ),
           ),

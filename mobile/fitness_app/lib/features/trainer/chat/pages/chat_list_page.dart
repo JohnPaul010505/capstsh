@@ -8,7 +8,7 @@ import '../../../shared/widgets/skeleton.dart';
 import '../../../shared/widgets/app_glow_background.dart';
 import '../../../shared/widgets/clay/clay_avatar.dart';
 
-final chatRoomsWithProfilesProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+final chatRoomsWithProfilesProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
   final client = SupabaseClientService().client;
   final userId = client.auth.currentUser!.id;
 
@@ -53,14 +53,6 @@ class ChatListPage extends ConsumerStatefulWidget {
 }
 
 class _ChatListPageState extends ConsumerState<ChatListPage> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.invalidate(chatRoomsWithProfilesProvider);
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final roomsAsync = ref.watch(chatRoomsWithProfilesProvider);

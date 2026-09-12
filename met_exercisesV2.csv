@@ -1,0 +1,200 @@
+name,category,met_value
+Barbell Floor Press,Strength Training,6.0
+Machine Chest Press,Strength Training,5.5
+Cable Chest Press,Strength Training,5.0
+Dumbbell Pullover,Strength Training,5.0
+Chest-Supported Row,Strength Training,5.5
+Pendlay Row,Strength Training,6.0
+Meadows Row,Strength Training,6.0
+Landmine Row,Strength Training,5.5
+Landmine Press,Strength Training,5.5
+Cable Lateral Raise,Strength Training,5.0
+Cable Rear Delt Fly,Strength Training,5.0
+Zottman Curl,Strength Training,5.0
+Spider Curl,Strength Training,5.0
+French Press,Strength Training,5.0
+JM Press,Strength Training,5.5
+Machine Incline Press,Strength Training,5.5
+Machine Decline Press,Strength Training,5.5
+Dumbbell Squeeze Press,Strength Training,5.0
+Cable Pullover,Strength Training,5.0
+Reverse Pec Deck,Strength Training,5.0
+Stationary Bike – 50 W,Cardio Machines,4.0
+Stationary Bike – 60 W,Cardio Machines,5.0
+Stationary Bike – 70–80 W,Cardio Machines,5.8
+Stationary Bike – 90–100 W,Cardio Machines,6.0
+Stationary Bike – 126–150 W,Cardio Machines,8.0
+Stationary Bike – 151–199 W,Cardio Machines,10.3
+Stationary Bike – 200–229 W,Cardio Machines,10.8
+Spin Bike Class,Cardio Machines,9.0
+Virtual Indoor Cycling,Cardio Machines,8.8
+Low-Impact Aerobics,Cardio Machines,4.8
+High-Impact Aerobics,Cardio Machines,8.0
+Step Aerobics – 4 inch,Cardio Machines,5.5
+Step Aerobics – 6–8 inch,Cardio Machines,7.3
+Step Aerobics – 10–12 inch,Cardio Machines,9.0
+Bench Step Class,Cardio Machines,7.8
+Boxing Punching Bag – Moderate,Cardio Machines,5.8
+Boxing Punching Bag – Fast,Cardio Machines,8.5
+Ski Ergometer – Moderate,Cardio Machines,10.5
+Ski Ergometer – Fast,Cardio Machines,18.0
+Unicycling,Cardio Machines,5.0
+Shuttle Run,CrossFit / HIIT,11.0
+Sprint Intervals,CrossFit / HIIT,12.0
+Hill Sprint Intervals,CrossFit / HIIT,12.5
+Squat Thrust,CrossFit / HIIT,8.0
+Tuck Jump,CrossFit / HIIT,9.0
+Skater Jumps,CrossFit / HIIT,8.0
+Lateral Bounds,CrossFit / HIIT,8.0
+Fast Feet,CrossFit / HIIT,8.0
+Speed Skaters,CrossFit / HIIT,8.0
+Sprinter Burpee,CrossFit / HIIT,10.0
+Plyometric Lunges,CrossFit / HIIT,8.0
+Alternating Jump Lunges,CrossFit / HIIT,8.0
+Explosive Step Jumps,CrossFit / HIIT,8.0
+Inchworm to Push-up,CrossFit / HIIT,7.5
+Plank Jack,CrossFit / HIIT,7.5
+Sprawl,CrossFit / HIIT,8.0
+Seal Jack,CrossFit / HIIT,8.0
+Squat Thrust to Jump,CrossFit / HIIT,9.0
+Broad Jump Repeats,CrossFit / HIIT,9.0
+Lateral Shuffle Sprint,CrossFit / HIIT,10.0
+Dumbbell Clean and Press,Full Body,7.5
+Kettlebell Clean,Full Body,7.5
+Kettlebell Clean and Press,Full Body,8.0
+Dumbbell Complex,Full Body,7.5
+Barbell Complex,Full Body,7.5
+Man Maker,Full Body,8.0
+Devil Press,Full Body,10.0
+Renegade Row,Full Body,6.5
+Sandbag Clean,Full Body,7.5
+Sandbag Carry,Full Body,6.5
+Sled Drag,Full Body,8.0
+Bear Plank Shoulder Tap,Full Body,6.0
+Dumbbell Squat to Press,Full Body,7.5
+Dumbbell Reverse Lunge to Press,Full Body,7.5
+Kettlebell Front Rack Carry,Full Body,6.5
+Sandbag Shouldering,Full Body,8.0
+Barbell High Pull,Full Body,6.0
+Dumbbell High Pull,Full Body,6.0
+Kettlebell Dead Clean,Full Body,7.5
+Squat to Upright Row,Full Body,7.0
+Incline Cable Press,Upper Body,5.0
+Decline Cable Press,Upper Body,5.0
+Single-Arm Cable Row,Upper Body,5.0
+Neutral-Grip Lat Pulldown,Upper Body,5.0
+Close-Grip Lat Pulldown,Upper Body,5.0
+Wide-Grip Lat Pulldown,Upper Body,5.0
+Single-Arm Dumbbell Pulldown,Upper Body,5.0
+Seal Row,Upper Body,5.5
+Inverted Row,Upper Body,6.0
+Cable High Row,Upper Body,5.0
+Single-Arm Machine Row,Upper Body,5.0
+Cable Y-Raise,Upper Body,4.5
+Cable Front Raise,Upper Body,5.0
+Reverse Cable Fly,Upper Body,5.0
+Bayesian Curl,Upper Body,5.0
+Dumbbell Tate Press,Upper Body,5.0
+Single-Arm Triceps Extension,Upper Body,5.0
+Cross-Body Hammer Curl,Upper Body,5.0
+Incline Hammer Curl,Upper Body,5.0
+Machine Preacher Curl,Upper Body,5.0
+Barbell Split Squat,Lower Body,6.0
+Deficit Reverse Lunge,Lower Body,6.0
+Curtsy Lunge,Lower Body,5.5
+Cossack Squat,Lower Body,5.0
+Sissy Squat,Lower Body,5.0
+Belt Squat,Lower Body,5.5
+Spanish Squat,Lower Body,5.0
+Nordic Hamstring Curl,Lower Body,5.0
+Good Morning,Lower Body,5.5
+Cable Pull-Through,Lower Body,5.0
+Glute-Ham Raise,Lower Body,5.0
+Hip Abduction Machine,Lower Body,4.5
+Hip Adduction Machine,Lower Body,4.5
+Single-Leg Press,Lower Body,5.5
+Single-Leg Romanian Deadlift,Lower Body,5.5
+Single-Leg Glute Bridge,Lower Body,4.5
+Frog Pump,Lower Body,4.0
+Banded Lateral Walk,Lower Body,4.0
+Reverse Hyperextension,Lower Body,5.0
+Tibialis Raise,Lower Body,4.0
+Smith Machine Bench Press,Push,5.5
+Smith Machine Incline Press,Push,5.5
+Smith Machine Shoulder Press,Push,5.5
+Machine Incline Chest Press,Push,5.5
+Machine Decline Chest Press,Push,5.5
+High-to-Low Cable Fly,Push,5.0
+Low-to-High Cable Fly,Push,5.0
+Diamond Push-up,Push,7.5
+Handstand Push-up,Push,7.5
+Deficit Push-up,Push,7.5
+Archer Push-up,Push,7.5
+Pseudo Planche Push-up,Push,8.0
+Ring Push-up,Push,7.5
+Ring Dip,Push,7.5
+Neutral-Grip Pulldown,Pull,5.0
+Close-Grip Pulldown,Pull,5.0
+Wide-Grip Pulldown,Pull,5.0
+Single-Arm Pulldown,Pull,5.0
+Kroc Row,Pull,6.0
+Chest-Supported T-Bar Row,Pull,5.5
+Rope Face Pull,Pull,5.0
+Cable Rear-Delt Row,Pull,5.0
+Dumbbell High Row,Pull,5.5
+Barbell High Row,Pull,5.5
+Reverse-Grip Barbell Row,Pull,6.0
+Trap Bar Deadlift,Legs,6.0
+Deficit Deadlift,Legs,6.0
+Cat-Cow,Mobility & Recovery,2.3
+World's Greatest Stretch,Mobility & Recovery,2.3
+90/90 Hip Switch,Mobility & Recovery,2.3
+Thread the Needle,Mobility & Recovery,2.3
+Child's Pose,Mobility & Recovery,2.3
+Downward Dog,Mobility & Recovery,2.3
+Cobra Stretch,Mobility & Recovery,2.3
+Pigeon Pose,Mobility & Recovery,2.3
+Deep Squat Hold,Mobility & Recovery,2.5
+Shoulder Dislocates,Mobility & Recovery,2.3
+Ankle Mobility Rocks,Mobility & Recovery,2.3
+Thoracic Rotations,Mobility & Recovery,2.3
+Hip Flexor Stretch,Mobility & Recovery,2.3
+Hamstring Stretch,Mobility & Recovery,2.3
+Quad Stretch,Mobility & Recovery,2.3
+Calf Stretch,Mobility & Recovery,2.3
+Chest Opener Stretch,Mobility & Recovery,2.3
+Lat Stretch,Mobility & Recovery,2.3
+Adductor Stretch,Mobility & Recovery,2.3
+Figure-Four Stretch,Mobility & Recovery,2.3
+Barbell Hack Squat,Legs,6.0
+Jefferson Squat,Legs,5.5
+Zercher Squat,Strength Training,6.0
+Anderson Squat,Strength Training,6.0
+Pause Squat,Strength Training,6.0
+Box Squat,Strength Training,6.0
+Pin Squat,Strength Training,6.0
+Deficit Squat,Legs,6.0
+Front-Foot Elevated Split Squat,Lower Body,5.5
+Lateral Lunge,Lower Body,5.5
+Walking Lateral Lunge,Lower Body,6.0
+Reverse Nordic Curl,Lower Body,4.5
+Hamstring Walkout,Lower Body,5.0
+Cable Glute Kickback,Lower Body,4.5
+Cable Hip Abduction,Lower Body,4.5
+Cable Hip Adduction,Lower Body,4.5
+Standing Hip Flexion,Lower Body,4.0
+Machine Glute Drive,Lower Body,5.0
+Barbell Hip Extension,Lower Body,5.0
+B-Stance Hip Thrust,Lower Body,5.0
+Floor Dumbbell Press,Push,5.0
+Close-Grip Dumbbell Press,Push,5.0
+Reverse-Grip Bench Press,Push,5.5
+Guillotine Press,Push,5.0
+Cable Press-Around,Push,5.0
+Dumbbell Arnold Push Press,Push,6.0
+Cable Upright Press,Push,5.0
+Cable Low Row,Pull,5.0
+Cable Lat Prayer,Pull,5.0
+Reverse-Grip Pulldown,Pull,5.0
+Machine High Row,Pull,5.0
+Single-Arm Machine Pulldown,Pull,5.0

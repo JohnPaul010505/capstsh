@@ -472,7 +472,7 @@ class _GreetingRow extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(firstName, style: ClayTokens.displaySmall.copyWith(letterSpacing: 0, color: Colors.white)),
+              Text(firstName, style: ClayTokens.displaySmall.copyWith(letterSpacing: 0, color: Color(0xFFFFB6C1))),
               const SizedBox(height: 2),
               Row(
                 children: [

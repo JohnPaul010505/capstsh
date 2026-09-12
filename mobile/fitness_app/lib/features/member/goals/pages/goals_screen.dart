@@ -81,19 +81,29 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
                                     return GoalCard(
                                       goal: g,
                                       onToggleStatus: () async {
-                                        final currentStatus = g['status'] as String? ?? 'active';
-                                        final newStatus = currentStatus == 'active' ? 'completed' : 'active';
+                                        final currentStatus =
+                                            g['status'] as String? ?? 'active';
+                                        final newStatus =
+                                            currentStatus == 'active'
+                                            ? 'completed'
+                                            : 'active';
                                         await SupabaseClientService().client
                                             .from('goals')
                                             .update({'status': newStatus})
                                             .eq('id', g['id']);
-                                        final userId = SupabaseClientService().client.auth.currentUser!.id;
+                                        final userId = SupabaseClientService()
+                                            .client
+                                            .auth
+                                            .currentUser!
+                                            .id;
                                         if (newStatus == 'completed') {
-                                          await NotificationService().createNotification(
-                                            userId: userId,
-                                            title: 'Goal Completed',
-                                            body: 'Congratulations! You completed your ${g['goal_type'] ?? 'fitness'} goal.',
-                                          );
+                                          await NotificationService()
+                                              .createNotification(
+                                                userId: userId,
+                                                title: 'Goal Completed',
+                                                body:
+                                                    'Congratulations! You completed your ${g['goal_type'] ?? 'fitness'} goal.',
+                                              );
                                         }
                                         ref.invalidate(goalsProvider);
                                       },
@@ -102,12 +112,16 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
                                 ),
                               ),
                             ),
-                      loading: () => const Center(child: CupertinoActivityIndicator()),
+                      loading: () =>
+                          const Center(child: CupertinoActivityIndicator()),
                       error: (e, _) => Padding(
                         padding: const EdgeInsets.all(16),
                         child: Text(
                           'Error: $e',
-                          style: TextStyle(color: Colors.redAccent, fontSize: 14),
+                          style: TextStyle(
+                            color: Colors.redAccent,
+                            fontSize: 14,
+                          ),
                         ),
                       ),
                     ),
@@ -129,10 +143,7 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
           CupertinoButton(
             padding: EdgeInsets.zero,
             onPressed: () => context.pop(),
-            child: Icon(
-              CupertinoIcons.back,
-              color: ClayTokens.clayPrimary,
-            ),
+            child: Icon(CupertinoIcons.back, color: ClayTokens.clayPrimary),
           ),
           Expanded(
             child: Text(

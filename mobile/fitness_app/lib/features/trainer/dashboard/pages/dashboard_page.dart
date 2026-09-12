@@ -10,7 +10,7 @@ import '../../../shared/widgets/app_glow_background.dart';
 import '../../../shared/widgets/clay/clay_card.dart';
 import '../../../shared/widgets/notification_popup.dart';
 
-final trainerDashboardProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+final trainerDashboardProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   final client = SupabaseClientService().client;
   final userId = client.auth.currentUser!.id;
 

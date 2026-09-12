@@ -10,6 +10,7 @@ class MonthDayGrid extends StatelessWidget {
   final DateTime today;
   final List<Map<String, dynamic>> workouts;
   final List<Map<String, dynamic>> meals;
+  final List<Map<String, dynamic>>? goals;
   final ValueChanged<DateTime> onDayTap;
   final ValueChanged<int> onShiftMonth;
 
@@ -20,6 +21,7 @@ class MonthDayGrid extends StatelessWidget {
     required this.today,
     required this.workouts,
     required this.meals,
+    this.goals,
     required this.onDayTap,
     required this.onShiftMonth,
   });
@@ -48,6 +50,19 @@ class MonthDayGrid extends StatelessWidget {
       final t = DateTime.tryParse(m['meal_time'] as String? ?? '')?.toLocal();
       if (t != null) (mealByDay[t.day] ??= []).add(m);
     }
+    final goalByDay = <int, List<Map<String, dynamic>>>{};
+    for (final g in goals ?? const <Map<String, dynamic>>[]) {
+      final startRaw = g['start_date']?.toString() ?? '';
+      final endRaw = g['end_date']?.toString() ?? '';
+      final start = DateTime.tryParse(startRaw);
+      final end = DateTime.tryParse(endRaw);
+      if (start == null || end == null) continue;
+      for (int d = start.day; d <= end.day; d++) {
+        final date = DateTime(visibleMonth.year, visibleMonth.month, d);
+        if (date.isAfter(end)) break;
+        (goalByDay[d] ??= []).add(g);
+      }
+    }
 
     final cells = <Widget>[];
     for (int i = 0; i < leading; i++) {
@@ -62,6 +77,7 @@ class MonthDayGrid extends StatelessWidget {
           selected.month == visibleMonth.month && d == selected.day;
       final ws = workoutByDay[d] ?? [];
       final ms = mealByDay[d] ?? [];
+      final gs = goalByDay[d] ?? [];
       cells.add(Expanded(
         child: GestureDetector(
           onTap: () => onDayTap(DateTime(visibleMonth.year, visibleMonth.month, d)),
@@ -100,7 +116,7 @@ class MonthDayGrid extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 3),
-                if (ws.isNotEmpty || ms.isNotEmpty)
+                if (ws.isNotEmpty || ms.isNotEmpty || gs.isNotEmpty)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -127,6 +143,15 @@ class MonthDayGrid extends StatelessWidget {
                           width: 4, height: 4,
                           decoration: BoxDecoration(
                             color: ClayTokens.clayWarning,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      if ((ms.isNotEmpty || ws.isNotEmpty) && gs.isNotEmpty) const SizedBox(width: 2),
+                      if (gs.isNotEmpty)
+                        Container(
+                          width: 4, height: 4,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF7C3AED),
                             shape: BoxShape.circle,
                           ),
                         ),

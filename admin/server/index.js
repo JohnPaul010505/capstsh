@@ -23,7 +23,7 @@ const adminClient = createClient(supabaseUrl, serviceRoleKey, {
 })
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', routes: ['enroll', 'users', 'delete-user', 'assign-trainer', 'unassign-trainer', 'backfill-auth', 'backfill-codes', 'ai/predictions', 'ai/identify-food'] })
+  res.json({ status: 'ok', routes: ['enroll', 'users', 'delete-user', 'assign-trainer', 'unassign-trainer', 'backfill-auth', 'backfill-codes', 'ai/predictions', 'ai/identify-food', 'plans/check-daily-completions', 'plans/check-weekly-completions'] })
 })
 
 app.post('/api/enroll', async (req, res) => {
@@ -240,6 +240,127 @@ app.post('/api/notifications/broadcast', async (req, res) => {
     res.json({ success: true, count: users.length })
   } catch (err) {
     console.error('Broadcast error:', err)
+    res.status(500).json({ error: err?.message || JSON.stringify(err) })
+  }
+})
+
+app.post('/api/plans/check-daily-completions', async (req, res) => {
+  const today = new Date()
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+
+  try {
+    const { data: completions, error } = await adminClient
+      .from('plan_day_completions')
+      .select('id, plan_id, member_id, day_number, completed_exercises, notified_member, notified_trainer, member_goal_plans!inner(exercise_plan, profiles!inner(full_name))')
+      .eq('date', todayStr)
+      .eq('notified_member', false)
+      .eq('notified_trainer', false)
+
+    if (error) throw error
+    if (!completions || completions.length === 0) {
+      return res.json({ success: true, processed: 0 })
+    }
+
+    let processed = 0
+    for (const completion of completions) {
+      const exercisePlan = completion.member_goal_plans?.exercise_plan || []
+      const dayExercises = exercisePlan
+        .filter((e) => e.day === completion.day_number)
+        .map((e) => e.name || '')
+      const completedExercises = completion.completed_exercises || []
+      const done = dayExercises.filter((name) => completedExercises.includes(name))
+      const missed = dayExercises.filter((name) => !completedExercises.includes(name))
+
+      const memberName = completion.member_goal_plans?.profiles?.full_name || 'Member'
+      const memberTitle = `Day ${completion.day_number} Complete`
+      const memberBody = `You did: ${done.join(', ') || 'none'}. Missed: ${missed.join(', ') || 'none'}.`
+      const trainerTitle = `${memberName} — Day ${completion.day_number} Complete`
+      const trainerBody = `Done: ${done.join(', ') || 'none'}. Missed: ${missed.join(', ') || 'none'}.`
+
+      await adminClient.from('notifications').insert([
+        { user_id: completion.member_id, title: memberTitle, body: memberBody },
+      ])
+
+      const { data: plan } = await adminClient
+        .from('member_goal_plans')
+        .select('trainer_id')
+        .eq('id', completion.plan_id)
+        .single()
+
+      if (plan?.trainer_id) {
+        await adminClient.from('notifications').insert([
+          { user_id: plan.trainer_id, title: trainerTitle, body: trainerBody },
+        ])
+      }
+
+      await adminClient
+        .from('plan_day_completions')
+        .update({ notified_member: true, notified_trainer: true })
+        .eq('id', completion.id)
+
+      processed++
+    }
+
+    res.json({ success: true, processed })
+  } catch (err) {
+    console.error('Daily completion check error:', err)
+    res.status(500).json({ error: err?.message || JSON.stringify(err) })
+  }
+})
+
+app.post('/api/plans/check-weekly-completions', async (req, res) => {
+  try {
+    const { data: plans, error } = await adminClient
+      .from('member_goal_plans')
+      .select('id, member_id, trainer_id, end_date, profiles!member_id(full_name)')
+      .lte('end_date', new Date().toISOString().split('T')[0])
+
+    if (error) throw error
+    if (!plans || plans.length === 0) {
+      return res.json({ success: true, processed: 0 })
+    }
+
+    let processed = 0
+    for (const plan of plans) {
+      const { data: completions } = await adminClient
+        .from('plan_day_completions')
+        .select('day_number, is_complete, notified_member, notified_trainer')
+        .eq('plan_id', plan.id)
+        .eq('is_complete', true)
+
+      const completedDays = (completions || []).length
+      if (completedDays < 7) continue
+
+      const alreadyNotified = (completions || []).every((c) => c.notified_member && c.notified_trainer)
+      if (alreadyNotified) continue
+
+      const memberName = plan.profiles?.full_name || 'Member'
+      const memberTitle = 'Congratulations!'
+      const memberBody = `You completed the 7-day plan! Great work, ${memberName}.`
+      const trainerTitle = `${memberName} completed the 7-day plan`
+      const trainerBody = `${memberName} finished all 7 days. View full record in Records.`
+
+      await adminClient.from('notifications').insert([
+        { user_id: plan.member_id, title: memberTitle, body: memberBody },
+      ])
+
+      if (plan.trainer_id) {
+        await adminClient.from('notifications').insert([
+          { user_id: plan.trainer_id, title: trainerTitle, body: trainerBody },
+        ])
+      }
+
+      await adminClient
+        .from('plan_day_completions')
+        .update({ notified_member: true, notified_trainer: true })
+        .eq('plan_id', plan.id)
+
+      processed++
+    }
+
+    res.json({ success: true, processed })
+  } catch (err) {
+    console.error('Weekly completion check error:', err)
     res.status(500).json({ error: err?.message || JSON.stringify(err) })
   }
 })

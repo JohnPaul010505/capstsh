@@ -65,15 +65,25 @@ class _CreateGoalCardState extends ConsumerState<CreateGoalCard> {
     final targetValue = double.tryParse(_targetController.text);
     final measurement = await _getCurrentWeightAsync();
     final currentWeight = measurement?['weight_kg'] as double?;
-    if (goalType == 'Gain Muscle' && targetValue != null && currentWeight != null) {
+    if (goalType == 'Gain Muscle' &&
+        targetValue != null &&
+        currentWeight != null) {
       if (targetValue <= currentWeight) {
-        setState(() => _targetError = 'Target must be above your current weight (${currentWeight.toStringAsFixed(1)} kg).');
+        setState(
+          () => _targetError =
+              'Target must be above your current weight (${currentWeight.toStringAsFixed(1)} kg).',
+        );
         return;
       }
     }
-    if (goalType == 'Lose Weight' && targetValue != null && currentWeight != null) {
+    if (goalType == 'Lose Weight' &&
+        targetValue != null &&
+        currentWeight != null) {
       if (targetValue >= currentWeight) {
-        setState(() => _targetError = 'Target must be below your current weight (${currentWeight.toStringAsFixed(1)} kg).');
+        setState(
+          () => _targetError =
+              'Target must be below your current weight (${currentWeight.toStringAsFixed(1)} kg).',
+        );
         return;
       }
     }
@@ -94,7 +104,9 @@ class _CreateGoalCardState extends ConsumerState<CreateGoalCard> {
     final title = '${goalType ?? 'Fitness'} goal';
     final targetValue = double.tryParse(_targetController.text);
     if (targetValue == null || targetValue <= 0) {
-      setState(() => _validationMessage = 'Enter a target weight greater than zero.');
+      setState(
+        () => _validationMessage = 'Enter a target weight greater than zero.',
+      );
       return;
     }
     if (_targetError != null) {
@@ -209,7 +221,9 @@ class _CreateGoalCardState extends ConsumerState<CreateGoalCard> {
       if (mounted) setState(() => _justCreated = false);
     } catch (e) {
       if (mounted) {
-        setState(() => _validationMessage = 'Something went wrong. Please try again.');
+        setState(
+          () => _validationMessage = 'Something went wrong. Please try again.',
+        );
       }
     } finally {
       if (mounted) {
@@ -341,7 +355,10 @@ class _CreateGoalCardState extends ConsumerState<CreateGoalCard> {
             if (_validationMessage != null) ...[
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFEF4444).withAlpha(18),
                   borderRadius: BorderRadius.circular(12),
@@ -397,12 +414,20 @@ class _CreateGoalCardState extends ConsumerState<CreateGoalCard> {
               const SizedBox(height: 8),
               Row(
                 children: [
-                  const Icon(CupertinoIcons.exclamationmark_circle, color: Color(0xFFEF4444), size: 14),
+                  const Icon(
+                    CupertinoIcons.exclamationmark_circle,
+                    color: Color(0xFFEF4444),
+                    size: 14,
+                  ),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       _targetError!,
-                      style: const TextStyle(color: Color(0xFFFCA5A5), fontSize: 13, fontWeight: FontWeight.w500),
+                      style: const TextStyle(
+                        color: Color(0xFFFCA5A5),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ],
@@ -513,11 +538,7 @@ class _CreateGoalCardState extends ConsumerState<CreateGoalCard> {
           ),
         ),
         const SizedBox(height: 8),
-        DropdownField(
-          value: value,
-          items: items,
-          onChanged: onChanged,
-        ),
+        DropdownField(value: value, items: items, onChanged: onChanged),
       ],
     );
   }
@@ -558,9 +579,7 @@ class _CreateGoalCardState extends ConsumerState<CreateGoalCard> {
           cursorColor: primaryPurple,
           style: TextStyle(color: enabled ? textPrimary : textSecondary),
           inputFormatters: enabled
-              ? [
-                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*$')),
-                ]
+              ? [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*$'))]
               : null,
           suffix: suffix != null
               ? Padding(
@@ -573,7 +592,6 @@ class _CreateGoalCardState extends ConsumerState<CreateGoalCard> {
       ],
     );
   }
-
 }
 
 class DropdownField extends StatefulWidget {
@@ -749,11 +767,7 @@ class _DropdownMenu extends StatelessWidget {
     final estimatedHeight = items.length * 52.0 + 12;
     final flippedTop = (top - estimatedHeight).clamp(0.0, top);
 
-    return Positioned(
-      top: flippedTop,
-      left: 0,
-      child: menu,
-    );
+    return Positioned(top: flippedTop, left: 0, child: menu);
   }
 }
 

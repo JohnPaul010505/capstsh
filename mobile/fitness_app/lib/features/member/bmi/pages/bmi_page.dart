@@ -8,12 +8,11 @@ import 'package:shared/services/supabase_client.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../shared/widgets/animations.dart';
 import '../../../shared/widgets/app_glow_background.dart';
+import '../../../shared/widgets/glass_card.dart';
 import '../data/bmi_info.dart';
 import '../providers/bmi_history_provider.dart';
 import 'package:shared/providers/body_measurement_provider.dart';
 
-/// BMI page: shows the member's current BMI with an inline "Update" flow
-/// (live height/weight calculator) plus a full measurement history.
 class BmiPage extends ConsumerStatefulWidget {
   const BmiPage({super.key});
 
@@ -126,46 +125,46 @@ class _BmiPageState extends ConsumerState<BmiPage> {
       child: AppGlowBackground(
         child: SafeArea(
           child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(context),
-            Expanded(
-              child: historyAsync.when(
-                data: (history) => ListView(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  children: [
-                    if (history.isNotEmpty) ...[
-                      _buildHeroCard(history.last),
-                      const SizedBox(height: 16),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeader(context),
+              Expanded(
+                child: historyAsync.when(
+                  data: (history) => ListView(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    children: [
+                      if (history.isNotEmpty) ...[
+                        _buildHeroCard(history.last),
+                        const SizedBox(height: 16),
+                      ],
+                      if (_editing)
+                        _buildUpdateEditor()
+                      else
+                        _buildUpdateButton(),
+                      const SizedBox(height: 24),
+                      _buildHistoryHeader(),
+                      const SizedBox(height: 8),
+                      _buildHistoryList(rowsAsync),
+                      const SizedBox(height: 24),
                     ],
-                    if (_editing)
-                      _buildUpdateEditor()
-                    else
-                      _buildUpdateButton(),
-                    const SizedBox(height: 24),
-                    _buildHistoryHeader(),
-                    const SizedBox(height: 8),
-                    _buildHistoryList(rowsAsync),
-                    const SizedBox(height: 24),
-                  ],
-                ),
-                loading: () => const Center(child: CupertinoActivityIndicator()),
-                error: (e, _) => Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Text(
-                      'Error: $e',
-                      style: ClayTokens.bodyMedium.copyWith(color: ClayTokens.clayError),
+                  ),
+                  loading: () => const Center(child: CupertinoActivityIndicator()),
+                  error: (e, _) => Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Text(
+                        'Error: $e',
+                        style: ClayTokens.bodyMedium.copyWith(color: ClayTokens.clayError),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
-  );
+    );
   }
 
   Widget _buildHeader(BuildContext context) {
@@ -176,7 +175,7 @@ class _BmiPageState extends ConsumerState<BmiPage> {
           CupertinoButton(
             padding: EdgeInsets.zero,
             onPressed: () => context.pop(),
-            child: const Icon(CupertinoIcons.back, color: Color(0xFF7C3AED)),
+            child: const Icon(CupertinoIcons.back, color: Colors.white),
           ),
           Expanded(
             child: Text(
@@ -203,30 +202,26 @@ class _BmiPageState extends ConsumerState<BmiPage> {
     final weightKg = measurement?['weight_kg'] as num?;
     return StaggeredFadeIn(
       index: 0,
-      child: Container(
+      child: GlassCard(
         padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: ClayTokens.clayDarkSurface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: ClayTokens.clayDarkBorder),
-        ),
+        borderRadius: BorderRadius.circular(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Text('CURRENT BMI', style: ClayTokens.darkLabelSmall.copyWith(color: ClayTokens.clayDarkTextTertiary)),
+                Text('CURRENT BMI', style: ClayTokens.darkLabelSmall.copyWith(color: Colors.white)),
                 const Spacer(),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                   decoration: BoxDecoration(
-                    color: color.withAlpha(25),
+                    color: const Color(0xFF7C3AED).withAlpha(25),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: color.withAlpha(60)),
+                    border: Border.all(color: const Color(0xFF7C3AED).withAlpha(60)),
                   ),
                   child: Text(
                     latest.label,
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: color),
+                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white),
                   ),
                 ),
               ],
@@ -248,13 +243,13 @@ class _BmiPageState extends ConsumerState<BmiPage> {
                   if (heightCm != null) '${heightCm.toStringAsFixed(0)} cm',
                   if (weightKg != null) '${weightKg.toStringAsFixed(1)} kg',
                 ].join('  ·  '),
-                style: ClayTokens.darkBodySmall.copyWith(color: ClayTokens.clayDarkTextTertiary),
+                style: const TextStyle(fontSize: 13, color: Colors.white),
               ),
             ],
             const SizedBox(height: 4),
             Text(
               'Updated ${DateFormat('MMM d, yyyy').format(latest.measuredAt)}',
-              style: ClayTokens.darkBodySmall.copyWith(color: ClayTokens.clayDarkTextTertiary),
+              style: const TextStyle(fontSize: 13, color: Colors.white),
             ),
           ],
         ),
@@ -304,13 +299,9 @@ class _BmiPageState extends ConsumerState<BmiPage> {
     final live = _liveBmi();
     return StaggeredFadeIn(
       index: 1,
-      child: Container(
+      child: GlassCard(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: ClayTokens.clayDarkSurface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: ClayTokens.clayDarkBorder),
-        ),
+        borderRadius: BorderRadius.circular(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -479,14 +470,9 @@ class _BmiPageState extends ConsumerState<BmiPage> {
       child: rowsAsync.when(
         data: (rows) {
           if (rows.isEmpty) {
-            return Container(
-              width: double.infinity,
+            return GlassCard(
               padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: ClayTokens.clayDarkSurface,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: ClayTokens.clayDarkBorder),
-              ),
+              borderRadius: BorderRadius.circular(16),
               child: const Column(
                 children: [
                   Icon(Icons.history, color: Color(0xFF7070A0), size: 28),
@@ -500,12 +486,9 @@ class _BmiPageState extends ConsumerState<BmiPage> {
               ),
             );
           }
-          return Container(
-            decoration: BoxDecoration(
-              color: ClayTokens.clayDarkSurface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: ClayTokens.clayDarkBorder),
-            ),
+          return GlassCard(
+            padding: const EdgeInsets.all(16),
+            borderRadius: BorderRadius.circular(16),
             child: Column(
               children: rows.asMap().entries.map((entry) {
                 final m = entry.value;
@@ -514,7 +497,7 @@ class _BmiPageState extends ConsumerState<BmiPage> {
                   children: [
                     _historyRow(m),
                     if (!isLast)
-                      const SizedBox(height: 0.5),
+                      const Divider(color: Color(0xFF38383A), height: 1),
                   ],
                 );
               }).toList(),
