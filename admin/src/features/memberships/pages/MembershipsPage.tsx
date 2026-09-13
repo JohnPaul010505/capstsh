@@ -39,13 +39,13 @@ export default function MembershipsPage() {
 
   const { data: memberships, isLoading } = useMemberships(PLANS[activeTab].label)
   const { data: recentAttendance } = useAttendanceLast7Days()
-      const { data: members } = useQuery({
-        queryKey: ['members-simple'],
-        queryFn: async () => {
-          const { data } = await supabase.from('profiles').select('id, full_name, email, code').eq('role', 'member').order('full_name')
-          return data ?? []
-        },
-      })
+  const { data: members } = useQuery({
+    queryKey: ['members-simple'],
+    queryFn: async () => {
+      const { data } = await supabase.from('profiles').select('id, full_name, email, code').eq('role', 'member').order('full_name')
+      return data ?? []
+    },
+  })
   const createMutation = useCreateMembership()
   const deleteMutation = useDeleteMembership()
 
@@ -100,9 +100,9 @@ export default function MembershipsPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-[#ECECFC]">Memberships</h1>
+        <div />
         <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2 bg-[#7C3AED] text-white rounded-lg text-sm hover:bg-[#6D28D9]">
           <Plus className="w-4 h-4" /> Add Membership
         </button>
@@ -135,44 +135,46 @@ export default function MembershipsPage() {
       {isLoading ? (
         <div className="text-center py-8 text-[#55557A]">Loading...</div>
       ) : (
-        <div className="glass-card rounded-xl border border-white/10 shadow-sm overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-white/10 bg-white/5">
-                <th className="text-left px-4 py-3 text-sm font-medium text-[#55557A]">Member</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-[#55557A]">Plan</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-[#55557A]">Price</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-[#55557A]">Start</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-[#55557A]">End</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-[#55557A]">Status</th>
-                <th className="text-right px-4 py-3 text-sm font-medium text-[#55557A]">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {memberships?.map((m: Membership) => {
-                const status = computeStatus(m, recentMemberIds)
-                return (
-                  <tr key={m.id} className="border-b border-white/5 last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
-                    <td className="px-4 py-3 text-sm font-medium text-[#ECECFC]">
-                      {m.profiles?.full_name ?? 'â€”'}
-                      <span className="ml-2 text-xs font-mono text-[#7C3AED]">{m.profiles?.code}</span>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-[#B4B4D0]">{m.plan_name}</td>
-                    <td className="px-4 py-3 text-sm text-[#B4B4D0]">â‚±{m.price}</td>
-                    <td className="px-4 py-3 text-sm text-[#B4B4D0]">{new Date(m.start_date).toLocaleDateString()}</td>
-                    <td className="px-4 py-3 text-sm text-[#B4B4D0]">{new Date(m.end_date).toLocaleDateString()}</td>
-                    <td className="px-4 py-3"><StatusBadge status={status} /></td>
-                    <td className="px-4 py-3 text-right">
-                      <button onClick={() => handleDelete(m.id)} className="text-[#55557A] hover:text-[#EF4444]"><Trash2 className="w-4 h-4 inline" /></button>
-                    </td>
-                  </tr>
-                )
-              })}
-              {memberships?.length === 0 && (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-[#55557A]">No memberships</td></tr>
-              )}
-            </tbody>
-          </table>
+        <div className="glass-card rounded-xl border border-white/10 shadow-sm overflow-hidden flex flex-col min-h-0">
+          <div className="overflow-x-auto flex-1">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-white/10 bg-white/5">
+                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Member</th>
+                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Plan</th>
+                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Price</th>
+                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Start</th>
+                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">End</th>
+                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Status</th>
+                  <th className="text-right px-3 py-2 text-sm font-medium text-[#55557A]">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {memberships?.map((m: Membership) => {
+                  const status = computeStatus(m, recentMemberIds)
+                  return (
+                    <tr key={m.id} className="border-b border-white/5 last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
+                      <td className="px-3 py-2 text-sm font-medium text-[#ECECFC]">
+                        {m.profiles?.full_name ?? 'â€”'}
+                        <span className="ml-2 text-xs font-mono text-[#7C3AED]">{m.profiles?.code}</span>
+                      </td>
+                      <td className="px-3 py-2 text-sm text-[#B4B4D0]">{m.plan_name}</td>
+                      <td className="px-3 py-2 text-sm text-[#B4B4D0]">â‚±{m.price}</td>
+                      <td className="px-3 py-2 text-sm text-[#B4B4D0]">{new Date(m.start_date).toLocaleDateString()}</td>
+                      <td className="px-3 py-2 text-sm text-[#B4B4D0]">{new Date(m.end_date).toLocaleDateString()}</td>
+                      <td className="px-3 py-2"><StatusBadge status={status} /></td>
+                      <td className="px-3 py-2 text-right">
+                        <button onClick={() => handleDelete(m.id)} className="text-[#55557A] hover:text-[#EF4444]"><Trash2 className="w-4 h-4 inline" /></button>
+                      </td>
+                    </tr>
+                  )
+                })}
+                {memberships?.length === 0 && (
+                  <tr><td colSpan={7} className="px-3 py-6 text-center text-[#55557A]">No memberships</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

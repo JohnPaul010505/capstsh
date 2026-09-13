@@ -16,11 +16,7 @@ export default function CoachFeedbackPage() {
   })
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-[#ECECFC]">Coach Feedback</h1>
-        <p className="text-[#55557A] text-sm mt-1">Feedback given to members by their assigned trainers</p>
-      </div>
+    <div className="space-y-3">
       <FeedbackTable data={data ?? []} isLoading={isLoading} />
     </div>
   )

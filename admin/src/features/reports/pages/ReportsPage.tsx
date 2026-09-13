@@ -33,43 +33,38 @@ export default function ReportsPage() {
   const totalRevenue = membershipData?.reduce((sum, m) => sum + m.revenue, 0) ?? 0
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-[#ECECFC]">Analytics</h1>
-        <p className="text-[#55557A] text-sm mt-1">Membership trends, revenue, and plan distribution</p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="glass-card p-6 rounded-xl border border-white/10 shadow-sm">
-          <p className="text-sm text-[#55557A]">Total Plans</p>
-          <p className="text-2xl font-bold text-[#ECECFC] mt-1">{membershipData?.length ?? 0}</p>
+    <div className="space-y-3">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div className="glass-card p-4 rounded-xl border border-white/10 shadow-sm">
+          <p className="text-xs text-[#55557A]">Total Plans</p>
+          <p className="text-xl font-bold text-[#ECECFC] mt-1">{membershipData?.length ?? 0}</p>
         </div>
-        <div className="glass-card p-6 rounded-xl border border-white/10 shadow-sm">
-          <p className="text-sm text-[#55557A]">Total Revenue</p>
-          <p className="text-2xl font-bold text-[#22C55E] mt-1">${totalRevenue.toLocaleString()}</p>
+        <div className="glass-card p-4 rounded-xl border border-white/10 shadow-sm">
+          <p className="text-xs text-[#55557A]">Total Revenue</p>
+          <p className="text-xl font-bold text-[#22C55E] mt-1">${totalRevenue.toLocaleString()}</p>
         </div>
-        <div className="glass-card p-6 rounded-xl border border-white/10 shadow-sm">
-          <p className="text-sm text-[#55557A]">Total Members</p>
-          <p className="text-2xl font-bold text-[#ECECFC] mt-1">{memberCount ?? 0}</p>
+        <div className="glass-card p-4 rounded-xl border border-white/10 shadow-sm">
+          <p className="text-xs text-[#55557A]">Total Members</p>
+          <p className="text-xl font-bold text-[#ECECFC] mt-1">{memberCount ?? 0}</p>
         </div>
-        <div className="glass-card p-6 rounded-xl border border-white/10 shadow-sm">
-          <p className="text-sm text-[#55557A]">Avg Revenue/Member</p>
-          <p className="text-2xl font-bold text-[#C084FC] mt-1">
+        <div className="glass-card p-4 rounded-xl border border-white/10 shadow-sm">
+          <p className="text-xs text-[#55557A]">Avg Revenue/Member</p>
+          <p className="text-xl font-bold text-[#C084FC] mt-1">
             ${memberCount && memberCount > 0 ? (totalRevenue / memberCount).toFixed(0) : '0'}
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="glass-card p-6 rounded-xl border border-white/10 shadow-sm">
-          <h2 className="text-lg font-semibold mb-4 text-[#ECECFC]">Membership Plans</h2>
-          <div className="h-72">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="glass-card p-4 rounded-xl border border-white/10 shadow-sm">
+          <h2 className="text-base font-semibold mb-3 text-[#ECECFC]">Membership Plans</h2>
+          <div className="h-40">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={membershipData ?? []}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#2A2A45" />
-                <XAxis dataKey="name" tick={{ fill: '#55557A', fontSize: 12 }} />
-                <YAxis tick={{ fill: '#55557A', fontSize: 12 }} />
-                <Tooltip contentStyle={{ backgroundColor: '#1C1C35', border: '1px solid #2A2A45', borderRadius: '8px', color: '#ECECFC' }} labelStyle={{ color: '#B4B4D0' }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                <XAxis dataKey="name" tick={{ fill: '#9494BD', fontSize: 12 }} axisLine={{ stroke: 'rgba(255,255,255,0.06)' }} tickLine={false} />
+                <YAxis tick={{ fill: '#9494BD', fontSize: 12 }} axisLine={false} tickLine={false} width={32} />
+                <Tooltip contentStyle={{ backgroundColor: 'rgba(20,20,42,0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: '#ECECFC' }} labelStyle={{ color: '#B4B4D0' }} />
                 <Bar dataKey="count" fill="url(#reportPurple)" radius={[4, 4, 0, 0]} />
                 <defs>
                   <linearGradient id="reportPurple" x1="0" y1="0" x2="0" y2="1">
@@ -82,15 +77,15 @@ export default function ReportsPage() {
           </div>
         </div>
 
-        <div className="glass-card p-6 rounded-xl border border-white/10 shadow-sm">
-          <h2 className="text-lg font-semibold mb-4 text-[#ECECFC]">Revenue by Plan</h2>
-          <div className="h-72">
+        <div className="glass-card p-4 rounded-xl border border-white/10 shadow-sm">
+          <h2 className="text-base font-semibold mb-3 text-[#ECECFC]">Revenue by Plan</h2>
+          <div className="h-40">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={membershipData ?? []}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#2A2A45" />
-                <XAxis dataKey="name" tick={{ fill: '#55557A', fontSize: 12 }} />
-                <YAxis tick={{ fill: '#55557A', fontSize: 12 }} tickFormatter={v => `$${v}`} />
-                <Tooltip contentStyle={{ backgroundColor: '#1C1C35', border: '1px solid #2A2A45', borderRadius: '8px', color: '#ECECFC' }} labelStyle={{ color: '#B4B4D0' }} formatter={(v: number) => [`$${v}`, 'Revenue']} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                <XAxis dataKey="name" tick={{ fill: '#9494BD', fontSize: 12 }} axisLine={{ stroke: 'rgba(255,255,255,0.06)' }} tickLine={false} />
+                <YAxis tick={{ fill: '#9494BD', fontSize: 12 }} axisLine={false} tickLine={false} width={32} tickFormatter={v => `$${v}`} />
+                <Tooltip contentStyle={{ backgroundColor: 'rgba(20,20,42,0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: '#ECECFC' }} labelStyle={{ color: '#B4B4D0' }} formatter={(v: number) => [`$${v}`, 'Revenue']} />
                 <Bar dataKey="revenue" fill="url(#revenueGreen)" radius={[4, 4, 0, 0]} />
                 <defs>
                   <linearGradient id="revenueGreen" x1="0" y1="0" x2="0" y2="1">

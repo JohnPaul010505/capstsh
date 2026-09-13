@@ -68,21 +68,21 @@ export default function MemberDetailPage() {
   const fullAddress = structuredAddress || member.address || null
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <button onClick={() => navigate('/members')} className="flex items-center gap-1 text-sm text-[#55557A] hover:text-[#B4B4D0]">
         <ArrowLeft className="w-4 h-4" /> Back to Members
       </button>
 
       {/* Profile header */}
-      <div className="glass-card p-6 rounded-xl border border-white/10 shadow-sm">
+      <div className="glass-card p-4 rounded-xl border border-white/10 shadow-sm">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#7C3AED]/30 to-[#C084FC]/30 flex items-center justify-center">
-            <span className="text-2xl font-bold text-[#C084FC]">
+          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#7C3AED]/30 to-[#C084FC]/30 flex items-center justify-center">
+            <span className="text-xl font-bold text-[#C084FC]">
               {member.full_name.charAt(0)}
             </span>
           </div>
           <div>
-            <h1 className="text-xl font-bold text-[#ECECFC]">{member.full_name}</h1>
+            <div className="text-lg font-bold text-[#ECECFC]">{member.full_name}</div>
             <p className="text-sm text-[#B4B4D0]">{member.email}</p>
             <p className="text-xs font-mono text-[#7C3AED] mt-1">{member.code}</p>
           </div>
@@ -91,12 +91,12 @@ export default function MemberDetailPage() {
 
       {/* Trainer assignment */}
       {trainerAssignment && (
-        <div className="glass-card p-6 rounded-xl border border-white/10 shadow-sm">
-          <h2 className="text-lg font-semibold mb-4 text-[#ECECFC]">Assigned Trainer</h2>
+        <div className="glass-card p-4 rounded-xl border border-white/10 shadow-sm">
+          <h2 className="text-base font-semibold mb-3 text-[#ECECFC]">Assigned Trainer</h2>
           <div className="flex items-center gap-3 cursor-pointer"
             onClick={() => navigate(`/trainers/${trainerAssignment.trainer_id}`)}
           >
-            <div className="w-10 h-10 rounded-full bg-[#22C55E]/20 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-full bg-[#22C55E]/20 flex items-center justify-center">
               <span className="text-sm font-bold text-[#4ADE80]">
                 {trainerAssignment.profiles?.full_name?.charAt(0)}
               </span>
@@ -110,9 +110,9 @@ export default function MemberDetailPage() {
       )}
 
       {/* Personal Info */}
-      <div className="glass-card p-6 rounded-xl border border-white/10 shadow-sm">
-        <h2 className="text-lg font-semibold mb-4 text-[#ECECFC]">Personal Information</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="glass-card p-4 rounded-xl border border-white/10 shadow-sm">
+        <h2 className="text-base font-semibold mb-3 text-[#ECECFC]">Personal Information</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="flex items-center gap-3">
             <Phone className="w-4 h-4 text-[#55557A]" />
             <div>
@@ -144,9 +144,9 @@ export default function MemberDetailPage() {
             </div>
           </div>
         </div>
-        <div className="border-t border-white/10 mt-4 pt-4">
-          <h3 className="text-sm font-semibold text-[#ECECFC] mb-3">Emergency Contact</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="border-t border-white/10 mt-3 pt-3">
+          <h3 className="text-sm font-semibold text-[#ECECFC] mb-2">Emergency Contact</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="flex items-center gap-3">
               <PhoneCall className="w-4 h-4 text-[#55557A]" />
               <div>
@@ -166,30 +166,32 @@ export default function MemberDetailPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <StatsCard title="Workouts" value={workoutCount ?? 0} icon={Dumbbell} />
         <StatsCard title="Measurements" value={measurements?.length ?? 0} icon={Scale} />
       </div>
 
       {/* Weight chart */}
       {measurements && measurements.length > 0 && (
-        <div className="glass-card p-6 rounded-xl border border-white/10 shadow-sm">
-          <h2 className="text-lg font-semibold mb-4 text-[#ECECFC]">Weight Progress</h2>
-          <div className="h-64">
+        <div className="glass-card p-4 rounded-xl border border-white/10 shadow-sm">
+          <h2 className="text-base font-semibold mb-3 text-[#ECECFC]">Weight Progress</h2>
+          <div className="h-40">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={measurements}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#2A2A45" />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
                 <XAxis
                   dataKey="measured_at"
                   tickFormatter={v => new Date(v).toLocaleDateString()}
-                  tick={{ fontSize: 12, fill: '#55557A' }}
+                  tick={{ fontSize: 12, fill: '#9494BD' }}
+                  axisLine={{ stroke: 'rgba(255,255,255,0.06)' }}
+                  tickLine={false}
                 />
-                <YAxis tick={{ fontSize: 12, fill: '#55557A' }} />
+                <YAxis tick={{ fontSize: 12, fill: '#9494BD' }} axisLine={false} tickLine={false} width={32} />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#1C1C35', border: '1px solid #2A2A45', borderRadius: '8px', color: '#ECECFC' }}
+                  contentStyle={{ backgroundColor: 'rgba(20,20,42,0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: '#ECECFC' }}
                   labelStyle={{ color: '#B4B4D0' }}
                 />
-                <Line type="monotone" dataKey="weight_kg" stroke="#7C3AED" strokeWidth={2} dot={{ fill: '#C084FC', r: 4 }} />
+                <Line type="monotone" dataKey="weight_kg" stroke="#7C3AED" strokeWidth={2} dot={{ fill: '#C084FC', r: 3 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>

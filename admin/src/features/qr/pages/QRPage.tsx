@@ -175,20 +175,20 @@ export default function QRPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-[#ECECFC]">QR Code Management</h1>
+        <div />
         <button onClick={openManual} className="flex items-center gap-2 px-4 py-2 bg-[#7C3AED] text-white rounded-lg text-sm hover:bg-[#6D28D9]">
           <Plus className="w-4 h-4" /> Add Manually
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="glass-card p-6 rounded-xl border border-white/10 shadow-sm flex flex-col items-center justify-center">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="glass-card p-4 rounded-xl border border-white/10 shadow-sm flex flex-col items-center justify-center">
           <p className="text-sm font-semibold text-[#ECECFC] mb-3">Enrollment Form</p>
           <QRCodeSVG value={PAGE_URL} size={160} bgColor="#14142A" fgColor="#ECECFC" />
         </div>
-        <div className="glass-card p-6 rounded-xl border border-white/10 shadow-sm flex flex-col items-center justify-center border-[#22C55E]/30">
+        <div className="glass-card p-4 rounded-xl border border-white/10 shadow-sm flex flex-col items-center justify-center border-[#22C55E]/30">
           <p className="text-sm font-semibold text-[#ECECFC] mb-3">Check-in / Check-out</p>
           <QRCodeSVG value="FITGYM:ATTENDANCE" size={160} bgColor="#14142A" fgColor="#ECECFC" />
           <p className="text-xs text-[#55557A] mt-3 text-center">Scan in fitness app to check in or out</p>
@@ -196,68 +196,72 @@ export default function QRPage() {
       </div>
 
       {/* Pending enrollments */}
-      <div className="glass-card rounded-xl border border-white/10 shadow-sm">
+      <div className="glass-card rounded-xl border border-white/10 shadow-sm overflow-hidden flex flex-col min-h-0">
         <div className="px-4 py-3 border-b border-white/10">
           <h2 className="font-semibold text-[#ECECFC]">Pending ({pending.length})</h2>
         </div>
         {isLoading ? (
-          <div className="text-center py-8 text-[#55557A]">Loading...</div>
+          <div className="text-center py-6 text-[#55557A]">Loading...</div>
         ) : pending.length === 0 ? (
-          <div className="text-center py-8 text-[#55557A]">No pending enrollments</div>
+          <div className="text-center py-6 text-[#55557A]">No pending enrollments</div>
         ) : (
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-white/10 bg-white/5">
-                <th className="text-left px-4 py-3 text-sm font-medium text-[#55557A]">Name</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-[#55557A]">Email</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-[#55557A]">Date</th>
-                <th className="text-right px-4 py-3 text-sm font-medium text-[#55557A]">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pending.map(e => (
-                <tr key={e.id} className="border-b border-white/5 last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
-                  <td className="px-4 py-3 text-sm font-medium text-[#ECECFC]">{e.full_name}</td>
-                  <td className="px-4 py-3 text-sm text-[#B4B4D0]">{e.email}</td>
-                  <td className="px-4 py-3 text-sm text-[#B4B4D0]">{new Date(e.created_at).toLocaleDateString()}</td>
-                  <td className="px-4 py-3 text-sm text-right">
-                    <button onClick={() => openView(e)} className="p-1 text-[#55557A] hover:text-[#C084FC]" title="View"><Eye className="w-4 h-4 inline" /></button>
-                    <button onClick={() => handleConfirm(e)} className="p-1 text-[#55557A] hover:text-[#4ADE80]" title="Confirm"><Check className="w-4 h-4 inline" /></button>
-                    <button onClick={() => handleReject(e.id)} className="p-1 text-[#55557A] hover:text-[#EF4444]" title="Reject"><X className="w-4 h-4 inline" /></button>
-                  </td>
+          <div className="overflow-x-auto flex-1">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-white/10 bg-white/5">
+                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Name</th>
+                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Email</th>
+                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Date</th>
+                  <th className="text-right px-3 py-2 text-sm font-medium text-[#55557A]">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {pending.map(e => (
+                  <tr key={e.id} className="border-b border-white/5 last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
+                    <td className="px-3 py-2 text-sm font-medium text-[#ECECFC]">{e.full_name}</td>
+                    <td className="px-3 py-2 text-sm text-[#B4B4D0]">{e.email}</td>
+                    <td className="px-3 py-2 text-sm text-[#B4B4D0]">{new Date(e.created_at).toLocaleDateString()}</td>
+                    <td className="px-3 py-2 text-sm text-right">
+                      <button onClick={() => openView(e)} className="p-1 text-[#55557A] hover:text-[#C084FC]" title="View"><Eye className="w-4 h-4 inline" /></button>
+                      <button onClick={() => handleConfirm(e)} className="p-1 text-[#55557A] hover:text-[#4ADE80]" title="Confirm"><Check className="w-4 h-4 inline" /></button>
+                      <button onClick={() => handleReject(e.id)} className="p-1 text-[#55557A] hover:text-[#EF4444]" title="Reject"><X className="w-4 h-4 inline" /></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
       {/* Confirmed enrollments */}
-      <div className="glass-card rounded-xl border border-white/10 shadow-sm">
+      <div className="glass-card rounded-xl border border-white/10 shadow-sm overflow-hidden flex flex-col min-h-0">
         <div className="px-4 py-3 border-b border-white/10">
           <h2 className="font-semibold text-[#ECECFC]">Confirmed ({confirmed.length})</h2>
         </div>
         {confirmed.length === 0 ? (
-          <div className="text-center py-8 text-[#55557A]">No confirmed members</div>
+          <div className="text-center py-6 text-[#55557A]">No confirmed members</div>
         ) : (
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-white/10 bg-white/5">
-                <th className="text-left px-4 py-3 text-sm font-medium text-[#55557A]">Name</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-[#55557A]">Email</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-[#55557A]">Confirmed</th>
-              </tr>
-            </thead>
-            <tbody>
-              {confirmed.map(e => (
-                <tr key={e.id} className="border-b border-white/5 last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
-                  <td className="px-4 py-3 text-sm font-medium text-[#ECECFC]">{e.full_name}</td>
-                  <td className="px-4 py-3 text-sm text-[#B4B4D0]">{e.email}</td>
-                  <td className="px-4 py-3 text-sm text-[#B4B4D0]">{new Date(e.confirmed_at).toLocaleDateString()}</td>
+          <div className="overflow-x-auto flex-1">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-white/10 bg-white/5">
+                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Name</th>
+                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Email</th>
+                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Confirmed</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {confirmed.map(e => (
+                  <tr key={e.id} className="border-b border-white/5 last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
+                    <td className="px-3 py-2 text-sm font-medium text-[#ECECFC]">{e.full_name}</td>
+                    <td className="px-3 py-2 text-sm text-[#B4B4D0]">{e.email}</td>
+                    <td className="px-3 py-2 text-sm text-[#B4B4D0]">{new Date(e.confirmed_at).toLocaleDateString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 

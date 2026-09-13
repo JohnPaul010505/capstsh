@@ -112,9 +112,9 @@ export default function TrainersListPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-[#ECECFC]">Trainers</h1>
+        <div />
         <button onClick={() => setShowModal(true)}
           className="px-4 py-2 bg-[#7C3AED] text-white rounded-lg hover:bg-[#6D28D9] text-sm">
           + Create Trainer
@@ -124,11 +124,11 @@ export default function TrainersListPage() {
       {isLoading ? (
         <div className="text-center py-8 text-[#55557A]">Loading...</div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {trainers?.map(trainer => (
             <div
               key={trainer.id}
-              className="glass-card p-6 rounded-xl border border-white/10 shadow-sm hover:border-[#7C3AED]/30 cursor-pointer transition-all duration-200 relative group"
+              className="glass-card p-4 rounded-xl border border-white/10 shadow-sm hover:border-[#7C3AED]/30 cursor-pointer transition-all duration-200 relative group"
               onClick={() => navigate(`/trainers/${trainer.id}`)}
             >
               <button
@@ -139,8 +139,8 @@ export default function TrainersListPage() {
                 <Trash2 className="w-4 h-4" />
               </button>
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#22C55E]/30 to-[#4ADE80]/30 flex items-center justify-center">
-                  <span className="text-lg font-bold text-[#4ADE80]">{trainer.full_name.charAt(0)}</span>
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#22C55E]/30 to-[#4ADE80]/30 flex items-center justify-center">
+                  <span className="text-base font-bold text-[#4ADE80]">{trainer.full_name.charAt(0)}</span>
                 </div>
                   <div>
                     <p className="font-semibold text-[#ECECFC]">{trainer.full_name}</p>

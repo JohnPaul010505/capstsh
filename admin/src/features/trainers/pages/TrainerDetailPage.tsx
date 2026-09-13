@@ -101,18 +101,18 @@ export default function TrainerDetailPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <button onClick={() => navigate('/trainers')} className="flex items-center gap-1 text-sm text-[#55557A] hover:text-[#B4B4D0]">
         <ArrowLeft className="w-4 h-4" /> Back to Trainers
       </button>
 
-      <div className="glass-card p-6 rounded-xl border border-white/10 shadow-sm">
+      <div className="glass-card p-4 rounded-xl border border-white/10 shadow-sm">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#22C55E]/30 to-[#4ADE80]/30 flex items-center justify-center">
-            <span className="text-2xl font-bold text-[#4ADE80]">{trainer.full_name.charAt(0)}</span>
+          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#22C55E]/30 to-[#4ADE80]/30 flex items-center justify-center">
+            <span className="text-xl font-bold text-[#4ADE80]">{trainer.full_name.charAt(0)}</span>
           </div>
           <div>
-            <h1 className="text-xl font-bold text-[#ECECFC]">{trainer.full_name}</h1>
+            <div className="text-lg font-bold text-[#ECECFC]">{trainer.full_name}</div>
             <p className="text-sm text-[#B4B4D0]">{trainer.email}</p>
             <p className="text-xs font-mono text-[#7C3AED] mt-1">{trainer.code}</p>
             {trainer.specialty && <p className="text-xs text-[#22C55E] mt-1">{trainer.specialty}</p>}
@@ -121,31 +121,31 @@ export default function TrainerDetailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="glass-card p-6 rounded-xl border border-white/10 shadow-sm">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="glass-card p-4 rounded-xl border border-white/10 shadow-sm">
           <div className="flex items-center gap-2 text-sm text-[#55557A] mb-1">
             <Mail className="w-4 h-4" />
             <span>Email</span>
           </div>
           <p className="text-sm text-[#ECECFC]">{trainer.email}</p>
         </div>
-        <div className="glass-card p-6 rounded-xl border border-white/10 shadow-sm">
+        <div className="glass-card p-4 rounded-xl border border-white/10 shadow-sm">
           <div className="flex items-center gap-2 text-sm text-[#55557A] mb-1">
             <Phone className="w-4 h-4" />
             <span>Phone</span>
           </div>
           <p className="text-sm text-[#ECECFC]">{trainer.phone || 'â€”'}</p>
         </div>
-        <div className="glass-card p-6 rounded-xl border border-white/10 shadow-sm">
+        <div className="glass-card p-4 rounded-xl border border-white/10 shadow-sm">
           <div className="flex items-center gap-2 text-sm text-[#55557A] mb-1">
             <Users className="w-4 h-4" />
             <span>Assigned Members</span>
           </div>
-          <p className="text-2xl font-bold text-[#ECECFC]">{assignedMembers?.length ?? 0}</p>
+          <p className="text-xl font-bold text-[#ECECFC]">{assignedMembers?.length ?? 0}</p>
         </div>
       </div>
 
-      <div className="glass-card rounded-xl border border-white/10 shadow-sm overflow-hidden">
+      <div className="glass-card rounded-xl border border-white/10 shadow-sm overflow-hidden flex flex-col min-h-0">
         <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
           <h2 className="font-semibold text-[#ECECFC]">Assigned Members</h2>
           <button
@@ -156,71 +156,75 @@ export default function TrainerDetailPage() {
           </button>
         </div>
         {assignedMembers?.length === 0 ? (
-          <div className="text-center py-8 text-[#55557A]">No members assigned</div>
+          <div className="text-center py-6 text-[#55557A]">No members assigned</div>
         ) : (
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-white/10 bg-white/5">
-                <th className="text-left px-4 py-3 text-sm font-medium text-[#55557A]">Name</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-[#55557A]">Email</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-[#55557A]">Phone</th>
-                <th className="text-right px-4 py-3 text-sm font-medium text-[#55557A]">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {assignedMembers?.map(a => (
-                <tr key={a.id} className="border-b border-white/5 last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
-                  <td className="px-4 py-3 text-sm font-medium text-[#ECECFC]">{a.profiles?.full_name}</td>
-                  <td className="px-4 py-3 text-sm text-[#B4B4D0]">{a.profiles?.email}</td>
-                  <td className="px-4 py-3 text-sm text-[#B4B4D0]">{a.profiles?.phone || 'â€”'}</td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => unassignMutation.mutate(a.id)}
-                      disabled={unassignMutation.isPending}
-                      className="text-[#EF4444] hover:text-[#DC2626] disabled:opacity-50 transition-colors"
-                      title="Remove assignment"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </td>
+          <div className="overflow-x-auto flex-1">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-white/10 bg-white/5">
+                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Name</th>
+                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Email</th>
+                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Phone</th>
+                  <th className="text-right px-3 py-2 text-sm font-medium text-[#55557A]">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {assignedMembers?.map(a => (
+                  <tr key={a.id} className="border-b border-white/5 last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
+                    <td className="px-3 py-2 text-sm font-medium text-[#ECECFC]">{a.profiles?.full_name}</td>
+                    <td className="px-3 py-2 text-sm text-[#B4B4D0]">{a.profiles?.email}</td>
+                    <td className="px-3 py-2 text-sm text-[#B4B4D0]">{a.profiles?.phone || 'â€”'}</td>
+                    <td className="px-3 py-2 text-right">
+                      <button
+                        onClick={() => unassignMutation.mutate(a.id)}
+                        disabled={unassignMutation.isPending}
+                        className="text-[#EF4444] hover:text-[#DC2626] disabled:opacity-50 transition-colors"
+                        title="Remove assignment"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
-      <div className="glass-card rounded-xl border border-white/10 shadow-sm overflow-hidden">
+      <div className="glass-card rounded-xl border border-white/10 shadow-sm overflow-hidden flex flex-col min-h-0">
         <div className="px-4 py-3 border-b border-white/10">
           <h2 className="font-semibold text-[#ECECFC]">Recent Feedback</h2>
         </div>
         {recentFeedback?.length === 0 ? (
-          <div className="text-center py-8 text-[#55557A]">No feedback yet</div>
+          <div className="text-center py-6 text-[#55557A]">No feedback yet</div>
         ) : (
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-white/10 bg-white/5">
-                <th className="text-left px-4 py-3 text-sm font-medium text-[#55557A]">Member</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-[#55557A]">Feedback</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-[#55557A]">Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentFeedback?.map(f => (
-                <tr key={f.id} className="border-b border-white/5 last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
-                  <td className="px-4 py-3 text-sm font-medium text-[#ECECFC]">{f.profiles?.full_name}</td>
-                  <td className="px-4 py-3 text-sm text-[#B4B4D0] max-w-md truncate">{f.content}</td>
-                  <td className="px-4 py-3 text-sm text-[#55557A]">{new Date(f.created_at).toLocaleDateString()}</td>
+          <div className="overflow-x-auto flex-1">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-white/10 bg-white/5">
+                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Member</th>
+                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Feedback</th>
+                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Date</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {recentFeedback?.map(f => (
+                  <tr key={f.id} className="border-b border-white/5 last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
+                    <td className="px-3 py-2 text-sm font-medium text-[#ECECFC]">{f.profiles?.full_name}</td>
+                    <td className="px-3 py-2 text-sm text-[#B4B4D0] max-w-md truncate">{f.content}</td>
+                    <td className="px-3 py-2 text-sm text-[#55557A]">{new Date(f.created_at).toLocaleDateString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
       {showAssignModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="glass-card rounded-xl border border-white/10 shadow-xl w-full max-w-lg mx-4 max-h-[80vh] flex flex-col">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setShowAssignModal(false)}>
+          <div className="glass-card rounded-xl border border-white/10 shadow-xl w-full max-w-lg mx-4 max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
               <h3 className="font-semibold text-[#ECECFC]">Assign Member</h3>
               <button onClick={() => setShowAssignModal(false)} className="text-[#55557A] hover:text-[#ECECFC] transition-colors">
@@ -267,7 +271,7 @@ export default function TrainerDetailPage() {
                 m.email?.toLowerCase().includes(memberSearch.toLowerCase()) ||
                 m.code?.toLowerCase().includes(memberSearch.toLowerCase())
               ).length === 0 && (
-                <div className="text-center py-8 text-[#55557A] text-sm">No members found</div>
+                <div className="text-center py-6 text-[#55557A] text-sm">No members found</div>
               )}
             </div>
           </div>

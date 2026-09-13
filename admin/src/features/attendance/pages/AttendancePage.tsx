@@ -64,9 +64,9 @@ export default function AttendancePage() {
   })
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-[#ECECFC]">Attendance</h1>
+        <div />
         <input
           type="date"
           value={date}
@@ -119,62 +119,64 @@ export default function AttendancePage() {
       {isLoading ? (
         <div className="text-center py-8 text-[#55557A]">Loading...</div>
       ) : (
-        <div className="glass-card rounded-xl border border-white/10 shadow-sm overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-white/10 bg-white/5">
-                <th className="text-left px-4 py-3 text-sm font-medium text-[#55557A]">Name</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-[#55557A]">Role</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-[#55557A]">Check-in</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-[#55557A]">Check-out</th>
-                <th className="text-center px-4 py-3 text-sm font-medium text-[#55557A]">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sessions?.map(s => (
-                <tr key={s.id} className="border-b border-white/5 last:border-0 hover:bg-[#7C3AED]/5">
-                  <td className="px-4 py-3 text-sm font-medium text-[#ECECFC]">
-                    {s.profiles?.full_name}
-                    <span className="ml-2 text-xs font-mono text-[#7C3AED]">{s.profiles?.code}</span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-[#B4B4D0] capitalize">{s.profiles?.role || 'member'}</td>
-                  <td className="px-4 py-3 text-sm">
-                    <span className="inline-flex items-center gap-1 text-[#4ADE80]">
-                      <LogIn className="w-3 h-3" />
-                      {new Date(s.check_in_time).toLocaleTimeString()}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm">
-                    {s.check_out_time ? (
-                      <span className="inline-flex items-center gap-1 text-[#B4B4D0]">
-                        <LogOut className="w-3 h-3" />
-                        {new Date(s.check_out_time).toLocaleTimeString()}
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-[#FBBF24] text-xs font-medium">
-                        <Clock className="w-3 h-3" />
-                        Until {new Date(s.expires_at).toLocaleTimeString()}
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    {!s.check_out_time && (
-                      <button
-                        onClick={() => checkoutMutation.mutate(s.member_id)}
-                        disabled={checkoutMutation.isPending}
-                        className="px-3 py-1 text-xs bg-[#F59E0B]/15 text-[#FBBF24] rounded-lg hover:bg-[#F59E0B]/25 disabled:opacity-50"
-                      >
-                        Check Out
-                      </button>
-                    )}
-                  </td>
+        <div className="glass-card rounded-xl border border-white/10 shadow-sm overflow-hidden flex flex-col min-h-0">
+          <div className="overflow-x-auto flex-1">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-white/10 bg-white/5">
+                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Name</th>
+                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Role</th>
+                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Check-in</th>
+                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Check-out</th>
+                  <th className="text-center px-3 py-2 text-sm font-medium text-[#55557A]">Actions</th>
                 </tr>
-              ))}
-              {sessions?.length === 0 && (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-[#55557A]">No attendance records</td></tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {sessions?.map(s => (
+                  <tr key={s.id} className="border-b border-white/5 last:border-0 hover:bg-[#7C3AED]/5">
+                    <td className="px-3 py-2 text-sm font-medium text-[#ECECFC]">
+                      {s.profiles?.full_name}
+                      <span className="ml-2 text-xs font-mono text-[#7C3AED]">{s.profiles?.code}</span>
+                    </td>
+                    <td className="px-3 py-2 text-sm text-[#B4B4D0] capitalize">{s.profiles?.role || 'member'}</td>
+                    <td className="px-3 py-2 text-sm">
+                      <span className="inline-flex items-center gap-1 text-[#4ADE80]">
+                        <LogIn className="w-3 h-3" />
+                        {new Date(s.check_in_time).toLocaleTimeString()}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 text-sm">
+                      {s.check_out_time ? (
+                        <span className="inline-flex items-center gap-1 text-[#B4B4D0]">
+                          <LogOut className="w-3 h-3" />
+                          {new Date(s.check_out_time).toLocaleTimeString()}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[#FBBF24] text-xs font-medium">
+                          <Clock className="w-3 h-3" />
+                          Until {new Date(s.expires_at).toLocaleTimeString()}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      {!s.check_out_time && (
+                        <button
+                          onClick={() => checkoutMutation.mutate(s.member_id)}
+                          disabled={checkoutMutation.isPending}
+                          className="px-3 py-1 text-xs bg-[#F59E0B]/15 text-[#FBBF24] rounded-lg hover:bg-[#F59E0B]/25 disabled:opacity-50"
+                        >
+                          Check Out
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {sessions?.length === 0 && (
+                  <tr><td colSpan={5} className="px-3 py-6 text-center text-[#55557A]">No attendance records</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

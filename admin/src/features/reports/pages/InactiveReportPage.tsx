@@ -175,18 +175,9 @@ export default function InactiveReportPage() {
   const totalRevenue = membershipData?.reduce((sum, m) => sum + m.revenue, 0) ?? 0
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-[#ECECFC]">
-            {tab === 'reports' ? 'Reports' : 'Analytics'}
-          </h1>
-          <p className="text-[#55557A] text-sm mt-1">
-            {tab === 'reports'
-              ? 'Inactive members and trainers'
-              : 'Membership trends, revenue, and plan distribution'}
-          </p>
-        </div>
+        <div />
         <button
           onClick={() => setTab(tab === 'reports' ? 'analytics' : 'reports')}
           className="px-4 py-1.5 rounded-lg text-sm font-medium border transition-colors
@@ -197,8 +188,8 @@ export default function InactiveReportPage() {
       </div>
 
       {tab === 'reports' ? (
-        <div className="glass-card rounded-xl border border-white/10 shadow-sm">
-          <div className="px-5 py-4 border-b border-white/10 flex items-center gap-3">
+        <div className="glass-card rounded-xl border border-white/10 shadow-sm overflow-hidden flex flex-col min-h-0">
+          <div className="px-4 py-3 border-b border-white/10 flex items-center gap-3">
             <button
               onClick={() => setSubTab('members')}
               className={`px-4 py-1.5 rounded-lg text-sm border transition-colors ${
@@ -222,85 +213,87 @@ export default function InactiveReportPage() {
           </div>
 
           {!rows ? (
-            <div className="px-5 py-8 text-center text-sm text-[#55557A]">Loading...</div>
+            <div className="px-4 py-6 text-center text-sm text-[#55557A]">Loading...</div>
           ) : rows.length === 0 ? (
-            <div className="px-5 py-8 text-center text-sm text-[#55557A]">No inactive {subTab === 'members' ? 'members' : 'trainers'}</div>
+            <div className="px-4 py-6 text-center text-sm text-[#55557A]">No inactive {subTab === 'members' ? 'members' : 'trainers'}</div>
           ) : (
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-white/10 bg-white/5">
-                  <th className="text-left px-5 py-3 text-sm font-medium text-[#55557A]">{label}</th>
-                  <th className="text-left px-5 py-3 text-sm font-medium text-[#55557A]">Last check-in</th>
-                  <th className="text-left px-5 py-3 text-sm font-medium text-[#55557A]">Days inactive</th>
-                  <th className="text-right px-5 py-3 text-sm font-medium text-[#55557A]">Status</th>
-                  <th className="text-right px-5 py-3 text-sm font-medium text-[#55557A]">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows?.map(r => (
-                  <tr key={r.userId} className="border-b border-white/5 last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
-                    <td className="px-5 py-3">
-                      <p className="text-sm font-medium text-[#ECECFC]">{r.name}</p>
-                      <p className="text-xs font-mono text-[#55557A]">{r.code}</p>
-                    </td>
-                    <td className="px-5 py-3 text-sm text-[#B4B4D0] whitespace-nowrap">
-                      {r.lastCheckIn ? new Date(r.lastCheckIn).toLocaleDateString() : 'Never'}
-                    </td>
-                    <td className="px-5 py-3 text-sm text-[#FBBF24] font-medium">{r.daysInactive} days</td>
-                    <td className="px-5 py-3 text-right">
-                      <StatusBadge status="inactive" />
-                    </td>
-                    <td className="px-5 py-3 text-right">
-                      <button
-                        onClick={() => handleNotify(r.userId, r.daysInactive)}
-                        disabled={notifiedUserIds.has(r.userId)}
-                        className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
-                          {notifiedUserIds.has(r.userId)
-                            ? 'bg-white/[0.08] text-[#55557A] border border-white/10 cursor-not-allowed'
-                            : 'bg-[#7C3AED]/20 text-[#C084FC] border border-[#7C3AED]/40 hover:bg-[#7C3AED]/30'}"
-                      >
-                        {notifiedUserIds.has(r.userId) ? 'Sent' : 'Notify'}
-                      </button>
-                    </td>
+            <div className="overflow-x-auto flex-1">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-white/10 bg-white/5">
+                    <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">{label}</th>
+                    <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Last check-in</th>
+                    <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Days inactive</th>
+                    <th className="text-right px-3 py-2 text-sm font-medium text-[#55557A]">Status</th>
+                    <th className="text-right px-3 py-2 text-sm font-medium text-[#55557A]">Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {rows?.map(r => (
+                    <tr key={r.userId} className="border-b border-white/5 last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
+                      <td className="px-3 py-2">
+                        <p className="text-sm font-medium text-[#ECECFC]">{r.name}</p>
+                        <p className="text-xs font-mono text-[#55557A]">{r.code}</p>
+                      </td>
+                      <td className="px-3 py-2 text-sm text-[#B4B4D0] whitespace-nowrap">
+                        {r.lastCheckIn ? new Date(r.lastCheckIn).toLocaleDateString() : 'Never'}
+                      </td>
+                      <td className="px-3 py-2 text-sm text-[#FBBF24] font-medium">{r.daysInactive} days</td>
+                      <td className="px-3 py-2 text-right">
+                        <StatusBadge status="inactive" />
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        <button
+                          onClick={() => handleNotify(r.userId, r.daysInactive)}
+                          disabled={notifiedUserIds.has(r.userId)}
+                          className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
+                            {notifiedUserIds.has(r.userId)
+                              ? 'bg-white/[0.08] text-[#55557A] border border-white/10 cursor-not-allowed'
+                              : 'bg-[#7C3AED]/20 text-[#C084FC] border border-[#7C3AED]/40 hover:bg-[#7C3AED]/30'}"
+                        >
+                          {notifiedUserIds.has(r.userId) ? 'Sent' : 'Notify'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       ) : (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="glass-card p-6 rounded-xl border border-white/10 shadow-sm">
-              <p className="text-sm text-[#55557A]">Total Plans</p>
-              <p className="text-2xl font-bold text-[#ECECFC] mt-1">{membershipData?.length ?? 0}</p>
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div className="glass-card p-4 rounded-xl border border-white/10 shadow-sm">
+              <p className="text-xs text-[#55557A]">Total Plans</p>
+              <p className="text-xl font-bold text-[#ECECFC] mt-1">{membershipData?.length ?? 0}</p>
             </div>
-            <div className="glass-card p-6 rounded-xl border border-white/10 shadow-sm">
-              <p className="text-sm text-[#55557A]">Total Revenue</p>
-              <p className="text-2xl font-bold text-[#22C55E] mt-1">${totalRevenue.toLocaleString()}</p>
+            <div className="glass-card p-4 rounded-xl border border-white/10 shadow-sm">
+              <p className="text-xs text-[#55557A]">Total Revenue</p>
+              <p className="text-xl font-bold text-[#22C55E] mt-1">${totalRevenue.toLocaleString()}</p>
             </div>
-            <div className="glass-card p-6 rounded-xl border border-white/10 shadow-sm">
-              <p className="text-sm text-[#55557A]">Total Members</p>
-              <p className="text-2xl font-bold text-[#ECECFC] mt-1">{memberCount ?? 0}</p>
+            <div className="glass-card p-4 rounded-xl border border-white/10 shadow-sm">
+              <p className="text-xs text-[#55557A]">Total Members</p>
+              <p className="text-xl font-bold text-[#ECECFC] mt-1">{memberCount ?? 0}</p>
             </div>
-            <div className="glass-card p-6 rounded-xl border border-white/10 shadow-sm">
-              <p className="text-sm text-[#55557A]">Avg Revenue/Member</p>
-              <p className="text-2xl font-bold text-[#C084FC] mt-1">
+            <div className="glass-card p-4 rounded-xl border border-white/10 shadow-sm">
+              <p className="text-xs text-[#55557A]">Avg Revenue/Member</p>
+              <p className="text-xl font-bold text-[#C084FC] mt-1">
                 ${memberCount && memberCount > 0 ? (totalRevenue / memberCount).toFixed(0) : '0'}
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="glass-card p-6 rounded-xl border border-white/10 shadow-sm">
-              <h2 className="text-lg font-semibold mb-4 text-[#ECECFC]">Membership Plans</h2>
-              <div className="h-72">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="glass-card p-4 rounded-xl border border-white/10 shadow-sm">
+              <h2 className="text-base font-semibold mb-3 text-[#ECECFC]">Membership Plans</h2>
+              <div className="h-40">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={membershipData ?? []}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#2A2A45" />
-                    <XAxis dataKey="name" tick={{ fill: '#55557A', fontSize: 12 }} />
-                    <YAxis tick={{ fill: '#55557A', fontSize: 12 }} />
-                    <Tooltip contentStyle={{ backgroundColor: '#1C1C35', border: '1px solid #2A2A45', borderRadius: '8px', color: '#ECECFC' }} labelStyle={{ color: '#B4B4D0' }} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                    <XAxis dataKey="name" tick={{ fill: '#9494BD', fontSize: 12 }} axisLine={{ stroke: 'rgba(255,255,255,0.06)' }} tickLine={false} />
+                    <YAxis tick={{ fill: '#9494BD', fontSize: 12 }} axisLine={false} tickLine={false} width={32} />
+                    <Tooltip contentStyle={{ backgroundColor: 'rgba(20,20,42,0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: '#ECECFC' }} labelStyle={{ color: '#B4B4D0' }} />
                     <Bar dataKey="count" fill="url(#reportPurple)" radius={[4, 4, 0, 0]} />
                     <defs>
                       <linearGradient id="reportPurple" x1="0" y1="0" x2="0" y2="1">
@@ -313,15 +306,15 @@ export default function InactiveReportPage() {
               </div>
             </div>
 
-            <div className="glass-card p-6 rounded-xl border border-white/10 shadow-sm">
-              <h2 className="text-lg font-semibold mb-4 text-[#ECECFC]">Revenue by Plan</h2>
-              <div className="h-72">
+            <div className="glass-card p-4 rounded-xl border border-white/10 shadow-sm">
+              <h2 className="text-base font-semibold mb-3 text-[#ECECFC]">Revenue by Plan</h2>
+              <div className="h-40">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={membershipData ?? []}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#2A2A45" />
-                    <XAxis dataKey="name" tick={{ fill: '#55557A', fontSize: 12 }} />
-                    <YAxis tick={{ fill: '#55557A', fontSize: 12 }} tickFormatter={v => `$${v}`} />
-                    <Tooltip contentStyle={{ backgroundColor: '#1C1C35', border: '1px solid #2A2A45', borderRadius: '8px', color: '#ECECFC' }} labelStyle={{ color: '#B4B4D0' }} formatter={(v: number) => [`$${v}`, 'Revenue']} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                    <XAxis dataKey="name" tick={{ fill: '#9494BD', fontSize: 12 }} axisLine={{ stroke: 'rgba(255,255,255,0.06)' }} tickLine={false} />
+                    <YAxis tick={{ fill: '#9494BD', fontSize: 12 }} axisLine={false} tickLine={false} width={32} tickFormatter={v => `$${v}`} />
+                    <Tooltip contentStyle={{ backgroundColor: 'rgba(20,20,42,0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: '#ECECFC' }} labelStyle={{ color: '#B4B4D0' }} formatter={(v: number) => [`$${v}`, 'Revenue']} />
                     <Bar dataKey="revenue" fill="url(#revenueGreen)" radius={[4, 4, 0, 0]} />
                     <defs>
                       <linearGradient id="revenueGreen" x1="0" y1="0" x2="0" y2="1">

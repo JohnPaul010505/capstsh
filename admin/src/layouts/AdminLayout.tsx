@@ -1,9 +1,32 @@
 import { type ReactNode } from 'react'
+import { useLocation } from 'react-router-dom'
 import { SidebarProvider } from '@/contexts/SidebarContext'
 import Sidebar from './Sidebar'
 import Header from './Header'
 
+const ROUTE_TITLES: Record<string, string> = {
+  '/dashboard': 'Dashboard',
+  '/members': 'Members',
+  '/trainers': 'Trainers',
+  '/memberships': 'Memberships',
+  '/qr': 'QR',
+  '/attendance': 'Attendance',
+  '/reports/inactive': 'Reports',
+  '/reports/feedback': 'Coach Feedback',
+  '/predictions': 'Predictions',
+  '/settings': 'Settings',
+}
+
+function getPageTitle(pathname: string): string {
+  if (pathname.startsWith('/members/')) return 'Member Details'
+  if (pathname.startsWith('/trainers/')) return 'Trainer Details'
+  return ROUTE_TITLES[pathname] || 'Dashboard'
+}
+
 function LayoutInner({ children }: { children: ReactNode }) {
+  const location = useLocation()
+  const title = getPageTitle(location.pathname)
+
   return (
     <div className="flex h-screen overflow-hidden bg-[#0D0D1A]">
       <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:rounded-lg focus:bg-[#7C3AED] focus:text-white focus:text-sm">Skip to content</a>
@@ -11,7 +34,7 @@ function LayoutInner({ children }: { children: ReactNode }) {
       <div className="fixed inset-0 bg-[#0D0D1A]/70 backdrop-blur-[3px] -z-10" aria-hidden="true" />
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header />
+        <Header title={title} />
         <main id="main-content" className="flex-1 overflow-y-auto p-6">
           {children}
         </main>

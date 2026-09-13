@@ -47,15 +47,10 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-[#ECECFC]">Notifications</h1>
-        <p className="text-sm text-[#55557A] mt-1">Broadcast push notifications to members and trainers</p>
-      </div>
-
-      <div className="glass-card p-6 rounded-xl border border-white/10 shadow-sm">
-        <h2 className="text-lg font-semibold mb-4 text-[#ECECFC]">Send Notification</h2>
-        <div className="space-y-4">
+    <div className="space-y-3">
+      <div className="glass-card p-4 rounded-xl border border-white/10 shadow-sm">
+        <h2 className="text-base font-semibold mb-3 text-[#ECECFC]">Send Notification</h2>
+        <div className="space-y-3">
           <div>
             <label className="block text-sm font-medium text-[#B4B4D0] mb-1">Target</label>
             <div className="flex gap-2">
@@ -108,44 +103,46 @@ export default function NotificationsPage() {
         </div>
       </div>
 
-      <div className="glass-card rounded-xl border border-white/10 shadow-sm overflow-hidden">
+      <div className="glass-card rounded-xl border border-white/10 shadow-sm overflow-hidden flex flex-col min-h-0">
         <div className="px-4 py-3 border-b border-white/10 flex items-center gap-2">
           <Bell className="w-4 h-4 text-[#C084FC]" />
           <h2 className="font-semibold text-[#ECECFC]">Recent Notifications</h2>
         </div>
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-white/10 bg-white/5">
-              <th className="text-left px-4 py-3 text-sm font-medium text-[#55557A]">Title</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-[#55557A]">Body</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-[#55557A]">User</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-[#55557A]">Read</th>
-              <th className="text-right px-4 py-3 text-sm font-medium text-[#55557A]">Date</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sentNotifications?.map(n => (
-              <tr key={n.id} className="border-b border-white/5 last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
-                <td className="px-4 py-3 text-sm font-medium text-[#ECECFC]">{n.title}</td>
-                <td className="px-4 py-3 text-sm text-[#B4B4D0] max-w-xs truncate">{n.body}</td>
-                <td className="px-4 py-3 text-sm text-[#B4B4D0]">{n.profiles?.full_name ?? 'â€”'}</td>
-                <td className="px-4 py-3">
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                    n.read ? 'bg-[#22C55E]/15 text-[#4ADE80]' : 'bg-[#F59E0B]/15 text-[#FBBF24]'
-                  }`}>
-                    {n.read ? 'Read' : 'Unread'}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-sm text-[#55557A] text-right whitespace-nowrap">
-                  {new Date(n.created_at).toLocaleString()}
-                </td>
+        <div className="overflow-x-auto flex-1">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-white/10 bg-white/5">
+                <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Title</th>
+                <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Body</th>
+                <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">User</th>
+                <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Read</th>
+                <th className="text-right px-3 py-2 text-sm font-medium text-[#55557A]">Date</th>
               </tr>
-            ))}
-            {sentNotifications?.length === 0 && (
-              <tr><td colSpan={5} className="text-center py-8 text-[#55557A]">No notifications sent yet</td></tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {sentNotifications?.map(n => (
+                <tr key={n.id} className="border-b border-white/5 last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
+                  <td className="px-3 py-2 text-sm font-medium text-[#ECECFC]">{n.title}</td>
+                  <td className="px-3 py-2 text-sm text-[#B4B4D0] max-w-xs truncate">{n.body}</td>
+                  <td className="px-3 py-2 text-sm text-[#B4B4D0]">{n.profiles?.full_name ?? 'â€”'}</td>
+                  <td className="px-3 py-2">
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                      n.read ? 'bg-[#22C55E]/15 text-[#4ADE80]' : 'bg-[#F59E0B]/15 text-[#FBBF24]'
+                    }`}>
+                      {n.read ? 'Read' : 'Unread'}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 text-sm text-[#55557A] text-right whitespace-nowrap">
+                    {new Date(n.created_at).toLocaleString()}
+                  </td>
+                </tr>
+              ))}
+              {sentNotifications?.length === 0 && (
+                <tr><td colSpan={5} className="px-3 py-6 text-center text-[#55557A]">No notifications sent yet</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   )

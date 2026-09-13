@@ -27,7 +27,7 @@ export default function ChartCard({ title, icon: Icon, badge, isLoading, isEmpty
         </div>
         {badge}
       </div>
-      <div className="h-72 relative" role="img" aria-label={ariaLabel ?? title}>
+      <div className="h-56 relative" role="img" aria-label={ariaLabel ?? title}>
         {isLoading ? (
           <div className="h-full w-full flex items-end gap-2 animate-pulse" aria-hidden="true">
             {[35, 62, 48, 80, 40, 70, 52, 90, 45, 58].map((h, i) => (
