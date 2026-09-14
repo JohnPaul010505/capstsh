@@ -1,12 +1,11 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { cn } from '@/lib/utils'
-import { useSidebar } from '@/contexts/SidebarContext'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import ConfirmDialog from '@/components/ConfirmDialog'
 import {
   LayoutDashboard, Users, Dumbbell, CreditCard,
-  CalendarCheck, BarChart3, TrendingUp, QrCode, Settings, LogOut, MessageSquare,
+  CalendarCheck, BarChart3, QrCode, Settings, LogOut, MessageSquare,
 } from 'lucide-react'
 
 const navItems = [
@@ -18,78 +17,43 @@ const navItems = [
   { to: '/attendance', label: 'Attendance', icon: CalendarCheck },
   { to: '/reports/inactive', label: 'Reports', icon: BarChart3, end: true },
   { to: '/reports/feedback', label: 'Coach Feedback', icon: MessageSquare },
-  { to: '/predictions', label: 'Predictions', icon: TrendingUp },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
 
-const gradientBg = 'bg-[#0D0D1A]/60 backdrop-blur-xl'
+const pillBg = 'bg-[#0F0F1E] border border-white/10 shadow-[0_0_20px_rgba(124,58,237,0.08)]'
 
 export default function Sidebar() {
-  const { collapsed, setCollapsed } = useSidebar()
   const { signOut } = useAuth()
   const [showLogout, setShowLogout] = useState(false)
 
   return (
     <aside
-      onMouseEnter={() => setCollapsed(false)}
-      onMouseLeave={() => setCollapsed(true)}
       className={cn(
-        gradientBg,
-        "border-r border-white/10 flex flex-col transition-all duration-300 overflow-hidden shadow-[2px_0_20px_rgba(124,58,237,0.08)]",
-        collapsed ? "w-16" : "w-60"
+        pillBg,
+        "flex flex-col overflow-hidden",
+        "w-[180px] mx-2 mb-0 mt-20 rounded-[36px] h-[calc(100vh-56px)]"
       )}
     >
-      {/* Logo area */}
-      <div className="h-14 flex items-center shrink-0 px-4 border-b border-[#7C3AED]/10">
-        <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
-            <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
-          </div>
-          
-        </div>
-      </div>
-
+      <div className="h-10" />
       {/* Navigation */}
-      <nav className="flex-1 py-3 space-y-1 px-2">
+      <nav className="flex-1 px-3 space-y-5">
         {navItems.map(item => (
           <NavLink
             key={item.to}
             to={item.to}
             end={item.end}
             className={({ isActive }) => cn(
-              "flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-all duration-200 group relative",
+              "flex items-center gap-3 rounded-2xl transition-all duration-200 relative",
               isActive
-                ? "text-[#C084FC] font-semibold bg-[#7C3AED]/15"
-                : "text-[#7070A0] hover:text-[#B4B4D0] hover:bg-white/5"
+                ? "bg-gradient-to-r from-[#7C3AED] to-[#6D28D9] text-white shadow-[0_0_12px_rgba(124,58,237,0.35)]"
+                : "text-[#8A8AB0] hover:text-white hover:bg-white/5",
+              "px-3 py-2"
             )}
           >
             {({ isActive }) => (
               <>
-                {/* Active left accent bar */}
-                {isActive && (
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-gradient-to-b from-[#7C3AED] to-[#C084FC] shadow-[0_0_6px_rgba(124,58,237,0.3)]" />
-                )}
-                <div className={cn(
-                  "w-6 h-6 rounded-md flex items-center justify-center shrink-0 transition-all duration-200",
-                  isActive ? "bg-[#7C3AED]/20" : "group-hover:bg-[#7C3AED]/10"
-                )}>
-                  <item.icon className={cn(
-                    "w-5 h-5 transition-colors duration-200",
-                    isActive ? "text-[#C084FC]" : "text-[#55557A] group-hover:text-[#B4B4D0]"
-                  )} />
-                </div>
-                <span className={cn(
-                  "whitespace-nowrap transition-all duration-200",
-                  collapsed ? "max-w-0 opacity-0 overflow-hidden" : "max-w-32 opacity-100"
-                )}>{item.label}</span>
-                {isActive && (
-                  <div className={cn(
-                    "ml-auto transition-all duration-200",
-                    collapsed ? "opacity-0" : "opacity-100"
-                  )}>
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#C084FC]" />
-                  </div>
-                )}
+                <item.icon className={cn("w-[18px] h-[18px] shrink-0", isActive ? "text-white" : "text-[#7A7AA0]")} strokeWidth={2} />
+                <span className="text-[13px] whitespace-nowrap">{item.label}</span>
               </>
             )}
           </NavLink>
@@ -97,16 +61,13 @@ export default function Sidebar() {
       </nav>
 
       {/* Bottom section */}
-      <div className="border-t border-[#7C3AED]/10 px-3 py-3">
+      <div className="px-3 pb-10 pt-5">
         <button onClick={() => setShowLogout(true)} className={cn(
-          "flex items-center gap-3 px-2 py-2 rounded-lg text-[#EF4444]/70 text-sm transition-all duration-200 w-full",
-          collapsed ? "justify-center" : ""
+          "flex items-center gap-3 rounded-2xl transition-all duration-200 w-full bg-[#EF4444] text-white hover:bg-[#DC2626]",
+          "px-3 py-2"
         )}>
-          <LogOut className="w-4 h-4" />
-          <span className={cn(
-            "whitespace-nowrap transition-all duration-200",
-            collapsed ? "max-w-0 opacity-0 overflow-hidden" : "max-w-32 opacity-100"
-          )}>Sign Out</span>
+          <LogOut className="w-[18px] h-[18px] shrink-0" strokeWidth={2} />
+          <span className="text-[13px] whitespace-nowrap">Sign Out</span>
         </button>
       </div>
 

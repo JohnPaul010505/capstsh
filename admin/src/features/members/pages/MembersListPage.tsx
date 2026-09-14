@@ -34,7 +34,7 @@ export default function MembersListPage() {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="h-full flex flex-col">
       <input
         placeholder="Search members..."
         value={search}
@@ -45,8 +45,8 @@ export default function MembersListPage() {
       {isLoading ? (
         <div className="text-center py-8 text-[#55557A]">Loading...</div>
       ) : (
-        <div className="glass-card rounded-xl border border-white/10 shadow-sm overflow-hidden flex flex-col min-h-0">
-          <div className="overflow-x-auto flex-1">
+        <div className="glass-card rounded-xl border border-white/10 shadow-sm overflow-hidden flex flex-col min-h-0 flex-1 mt-3">
+          <div className="overflow-x-auto overflow-y-auto flex-1 min-h-0">
             <MemberTable members={members ?? []} onDelete={setDeleteTarget} />
           </div>
         </div>
