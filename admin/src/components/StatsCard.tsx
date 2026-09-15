@@ -25,7 +25,7 @@ const variantStyles: Record<IconVariant, string> = {
 
 export default function StatsCard({ title, value, icon: Icon, trend, sparkData, iconVariant = 'purple', sparkColor }: StatsCardProps) {
   const displaySpark = sparkData && sparkData.length > 1
-  const stroke = sparkColor || '#7C3AED'
+  const stroke = trend ? (trend.value >= 0 ? '#22C55E' : '#EF4444') : (sparkColor || '#7C3AED')
   return (
     <div className="glass-card rounded-[12px] p-4 border border-white/10 shadow-sm">
       <div className="flex items-center justify-between gap-3">

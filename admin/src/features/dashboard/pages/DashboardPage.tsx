@@ -13,7 +13,7 @@ import ChartCard from '@/components/ChartCard'
 
 const COLORS = ['#7C3AED', '#22C55E', '#F59E0B', '#EF4444', '#3B82F6', '#C084FC']
 const GENDER_COLORS: Record<string, string> = { Male: '#3B82F6', Female: '#DB2777', Other: '#C084FC' }
-const STATUS_COLORS: Record<string, string> = { Active: '#22C55E', Inactive: '#EF4444' }
+const STATUS_COLORS: Record<string, string> = { Active: '#22C55E', Inactive: '#FF3B3B' }
 const AXIS_TICK = { fill: '#9494BD', fontSize: 11 }
 const TOOLTIP_STYLE = { backgroundColor: 'rgba(20,20,42,0.9)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: '#ECECFC' }
 const DAY = 86_400_000
@@ -81,11 +81,12 @@ function useRevenueChart(range: 'week' | 'month' | 'year') {
         .eq('status', 'active')
 
       const map: Record<string, number> = {}
-      (data ?? []).forEach(m => {
+      let hasInRange = false
+      ;(data ?? []).forEach(m => {
         const rawDate = m.start_date || m.created_at
         if (!rawDate) return
         const d = new Date(rawDate)
-        if (d < start) return
+        if (d >= start) hasInRange = true
         let key: string
         if (format === 'day') {
           key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -95,10 +96,20 @@ function useRevenueChart(range: 'week' | 'month' | 'year') {
         map[key] = (map[key] || 0) + (Number(m.price) || 0)
       })
 
-      const result = Object.entries(map)
+      const entries = Object.entries(map)
         .map(([date, revenue]) => ({ date, revenue: Math.round(revenue) }))
         .sort((a, b) => a.date.localeCompare(b.date))
-      return result
+
+      if (hasInRange) {
+        return entries.filter(e => new Date(e.date) >= start)
+      }
+      if (range === 'year' && entries.length > 12) {
+        return entries.slice(-12)
+      }
+      if ((range === 'week' || range === 'month') && entries.length > 30) {
+        return entries.slice(-30)
+      }
+      return entries
     },
   })
 }
@@ -466,6 +477,31 @@ export default function DashboardPage() {
     return `${d.getMonth() + 1}/${d.getDate()}`
   }
 
+  const revenueTrend = useMemo(() => {
+    if (!stats?.totalRevenue || !revenueData) return undefined
+    const now = new Date()
+    const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    const last = new Date(now.getFullYear(), now.getMonth(), 1)
+    const lastMonth = `${last.getFullYear()}-${String(last.getMonth() + 1).padStart(2, '0')}`
+
+    let thisMonthRevenue = 0
+    let lastMonthRevenue = 0
+
+    revenueData.forEach(d => {
+      const monthKey = d.date.slice(0, 7)
+      if (monthKey === thisMonth) {
+        thisMonthRevenue += d.revenue
+      } else if (monthKey === lastMonth) {
+        lastMonthRevenue += d.revenue
+      }
+    })
+
+    if (lastMonthRevenue === 0 && thisMonthRevenue === 0) return undefined
+    if (lastMonthRevenue === 0) return 100
+
+    return Math.round(((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100)
+  }, [stats, revenueData])
+
   if (isLoading) return <div className="text-center py-8 text-[#55557A]">Loading...</div>
 
   return (
@@ -474,9 +510,8 @@ export default function DashboardPage() {
         <StatsCard
           title="Total Revenue"
           value={stats?.totalRevenue ?? 0}
-          trend={undefined}
+          trend={revenueTrend ? { value: revenueTrend, label: 'from last month' } : undefined}
           sparkData={revenueChartData?.slice(-10).map(d => ({ value: d.revenue }))}
-          variant="emerald"
           sparkColor="#10B981"
         />
         <StatsCard
@@ -569,7 +604,7 @@ export default function DashboardPage() {
             </div>
             <div className="px-2 pb-2 flex-1 min-h-0">
               <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={revenueChartData ?? []} margin={{ top: 0, right: 8, left: -8, bottom: 0 }}>
+                  <AreaChart data={revenueChartData ?? []} margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="#7C3AED" stopOpacity={0.3} />
@@ -585,7 +620,7 @@ export default function DashboardPage() {
                     axisLine={{ stroke: 'rgba(255,255,255,0.06)' }}
                     tickLine={false}
                   />
-                  <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} width={28} tickFormatter={v => `₱${v}`} />
+                  <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} width={42} tickFormatter={v => `₱${v}`} />
                   <Tooltip
                     contentStyle={TOOLTIP_STYLE}
                     labelStyle={{ color: '#B4B4D0' }}
@@ -638,7 +673,7 @@ export default function DashboardPage() {
               <div className="relative w-[110px] h-[110px] shrink-0">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={genderActivityData ?? []} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius="80%" innerRadius="55%" paddingAngle={3}>
+                     <Pie data={genderActivityData ?? []} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius="92%" innerRadius="55%" paddingAngle={3}>
                       {(genderActivityData ?? []).map(d => (
                         <Cell key={d.name} fill={d.type === 'status' ? (STATUS_COLORS[d.name] || COLORS[0]) : (GENDER_COLORS[d.name] || COLORS[0])} />
                       ))}
