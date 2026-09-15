@@ -10,7 +10,7 @@ export function useTrainers() {
         .from('profiles')
         .select('*')
         .eq('role', 'trainer')
-        .order('created_at', { ascending: false })
+        .order('code', { ascending: true })
       return (data ?? []) as Profile[]
     },
   })

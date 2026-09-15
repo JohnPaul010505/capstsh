@@ -10,7 +10,7 @@ export function useMembers(search?: string) {
         .from('profiles')
         .select('*')
         .eq('role', 'member')
-        .order('created_at', { ascending: false })
+        .order('code', { ascending: true })
 
       if (search) {
         query = query.ilike('full_name', `%${search}%`)

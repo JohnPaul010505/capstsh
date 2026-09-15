@@ -5,7 +5,7 @@ import { useAuth } from '@/features/auth/hooks/useAuth'
 import ConfirmDialog from '@/components/ConfirmDialog'
 import {
   LayoutDashboard, Users, Dumbbell, CreditCard,
-  CalendarCheck, BarChart3, QrCode, Settings, LogOut, MessageSquare,
+  CalendarCheck, BarChart3, QrCode, Settings, LogOut, MessageSquare, Bell,
 } from 'lucide-react'
 
 const navItems = [
@@ -16,7 +16,8 @@ const navItems = [
   { to: '/qr', label: 'QR', icon: QrCode },
   { to: '/attendance', label: 'Attendance', icon: CalendarCheck },
   { to: '/reports/inactive', label: 'Reports', icon: BarChart3, end: true },
-  { to: '/reports/feedback', label: 'Coach Feedback', icon: MessageSquare },
+  { to: '/reports/feedback', label: 'Feedback', icon: MessageSquare },
+  { to: '/notifications', label: 'Notifications', icon: Bell },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
 
@@ -52,7 +53,7 @@ export default function Sidebar() {
           >
             {({ isActive }) => (
               <>
-                <item.icon className={cn("w-[18px] h-[18px] shrink-0", isActive ? "text-white" : "text-[#7A7AA0]")} strokeWidth={2} />
+                <item.icon className={cn("w-[18px] h-[18px] shrink-0", isActive ? "text-white" : "text-[#7C3AED]")} strokeWidth={2} />
                 <span className="text-[13px] whitespace-nowrap">{item.label}</span>
               </>
             )}

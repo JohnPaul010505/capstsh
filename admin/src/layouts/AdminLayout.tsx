@@ -12,6 +12,7 @@ const ROUTE_TITLES: Record<string, string> = {
   '/attendance': 'Attendance',
   '/reports/inactive': 'Reports',
   '/reports/feedback': 'Coach Feedback',
+  '/notifications': 'Notifications',
   '/settings': 'Settings',
 }
 
@@ -38,7 +39,7 @@ function LayoutInner({ children }: { children: ReactNode }) {
       </div>
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header title={title} />
-        <main id="main-content" className="flex-1 overflow-y-auto pt-5 px-1 pb-3">
+        <main id="main-content" className="flex-1 overflow-hidden pt-5 px-1 pb-3">
           {children}
         </main>
       </div>

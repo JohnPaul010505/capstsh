@@ -18,6 +18,7 @@ const AXIS_TICK = { fill: '#9494BD', fontSize: 11 }
 const TOOLTIP_STYLE = { backgroundColor: 'rgba(20,20,42,0.9)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: '#ECECFC' }
 const DAY = 86_400_000
 
+
 function useDashboardStats() {
   return useQuery({
     queryKey: ['dashboard-stats'],
@@ -57,7 +58,7 @@ function getMonthOptions() {
 
 function useRevenueChart(range: 'week' | 'month' | 'year') {
   return useQuery({
-    queryKey: ['revenue-chart-v2', range],
+    queryKey: ['revenue-chart-v3', range],
     queryFn: async () => {
       const now = new Date()
       let start: Date
@@ -70,18 +71,21 @@ function useRevenueChart(range: 'week' | 'month' | 'year') {
         start = new Date(now.getTime() - 30 * DAY)
         format = 'day'
       } else {
-        start = new Date(now.getFullYear(), 0, 1)
+        start = new Date(now.getTime() - 365 * DAY)
         format = 'month'
       }
 
       const { data } = await supabase
         .from('memberships')
-        .select('start_date, price')
-        .gte('start_date', start.toISOString().split('T')[0])
+        .select('start_date, created_at, price')
+        .eq('status', 'active')
 
       const map: Record<string, number> = {}
       (data ?? []).forEach(m => {
-        const d = new Date(m.start_date)
+        const rawDate = m.start_date || m.created_at
+        if (!rawDate) return
+        const d = new Date(rawDate)
+        if (d < start) return
         let key: string
         if (format === 'day') {
           key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -91,9 +95,10 @@ function useRevenueChart(range: 'week' | 'month' | 'year') {
         map[key] = (map[key] || 0) + (Number(m.price) || 0)
       })
 
-      return Object.entries(map)
+      const result = Object.entries(map)
         .map(([date, revenue]) => ({ date, revenue: Math.round(revenue) }))
         .sort((a, b) => a.date.localeCompare(b.date))
+      return result
     },
   })
 }
@@ -196,13 +201,45 @@ function useRecentActivity() {
       const sevenDaysAgo = new Date(Date.now() - 7 * DAY).toISOString().split('T')[0]
       const today = new Date().toISOString().split('T')[0]
 
-      const [attendanceRes, assignmentRes, expiringRes, feedbackRes, dailyMembersRes] = await Promise.all([
-        supabase.from('attendance').select('id, member_id, check_in_time, profiles!attendance_member_id_fkey(full_name, code)').order('check_in_time', { ascending: false }).limit(10),
-        supabase.from('trainer_assignments').select('id, trainer_id, member_id, assigned_at, profiles!trainer_assignments_trainer_id_fkey(full_name), profiles!trainer_assignments_member_id_fkey(full_name)').order('assigned_at', { ascending: false }).limit(10),
+      const [attendanceRes, assignmentRes, expiringRes, feedbackRes, dailyMembersRes, enrollmentsRes, newMembershipsRes] = await Promise.all([
+        supabase.from('attendance').select('id, member_id, check_in_time, check_out_time, profiles!attendance_member_id_fkey(full_name, code)').order('check_in_time', { ascending: false }).limit(10),
+        supabase.from('trainer_assignments').select('id, trainer_id, member_id, assigned_at').order('assigned_at', { ascending: false }).limit(10),
         supabase.from('memberships').select('id, member_id, plan_name, end_date, profiles!memberships_member_id_fkey(full_name, code)').eq('status', 'active').not('end_date', 'is', null).lte('end_date', new Date(Date.now() + 7 * DAY).toISOString().split('T')[0]).order('end_date', { ascending: true }).limit(10),
         supabase.from('trainer_feedback').select('id, member_id, content, created_at, profiles!trainer_feedback_member_id_fkey(full_name)').order('created_at', { ascending: false }).limit(10),
         supabase.from('memberships').select('member_id').eq('plan_name', 'Daily').eq('status', 'active'),
+        supabase.from('enrollments').select('id, full_name, email, status, confirmed_at, created_at').order('created_at', { ascending: false }).limit(10),
+        supabase.from('memberships').select('id, member_id, plan_name, price, created_at, profiles!memberships_member_id_fkey(full_name, code)').order('created_at', { ascending: false }).limit(10),
       ])
+
+      const profileIds = new Set<string>()
+      ;(assignmentRes.data ?? []).forEach(a => {
+        profileIds.add(a.trainer_id)
+        profileIds.add(a.member_id)
+      })
+      ;(newMembershipsRes.data ?? []).forEach(m => {
+        if (m.member_id) profileIds.add(m.member_id)
+      })
+      const profileMap: Record<string, { full_name: string; code: string | null }> = {}
+      if (profileIds.size > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, full_name, code')
+          .in('id', Array.from(profileIds))
+        profiles?.forEach(p => { profileMap[p.id] = p })
+      }
+
+      const enrollmentProfileEmails = new Set<string>()
+      ;(enrollmentsRes.data ?? []).forEach(e => {
+        if (e.email) enrollmentProfileEmails.add(e.email)
+      })
+      const enrollmentProfileMap: Record<string, { full_name: string }> = {}
+      if (enrollmentProfileEmails.size > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('email, full_name')
+          .in('email', Array.from(enrollmentProfileEmails))
+        profiles?.forEach(p => { enrollmentProfileMap[p.email] = p })
+      }
 
       const dailyMemberIds = new Set((dailyMembersRes.data ?? []).map(m => m.member_id))
       let inactiveMembers: { member_id: string; full_name: string; code: string | null; daysInactive: number }[] = []
@@ -261,11 +298,21 @@ function useRecentActivity() {
           userName: profile?.full_name ?? 'Unknown',
           userCode: profile?.code,
         })
+        if (a.check_out_time) {
+          activities.push({
+            id: `checkout-${a.id}`,
+            type: 'checkout',
+            message: 'Checked out',
+            timestamp: a.check_out_time,
+            userName: profile?.full_name ?? 'Unknown',
+            userCode: profile?.code,
+          })
+        }
       })
 
       ;(assignmentRes.data ?? []).forEach(a => {
-        const trainer = Array.isArray(a.profiles) ? a.profiles[0] : a.profiles
-        const member = Array.isArray(a.profiles) ? a.profiles[1] : null
+        const trainer = profileMap[a.trainer_id]
+        const member = profileMap[a.member_id] ?? null
         activities.push({
           id: `assign-${a.id}`,
           type: 'trainer',
@@ -311,6 +358,29 @@ function useRecentActivity() {
         })
       })
 
+      ;(enrollmentsRes.data ?? []).forEach(e => {
+        const matched = enrollmentProfileMap[e.email]
+        activities.push({
+          id: `enrollment-${e.id}`,
+          type: 'enrollment',
+          message: e.status === 'confirmed' ? `Enrollment confirmed: ${matched?.full_name ?? e.full_name}` : `New enrollment: ${e.full_name} (${e.email})`,
+          timestamp: e.status === 'confirmed' && e.confirmed_at ? e.confirmed_at : e.created_at,
+          userName: matched?.full_name ?? e.full_name,
+        })
+      })
+
+      ;(newMembershipsRes.data ?? []).forEach(m => {
+        const profile = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles
+        activities.push({
+          id: `membership-${m.id}`,
+          type: 'membership',
+          message: `New membership: ${profile?.full_name ?? 'Unknown'} — ${m.plan_name} (₱${Number(m.price).toLocaleString()})`,
+          timestamp: m.created_at,
+          userName: profile?.full_name ?? 'Unknown',
+          userCode: profile?.code,
+        })
+      })
+
       return activities
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
         .slice(0, 20)
@@ -324,10 +394,13 @@ const rowCls = 'border-b border-white/5 last:border-0'
 
 const ACTIVITY_STYLES: Record<string, { bg: string; text: string; label: string }> = {
   checkin: { bg: 'bg-[#22C55E]/15', text: 'text-[#4ADE80]', label: 'Check-in' },
+  checkout: { bg: 'bg-[#F59E0B]/15', text: 'text-[#FBBF24]', label: 'Check-out' },
   trainer: { bg: 'bg-[#3B82F6]/15', text: 'text-[#60A5FA]', label: 'Trainer' },
   expiring: { bg: 'bg-[#F59E0B]/15', text: 'text-[#FBBF24]', label: 'Expiring' },
   inactive: { bg: 'bg-[#EF4444]/15', text: 'text-[#EF4444]', label: 'Inactive' },
   feedback: { bg: 'bg-[#7C3AED]/15', text: 'text-[#C084FC]', label: 'Feedback' },
+  enrollment: { bg: 'bg-[#7C3AED]/15', text: 'text-[#C084FC]', label: 'Enrollment' },
+  membership: { bg: 'bg-[#3B82F6]/15', text: 'text-[#60A5FA]', label: 'Membership' },
 }
 
 export default function DashboardPage() {
@@ -440,7 +513,7 @@ export default function DashboardPage() {
               <select
                 value={selectedMonth}
                 onChange={e => setSelectedMonth(e.target.value)}
-                className="px-2 py-1 text-xs rounded-md bg-white/[0.08] border border-white/10 text-[#ECECFC] focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50 cursor-pointer"
+                className="px-2 py-1 text-xs rounded-md bg-[#7C3AED] border border-[#7C3AED] text-white focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50 cursor-pointer"
               >
                 {monthOptions.map(m => (
                   <option key={m.value} value={m.value} className="bg-[#14142A]">{m.label}</option>
@@ -449,7 +522,7 @@ export default function DashboardPage() {
             </div>
             <div className="px-2 pb-2 flex-1 min-h-0">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData ?? []}>
+                  <BarChart data={chartData ?? []}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
                   <XAxis
                     dataKey="date"
@@ -496,7 +569,7 @@ export default function DashboardPage() {
             </div>
             <div className="px-2 pb-2 flex-1 min-h-0">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={revenueChartData ?? []} margin={{ top: 0, right: 8, left: -8, bottom: 0 }}>
+                  <AreaChart data={revenueChartData ?? []} margin={{ top: 0, right: 8, left: -8, bottom: 0 }}>
                   <defs>
                     <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="#7C3AED" stopOpacity={0.3} />
@@ -535,7 +608,7 @@ export default function DashboardPage() {
             </div>
             <div className="px-2 pb-2 flex-1 min-h-0">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={growthData ?? []} margin={{ top: 0, right: 8, left: -8, bottom: 0 }}>
+                  <AreaChart data={growthData ?? []} margin={{ top: 0, right: 8, left: -8, bottom: 0 }}>
                   <defs>
                     <linearGradient id="growthTotal" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="#7C3AED" stopOpacity={0.3} />
@@ -574,7 +647,7 @@ export default function DashboardPage() {
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-base font-bold text-[#ECECFC] display">{genderTotal + activeCount + inactiveCount}</span>
+                  <span className="text-base font-bold text-[#ECECFC] display">{stats?.totalMembers ?? 0}</span>
                   <span className="text-[10px] text-[#8888B3]">Members</span>
                 </div>
               </div>
@@ -601,7 +674,7 @@ export default function DashboardPage() {
           <div className="glass-card rounded-[12px] border border-white/10 shadow-sm flex flex-col min-h-0 flex-1">
             <div className="flex items-center justify-between px-4 pt-3 pb-2">
               <h2 className="text-[13px] font-semibold text-[#ECECFC]">Recent Activity</h2>
-              <span className="text-[11px] text-[#7A7AA0]">{(recentActivity ?? []).length}</span>
+              <span className="text-[11px] text-white bg-[#7C3AED] px-2 py-0.5 rounded-full">{(recentActivity ?? []).length}</span>
             </div>
             <div className="overflow-y-auto flex-1 min-h-0">
               {(recentActivity ?? []).length === 0 ? (

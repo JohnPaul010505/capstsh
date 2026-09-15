@@ -134,7 +134,7 @@ export default function TrainerDetailPage() {
             <Phone className="w-4 h-4" />
             <span>Phone</span>
           </div>
-          <p className="text-sm text-[#ECECFC]">{trainer.phone || 'â€”'}</p>
+          <p className="text-sm text-[#ECECFC]">{trainer.phone || '—'}</p>
         </div>
         <div className="glass-card p-4 rounded-xl border border-white/10 shadow-sm">
           <div className="flex items-center gap-2 text-sm text-[#55557A] mb-1">
@@ -173,7 +173,7 @@ export default function TrainerDetailPage() {
                   <tr key={a.id} className="border-b border-white/5 last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
                     <td className="px-3 py-2 text-sm font-medium text-[#ECECFC]">{a.profiles?.full_name}</td>
                     <td className="px-3 py-2 text-sm text-[#B4B4D0]">{a.profiles?.email}</td>
-                    <td className="px-3 py-2 text-sm text-[#B4B4D0]">{a.profiles?.phone || 'â€”'}</td>
+                    <td className="px-3 py-2 text-sm text-[#B4B4D0]">{a.profiles?.phone || '—'}</td>
                     <td className="px-3 py-2 text-right">
                       <button
                         onClick={() => unassignMutation.mutate(a.id)}
@@ -260,7 +260,7 @@ export default function TrainerDetailPage() {
                   >
                     <div>
                       <div className="text-sm font-medium text-[#ECECFC]">{m.full_name}</div>
-                      <div className="text-xs text-[#55557A]">{m.email} {m.code ? `Â· ${m.code}` : ''}</div>
+                      <div className="text-xs text-[#55557A]">{m.email} {m.code ? `· ${m.code}` : ''}</div>
                     </div>
                     <UserPlus className="w-4 h-4 text-[#7C3AED]" />
                   </button>

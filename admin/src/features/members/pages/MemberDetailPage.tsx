@@ -2,7 +2,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useMember } from '../hooks/useMembers'
-import { ArrowLeft, Dumbbell, Scale, Phone, Calendar, MapPin, PhoneCall } from 'lucide-react'
+import { ArrowLeft, Phone, Calendar, MapPin, PhoneCall } from 'lucide-react'
 import StatsCard from '@/components/StatsCard'
 import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line,
@@ -117,14 +117,14 @@ export default function MemberDetailPage() {
             <Phone className="w-4 h-4 text-[#55557A]" />
             <div>
               <p className="text-xs text-[#55557A]">Phone</p>
-              <p className="text-sm text-[#ECECFC]">{member.phone || 'â€”'}</p>
+              <p className="text-sm text-[#ECECFC]">{member.phone || '—'}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <Calendar className="w-4 h-4 text-[#55557A]" />
             <div>
               <p className="text-xs text-[#55557A]">Date of Birth</p>
-              <p className="text-sm text-[#ECECFC]">{member.date_of_birth || 'â€”'}</p>
+              <p className="text-sm text-[#ECECFC]">{member.date_of_birth || '—'}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -133,14 +133,14 @@ export default function MemberDetailPage() {
             </div>
             <div>
               <p className="text-xs text-[#55557A]">Gender</p>
-              <p className="text-sm text-[#ECECFC] capitalize">{member.gender || 'â€”'}</p>
+              <p className="text-sm text-[#ECECFC] capitalize">{member.gender || '—'}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <MapPin className="w-4 h-4 text-[#55557A]" />
             <div>
               <p className="text-xs text-[#55557A]">Address</p>
-              <p className="text-sm text-[#ECECFC]">{fullAddress || 'â€”'}</p>
+              <p className="text-sm text-[#ECECFC]">{fullAddress || '—'}</p>
             </div>
           </div>
         </div>
@@ -151,14 +151,14 @@ export default function MemberDetailPage() {
               <PhoneCall className="w-4 h-4 text-[#55557A]" />
               <div>
                 <p className="text-xs text-[#55557A]">Contact Name</p>
-                <p className="text-sm text-[#ECECFC]">{member.emergency_contact_name || 'â€”'}</p>
+                <p className="text-sm text-[#ECECFC]">{member.emergency_contact_name || '—'}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <Phone className="w-4 h-4 text-[#55557A]" />
               <div>
                 <p className="text-xs text-[#55557A]">Contact Phone</p>
-                <p className="text-sm text-[#ECECFC]">{member.emergency_contact_phone || 'â€”'}</p>
+                <p className="text-sm text-[#ECECFC]">{member.emergency_contact_phone || '—'}</p>
               </div>
             </div>
           </div>
@@ -167,8 +167,15 @@ export default function MemberDetailPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <StatsCard title="Workouts" value={workoutCount ?? 0} icon={Dumbbell} />
-        <StatsCard title="Measurements" value={measurements?.length ?? 0} icon={Scale} />
+        <StatsCard title="Total Workouts" value={workoutCount ?? 0} />
+        <StatsCard
+          title="BMI"
+          value={
+            measurements && measurements.length > 0 && measurements[measurements.length - 1].height_cm
+              ? (measurements[measurements.length - 1].weight_kg / Math.pow(measurements[measurements.length - 1].height_cm / 100, 2)).toFixed(1)
+              : '—'
+          }
+        />
       </div>
 
       {/* Weight chart */}

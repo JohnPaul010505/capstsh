@@ -33,7 +33,7 @@ export default function MemberTable({ members, onDelete }: MemberTableProps) {
               <td className="px-4 py-3 text-sm font-medium text-[#ECECFC]">{member.full_name}</td>
               <td className="px-4 py-3 text-sm font-mono font-medium text-[#7C3AED]">{member.code}</td>
               <td className="px-4 py-3 text-sm text-[#B4B4D0]">{member.email}</td>
-              <td className="px-4 py-3 text-sm text-[#B4B4D0]">{member.phone || 'â€”'}</td>
+              <td className="px-4 py-3 text-sm text-[#B4B4D0]">{member.phone || '—'}</td>
               <td className="px-4 py-3 text-sm text-[#B4B4D0]">
                 {new Date(member.created_at).toLocaleDateString()}
               </td>

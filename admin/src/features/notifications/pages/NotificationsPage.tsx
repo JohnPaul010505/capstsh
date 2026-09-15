@@ -108,7 +108,7 @@ export default function NotificationsPage() {
           <Bell className="w-4 h-4 text-[#C084FC]" />
           <h2 className="font-semibold text-[#ECECFC]">Recent Notifications</h2>
         </div>
-        <div className="overflow-x-auto flex-1">
+        <div className="overflow-x-auto flex-1 max-h-[420px]">
           <table className="w-full">
             <thead>
               <tr className="border-b border-white/10 bg-white/5">
@@ -124,7 +124,7 @@ export default function NotificationsPage() {
                 <tr key={n.id} className="border-b border-white/5 last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
                   <td className="px-3 py-2 text-sm font-medium text-[#ECECFC]">{n.title}</td>
                   <td className="px-3 py-2 text-sm text-[#B4B4D0] max-w-xs truncate">{n.body}</td>
-                  <td className="px-3 py-2 text-sm text-[#B4B4D0]">{n.profiles?.full_name ?? 'â€”'}</td>
+                  <td className="px-3 py-2 text-sm text-[#B4B4D0]">{n.profiles?.full_name ?? '—'}</td>
                   <td className="px-3 py-2">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                       n.read ? 'bg-[#22C55E]/15 text-[#4ADE80]' : 'bg-[#F59E0B]/15 text-[#FBBF24]'

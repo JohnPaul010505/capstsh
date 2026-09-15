@@ -118,7 +118,7 @@ export default function MembershipsPage() {
               : 'text-[#B4B4D0] hover:text-[#ECECFC]'
           }`}
         >
-          Daily (â‚±60)
+          Daily (₱60)
         </button>
         <button
           onClick={() => setActiveTab('monthly')}
@@ -128,7 +128,7 @@ export default function MembershipsPage() {
               : 'text-[#B4B4D0] hover:text-[#ECECFC]'
           }`}
         >
-          Monthly (â‚±1,800)
+          Monthly (₱1,800)
         </button>
       </div>
 
@@ -136,7 +136,7 @@ export default function MembershipsPage() {
         <div className="text-center py-8 text-[#55557A]">Loading...</div>
       ) : (
         <div className="glass-card rounded-xl border border-white/10 shadow-sm overflow-hidden flex flex-col min-h-0">
-          <div className="overflow-x-auto flex-1">
+          <div className="overflow-x-auto flex-1 max-h-[420px]">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-white/10 bg-white/5">
@@ -155,11 +155,11 @@ export default function MembershipsPage() {
                   return (
                     <tr key={m.id} className="border-b border-white/5 last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
                       <td className="px-3 py-2 text-sm font-medium text-[#ECECFC]">
-                        {m.profiles?.full_name ?? 'â€”'}
+                          {m.profiles?.full_name ?? '—'}
                         <span className="ml-2 text-xs font-mono text-[#7C3AED]">{m.profiles?.code}</span>
                       </td>
                       <td className="px-3 py-2 text-sm text-[#B4B4D0]">{m.plan_name}</td>
-                      <td className="px-3 py-2 text-sm text-[#B4B4D0]">â‚±{m.price}</td>
+                      <td className="px-3 py-2 text-sm text-[#B4B4D0]">                        ₱{m.price}</td>
                       <td className="px-3 py-2 text-sm text-[#B4B4D0]">{new Date(m.start_date).toLocaleDateString()}</td>
                       <td className="px-3 py-2 text-sm text-[#B4B4D0]">{new Date(m.end_date).toLocaleDateString()}</td>
                       <td className="px-3 py-2"><StatusBadge status={status} /></td>
@@ -190,7 +190,7 @@ export default function MembershipsPage() {
                 <label className="block text-sm font-medium text-[#B4B4D0] mb-1">Member</label>
                 <select value={form.member_id} onChange={e => { setForm({ ...form, member_id: e.target.value }); setPlanError('') }} className="w-full px-3 py-2 bg-white/[0.08] border border-white/10 rounded-lg text-sm text-[#ECECFC]">
                   <option value="">Select member...</option>
-                  {members?.map(m => <option key={m.id} value={m.id}>{m.full_name} ({m.code ?? 'â€”'}) â€” {m.email}</option>)}
+                  {members?.map(m => <option key={m.id} value={m.id}>{m.full_name} ({m.code ?? '—'}) — {m.email}</option>)}
                 </select>
               </div>
               {planError && (
@@ -210,7 +210,7 @@ export default function MembershipsPage() {
                         : 'bg-white/[0.08] border-white/10 text-[#B4B4D0] hover:border-[#55557A]'
                     }`}
                   >
-                    <div className="text-base font-bold">â‚±60</div>
+                    <div className="text-base font-bold">₱60</div>
                     <div className="text-xs mt-0.5">Daily</div>
                   </button>
                   <button
@@ -222,7 +222,7 @@ export default function MembershipsPage() {
                         : 'bg-white/[0.08] border-white/10 text-[#B4B4D0] hover:border-[#55557A]'
                     }`}
                   >
-                    <div className="text-base font-bold">â‚±1,800</div>
+                    <div className="text-base font-bold">₱1,800</div>
                     <div className="text-xs mt-0.5">Monthly</div>
                   </button>
                 </div>
@@ -239,7 +239,7 @@ export default function MembershipsPage() {
                 </div>
                 <div className="flex justify-between text-sm mt-1">
                   <span className="text-[#B4B4D0]">Price</span>
-                  <span className="text-[#ECECFC] font-medium">â‚±{PLANS[form.plan_type].price}</span>
+                  <span className="text-[#ECECFC] font-medium">₱{PLANS[form.plan_type].price}</span>
                 </div>
                 <div className="flex justify-between text-sm mt-1">
                   <span className="text-[#B4B4D0]">End Date</span>

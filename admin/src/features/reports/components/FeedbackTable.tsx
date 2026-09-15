@@ -33,29 +33,31 @@ export function FeedbackTable({ data, isLoading }: FeedbackTableProps) {
           <p className="text-sm text-[#8888B3]">No feedback recorded yet</p>
         </div>
       ) : (
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-white/10 bg-white/5">
-              <th className="text-left px-4 py-3 text-sm font-medium text-[#55557A]">Member</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-[#55557A]">Feedback</th>
-              <th className="text-right px-4 py-3 text-sm font-medium text-[#55557A]">Date</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.map(f => (
-              <tr key={f.id} className="border-b border-white/5 last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
-                <td className="px-4 py-3 text-sm font-medium text-[#ECECFC]">{f.profiles?.full_name ?? 'Unknown'}</td>
-                <td className="px-4 py-3 text-sm text-[#B4B4D0] flex items-start gap-2">
-                  <MessageSquare className="w-3.5 h-3.5 text-[#55557A] mt-0.5 shrink-0" />
-                  <span>{f.content}</span>
-                </td>
-                <td className="px-4 py-3 text-sm text-right text-[#B4B4D0] whitespace-nowrap">
-                  {new Date(f.created_at).toLocaleDateString()}
-                </td>
+        <div className="overflow-x-auto flex-1 max-h-[420px]">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-white/10 bg-white/5">
+                <th className="text-left px-4 py-3 text-sm font-medium text-[#55557A]">Member</th>
+                <th className="text-left px-4 py-3 text-sm font-medium text-[#55557A]">Feedback</th>
+                <th className="text-right px-4 py-3 text-sm font-medium text-[#55557A]">Date</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {data.map(f => (
+                <tr key={f.id} className="border-b border-white/5 last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
+                  <td className="px-4 py-3 text-sm font-medium text-[#ECECFC]">{f.profiles?.full_name ?? 'Unknown'}</td>
+                  <td className="px-4 py-3 text-sm text-[#B4B4D0] flex items-start gap-2">
+                    <MessageSquare className="w-3.5 h-3.5 text-[#55557A] mt-0.5 shrink-0" />
+                    <span>{f.content}</span>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-right text-[#B4B4D0] whitespace-nowrap">
+                    {new Date(f.created_at).toLocaleDateString()}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   )

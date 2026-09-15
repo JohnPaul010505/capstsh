@@ -77,9 +77,9 @@ export default function LogsPage() {
                         {log.action}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-sm text-[#B4B4D0] capitalize">{log.target_type ?? 'â€”'}</td>
+                    <td className="px-3 py-2 text-sm text-[#B4B4D0] capitalize">{log.target_type ?? '—'}</td>
                     <td className="px-3 py-2 text-sm text-[#B4B4D0] max-w-xs truncate">
-                      {log.details ? JSON.stringify(log.details) : 'â€”'}
+                      {log.details ? JSON.stringify(log.details) : '—'}
                     </td>
                     <td className="px-3 py-2 text-sm text-[#55557A] text-right whitespace-nowrap">
                       {new Date(log.created_at).toLocaleString()}

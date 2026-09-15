@@ -183,7 +183,7 @@ export default function QRPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         <div className="glass-card p-4 rounded-xl border border-white/10 shadow-sm flex flex-col items-center justify-center">
           <p className="text-sm font-semibold text-[#ECECFC] mb-3">Enrollment Form</p>
           <QRCodeSVG value={PAGE_URL} size={160} bgColor="#14142A" fgColor="#ECECFC" />

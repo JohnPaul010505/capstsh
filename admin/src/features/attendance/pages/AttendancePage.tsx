@@ -202,7 +202,7 @@ export default function AttendancePage() {
                   >
                     <div>
                       <p className="font-medium text-sm text-[#ECECFC]">{p.full_name}</p>
-                      <p className="text-xs text-[#55557A]">{p.code} â€” {p.email}</p>
+                      <p className="text-xs text-[#55557A]">{p.code} — {p.email}</p>
                     </div>
                     <LogIn className="w-4 h-4 text-[#4ADE80] shrink-0" />
                   </button>

@@ -217,7 +217,7 @@ export default function InactiveReportPage() {
           ) : rows.length === 0 ? (
             <div className="px-4 py-6 text-center text-sm text-[#55557A]">No inactive {subTab === 'members' ? 'members' : 'trainers'}</div>
           ) : (
-            <div className="overflow-x-auto flex-1">
+            <div className="overflow-x-auto flex-1 max-h-[420px]">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-white/10 bg-white/5">
