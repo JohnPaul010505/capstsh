@@ -21,7 +21,7 @@ const navItems = [
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
 
-const pillBg = 'bg-[#0F0F1E] border border-white/10 shadow-[0_0_20px_rgba(124,58,237,0.08)]'
+const pillBg = 'bg-white/[0.03] border border-white/10 shadow-[0_10px_40px_rgba(0,0,0,0.25)]'
 
 export default function Sidebar() {
   const { signOut } = useAuth()
@@ -31,8 +31,8 @@ export default function Sidebar() {
     <aside
       className={cn(
         pillBg,
-        "flex flex-col overflow-hidden",
-        "w-[180px] mx-2 mb-0 mt-20 rounded-[36px] h-[calc(100vh-56px)]"
+        "flex flex-col overflow-hidden backdrop-blur-2xl",
+        "w-[180px] mx-2 mb-0 mt-20 rounded-[28px] h-[calc(100vh-56px)]"
       )}
     >
       <div className="h-10" />
@@ -46,7 +46,7 @@ export default function Sidebar() {
             className={({ isActive }) => cn(
               "flex items-center gap-3 rounded-2xl transition-all duration-200 relative",
               isActive
-                ? "bg-gradient-to-r from-[#7C3AED] to-[#6D28D9] text-white shadow-[0_0_12px_rgba(124,58,237,0.35)]"
+                ? "bg-purple-600/80 border border-purple-400/30 text-white shadow-[0_0_25px_rgba(139,92,246,0.30)]"
                 : "text-[#8A8AB0] hover:text-white hover:bg-white/5",
               "px-3 py-2"
             )}

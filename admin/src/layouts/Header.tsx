@@ -85,7 +85,7 @@ export default function Header({ title }: HeaderProps) {
   }
 
   return (
-    <header className="h-14 bg-[#14142A]/60 backdrop-blur-xl border-b border-white/10 flex items-center justify-between px-5">
+    <header className="h-14 bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.25)] flex items-center justify-between px-5">
       <h1 className="text-[30px] font-bold text-[#ECECFC]">{title}</h1>
       <div className="flex items-center gap-3">
         <div className="relative">

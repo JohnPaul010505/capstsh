@@ -6,7 +6,7 @@ type IconVariant = 'purple' | 'blue' | 'green'
 interface StatsCardProps {
   title: string
   value: number
-  icon: LucideIcon
+  icon?: LucideIcon
   trend?: {
     value: number
     label: string
@@ -27,7 +27,7 @@ export default function StatsCard({ title, value, icon: Icon, trend, sparkData, 
   const displaySpark = sparkData && sparkData.length > 1
   const stroke = trend ? (trend.value >= 0 ? '#22C55E' : '#EF4444') : (sparkColor || '#7C3AED')
   return (
-    <div className="glass-card rounded-[12px] p-4 border border-white/10 shadow-sm">
+    <div className="glass-card rounded-2xl p-4 border border-white/10 shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[12px] text-[#7A7AA0] truncate">{title}</p>
@@ -40,7 +40,7 @@ export default function StatsCard({ title, value, icon: Icon, trend, sparkData, 
         </div>
         <div className="flex items-center gap-3 shrink-0">
           {displaySpark && (
-            <div className="w-16 h-10">
+            <div className="w-16 h-10" style={{ filter: `drop-shadow(0 0 5px ${stroke === '#22C55E' ? 'rgba(34,197,94,0.45)' : stroke === '#EF4444' ? 'rgba(239,68,68,0.45)' : 'rgba(139,92,246,0.45)'})` }}>
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={sparkData}>
                   <Area type="monotone" dataKey="value" stroke={stroke} strokeWidth={2} fill="transparent" />

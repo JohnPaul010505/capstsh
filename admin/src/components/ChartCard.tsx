@@ -17,7 +17,7 @@ interface ChartCardProps {
 export default function ChartCard({ title, icon: Icon, badge, isLoading, isEmpty, emptyMessage, ariaLabel, footer, children }: ChartCardProps) {
   const showFooter = footer && !isLoading && !isEmpty
   return (
-    <div className="glass-card rounded-[12px] border border-white/10 shadow-sm flex flex-col">
+    <div className="glass-panel rounded-2xl border border-white/10 shadow-sm flex flex-col">
       <div className="flex items-start justify-between gap-3 px-4 pt-3 pb-2">
         <div className="flex items-center gap-2.5">
           <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-[#7C3AED]/15 text-[#C084FC] shrink-0">

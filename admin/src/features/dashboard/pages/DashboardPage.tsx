@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { Activity } from 'lucide-react'
 import {
@@ -9,7 +8,6 @@ import {
   PieChart, Pie, Cell,
 } from 'recharts'
 import StatsCard from '@/components/StatsCard'
-import ChartCard from '@/components/ChartCard'
 
 const COLORS = ['#7C3AED', '#22C55E', '#F59E0B', '#EF4444', '#3B82F6', '#C084FC']
 const GENDER_COLORS: Record<string, string> = { Male: '#3B82F6', Female: '#DB2777', Other: '#C084FC' }
@@ -209,9 +207,6 @@ function useRecentActivity() {
   return useQuery({
     queryKey: ['recent-activity'],
     queryFn: async () => {
-      const sevenDaysAgo = new Date(Date.now() - 7 * DAY).toISOString().split('T')[0]
-      const today = new Date().toISOString().split('T')[0]
-
       const [attendanceRes, assignmentRes, expiringRes, feedbackRes, dailyMembersRes, enrollmentsRes, newMembershipsRes] = await Promise.all([
         supabase.from('attendance').select('id, member_id, check_in_time, check_out_time, profiles!attendance_member_id_fkey(full_name, code)').order('check_in_time', { ascending: false }).limit(10),
         supabase.from('trainer_assignments').select('id, trainer_id, member_id, assigned_at').order('assigned_at', { ascending: false }).limit(10),
@@ -297,7 +292,7 @@ function useRecentActivity() {
           .slice(0, 10)
       }
 
-      const activities: { id: string; type: string; message: string; timestamp: string; userName: string; userCode?: string }[] = []
+      const activities: { id: string; type: string; message: string; timestamp: string; userName: string; userCode?: string | null }[] = []
 
       ;(attendanceRes.data ?? []).forEach(a => {
         const profile = Array.isArray(a.profiles) ? a.profiles[0] : a.profiles
@@ -399,19 +394,15 @@ function useRecentActivity() {
   })
 }
 
-const thCls = 'text-left px-3 py-2 text-[#55557A] text-xs uppercase tracking-wider border-b border-white/10'
-const tdCls = 'px-3 py-2 text-sm'
-const rowCls = 'border-b border-white/5 last:border-0'
-
-const ACTIVITY_STYLES: Record<string, { bg: string; text: string; label: string }> = {
-  checkin: { bg: 'bg-[#22C55E]/15', text: 'text-[#4ADE80]', label: 'Check-in' },
-  checkout: { bg: 'bg-[#F59E0B]/15', text: 'text-[#FBBF24]', label: 'Check-out' },
-  trainer: { bg: 'bg-[#3B82F6]/15', text: 'text-[#60A5FA]', label: 'Trainer' },
-  expiring: { bg: 'bg-[#F59E0B]/15', text: 'text-[#FBBF24]', label: 'Expiring' },
-  inactive: { bg: 'bg-[#EF4444]/15', text: 'text-[#EF4444]', label: 'Inactive' },
-  feedback: { bg: 'bg-[#7C3AED]/15', text: 'text-[#C084FC]', label: 'Feedback' },
-  enrollment: { bg: 'bg-[#7C3AED]/15', text: 'text-[#C084FC]', label: 'Enrollment' },
-  membership: { bg: 'bg-[#3B82F6]/15', text: 'text-[#60A5FA]', label: 'Membership' },
+const ACTIVITY_STYLES: Record<string, { bg: string; label: string }> = {
+  checkin: { bg: 'bg-emerald-500/15 border border-emerald-400/20 text-emerald-300', label: 'Check-in' },
+  checkout: { bg: 'bg-amber-500/15 border border-amber-400/20 text-amber-300', label: 'Check-out' },
+  trainer: { bg: 'bg-indigo-500/15 border border-indigo-400/20 text-indigo-300', label: 'Trainer' },
+  expiring: { bg: 'bg-amber-500/15 border border-amber-400/20 text-amber-300', label: 'Expiring' },
+  inactive: { bg: 'bg-red-500/15 border border-red-400/20 text-red-300', label: 'Inactive' },
+  feedback: { bg: 'bg-purple-500/15 border border-purple-400/20 text-purple-300', label: 'Feedback' },
+  enrollment: { bg: 'bg-purple-500/15 border border-purple-400/20 text-purple-300', label: 'Enrollment' },
+  membership: { bg: 'bg-blue-500/15 border border-blue-400/20 text-blue-300', label: 'Membership' },
 }
 
 export default function DashboardPage() {
@@ -449,11 +440,6 @@ export default function DashboardPage() {
   const activeCount = useMemo(() => (genderActivityData ?? []).find(d => d.name === 'Active')?.value ?? 0, [genderActivityData])
   const inactiveCount = useMemo(() => (genderActivityData ?? []).find(d => d.name === 'Inactive')?.value ?? 0, [genderActivityData])
 
-  const totalRevenue = useMemo(() => {
-    if (!revenueData || revenueData.length === 0) return 0
-    return revenueData.reduce((sum, d) => sum + d.revenue, 0)
-  }, [revenueData])
-
   const revenueChartData = useMemo(() => {
     if (!revenueData) return []
     if (revenueRange === 'year') {
@@ -470,7 +456,7 @@ export default function DashboardPage() {
 
   const revenueXFormatter = (v: string) => {
     if (revenueRange === 'year') {
-      const [y, m] = v.split('-')
+      const [, m] = v.split('-')
       return MONTH_NAMES[Number(m) - 1] || v
     }
     const d = new Date(v)
@@ -512,6 +498,7 @@ export default function DashboardPage() {
           value={stats?.totalRevenue ?? 0}
           trend={revenueTrend ? { value: revenueTrend, label: 'from last month' } : undefined}
           sparkData={revenueChartData?.slice(-10).map(d => ({ value: d.revenue }))}
+          iconVariant="purple"
           sparkColor="#10B981"
         />
         <StatsCard
@@ -519,7 +506,7 @@ export default function DashboardPage() {
           value={stats?.totalMembers ?? 0}
           trend={memberTrend ? { value: memberTrend, label: 'from last month' } : undefined}
           sparkData={growthData?.slice(-10).map(d => ({ value: d.totalMembers }))}
-          variant="purple"
+          iconVariant="purple"
           sparkColor="#7C3AED"
         />
         <StatsCard
@@ -527,7 +514,7 @@ export default function DashboardPage() {
           value={stats?.totalTrainers ?? 0}
           trend={trainerTrend ? { value: trainerTrend, label: 'from last month' } : undefined}
           sparkData={growthData?.slice(-10).map(d => ({ value: d.newMembers }))}
-          variant="blue"
+          iconVariant="blue"
           sparkColor="#3B82F6"
         />
         <StatsCard
@@ -535,14 +522,14 @@ export default function DashboardPage() {
           value={stats?.attendanceToday ?? 0}
           trend={{ value: 0, label: 'from yesterday' }}
           sparkData={chartData?.slice(-10).map(d => ({ value: d.count }))}
-          variant="green"
+          iconVariant="green"
           sparkColor="#22C55E"
         />
       </div>
 
       <div className="grid grid-cols-12 gap-3 min-h-0">
         <div className="col-span-7 flex flex-col gap-3">
-          <div className="glass-card rounded-[12px] border border-white/10 shadow-sm flex flex-col min-h-0 flex-1">
+          <div className="glass-panel rounded-2xl border border-white/10 shadow-sm flex flex-col min-h-0 flex-1">
             <div className="flex items-center justify-between px-4 pt-3 pb-2">
               <h2 className="text-[13px] font-semibold text-[#ECECFC]">Daily Check-ins</h2>
               <select
@@ -558,6 +545,16 @@ export default function DashboardPage() {
             <div className="px-2 pb-2 flex-1 min-h-0">
               <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData ?? []}>
+                  <defs>
+                    <linearGradient id="checkinBarGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#7C3AED" />
+                      <stop offset="100%" stopColor="#A855F7" />
+                    </linearGradient>
+                    <filter id="barGlow" x="-20%" y="-20%" width="140%" height="140%">
+                      <feGaussianBlur stdDeviation="3" result="blur" />
+                      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                    </filter>
+                  </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
                   <XAxis
                     dataKey="date"
@@ -577,13 +574,13 @@ export default function DashboardPage() {
                     }}
                     formatter={(value: number) => [`${value}`, 'Check-ins']}
                   />
-                  <Bar dataKey="count" fill="#7C3AED" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="count" fill="url(#checkinBarGradient)" radius={[3, 3, 0, 0]} filter="url(#barGlow)" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          <div className="glass-card rounded-[12px] border border-white/10 shadow-sm flex flex-col min-h-0 flex-1">
+          <div className="glass-panel rounded-2xl border border-white/10 shadow-sm flex flex-col min-h-0 flex-1">
             <div className="flex items-center justify-between px-4 pt-3 pb-2">
               <h2 className="text-[13px] font-semibold text-[#ECECFC]">Revenue Overview</h2>
               <div className="flex items-center gap-1 rounded-lg bg-white/[0.08] p-0.5">
@@ -605,11 +602,15 @@ export default function DashboardPage() {
             <div className="px-2 pb-2 flex-1 min-h-0">
               <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={revenueChartData ?? []} margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
-                  <defs>
+                   <defs>
                     <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="#7C3AED" stopOpacity={0.3} />
                       <stop offset="100%" stopColor="#7C3AED" stopOpacity={0} />
                     </linearGradient>
+                    <filter id="revenueGlow" x="-20%" y="-20%" width="140%" height="140%">
+                      <feGaussianBlur stdDeviation="3" result="blur" />
+                      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                    </filter>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
                   <XAxis
@@ -627,13 +628,13 @@ export default function DashboardPage() {
                     labelFormatter={v => revenueRange === 'year' ? v : new Date(v).toLocaleDateString()}
                     formatter={(value: number) => [`₱${value.toLocaleString()}`, 'Revenue']}
                   />
-                  <Area type="monotone" dataKey="revenue" stroke="#7C3AED" strokeWidth={2} fill="url(#revenueGradient)" dot={{ fill: '#C084FC', r: 2 }} name="Revenue" />
+                  <Area type="monotone" dataKey="revenue" stroke="#7C3AED" strokeWidth={2} fill="url(#revenueGradient)" dot={{ fill: '#C084FC', r: 2 }} name="Revenue" filter="url(#revenueGlow)" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          <div className="glass-card rounded-[12px] border border-white/10 shadow-sm flex flex-col min-h-0 flex-1">
+          <div className="glass-panel rounded-2xl border border-white/10 shadow-sm flex flex-col min-h-0 flex-1">
             <div className="flex items-center justify-between px-4 pt-3 pb-2">
               <h2 className="text-[13px] font-semibold text-[#ECECFC]">Member Growth Over Time</h2>
               <div className="flex items-center gap-3 text-[11px] text-[#7A7AA0]">
@@ -644,7 +645,7 @@ export default function DashboardPage() {
             <div className="px-2 pb-2 flex-1 min-h-0">
               <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={growthData ?? []} margin={{ top: 0, right: 8, left: -8, bottom: 0 }}>
-                  <defs>
+                   <defs>
                     <linearGradient id="growthTotal" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="#7C3AED" stopOpacity={0.3} />
                       <stop offset="100%" stopColor="#7C3AED" stopOpacity={0} />
@@ -653,13 +654,17 @@ export default function DashboardPage() {
                       <stop offset="0%" stopColor="#22C55E" stopOpacity={0.25} />
                       <stop offset="100%" stopColor="#22C55E" stopOpacity={0} />
                     </linearGradient>
+                    <filter id="growthGlow" x="-20%" y="-20%" width="140%" height="140%">
+                      <feGaussianBlur stdDeviation="2.5" result="blur" />
+                      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                    </filter>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
                   <XAxis dataKey="month" tick={AXIS_TICK} interval={0} tickFormatter={v => MONTH_NAMES[Number(v.split('-')[1]) - 1]} axisLine={{ stroke: 'rgba(255,255,255,0.06)' }} tickLine={false} />
                   <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} width={28} />
                   <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={{ color: '#B4B4D0' }} />
-                  <Area type="monotone" dataKey="totalMembers" stroke="#7C3AED" strokeWidth={2} fill="url(#growthTotal)" dot={{ fill: '#C084FC', r: 2 }} name="Total Members" />
-                  <Area type="monotone" dataKey="newMembers" stroke="#22C55E" strokeWidth={2} fill="url(#growthNew)" dot={{ fill: '#4ADE80', r: 2 }} name="New Members" />
+                  <Area type="monotone" dataKey="totalMembers" stroke="#7C3AED" strokeWidth={2} fill="url(#growthTotal)" dot={{ fill: '#C084FC', r: 2 }} name="Total Members" filter="url(#growthGlow)" />
+                  <Area type="monotone" dataKey="newMembers" stroke="#22C55E" strokeWidth={2} fill="url(#growthNew)" dot={{ fill: '#4ADE80', r: 2 }} name="New Members" filter="url(#growthGlow)" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -667,9 +672,9 @@ export default function DashboardPage() {
         </div>
 
         <div className="col-span-5 flex flex-col gap-3 min-h-0">
-          <div className="glass-card rounded-[12px] border border-white/10 shadow-sm flex flex-col min-h-0">
+          <div className="glass-panel rounded-2xl border border-white/10 shadow-sm flex flex-col min-h-0">
             <h2 className="text-[13px] font-semibold text-[#ECECFC] px-4 pt-3 pb-2">Member Overview</h2>
-            <div className="flex items-center gap-4 px-4 pb-3">
+            <div className="flex items-center gap-4 p-3">
               <div className="relative w-[110px] h-[110px] shrink-0">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -695,7 +700,7 @@ export default function DashboardPage() {
                       <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: d.type === 'status' ? (STATUS_COLORS[d.name] || COLORS[0]) : (GENDER_COLORS[d.name] || COLORS[0]) }} />
                       <span className="text-xs text-[#B4B4D0] w-14">{d.name}</span>
                       <span className="text-xs font-semibold text-[#ECECFC]">{d.value}</span>
-                      <div className="flex-1 h-1.5 rounded-full bg-white/10">
+                      <div className="flex-1 h-1.5 rounded-full bg-white/[0.08]">
                         <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: d.type === 'status' ? (STATUS_COLORS[d.name] || COLORS[0]) : (GENDER_COLORS[d.name] || COLORS[0]) }} />
                       </div>
                       <span className="text-[11px] text-[#55557A] w-8 text-right">{pct}%</span>
@@ -706,7 +711,9 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="glass-card rounded-[12px] border border-white/10 shadow-sm flex flex-col min-h-0 flex-1">
+          <div className="glass-panel rounded-2xl border border-white/10 shadow-sm flex flex-col min-h-0 flex-1">
+
+          <div className="glass-panel rounded-2xl border border-white/10 shadow-sm flex flex-col min-h-0 flex-1">
             <div className="flex items-center justify-between px-4 pt-3 pb-2">
               <h2 className="text-[13px] font-semibold text-[#ECECFC]">Recent Activity</h2>
               <span className="text-[11px] text-white bg-[#7C3AED] px-2 py-0.5 rounded-full">{(recentActivity ?? []).length}</span>
@@ -718,31 +725,34 @@ export default function DashboardPage() {
                   <p className="text-[13px] text-[#8888B3]">No recent activity</p>
                 </div>
               ) : (
-                <div className="flex flex-col gap-1">
-                  {(recentActivity ?? []).map(a => {
-                    const style = ACTIVITY_STYLES[a.type] || ACTIVITY_STYLES.checkin
-                    const time = new Date(a.timestamp)
-                    const timeStr = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                    const dateStr = time.toLocaleDateString([], { month: 'short', day: 'numeric' })
-                    return (
-                      <div key={a.id} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/[0.03] transition-colors">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${style.bg} ${style.text}`}>
-                          {style.label}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs text-[#ECECFC] truncate">{a.userName} {a.userCode && <span className="text-[#55557A] ml-1">{a.userCode}</span>}</p>
-                          <p className="text-[11px] text-[#55557A] truncate">{a.message}</p>
+                 <div className="flex flex-col gap-1">
+                   {(recentActivity ?? []).map(a => {
+                     const style = ACTIVITY_STYLES[a.type] || ACTIVITY_STYLES.checkin
+                     const time = new Date(a.timestamp)
+                     const timeStr = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                     const dateStr = time.toLocaleDateString([], { month: 'short', day: 'numeric' })
+                     return (
+                        <div key={a.id} className="glass-card rounded-lg border border-white/10 shadow-sm p-2">
+                        <div className="flex items-center gap-3">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${style.bg}`}>
+                            {style.label}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-[#ECECFC] truncate">{a.userName} {a.userCode && <span className="text-[#55557A] ml-1">{a.userCode}</span>}</p>
+                            <p className="text-[11px] text-[#55557A] truncate">{a.message}</p>
+                          </div>
+                          <span className="text-[10px] text-[#55557A] whitespace-nowrap">{dateStr} {timeStr}</span>
                         </div>
-                        <span className="text-[10px] text-[#55557A] whitespace-nowrap">{dateStr} {timeStr}</span>
                       </div>
-                    )
-                  })}
-                </div>
+                     )
+                   })}
+                 </div>
               )}
-            </div>
-          </div>
-        </div>
-      </div>
+               </div>
+             </div>
+           </div>
+         </div>
+       </div>
     </div>
   )
 }
