@@ -712,8 +712,6 @@ export default function DashboardPage() {
           </div>
 
           <div className="glass-panel rounded-2xl border border-white/10 shadow-sm flex flex-col min-h-0 flex-1">
-
-          <div className="glass-panel rounded-2xl border border-white/10 shadow-sm flex flex-col min-h-0 flex-1">
             <div className="flex items-center justify-between px-4 pt-3 pb-2">
               <h2 className="text-[13px] font-semibold text-[#ECECFC]">Recent Activity</h2>
               <span className="text-[11px] text-white bg-[#7C3AED] px-2 py-0.5 rounded-full">{(recentActivity ?? []).length}</span>
@@ -750,7 +748,6 @@ export default function DashboardPage() {
               )}
                </div>
              </div>
-           </div>
          </div>
        </div>
     </div>

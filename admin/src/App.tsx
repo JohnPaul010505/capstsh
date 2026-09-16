@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from '@/features/auth/hooks/useAuth'
 import LoginPage from '@/features/auth/pages/LoginPage'
 import AdminLayout from '@/layouts/AdminLayout'
@@ -19,7 +19,8 @@ import SettingsPage from '@/features/settings/pages/SettingsPage'
 
 function AppRoutes() {
   const { profile, loading } = useAuth()
-  const isQR = window.location.pathname === '/qr'
+  const location = useLocation()
+  const isQR = location.pathname === '/qr'
 
   if (loading) {
     return <div className="min-h-screen bg-[#0D0D1A] flex items-center justify-center text-[#55557A]">Loading...</div>
