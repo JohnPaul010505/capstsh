@@ -20,13 +20,10 @@ import SettingsPage from '@/features/settings/pages/SettingsPage'
 function AppRoutes() {
   const { profile, loading } = useAuth()
   const location = useLocation()
-  const isQR = location.pathname === '/qr'
 
   if (loading) {
     return <div className="min-h-screen bg-[#0D0D1A] flex items-center justify-center text-[#55557A]">Loading...</div>
   }
-
-  if (isQR) return <QRPage />
 
   if (!profile) return <LoginPage />
 

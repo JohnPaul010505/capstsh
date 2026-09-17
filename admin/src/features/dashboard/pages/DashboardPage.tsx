@@ -17,22 +17,68 @@ const TOOLTIP_STYLE = { backgroundColor: 'rgba(20,20,42,0.9)', backdropFilter: '
 const DAY = 86_400_000
 
 
-function useDashboardStats() {
+function useDashboardBaseStats() {
   return useQuery({
-    queryKey: ['dashboard-stats'],
+    queryKey: ['dashboard-base-stats'],
     queryFn: async () => {
-      const [members, trainers, attendanceToday, revenue] = await Promise.all([
+      const [members, trainers, revenue] = await Promise.all([
         supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'member'),
         supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'trainer'),
-        supabase.from('attendance').select('id', { count: 'exact', head: true }).eq('check_in_date', new Date().toISOString().split('T')[0]),
         supabase.from('memberships').select('price').eq('status', 'active'),
       ])
       const totalRevenue = (revenue.data ?? []).reduce((sum, m) => sum + (Number(m.price) || 0), 0)
       return {
         totalMembers: members.count ?? 0,
         totalTrainers: trainers.count ?? 0,
-        attendanceToday: attendanceToday.count ?? 0,
         totalRevenue,
+      }
+    },
+  })
+}
+
+function useDashboardStats(yearMonth?: string) {
+  const now = new Date()
+  let startDate = now.toISOString().split('T')[0]
+  let endDate = startDate
+  let prevStartDate = startDate
+  let prevEndDate = endDate
+  if (yearMonth) {
+    const [year, month] = yearMonth.split('-').map(Number)
+    const monthStart = new Date(year, month - 1, 1)
+    const monthEnd = new Date(year, month, 0)
+    startDate = monthStart.toISOString().split('T')[0]
+    endDate = monthEnd.toISOString().split('T')[0]
+    const prevMonthEnd = new Date(year, month - 1, 0)
+    const prevMonthStart = new Date(year, month - 2, 1)
+    prevStartDate = prevMonthStart.toISOString().split('T')[0]
+    prevEndDate = prevMonthEnd.toISOString().split('T')[0]
+  }
+
+  return useQuery({
+    queryKey: ['dashboard-stats', yearMonth ?? 'default'],
+    queryFn: async () => {
+      const [attendanceRes, prevAttendanceRes] = await Promise.all([
+        supabase.from('attendance').select('id, member_id, profiles!attendance_member_id_fkey(role)').gte('check_in_date', startDate).lte('check_in_date', endDate),
+        supabase.from('attendance').select('id', { count: 'exact', head: true }).gte('check_in_date', prevStartDate).lte('check_in_date', prevEndDate),
+      ])
+      const rows = attendanceRes.data ?? []
+      const trainerAttendance = rows.filter(a => (a.profiles as any)?.role === 'trainer').length
+      const memberAttendance = rows.filter(a => (a.profiles as any)?.role === 'member').length
+      const currentAttendance = rows.length
+      const previousAttendance = prevAttendanceRes.count ?? 0
+      let attendanceTrend: number | undefined
+      let attendanceTrendLabel = 'from last month'
+      if (previousAttendance > 0) {
+        attendanceTrend = Math.round(((currentAttendance - previousAttendance) / previousAttendance) * 100)
+      } else if (currentAttendance > 0) {
+        attendanceTrend = 100
+      }
+      return {
+        attendance: currentAttendance,
+        trainerAttendance,
+        memberAttendance,
+        attendanceTrend,
+        attendanceTrendLabel,
       }
     },
   })
@@ -405,15 +451,56 @@ const ACTIVITY_STYLES: Record<string, { bg: string; label: string }> = {
   membership: { bg: 'bg-blue-500/15 border border-blue-400/20 text-blue-300', label: 'Membership' },
 }
 
-export default function DashboardPage() {
-  const { data: stats, isLoading } = useDashboardStats()
+const MEMBER_ITEM_COLORS: Record<string, { dot: string; text: string }> = {
+  Male: { dot: '#3B82F6', text: '#3B82F6' },
+  Female: { dot: '#DB2777', text: '#DB2777' },
+  Active: { dot: '#22C55E', text: '#22C55E' },
+  Inactive: { dot: '#FF3B3B', text: '#FF3B3B' },
+  Other: { dot: '#C084FC', text: '#C084FC' },
+}
 
+function getPieColor(name: string) {
+  if (STATUS_COLORS[name]) return STATUS_COLORS[name]
+  if (GENDER_COLORS[name]) return GENDER_COLORS[name]
+  return COLORS[0]
+}
+
+function CustomBarTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null
+  const value = payload[0].value
+  return (
+    <div className="rounded-lg border border-white/10 bg-[#14142A]/90 px-3 py-2 text-xs shadow-xl backdrop-blur-md">
+      <p className="text-[11px] text-[#B4B4D0]">Day {label}</p>
+      <p className="text-xs font-semibold" style={{ color: '#A855F7' }}>{value} Check-ins</p>
+    </div>
+  )
+}
+
+function CustomPieTooltip({ active, payload, coordinate }: any) {
+  if (!active || !payload?.length) return null
+  const entry = payload[0]
+  const color = getPieColor(entry.name)
+  if (!coordinate) return null
+  const isLeft = entry.name === 'Female' || entry.name === 'Active'
+  const x = isLeft ? coordinate.x - 90 : coordinate.x + 12
+  const y = coordinate.y - 12
+  return (
+    <div className="absolute rounded-lg border border-white/10 bg-[#14142A]/90 px-3 py-2 text-xs shadow-xl backdrop-blur-md pointer-events-none" style={{ left: x, top: y }}>
+      <p className="text-xs font-medium" style={{ color }}>{entry.name}</p>
+      <p className="text-xs font-semibold" style={{ color }}>{entry.value}</p>
+    </div>
+  )
+}
+
+export default function DashboardPage() {
   const now = new Date()
   const defaultMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
   const [selectedMonth, setSelectedMonth] = useState(defaultMonth)
   const [revenueRange, setRevenueRange] = useState<'week' | 'month' | 'year'>('week')
   const monthOptions = useMemo(() => getMonthOptions(), [])
 
+  const { data: baseStats } = useDashboardBaseStats()
+  const { data: attendanceStats } = useDashboardStats(selectedMonth)
   const { data: chartData } = useAttendanceChart(selectedMonth)
   const { data: growthData } = useGrowthData()
   const { data: genderActivityData } = useGenderAndActivityData()
@@ -421,20 +508,20 @@ export default function DashboardPage() {
   const { data: revenueData } = useRevenueChart(revenueRange)
 
   const memberTrend = useMemo(() => {
-    if (!stats?.totalMembers || !growthData || growthData.length < 2) return undefined
+    if (!baseStats?.totalMembers || !growthData || growthData.length < 2) return undefined
     const current = growthData[growthData.length - 1].totalMembers
     const previous = growthData[growthData.length - 2].totalMembers
     if (previous === 0) return undefined
     return Math.round(((current - previous) / previous) * 100)
-  }, [stats, growthData])
+  }, [baseStats, growthData])
 
   const trainerTrend = useMemo(() => {
-    if (!stats?.totalTrainers || !growthData || growthData.length < 2) return undefined
+    if (!baseStats?.totalTrainers || !growthData || growthData.length < 2) return undefined
     const current = growthData[growthData.length - 1].newMembers
     const previous = growthData[growthData.length - 2].newMembers
     if (previous === 0) return undefined
     return Math.round(((current - previous) / previous) * 100)
-  }, [stats, growthData])
+  }, [baseStats, growthData])
 
   const genderTotal = useMemo(() => (genderActivityData ?? []).filter(d => d.type === 'gender').reduce((sum, d) => sum + d.value, 0), [genderActivityData])
   const activeCount = useMemo(() => (genderActivityData ?? []).find(d => d.name === 'Active')?.value ?? 0, [genderActivityData])
@@ -464,7 +551,7 @@ export default function DashboardPage() {
   }
 
   const revenueTrend = useMemo(() => {
-    if (!stats?.totalRevenue || !revenueData) return undefined
+    if (!baseStats?.totalRevenue || !revenueData) return undefined
     const now = new Date()
     const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
     const last = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -486,16 +573,16 @@ export default function DashboardPage() {
     if (lastMonthRevenue === 0) return 100
 
     return Math.round(((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100)
-  }, [stats, revenueData])
+  }, [revenueData])
 
-  if (isLoading) return <div className="text-center py-8 text-[#55557A]">Loading...</div>
+  if (false) return <div className="text-center py-8 text-[#55557A]">Loading...</div>
 
   return (
     <div className="h-full flex flex-col gap-2.5">
       <div className="grid grid-cols-4 gap-3">
         <StatsCard
           title="Total Revenue"
-          value={stats?.totalRevenue ?? 0}
+          value={baseStats?.totalRevenue ?? 0}
           trend={revenueTrend ? { value: revenueTrend, label: 'from last month' } : undefined}
           sparkData={revenueChartData?.slice(-10).map(d => ({ value: d.revenue }))}
           iconVariant="purple"
@@ -503,7 +590,7 @@ export default function DashboardPage() {
         />
         <StatsCard
           title="Total Members"
-          value={stats?.totalMembers ?? 0}
+          value={baseStats?.totalMembers ?? 0}
           trend={memberTrend ? { value: memberTrend, label: 'from last month' } : undefined}
           sparkData={growthData?.slice(-10).map(d => ({ value: d.totalMembers }))}
           iconVariant="purple"
@@ -511,16 +598,16 @@ export default function DashboardPage() {
         />
         <StatsCard
           title="Total Trainers"
-          value={stats?.totalTrainers ?? 0}
+          value={baseStats?.totalTrainers ?? 0}
           trend={trainerTrend ? { value: trainerTrend, label: 'from last month' } : undefined}
           sparkData={growthData?.slice(-10).map(d => ({ value: d.newMembers }))}
           iconVariant="blue"
           sparkColor="#3B82F6"
         />
         <StatsCard
-          title="Attendance Today"
-          value={stats?.attendanceToday ?? 0}
-          trend={{ value: 0, label: 'from yesterday' }}
+          title="Total Attendance"
+          value={attendanceStats?.attendance ?? 0}
+          trend={attendanceStats?.attendanceTrend !== undefined ? { value: attendanceStats.attendanceTrend, label: attendanceStats.attendanceTrendLabel ?? 'from last month' } : undefined}
           sparkData={chartData?.slice(-10).map(d => ({ value: d.count }))}
           iconVariant="green"
           sparkColor="#22C55E"
@@ -531,7 +618,11 @@ export default function DashboardPage() {
         <div className="col-span-7 flex flex-col gap-3">
           <div className="glass-panel rounded-2xl border border-white/10 shadow-sm flex flex-col min-h-0 flex-1">
             <div className="flex items-center justify-between px-4 pt-3 pb-2">
-              <h2 className="text-[13px] font-semibold text-[#ECECFC]">Daily Check-ins</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-[13px] font-semibold text-[#ECECFC]">Daily Check-ins</h2>
+                <span className="text-[11px] text-indigo-300">Trainer {attendanceStats?.trainerAttendance ?? 0}</span>
+                <span className="text-[11px] text-emerald-300">Member {attendanceStats?.memberAttendance ?? 0}</span>
+              </div>
               <select
                 value={selectedMonth}
                 onChange={e => setSelectedMonth(e.target.value)}
@@ -550,10 +641,6 @@ export default function DashboardPage() {
                       <stop offset="0%" stopColor="#7C3AED" />
                       <stop offset="100%" stopColor="#A855F7" />
                     </linearGradient>
-                    <filter id="barGlow" x="-20%" y="-20%" width="140%" height="140%">
-                      <feGaussianBlur stdDeviation="3" result="blur" />
-                      <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                    </filter>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
                   <XAxis
@@ -566,15 +653,10 @@ export default function DashboardPage() {
                   />
                   <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} width={28} />
                   <Tooltip
-                    contentStyle={TOOLTIP_STYLE}
-                    labelStyle={{ color: '#B4B4D0' }}
-                    labelFormatter={v => {
-                      const d = new Date(v)
-                      return `Day ${d.getDate()}`
-                    }}
-                    formatter={(value: number) => [`${value}`, 'Check-ins']}
+                    content={<CustomBarTooltip />}
+                    cursor={{ fill: 'rgba(255,255,255,0.04)' }}
                   />
-                  <Bar dataKey="count" fill="url(#checkinBarGradient)" radius={[3, 3, 0, 0]} filter="url(#barGlow)" />
+                  <Bar dataKey="count" fill="url(#checkinBarGradient)" radius={[3, 3, 0, 0]} activeBar={{ fill: '#A855F7' }} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -683,11 +765,11 @@ export default function DashboardPage() {
                         <Cell key={d.name} fill={d.type === 'status' ? (STATUS_COLORS[d.name] || COLORS[0]) : (GENDER_COLORS[d.name] || COLORS[0])} />
                       ))}
                     </Pie>
-                    <Tooltip contentStyle={TOOLTIP_STYLE} />
+                     <Tooltip content={<CustomPieTooltip />} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-base font-bold text-[#ECECFC] display">{stats?.totalMembers ?? 0}</span>
+                  <span className="text-base font-bold text-[#ECECFC] display">{baseStats?.totalMembers ?? 0}</span>
                   <span className="text-[10px] text-[#8888B3]">Members</span>
                 </div>
               </div>
@@ -698,8 +780,8 @@ export default function DashboardPage() {
                   return (
                     <div key={d.name} className="flex items-center gap-2">
                       <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: d.type === 'status' ? (STATUS_COLORS[d.name] || COLORS[0]) : (GENDER_COLORS[d.name] || COLORS[0]) }} />
-                      <span className="text-xs text-[#B4B4D0] w-14">{d.name}</span>
-                      <span className="text-xs font-semibold text-[#ECECFC]">{d.value}</span>
+                      <span className="text-xs font-medium w-14 text-[#ECECFC]">{d.name}</span>
+                      <span className="text-xs font-semibold" style={{ color: MEMBER_ITEM_COLORS[d.name]?.text || '#ECECFC' }}>{d.value}</span>
                       <div className="flex-1 h-1.5 rounded-full bg-white/[0.08]">
                         <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: d.type === 'status' ? (STATUS_COLORS[d.name] || COLORS[0]) : (GENDER_COLORS[d.name] || COLORS[0]) }} />
                       </div>
@@ -716,7 +798,7 @@ export default function DashboardPage() {
               <h2 className="text-[13px] font-semibold text-[#ECECFC]">Recent Activity</h2>
               <span className="text-[11px] text-white bg-[#7C3AED] px-2 py-0.5 rounded-full">{(recentActivity ?? []).length}</span>
             </div>
-            <div className="overflow-y-auto flex-1 min-h-0">
+            <div className="overflow-y-auto flex-1 min-h-0 pl-1">
               {(recentActivity ?? []).length === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center gap-1.5 px-4 py-6 text-center">
                   <Activity className="w-4 h-4 text-[#5A5A82]" strokeWidth={1.75} />

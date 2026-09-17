@@ -32,7 +32,7 @@ export default function Sidebar() {
       className={cn(
         pillBg,
         "flex flex-col overflow-hidden backdrop-blur-2xl",
-        "w-[180px] mx-2 mb-0 mt-20 rounded-[28px] h-[calc(100vh-56px)]"
+        "w-[180px] mx-2 mb-3 mt-20 rounded-[28px] h-[calc(100vh-56px)]"
       )}
     >
       <div className="h-10" />
@@ -62,7 +62,7 @@ export default function Sidebar() {
       </nav>
 
       {/* Bottom section */}
-      <div className="px-3 pb-10 pt-5">
+      <div className="px-3 pb-3 pt-5">
         <button onClick={() => setShowLogout(true)} className={cn(
           "flex items-center gap-3 rounded-2xl transition-all duration-200 w-full bg-[#EF4444] text-white hover:bg-[#DC2626]",
           "px-3 py-2"
