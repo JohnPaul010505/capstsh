@@ -1,10 +1,10 @@
-﻿import { useState } from 'react'
+﻿import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useMemberships, useCreateMembership, useDeleteMembership, useAttendanceLast7Days } from '../hooks/useMemberships'
 import StatusBadge from '@/components/StatusBadge'
 import type { Membership } from '@/types'
-import { Plus, X, Trash2 } from 'lucide-react'
+import { Plus, X, Trash2, ChevronDown } from 'lucide-react'
 
 const PLANS = {
   daily: { label: 'Daily', price: 60, days: 1 },
@@ -30,6 +30,71 @@ function computeStatus(m: Membership, recentAttendance: Set<string>) {
   return 'active'
 }
 
+type MemberOption = { id: string; full_name: string; email: string; code: string | null }
+
+/** Glass-styled custom dropdown (native <select> popups render white and can't be themed). */
+function MemberSelect({ members, value, onChange }: { members: MemberOption[] | undefined; value: string; onChange: (id: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const rootRef = useRef<HTMLDivElement>(null)
+  const selected = members?.find(m => m.id === value)
+
+  useEffect(() => {
+    if (!open) return
+    const onPointerDown = (e: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [open])
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between gap-2 px-3 py-2 bg-overlay-8 border border-line rounded-lg text-sm text-left cursor-pointer hover:border-[#7C3AED]/50 focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50 transition-colors"
+      >
+        <span className={`truncate ${selected ? 'text-fg-strong' : 'text-fg-muted'}`}>
+          {selected ? `${selected.full_name} (${selected.code ?? '—'}) — ${selected.email}` : 'Select member...'}
+        </span>
+        <ChevronDown className={`w-4 h-4 text-fg-muted shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="glass-card absolute left-0 right-0 top-full mt-1 z-20 max-h-56 overflow-y-auto rounded-lg border border-line py-1 shadow-xl">
+          <button
+            type="button"
+            onClick={() => { onChange(''); setOpen(false) }}
+            className={`w-full text-left px-3 py-2 text-sm cursor-pointer transition-colors ${
+              !value ? 'bg-[#7C3AED]/15 text-accent-purple' : 'text-fg-muted hover:bg-[#7C3AED]/10 hover:text-fg-strong'
+            }`}
+          >
+            Select member...
+          </button>
+          {members?.map(m => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => { onChange(m.id); setOpen(false) }}
+              className={`w-full text-left px-3 py-2 text-sm cursor-pointer transition-colors ${
+                m.id === value ? 'bg-[#7C3AED]/15 text-accent-purple' : 'text-fg hover:bg-[#7C3AED]/10 hover:text-fg-strong'
+              }`}
+            >
+              {m.full_name} ({m.code ?? '—'}) — {m.email}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function MembershipsPage() {
   const [activeTab, setActiveTab] = useState<'daily' | 'monthly'>('daily')
   const [showModal, setShowModal] = useState(false)
@@ -50,6 +115,35 @@ export default function MembershipsPage() {
   const deleteMutation = useDeleteMembership()
 
   const recentMemberIds = new Set(recentAttendance?.map(a => a.member_id) ?? [])
+
+  // Live check: as soon as a member is picked, look up whether they already
+  // hold a non-expired membership so the error shows without saving.
+  const { data: activeForMember } = useQuery({
+    queryKey: ['member-active-memberships', form.member_id],
+    enabled: showModal && !!form.member_id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('memberships')
+        .select('id, plan_name, end_date')
+        .eq('member_id', form.member_id)
+        .gte('end_date', todayStr())
+      return data ?? []
+    },
+  })
+  const livePlanError =
+    form.member_id && activeForMember && activeForMember.length > 0
+      ? `This member already has an active plan: ${activeForMember.map(e => `${e.plan_name} (ends ${new Date(e.end_date).toLocaleDateString()})`).join(', ')}`
+      : ''
+
+  // Close the drawer with the Escape key.
+  useEffect(() => {
+    if (!showModal) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowModal(false)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [showModal])
 
   const openCreate = () => {
     setForm({ member_id: '', plan_type: 'daily', start_date: todayStr() })
@@ -109,68 +203,68 @@ export default function MembershipsPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 glass-card rounded-xl p-1 border border-white/10 w-fit">
+      <div className="flex gap-1 glass-card rounded-xl p-1 w-fit">
         <button
           onClick={() => setActiveTab('daily')}
           className={`px-5 py-2 text-sm rounded-lg font-medium transition-all ${
             activeTab === 'daily'
               ? 'bg-[#7C3AED] text-white shadow-sm'
-              : 'text-[#B4B4D0] hover:text-[#ECECFC]'
+              : 'text-fg hover:text-fg-strong'
           }`}
         >
-          Daily (₱60)
+          Daily
         </button>
         <button
           onClick={() => setActiveTab('monthly')}
           className={`px-5 py-2 text-sm rounded-lg font-medium transition-all ${
             activeTab === 'monthly'
               ? 'bg-[#7C3AED] text-white shadow-sm'
-              : 'text-[#B4B4D0] hover:text-[#ECECFC]'
+              : 'text-fg hover:text-fg-strong'
           }`}
         >
-          Monthly (₱1,800)
+          Monthly
         </button>
       </div>
 
       {isLoading ? (
-        <div className="text-center py-8 text-[#55557A]">Loading...</div>
+        <div className="text-center py-8 text-fg-muted">Loading...</div>
       ) : (
-        <div className="glass-card rounded-xl border border-white/10 shadow-sm overflow-hidden flex flex-col min-h-0">
+        <div className="glass-card rounded-xl overflow-hidden flex flex-col min-h-0">
           <div className="overflow-x-auto flex-1 max-h-[420px]">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-white/10 bg-white/5">
-                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Member</th>
-                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Plan</th>
-                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Price</th>
-                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Start</th>
-                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">End</th>
-                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Status</th>
-                  <th className="text-right px-3 py-2 text-sm font-medium text-[#55557A]">Actions</th>
+                <tr className="border-b border-line bg-overlay-5">
+                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Member</th>
+                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Plan</th>
+                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Price</th>
+                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Start</th>
+                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">End</th>
+                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Status</th>
+                  <th className="text-right px-3 py-2 text-sm font-medium text-fg-muted">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {memberships?.map((m: Membership) => {
                   const status = computeStatus(m, recentMemberIds)
                   return (
-                    <tr key={m.id} className="border-b border-white/5 last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
-                      <td className="px-3 py-2 text-sm font-medium text-[#ECECFC]">
+                    <tr key={m.id} className="border-b border-line-soft last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
+                      <td className="px-3 py-2 text-sm font-medium text-fg-strong">
                           {m.profiles?.full_name ?? '—'}
                         <span className="ml-2 text-xs font-mono text-[#7C3AED]">{m.profiles?.code}</span>
                       </td>
-                      <td className="px-3 py-2 text-sm text-[#B4B4D0]">{m.plan_name}</td>
-                      <td className="px-3 py-2 text-sm text-[#B4B4D0]">                        ₱{m.price}</td>
-                      <td className="px-3 py-2 text-sm text-[#B4B4D0]">{new Date(m.start_date).toLocaleDateString()}</td>
-                      <td className="px-3 py-2 text-sm text-[#B4B4D0]">{new Date(m.end_date).toLocaleDateString()}</td>
+                      <td className="px-3 py-2 text-sm text-fg">{m.plan_name}</td>
+                      <td className="px-3 py-2 text-sm text-fg">                        ₱{m.price}</td>
+                      <td className="px-3 py-2 text-sm text-fg">{new Date(m.start_date).toLocaleDateString()}</td>
+                      <td className="px-3 py-2 text-sm text-fg">{new Date(m.end_date).toLocaleDateString()}</td>
                       <td className="px-3 py-2"><StatusBadge status={status} /></td>
                       <td className="px-3 py-2 text-right">
-                        <button onClick={() => handleDelete(m.id)} className="text-[#55557A] hover:text-[#EF4444]"><Trash2 className="w-4 h-4 inline" /></button>
+                        <button onClick={() => handleDelete(m.id)} className="text-fg-muted hover:text-[#EF4444]"><Trash2 className="w-4 h-4 inline" /></button>
                       </td>
                     </tr>
                   )
                 })}
                 {memberships?.length === 0 && (
-                  <tr><td colSpan={7} className="px-3 py-6 text-center text-[#55557A]">No memberships</td></tr>
+                  <tr><td colSpan={7} className="px-3 py-6 text-center text-fg-muted">No memberships</td></tr>
                 )}
               </tbody>
             </table>
@@ -179,35 +273,39 @@ export default function MembershipsPage() {
       )}
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setShowModal(false)}>
-          <div className="glass-card rounded-xl shadow-xl max-w-md w-full mx-4 border border-white/10" onClick={e => e.stopPropagation()}>
-            <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-[#ECECFC]">New Membership</h2>
-              <button onClick={() => setShowModal(false)} className="text-[#55557A] hover:text-[#B4B4D0]"><X className="w-5 h-5" /></button>
+        <div className="fixed inset-0 bg-black/60 z-50" onClick={() => setShowModal(false)}>
+          <div
+            className="glass-card slide-in-right fixed right-0 top-0 h-full w-full max-w-md flex flex-col rounded-l-2xl border-l border-line"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 border-b border-line flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-fg-strong">New Membership</h2>
+              <button onClick={() => setShowModal(false)} className="text-fg-muted hover:text-fg cursor-pointer"><X className="w-5 h-5" /></button>
             </div>
-            <div className="px-6 py-4 space-y-4">
+            <div className="px-6 py-4 space-y-4 flex-1 overflow-y-auto">
               <div>
-                <label className="block text-sm font-medium text-[#B4B4D0] mb-1">Member</label>
-                <select value={form.member_id} onChange={e => { setForm({ ...form, member_id: e.target.value }); setPlanError('') }} className="w-full px-3 py-2 bg-white/[0.08] border border-white/10 rounded-lg text-sm text-[#ECECFC]">
-                  <option value="">Select member...</option>
-                  {members?.map(m => <option key={m.id} value={m.id}>{m.full_name} ({m.code ?? '—'}) — {m.email}</option>)}
-                </select>
+                <label className="block text-sm font-medium text-fg mb-1">Member</label>
+                <MemberSelect
+                  members={members}
+                  value={form.member_id}
+                  onChange={id => { setForm({ ...form, member_id: id }); setPlanError('') }}
+                />
               </div>
-              {planError && (
+              {(livePlanError || planError) && (
                 <div className="bg-[#EF4444]/10 border border-[#EF4444]/30 rounded-lg px-4 py-3 text-sm text-[#EF4444]">
-                  {planError}
+                  {livePlanError || planError}
                 </div>
               )}
               <div>
-                <label className="block text-sm font-medium text-[#B4B4D0] mb-1">Plan Type</label>
+                <label className="block text-sm font-medium text-fg mb-1">Plan Type</label>
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
                     onClick={() => setForm({ ...form, plan_type: 'daily' })}
                     className={`px-4 py-3 rounded-lg border text-sm font-medium transition-all ${
                       form.plan_type === 'daily'
-                        ? 'bg-[#7C3AED]/15 border-[#7C3AED] text-[#C084FC]'
-                        : 'bg-white/[0.08] border-white/10 text-[#B4B4D0] hover:border-[#55557A]'
+                        ? 'bg-[#7C3AED]/15 border-[#7C3AED] text-accent-purple'
+                        : 'bg-overlay-8 border-line text-fg hover:border-fg-muted'
                     }`}
                   >
                     <div className="text-base font-bold">₱60</div>
@@ -218,8 +316,8 @@ export default function MembershipsPage() {
                     onClick={() => setForm({ ...form, plan_type: 'monthly' })}
                     className={`px-4 py-3 rounded-lg border text-sm font-medium transition-all ${
                       form.plan_type === 'monthly'
-                        ? 'bg-[#7C3AED]/15 border-[#7C3AED] text-[#C084FC]'
-                        : 'bg-white/[0.08] border-white/10 text-[#B4B4D0] hover:border-[#55557A]'
+                        ? 'bg-[#7C3AED]/15 border-[#7C3AED] text-accent-purple'
+                        : 'bg-overlay-8 border-line text-fg hover:border-fg-muted'
                     }`}
                   >
                     <div className="text-base font-bold">₱1,800</div>
@@ -228,28 +326,28 @@ export default function MembershipsPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#B4B4D0] mb-1">Start Date</label>
-                <input type="date" value={form.start_date} onChange={e => setForm({ ...form, start_date: e.target.value })} className="w-full px-3 py-2 bg-white/[0.08] border border-white/10 rounded-lg text-sm text-[#ECECFC]" />
+                <label className="block text-sm font-medium text-fg mb-1">Start Date</label>
+                <input type="date" value={form.start_date} onChange={e => setForm({ ...form, start_date: e.target.value })} className="w-full px-3 py-2 bg-overlay-8 border border-line rounded-lg text-sm text-fg-strong" />
               </div>
-              <div className="bg-white/[0.08] rounded-lg px-4 py-3 border border-white/10">
-                <div className="text-xs text-[#55557A] mb-1">Summary</div>
+              <div className="bg-overlay-8 rounded-lg px-4 py-3 border border-line">
+                <div className="text-xs text-fg-muted mb-1">Summary</div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-[#B4B4D0]">Plan</span>
-                  <span className="text-[#ECECFC] font-medium">{PLANS[form.plan_type].label}</span>
+                  <span className="text-fg">Plan</span>
+                  <span className="text-fg-strong font-medium">{PLANS[form.plan_type].label}</span>
                 </div>
                 <div className="flex justify-between text-sm mt-1">
-                  <span className="text-[#B4B4D0]">Price</span>
-                  <span className="text-[#ECECFC] font-medium">₱{PLANS[form.plan_type].price}</span>
+                  <span className="text-fg">Price</span>
+                  <span className="text-fg-strong font-medium">₱{PLANS[form.plan_type].price}</span>
                 </div>
                 <div className="flex justify-between text-sm mt-1">
-                  <span className="text-[#B4B4D0]">End Date</span>
-                  <span className="text-[#ECECFC] font-medium">{addDays(form.start_date, PLANS[form.plan_type].days)}</span>
+                  <span className="text-fg">End Date</span>
+                  <span className="text-fg-strong font-medium">{addDays(form.start_date, PLANS[form.plan_type].days)}</span>
                 </div>
               </div>
             </div>
-            <div className="px-6 py-4 border-t border-white/10 flex justify-end gap-3">
-              <button onClick={() => setShowModal(false)} className="px-4 py-2 text-sm border border-white/10 rounded-lg text-[#B4B4D0] hover:bg-white/[0.08]">Cancel</button>
-              <button onClick={handleSave} disabled={saving || !form.member_id} className="px-4 py-2 text-sm bg-[#7C3AED] text-white rounded-lg hover:bg-[#6D28D9] disabled:opacity-50">
+            <div className="px-6 py-4 border-t border-line flex justify-end gap-3">
+              <button onClick={() => setShowModal(false)} className="px-4 py-2 text-sm border border-line rounded-lg text-fg hover:bg-overlay-8">Cancel</button>
+              <button onClick={handleSave} disabled={saving || !form.member_id || !!livePlanError} className="px-4 py-2 text-sm bg-[#7C3AED] text-white rounded-lg hover:bg-[#6D28D9] disabled:opacity-50 cursor-pointer">
                 {saving ? 'Saving...' : 'Create'}
               </button>
             </div>

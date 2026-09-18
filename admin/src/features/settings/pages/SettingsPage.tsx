@@ -44,17 +44,17 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-3">
-      <div className="glass-card p-4 rounded-xl border border-white/10 shadow-sm max-w-lg">
-        <h2 className="text-base font-semibold mb-3 text-[#ECECFC]">Admin Profile</h2>
+      <div className="glass-card p-4 rounded-xl max-w-lg">
+        <h2 className="text-base font-semibold mb-3 text-fg-strong">Admin Profile</h2>
         <div className="space-y-2">
           <div>
-            <label className="block text-sm font-medium text-[#55557A]">Name</label>
+            <label className="block text-sm font-medium text-fg-muted">Name</label>
             {editing ? (
               <div className="flex items-center gap-2 mt-1">
                 <input
                   value={name}
                   onChange={e => setName(e.target.value)}
-                  className="flex-1 px-2.5 py-1.5 text-sm rounded-md bg-white/[0.08] border border-white/10 text-[#ECECFC] focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50"
+                  className="flex-1 px-2.5 py-1.5 text-sm rounded-md bg-overlay-8 border border-line text-fg-strong focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50"
                   placeholder="Enter name"
                 />
                 <button
@@ -66,31 +66,31 @@ export default function SettingsPage() {
                 </button>
                 <button
                   onClick={cancelEdit}
-                  className="px-3 py-1.5 text-xs font-medium rounded-md border border-white/10 text-[#B4B4D0] hover:bg-white/[0.06]"
+                  className="px-3 py-1.5 text-xs font-medium rounded-md border border-line text-fg hover:bg-overlay-6"
                 >
                   Cancel
                 </button>
               </div>
             ) : (
               <div className="flex items-center gap-2 mt-1">
-                <p className="text-sm text-[#ECECFC]">{profile?.full_name}</p>
+                <p className="text-sm text-fg-strong">{profile?.full_name}</p>
                 <button
                   onClick={startEdit}
-                  className="text-xs font-medium px-2.5 py-1 rounded-md border border-white/10 text-[#B4B4D0] hover:bg-white/[0.06]"
+                  className="text-xs font-medium px-2.5 py-1 rounded-md bg-[#7C3AED] text-white hover:bg-[#6D28D9]"
                 >
                   Edit
                 </button>
               </div>
             )}
-            {message && <p className="text-xs mt-1 text-[#4ADE80]">{message}</p>}
+            {message && <p className="text-xs mt-1 text-accent-green">{message}</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium text-[#55557A]">Email</label>
-            <p className="text-sm text-[#ECECFC]">{profile?.email}</p>
+            <label className="block text-sm font-medium text-fg-muted">Email</label>
+            <p className="text-sm text-fg-strong">{profile?.email}</p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-[#55557A]">Role</label>
-            <p className="text-sm text-[#ECECFC] capitalize">{profile?.role}</p>
+            <label className="block text-sm font-medium text-fg-muted">Role</label>
+            <p className="text-sm text-fg-strong capitalize">{profile?.role}</p>
           </div>
         </div>
       </div>

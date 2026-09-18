@@ -4,11 +4,169 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  html {
-    color-scheme: dark;
-  }
+/* =================================
+   THEME TOKENS
+   Dark values are the original hard-coded colours, so dark mode is unchanged.
+   html.theme-light swaps only the neutrals; accent colours stay identical.
+   Kept outside @layer so Tailwind never tree-shakes them.
+   ================================= */
+:root {
+  color-scheme: dark;
 
+  --page-bg: #05091f;
+  --vignette: rgba(2, 5, 20, 0.55);
+  --veil: #05091f;
+
+  --line: rgba(255, 255, 255, 0.1);
+  --line-soft: rgba(255, 255, 255, 0.05);
+  --overlay-3: rgba(255, 255, 255, 0.03);
+  --overlay-4: rgba(255, 255, 255, 0.04);
+  --overlay-5: rgba(255, 255, 255, 0.05);
+  --overlay-6: rgba(255, 255, 255, 0.06);
+  --overlay-8: rgba(255, 255, 255, 0.08);
+  --overlay-10: rgba(255, 255, 255, 0.1);
+
+  --fg-strong: #ececfc;
+  --fg: #b4b4d0;
+  --fg-muted: #55557a;
+  --fg-faint: #8888b3;
+
+  /* RGB triplets — needed wherever an opacity modifier is used. */
+  --page-rgb: 5 9 31;
+  --page-deep-rgb: 13 13 26;
+  --elevated-rgb: 20 20 42;
+  --skeleton-rgb: 31 31 61;
+
+  /* Accent text colours: bright shades for dark surfaces, darkened for light. */
+  --accent-purple: #c084fc;
+  --accent-green: #4ade80;
+  --accent-blue: #60a5fa;
+  --accent-amber: #fbbf24;
+  --accent-red: #f87171;
+
+  /* =================================
+     LIQUID GLASS
+     One source of truth for every glass surface. Each value is a CSS
+     variable so html.theme-light only has to swap the variables — dark
+     mode keeps the original tints it always had.
+     ================================= */
+  /* specular sheen (top-left highlight -> transparent) */
+  --glass-hi: rgba(255, 255, 255, 0.09);
+  --glass-hi-mid: rgba(255, 255, 255, 0.022);
+  --glass-hi-end: rgba(255, 255, 255, 0);
+
+  /* body tints, one per surface role */
+  --glass-tint: rgba(25, 30, 65, 0.52);
+  --glass-tint-panel: rgba(18, 22, 50, 0.58);
+  --glass-tint-strong: rgba(20, 20, 42, 0.8);
+  --glass-tint-chrome: rgba(16, 21, 50, 0.34);
+  --glass-tint-input: rgba(255, 255, 255, 0.08);
+  --glass-tint-chip: rgba(255, 255, 255, 0.08);
+
+  /* inner rim (the lit edge that makes glass read as glass) */
+  --glass-rim: rgba(255, 255, 255, 0.11);
+  --glass-rim-soft: rgba(255, 255, 255, 0.05);
+
+  /* outer hairline: near-invisible for cards, fully transparent for the
+     sidebar/header so no white outline shows against the navy. */
+  --glass-edge: rgba(255, 255, 255, 0.05);
+  --glass-edge-strong: rgba(255, 255, 255, 0.07);
+  --glass-edge-chrome: rgba(255, 255, 255, 0);
+
+  --glass-blur: 20px;
+  --glass-blur-panel: 24px;
+  --glass-blur-chrome: 28px;
+  --glass-sat: 175%;
+
+  --glass-shadow:
+    0 20px 44px -14px rgba(0, 0, 0, 0.62),
+    0 6px 16px -4px rgba(0, 0, 0, 0.34),
+    0 1px 2px rgba(0, 0, 0, 0.32);
+  --glass-shadow-chrome:
+    0 26px 64px -20px rgba(0, 0, 0, 0.66),
+    0 10px 28px -8px rgba(0, 0, 0, 0.34);
+  --glass-glow: 0 0 46px -6px rgba(124, 58, 237, 0.22);
+}
+
+html.theme-light {
+  color-scheme: light;
+
+  /* Soft sky wash instead of a flat near-white, so the glass has something
+     to refract and the background glow stays visible. */
+  --page-bg: #eef2f7;
+  --vignette: rgba(15, 23, 42, 0.07);
+  --veil: #eef2f7;
+
+  --line: rgba(15, 23, 42, 0.12);
+  --line-soft: rgba(15, 23, 42, 0.07);
+  --overlay-3: rgba(15, 23, 42, 0.03);
+  --overlay-4: rgba(15, 23, 42, 0.04);
+  --overlay-5: rgba(15, 23, 42, 0.05);
+  --overlay-6: rgba(15, 23, 42, 0.06);
+  --overlay-8: rgba(15, 23, 42, 0.08);
+  --overlay-10: rgba(15, 23, 42, 0.1);
+
+  /* Contrast fix: #94a3b8 on white was 2.48:1 (unreadable). These clear
+     WCAG AA (4.5:1) for small text. */
+  --fg-strong: #0f172a;
+  --fg: #334155;
+  --fg-muted: #475569;
+  --fg-faint: #64748b;
+
+  --page-rgb: 238 242 247;
+  --page-deep-rgb: 238 242 247;
+  --elevated-rgb: 255 255 255;
+  --skeleton-rgb: 203 213 225;
+
+  --accent-purple: #7c3aed;
+  --accent-green: #16a34a;
+  --accent-blue: #2563eb;
+  --accent-amber: #b45309;
+  --accent-red: #dc2626;
+
+  /* ---- liquid glass, light ----
+     Kept deliberately dimmer than pure white: an almost-opaque white sheen
+     over the pale page read as a blown-out block instead of glass. The
+     chrome tint is a cool slate wash (not pure white) at reduced opacity so
+     the neon atmosphere bleeds through and the surface feels "liquid". */
+  --glass-hi: rgba(255, 255, 255, 0.6);
+  --glass-hi-mid: rgba(255, 255, 255, 0.18);
+  --glass-hi-end: rgba(203, 213, 225, 0.1);
+
+  --glass-tint: rgba(233, 237, 248, 0.45);
+  --glass-tint-panel: rgba(235, 239, 249, 0.5);
+  --glass-tint-strong: rgba(238, 241, 250, 0.62);
+  --glass-tint-chrome: rgba(233, 237, 248, 0.55);
+  --glass-tint-input: rgba(236, 240, 249, 0.6);
+  --glass-tint-chip: rgba(15, 23, 42, 0.045);
+
+  /* Panels share the chrome's 28px backdrop blur in light mode so every
+     surface has the same translucent depth (dark keeps 24px). */
+  --glass-blur-panel: 28px;
+
+  --glass-rim: rgba(255, 255, 255, 0.65);
+  --glass-rim-soft: rgba(255, 255, 255, 0.35);
+
+  --glass-edge: rgba(15, 23, 42, 0.08);
+  --glass-edge-strong: rgba(15, 23, 42, 0.1);
+  --glass-edge-chrome: rgba(15, 23, 42, 0);
+
+  --glass-shadow:
+    0 20px 44px -16px rgba(15, 23, 42, 0.22),
+    0 6px 16px -6px rgba(15, 23, 42, 0.1),
+    0 1px 2px rgba(15, 23, 42, 0.06);
+  --glass-shadow-chrome:
+    0 26px 60px -22px rgba(15, 23, 42, 0.24),
+    0 10px 26px -10px rgba(15, 23, 42, 0.1);
+  --glass-glow: 0 0 40px -8px rgba(124, 58, 237, 0.16);
+}
+
+/* Vignette: identical to the previous inline gradient in dark mode. */
+.theme-vignette {
+  background: radial-gradient(circle at center, transparent 25%, var(--vignette) 100%);
+}
+
+@layer base {
   body {
     font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
   }
@@ -20,36 +178,162 @@
     letter-spacing: -0.02em;
   }
 
-  .glass-card {
-    @apply rounded-2xl border border-white/10 backdrop-blur-xl;
-    background: rgba(25, 30, 65, 0.52);
+  /* =================================
+     LIQUID GLASS SURFACES
+     Four roles share one recipe: a specular sheen gradient over a tinted,
+     saturated backdrop-blur, finished with an inner lit rim instead of a
+     flat white outline. Every value is a token, so html.theme-light only
+     swaps variables and dark mode keeps its original colours.
+     ================================= */
+  .glass-card,
+  .glass-panel,
+  .glass-strong,
+  .glass-chrome {
+    background-clip: padding-box;
+    background-image: linear-gradient(
+      142deg,
+      var(--glass-hi) 0%,
+      var(--glass-hi-mid) 30%,
+      var(--glass-hi-end) 62%
+    );
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
     box-shadow:
-      0 6px 24px rgba(0, 0, 0, 0.18),
-      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      var(--glass-shadow),
+      inset 0 1px 0 var(--glass-rim),
+      inset 1px 0 0 var(--glass-rim-soft),
+      inset 0 -1px 0 var(--glass-rim-soft);
+  }
+
+  .glass-card {
+    @apply rounded-2xl;
+    border: 1px solid var(--glass-edge);
+    background-color: var(--glass-tint);
   }
 
   .glass-panel {
-    @apply rounded-2xl border border-white/10 backdrop-blur-2xl;
-    background: rgba(18, 22, 50, 0.58);
-    box-shadow:
-      0 8px 32px rgba(0, 0, 0, 0.22),
-      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    @apply rounded-2xl;
+    border: 1px solid var(--glass-edge);
+    background-color: var(--glass-tint-panel);
+    -webkit-backdrop-filter: blur(var(--glass-blur-panel)) saturate(var(--glass-sat));
+    backdrop-filter: blur(var(--glass-blur-panel)) saturate(var(--glass-sat));
   }
 
   .glass-strong {
-    @apply bg-[#14142A]/80 backdrop-blur-2xl backdrop-saturate-150 border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)];
+    @apply rounded-2xl;
+    border: 1px solid var(--glass-edge-strong);
+    background-color: var(--glass-tint-strong);
+    -webkit-backdrop-filter: blur(var(--glass-blur-panel)) saturate(var(--glass-sat));
+    backdrop-filter: blur(var(--glass-blur-panel)) saturate(var(--glass-sat));
+  }
+
+  /* Sidebar + page-title chrome. --glass-edge-chrome is transparent, so no
+     white border line shows; the surface reads from the sheen, the lit rim
+     and the ambient glow. */
+  .glass-chrome {
+    border: 1px solid var(--glass-edge-chrome);
+    background-color: var(--glass-tint-chrome);
+    -webkit-backdrop-filter: blur(var(--glass-blur-chrome)) saturate(var(--glass-sat));
+    backdrop-filter: blur(var(--glass-blur-chrome)) saturate(var(--glass-sat));
+    box-shadow:
+      var(--glass-glow),
+      var(--glass-shadow-chrome),
+      inset 0 1px 0 var(--glass-rim),
+      inset 1px 0 0 var(--glass-rim-soft),
+      inset 0 -1px 0 var(--glass-rim-soft);
   }
 
   .glass-input {
-    @apply bg-white/[0.08] border-white/10;
+    @apply border;
+    border-color: var(--glass-edge-strong);
+    background-color: var(--glass-tint-input);
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
+    backdrop-filter: blur(12px) saturate(140%);
+    box-shadow: inset 0 1px 0 var(--glass-rim-soft);
   }
 
   .glass-chip {
-    @apply bg-white/[0.08] border-white/10;
+    @apply border;
+    border-color: var(--glass-edge);
+    background-color: var(--glass-tint-chip);
+    box-shadow: inset 0 1px 0 var(--glass-rim-soft);
   }
 
   .fade-up {
     animation: fadeUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .slide-in-right {
+    animation: slideInRight 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  /* ---- Login -> dashboard handoff ----
+     No opaque hold: the overlay starts dissolving almost immediately so the
+     dashboard is already fading in BEHIND the panels while they are still
+     flying apart. Continuous motion, no dark gap. */
+  .app-fade-in {
+    animation: appFadeIn 0.8s ease-out both;
+  }
+
+  .login-exit-overlay {
+    animation: loginOverlayOut 0.7s ease both;
+  }
+
+  @media (min-width: 768px) {
+    .panel-exit-left {
+      animation: panelExitLeft 0.55s cubic-bezier(0.4, 0, 0.2, 1) both;
+    }
+
+    .panel-exit-right {
+      animation: panelExitRight 0.55s cubic-bezier(0.4, 0, 0.2, 1) both;
+    }
+  }
+
+  @keyframes appFadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes loginOverlayOut {
+    0%,
+    25% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+
+  @keyframes panelExitLeft {
+    from {
+      transform: translateX(0);
+      opacity: 1;
+    }
+    55% {
+      opacity: 1;
+    }
+    to {
+      transform: translateX(-115%);
+      opacity: 0;
+    }
+  }
+
+  @keyframes panelExitRight {
+    from {
+      transform: translateX(0);
+      opacity: 1;
+    }
+    55% {
+      opacity: 1;
+    }
+    to {
+      transform: translateX(115%);
+      opacity: 0;
+    }
   }
 
   @keyframes fadeUp {
@@ -63,11 +347,117 @@
     }
   }
 
+  @keyframes slideInRight {
+    from {
+      opacity: 0.5;
+      transform: translateX(64px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .fade-up {
       animation: none;
       opacity: 1;
       transform: none;
     }
+
+    .slide-in-right {
+      animation: none;
+      opacity: 1;
+      transform: none;
+    }
+
+    .app-fade-in {
+      animation: none;
+      opacity: 1;
+    }
+
+    .panel-exit-left,
+    .panel-exit-right {
+      animation: none;
+      opacity: 1;
+      transform: none;
+    }
+
+    /* Brand-panel crossfades (silhouette swap + background wash) snap
+       instantly instead of gliding. */
+    .brand-silhouette,
+    .brand-crossfade {
+      transition: none !important;
+    }
   }
+}
+
+/* =================================
+   BACKGROUND + THEME TRANSITION
+   Which layers are visible per theme.
+   ================================= */
+
+/* Light mode: keep the neon background but let it read as a soft pastel
+   wash instead of fading it to 20% (which made the page look empty). */
+html.theme-light .theme-atmosphere {
+  opacity: 0.85;
+}
+
+/* Base page background: a solid colour in BOTH themes (solid -> solid
+   background-color transitions smoothly on theme switch). The light-mode
+   pastel gradient is painted on ::after instead, because background-image
+   gradients cannot be transitioned — but opacity can, so the gradient
+   crossfades in/out on switch. */
+.admin-base-bg {
+  background: var(--page-bg);
+}
+
+.admin-base-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(165deg, #f6f8fd 0%, #e9eef9 46%, #f3eefd 100%);
+  opacity: 0;
+  transition: opacity 400ms ease;
+}
+
+html.theme-light .admin-base-bg::after {
+  opacity: 1;
+}
+
+/* =================================
+   THEME SWITCH TRANSITION
+   While <html> has .theme-transitioning (added by ThemeContext only for the
+   duration of a switch), every element crossfades its paint colours in
+   place — background, text, borders, shadows, glows — instead of the whole
+   screen being covered by an opaque veil. Kept out of @layer so Tailwind
+   cannot tree-shake it.
+   ================================= */
+html.theme-transitioning,
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+  transition:
+    background-color 400ms ease,
+    color 400ms ease,
+    border-color 400ms ease,
+    fill 400ms ease,
+    stroke 400ms ease,
+    box-shadow 400ms ease,
+    opacity 400ms ease !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.theme-transitioning,
+  html.theme-transitioning *,
+  html.theme-transitioning *::before,
+  html.theme-transitioning *::after {
+    transition: none !important;
+  }
+}
+
+/* Softer, wider vignette in light mode: just enough depth at the edges. */
+html.theme-light .theme-vignette {
+  background: radial-gradient(circle at center, transparent 55%, var(--vignette) 100%);
 }

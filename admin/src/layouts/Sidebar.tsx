@@ -21,7 +21,8 @@ const navItems = [
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
 
-const pillBg = 'bg-white/[0.03] border border-white/10 shadow-[0_10px_40px_rgba(0,0,0,0.25)]'
+// Sidebar shell: transparent-edge liquid glass, so no white border line shows.
+const chromeBg = 'glass-chrome'
 
 export default function Sidebar() {
   const { signOut } = useAuth()
@@ -30,8 +31,8 @@ export default function Sidebar() {
   return (
     <aside
       className={cn(
-        pillBg,
-        "flex flex-col overflow-hidden backdrop-blur-2xl",
+        chromeBg,
+        "flex flex-col overflow-hidden",
         "w-[180px] mx-2 mb-3 mt-20 rounded-[28px] h-[calc(100vh-56px)]"
       )}
     >
@@ -46,8 +47,8 @@ export default function Sidebar() {
             className={({ isActive }) => cn(
               "flex items-center gap-3 rounded-2xl transition-all duration-200 relative",
               isActive
-                ? "bg-purple-600/80 border border-purple-400/30 text-white shadow-[0_0_25px_rgba(139,92,246,0.30)]"
-                : "text-[#8A8AB0] hover:text-white hover:bg-white/5",
+                ? "bg-purple-600/80 border border-purple-400/30 text-white shadow-[0_0_25px_rgba(139,92,246,0.30),inset_0_1px_0_rgba(255,255,255,0.25)]"
+                : "text-fg-faint hover:text-fg-strong hover:bg-overlay-5",
               "px-3 py-2"
             )}
           >

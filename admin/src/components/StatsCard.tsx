@@ -1,11 +1,11 @@
 ﻿import { type LucideIcon } from 'lucide-react'
 import { AreaChart, Area, ResponsiveContainer } from 'recharts'
 
-type IconVariant = 'purple' | 'blue' | 'green'
+type IconVariant = 'purple' | 'blue' | 'green' | 'emerald'
 
 interface StatsCardProps {
   title: string
-  value: number
+  value: number | string
   icon?: LucideIcon
   trend?: {
     value: number
@@ -17,9 +17,9 @@ interface StatsCardProps {
 }
 
 const variantStyles: Record<IconVariant, string> = {
-  purple: 'bg-[#7C3AED]/20 border border-[#7C3AED]/25 text-[#C084FC]',
-  blue: 'bg-[#3B82F6]/20 border border-[#3B82F6]/25 text-[#60A5FA]',
-  green: 'bg-[#22C55E]/20 border border-[#22C55E]/25 text-[#4ADE80]',
+  purple: 'bg-[#7C3AED]/20 border border-[#7C3AED]/25 text-accent-purple',
+  blue: 'bg-[#3B82F6]/20 border border-[#3B82F6]/25 text-accent-blue',
+  green: 'bg-[#22C55E]/20 border border-[#22C55E]/25 text-accent-green',
   emerald: 'bg-[#10B981]/20 border border-[#10B981]/25 text-[#34D399]',
 }
 
@@ -27,13 +27,13 @@ export default function StatsCard({ title, value, icon: Icon, trend, sparkData, 
   const displaySpark = sparkData && sparkData.length > 1
   const stroke = trend ? (trend.value >= 0 ? '#22C55E' : '#EF4444') : (sparkColor || '#7C3AED')
   return (
-    <div className="glass-card rounded-2xl p-4 border border-white/10 shadow-sm">
+    <div className="glass-card rounded-2xl p-4">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[12px] text-[#7A7AA0] truncate">{title}</p>
-          <p className="text-[30px] font-bold text-[#ECECFC] mt-1 leading-none">{value.toLocaleString()}</p>
+          <p className="text-[12px] text-fg-faint truncate">{title}</p>
+          <p className="text-[30px] font-bold text-fg-strong mt-1 leading-none">{value.toLocaleString()}</p>
           {trend && (
-            <p className={`text-[11px] mt-1.5 font-medium ${trend.value >= 0 ? 'text-[#4ADE80]' : 'text-[#EF4444]'}`}>
+            <p className={`text-[11px] mt-1.5 font-medium ${trend.value >= 0 ? 'text-accent-green' : 'text-[#EF4444]'}`}>
               {trend.value >= 0 ? '+' : ''}{trend.value}% {trend.label}
             </p>
           )}

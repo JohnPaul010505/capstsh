@@ -149,22 +149,22 @@ export default function InactiveReportPage() {
       </div>
 
       {!rows ? (
-        <div className="glass-card rounded-xl border border-white/10 shadow-sm overflow-hidden flex flex-col min-h-0">
-          <div className="px-4 py-6 text-center text-sm text-[#55557A]">Loading...</div>
+        <div className="glass-card rounded-xl overflow-hidden flex flex-col min-h-0">
+          <div className="px-4 py-6 text-center text-sm text-fg-muted">Loading...</div>
         </div>
       ) : rows.length === 0 ? (
-        <div className="glass-card rounded-xl border border-white/10 shadow-sm overflow-hidden flex flex-col min-h-0">
-          <div className="px-4 py-6 text-center text-sm text-[#55557A]">No inactive {subTab === 'members' ? 'members' : 'trainers'}</div>
+        <div className="glass-card rounded-xl overflow-hidden flex flex-col min-h-0">
+          <div className="px-4 py-6 text-center text-sm text-fg-muted">No inactive {subTab === 'members' ? 'members' : 'trainers'}</div>
         </div>
       ) : (
-        <div className="glass-card rounded-xl border border-white/10 shadow-sm overflow-hidden flex flex-col min-h-0">
-          <div className="px-4 py-3 border-b border-white/10 flex items-center gap-3">
+        <div className="glass-card rounded-xl overflow-hidden flex flex-col min-h-0">
+          <div className="px-4 py-3 border-b border-line flex items-center gap-3">
             <button
               onClick={() => setSubTab('members')}
               className={`px-4 py-1.5 rounded-lg text-sm border transition-colors ${
                 subTab === 'members'
-                  ? 'bg-[#7C3AED]/20 border-[#7C3AED] text-[#C084FC]'
-                  : 'bg-white/[0.08] border-white/10 text-[#B4B4D0] hover:border-[#55557A]'
+                  ? 'bg-[#7C3AED] border-[#7C3AED] text-white'
+                  : 'bg-overlay-8 border-line text-fg hover:border-fg-muted'
               }`}
             >
               Inactive Members
@@ -173,8 +173,8 @@ export default function InactiveReportPage() {
               onClick={() => setSubTab('trainers')}
               className={`px-4 py-1.5 rounded-lg text-sm border transition-colors ${
                 subTab === 'trainers'
-                  ? 'bg-[#7C3AED]/20 border-[#7C3AED] text-[#C084FC]'
-                  : 'bg-white/[0.08] border-white/10 text-[#B4B4D0] hover:border-[#55557A]'
+                  ? 'bg-[#7C3AED] border-[#7C3AED] text-white'
+                  : 'bg-overlay-8 border-line text-fg hover:border-fg-muted'
               }`}
             >
               Inactive Trainers
@@ -184,25 +184,25 @@ export default function InactiveReportPage() {
           <div className="overflow-x-auto flex-1 max-h-[420px]">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-white/10 bg-white/5">
-                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">{label}</th>
-                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Last check-in</th>
-                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Days inactive</th>
-                  <th className="text-right px-3 py-2 text-sm font-medium text-[#55557A]">Status</th>
-                  <th className="text-right px-3 py-2 text-sm font-medium text-[#55557A]">Action</th>
+                <tr className="border-b border-line bg-overlay-5">
+                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">{label}</th>
+                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Last check-in</th>
+                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Days inactive</th>
+                  <th className="text-right px-3 py-2 text-sm font-medium text-fg-muted">Status</th>
+                  <th className="text-right px-3 py-2 text-sm font-medium text-fg-muted">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {rows?.map(r => (
-                  <tr key={r.userId} className="border-b border-white/5 last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
+                  <tr key={r.userId} className="border-b border-line-soft last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
                     <td className="px-3 py-2">
-                      <p className="text-sm font-medium text-[#ECECFC]">{r.name}</p>
-                      <p className="text-xs font-mono text-[#55557A]">{r.code}</p>
+                      <p className="text-sm font-medium text-fg-strong">{r.name}</p>
+                      <p className="text-xs font-mono text-fg-muted">{r.code}</p>
                     </td>
-                    <td className="px-3 py-2 text-sm text-[#B4B4D0] whitespace-nowrap">
+                    <td className="px-3 py-2 text-sm text-fg whitespace-nowrap">
                       {r.lastCheckIn ? new Date(r.lastCheckIn).toLocaleDateString() : 'Never'}
                     </td>
-                    <td className="px-3 py-2 text-sm text-[#FBBF24] font-medium">{r.daysInactive} days</td>
+                    <td className="px-3 py-2 text-sm text-accent-amber font-medium">{r.daysInactive} days</td>
                     <td className="px-3 py-2 text-right">
                       <StatusBadge status="inactive" />
                     </td>
@@ -212,8 +212,8 @@ export default function InactiveReportPage() {
                         disabled={notifiedUserIds.has(r.userId)}
                         className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
                           {notifiedUserIds.has(r.userId)
-                            ? 'bg-white/[0.08] text-[#55557A] border border-white/10 cursor-not-allowed'
-                            : 'bg-[#7C3AED]/20 text-[#C084FC] border border-[#7C3AED]/40 hover:bg-[#7C3AED]/30'}"
+                            ? 'bg-overlay-8 text-fg-muted border border-line cursor-not-allowed'
+                            : 'bg-[#7C3AED]/20 text-accent-purple border border-[#7C3AED]/40 hover:bg-[#7C3AED]/30'}"
                       >
                         {notifiedUserIds.has(r.userId) ? 'Sent' : 'Notify'}
                       </button>

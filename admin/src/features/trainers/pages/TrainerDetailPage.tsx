@@ -97,57 +97,57 @@ export default function TrainerDetailPage() {
   })
 
   if (!trainer) {
-    return <div className="text-center py-8 text-[#55557A]">Trainer not found</div>
+    return <div className="text-center py-8 text-fg-muted">Trainer not found</div>
   }
 
   return (
     <div className="space-y-3">
-      <button onClick={() => navigate('/trainers')} className="flex items-center gap-1 text-sm text-[#55557A] hover:text-[#B4B4D0]">
+      <button onClick={() => navigate('/trainers')} className="flex items-center gap-1 text-sm text-fg-muted hover:text-fg">
         <ArrowLeft className="w-4 h-4" /> Back to Trainers
       </button>
 
-      <div className="glass-card p-4 rounded-xl border border-white/10 shadow-sm">
+      <div className="glass-card p-4 rounded-xl">
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#22C55E]/30 to-[#4ADE80]/30 flex items-center justify-center">
-            <span className="text-xl font-bold text-[#4ADE80]">{trainer.full_name.charAt(0)}</span>
+            <span className="text-xl font-bold text-accent-green">{trainer.full_name.charAt(0)}</span>
           </div>
           <div>
-            <div className="text-lg font-bold text-[#ECECFC]">{trainer.full_name}</div>
-            <p className="text-sm text-[#B4B4D0]">{trainer.email}</p>
+            <div className="text-lg font-bold text-fg-strong">{trainer.full_name}</div>
+            <p className="text-sm text-fg">{trainer.email}</p>
             <p className="text-xs font-mono text-[#7C3AED] mt-1">{trainer.code}</p>
             {trainer.specialty && <p className="text-xs text-[#22C55E] mt-1">{trainer.specialty}</p>}
-            {trainer.available_days && <p className="text-xs text-[#B4B4D0] mt-0.5">Available: {trainer.available_days}</p>}
+            {trainer.available_days && <p className="text-xs text-fg mt-0.5">Available: {trainer.available_days}</p>}
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div className="glass-card p-4 rounded-xl border border-white/10 shadow-sm">
-          <div className="flex items-center gap-2 text-sm text-[#55557A] mb-1">
+        <div className="glass-card p-4 rounded-xl">
+          <div className="flex items-center gap-2 text-sm text-fg-muted mb-1">
             <Mail className="w-4 h-4" />
             <span>Email</span>
           </div>
-          <p className="text-sm text-[#ECECFC]">{trainer.email}</p>
+          <p className="text-sm text-fg-strong">{trainer.email}</p>
         </div>
-        <div className="glass-card p-4 rounded-xl border border-white/10 shadow-sm">
-          <div className="flex items-center gap-2 text-sm text-[#55557A] mb-1">
+        <div className="glass-card p-4 rounded-xl">
+          <div className="flex items-center gap-2 text-sm text-fg-muted mb-1">
             <Phone className="w-4 h-4" />
             <span>Phone</span>
           </div>
-          <p className="text-sm text-[#ECECFC]">{trainer.phone || '—'}</p>
+          <p className="text-sm text-fg-strong">{trainer.phone || '—'}</p>
         </div>
-        <div className="glass-card p-4 rounded-xl border border-white/10 shadow-sm">
-          <div className="flex items-center gap-2 text-sm text-[#55557A] mb-1">
+        <div className="glass-card p-4 rounded-xl">
+          <div className="flex items-center gap-2 text-sm text-fg-muted mb-1">
             <Users className="w-4 h-4" />
             <span>Assigned Members</span>
           </div>
-          <p className="text-xl font-bold text-[#ECECFC]">{assignedMembers?.length ?? 0}</p>
+          <p className="text-xl font-bold text-fg-strong">{assignedMembers?.length ?? 0}</p>
         </div>
       </div>
 
-      <div className="glass-card rounded-xl border border-white/10 shadow-sm overflow-hidden flex flex-col min-h-0">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-          <h2 className="font-semibold text-[#ECECFC]">Assigned Members</h2>
+      <div className="glass-card rounded-xl overflow-hidden flex flex-col min-h-0">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-line">
+          <h2 className="font-semibold text-fg-strong">Assigned Members</h2>
           <button
             onClick={() => setShowAssignModal(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-[#7C3AED] hover:bg-[#6D28D9] rounded-lg transition-colors"
@@ -156,24 +156,24 @@ export default function TrainerDetailPage() {
           </button>
         </div>
         {assignedMembers?.length === 0 ? (
-          <div className="text-center py-6 text-[#55557A]">No members assigned</div>
+          <div className="text-center py-6 text-fg-muted">No members assigned</div>
         ) : (
           <div className="overflow-x-auto flex-1">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-white/10 bg-white/5">
-                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Name</th>
-                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Email</th>
-                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Phone</th>
-                  <th className="text-right px-3 py-2 text-sm font-medium text-[#55557A]">Actions</th>
+                <tr className="border-b border-line bg-overlay-5">
+                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Name</th>
+                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Email</th>
+                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Phone</th>
+                  <th className="text-right px-3 py-2 text-sm font-medium text-fg-muted">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {assignedMembers?.map(a => (
-                  <tr key={a.id} className="border-b border-white/5 last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
-                    <td className="px-3 py-2 text-sm font-medium text-[#ECECFC]">{a.profiles?.full_name}</td>
-                    <td className="px-3 py-2 text-sm text-[#B4B4D0]">{a.profiles?.email}</td>
-                    <td className="px-3 py-2 text-sm text-[#B4B4D0]">{a.profiles?.phone || '—'}</td>
+                  <tr key={a.id} className="border-b border-line-soft last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
+                    <td className="px-3 py-2 text-sm font-medium text-fg-strong">{a.profiles?.full_name}</td>
+                    <td className="px-3 py-2 text-sm text-fg">{a.profiles?.email}</td>
+                    <td className="px-3 py-2 text-sm text-fg">{a.profiles?.phone || '—'}</td>
                     <td className="px-3 py-2 text-right">
                       <button
                         onClick={() => unassignMutation.mutate(a.id)}
@@ -192,28 +192,28 @@ export default function TrainerDetailPage() {
         )}
       </div>
 
-      <div className="glass-card rounded-xl border border-white/10 shadow-sm overflow-hidden flex flex-col min-h-0">
-        <div className="px-4 py-3 border-b border-white/10">
-          <h2 className="font-semibold text-[#ECECFC]">Recent Feedback</h2>
+      <div className="glass-card rounded-xl overflow-hidden flex flex-col min-h-0">
+        <div className="px-4 py-3 border-b border-line">
+          <h2 className="font-semibold text-fg-strong">Recent Feedback</h2>
         </div>
         {recentFeedback?.length === 0 ? (
-          <div className="text-center py-6 text-[#55557A]">No feedback yet</div>
+          <div className="text-center py-6 text-fg-muted">No feedback yet</div>
         ) : (
           <div className="overflow-x-auto flex-1">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-white/10 bg-white/5">
-                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Member</th>
-                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Feedback</th>
-                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Date</th>
+                <tr className="border-b border-line bg-overlay-5">
+                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Member</th>
+                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Feedback</th>
+                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Date</th>
                 </tr>
               </thead>
               <tbody>
                 {recentFeedback?.map(f => (
-                  <tr key={f.id} className="border-b border-white/5 last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
-                    <td className="px-3 py-2 text-sm font-medium text-[#ECECFC]">{f.profiles?.full_name}</td>
-                    <td className="px-3 py-2 text-sm text-[#B4B4D0] max-w-md truncate">{f.content}</td>
-                    <td className="px-3 py-2 text-sm text-[#55557A]">{new Date(f.created_at).toLocaleDateString()}</td>
+                  <tr key={f.id} className="border-b border-line-soft last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
+                    <td className="px-3 py-2 text-sm font-medium text-fg-strong">{f.profiles?.full_name}</td>
+                    <td className="px-3 py-2 text-sm text-fg max-w-md truncate">{f.content}</td>
+                    <td className="px-3 py-2 text-sm text-fg-muted">{new Date(f.created_at).toLocaleDateString()}</td>
                   </tr>
                 ))}
               </tbody>
@@ -224,22 +224,22 @@ export default function TrainerDetailPage() {
 
       {showAssignModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setShowAssignModal(false)}>
-          <div className="glass-card rounded-xl border border-white/10 shadow-xl w-full max-w-lg mx-4 max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-              <h3 className="font-semibold text-[#ECECFC]">Assign Member</h3>
-              <button onClick={() => setShowAssignModal(false)} className="text-[#55557A] hover:text-[#ECECFC] transition-colors">
+          <div className="glass-card rounded-xl w-full max-w-lg mx-4 max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-line">
+              <h3 className="font-semibold text-fg-strong">Assign Member</h3>
+              <button onClick={() => setShowAssignModal(false)} className="text-fg-muted hover:text-fg-strong transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="px-4 py-3 border-b border-white/10">
+            <div className="px-4 py-3 border-b border-line">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#55557A]" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-fg-muted" />
                 <input
                   type="text"
                   placeholder="Search members..."
                   value={memberSearch}
                   onChange={e => setMemberSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-sm bg-[#0D0D1A] border border-white/10 rounded-lg text-[#ECECFC] placeholder-[#55557A] focus:outline-none focus:border-[#7C3AED]"
+                  className="w-full pl-9 pr-3 py-2 text-sm bg-page-deep border border-line rounded-lg text-fg-strong placeholder-fg-muted focus:outline-none focus:border-[#7C3AED]"
                 />
               </div>
             </div>
@@ -259,8 +259,8 @@ export default function TrainerDetailPage() {
                     className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-[#7C3AED]/10 transition-colors disabled:opacity-50 text-left"
                   >
                     <div>
-                      <div className="text-sm font-medium text-[#ECECFC]">{m.full_name}</div>
-                      <div className="text-xs text-[#55557A]">{m.email} {m.code ? `· ${m.code}` : ''}</div>
+                      <div className="text-sm font-medium text-fg-strong">{m.full_name}</div>
+                      <div className="text-xs text-fg-muted">{m.email} {m.code ? `· ${m.code}` : ''}</div>
                     </div>
                     <UserPlus className="w-4 h-4 text-[#7C3AED]" />
                   </button>
@@ -271,7 +271,7 @@ export default function TrainerDetailPage() {
                 m.email?.toLowerCase().includes(memberSearch.toLowerCase()) ||
                 m.code?.toLowerCase().includes(memberSearch.toLowerCase())
               ).length === 0 && (
-                <div className="text-center py-6 text-[#55557A] text-sm">No members found</div>
+                <div className="text-center py-6 text-fg-muted text-sm">No members found</div>
               )}
             </div>
           </div>

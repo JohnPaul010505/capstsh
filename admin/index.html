@@ -4,11 +4,25 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#0D0D1A" />
-    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#05091f" />
+    <meta name="color-scheme" content="dark light" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <title>Fitness Admin</title>
+    <script>
+      // Apply the stored theme before first paint so a reload in light mode
+      // never flashes the dark background. Mirrors ThemeProvider.
+      (function () {
+        try {
+          var theme = window.localStorage.getItem('admin-theme') === 'light' ? 'light' : 'dark'
+          var root = document.documentElement
+          root.classList.add('theme-' + theme)
+          root.style.colorScheme = theme
+          var meta = document.querySelector('meta[name="theme-color"]')
+          if (meta) meta.setAttribute('content', theme === 'light' ? '#eef2f7' : '#05091f')
+        } catch (e) { /* storage blocked — ThemeProvider still applies the class */ }
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

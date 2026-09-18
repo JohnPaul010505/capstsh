@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAttendance } from '../hooks/useAttendance'
@@ -7,22 +7,39 @@ import { Plus, LogOut, LogIn, X, Clock } from 'lucide-react'
 export default function AttendancePage() {
   const today = new Date().toISOString().split('T')[0]
   const [date, setDate] = useState(today)
-  const [category, setCategory] = useState<'daily' | 'monthly' | 'trainer'>('daily')
+  const [category, setCategory] = useState<'member' | 'trainer'>('member')
   const [showModal, setShowModal] = useState(false)
+  const [drawerCategory, setDrawerCategory] = useState<'member' | 'trainer'>('member')
+  const [search, setSearch] = useState('')
+
+  useEffect(() => {
+    if (!showModal) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowModal(false)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [showModal])
   const { data: sessions, isLoading } = useAttendance(date, category)
   const queryClient = useQueryClient()
 
-  const { data: people } = useQuery({
-    queryKey: ['attendance-people', category],
+  const { data: people, isLoading: peopleLoading } = useQuery({
+    queryKey: ['attendance-people', drawerCategory],
     enabled: showModal,
     queryFn: async () => {
       const { data } = await supabase
         .from('profiles')
         .select('id, full_name, email, code')
-        .eq('role', category === 'trainer' ? 'trainer' : 'member')
+        .eq('role', drawerCategory === 'trainer' ? 'trainer' : 'member')
         .order('full_name')
       return data ?? []
     },
+  })
+
+  const filteredPeople = (people ?? []).filter(p => {
+    const q = search.trim().toLowerCase()
+    if (!q) return true
+    return [p.full_name, p.email, p.code].some(v => v?.toLowerCase().includes(q))
   })
 
   const checkinMutation = useMutation({
@@ -43,6 +60,7 @@ export default function AttendancePage() {
       if (error) throw error
     },
     onSuccess: () => {
+      setCategory(drawerCategory)
       setShowModal(false)
       queryClient.invalidateQueries({ queryKey: ['attendance'] })
     },
@@ -71,45 +89,35 @@ export default function AttendancePage() {
           type="date"
           value={date}
           onChange={e => setDate(e.target.value)}
-          className="px-3 py-2 bg-white/[0.08] border border-white/10 rounded-lg text-sm text-[#ECECFC] focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50"
+          className="px-3 py-2 bg-overlay-8 border border-line rounded-lg text-sm text-fg-strong focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50"
         />
       </div>
 
       <div className="flex items-center justify-between">
         <div className="flex gap-2">
           <button
-            onClick={() => setCategory('daily')}
+            onClick={() => setCategory('member')}
             className={`px-4 py-1.5 text-sm rounded-lg font-medium transition-colors ${
-              category === 'daily'
+              category === 'member'
                 ? 'bg-[#7C3AED] text-white'
-                : 'bg-white/[0.08] text-[#B4B4D0] hover:bg-white/10'
+                : 'bg-overlay-8 text-fg hover:bg-overlay-10'
             }`}
           >
-            Daily
-          </button>
-          <button
-            onClick={() => setCategory('monthly')}
-            className={`px-4 py-1.5 text-sm rounded-lg font-medium transition-colors ${
-              category === 'monthly'
-                ? 'bg-[#7C3AED] text-white'
-                : 'bg-white/[0.08] text-[#B4B4D0] hover:bg-white/10'
-            }`}
-          >
-            Monthly
+            Members
           </button>
           <button
             onClick={() => setCategory('trainer')}
             className={`px-4 py-1.5 text-sm rounded-lg font-medium transition-colors ${
               category === 'trainer'
                 ? 'bg-[#7C3AED] text-white'
-                : 'bg-white/[0.08] text-[#B4B4D0] hover:bg-white/10'
+                : 'bg-overlay-8 text-fg hover:bg-overlay-10'
             }`}
           >
             Trainers
           </button>
         </div>
         <button
-          onClick={() => setShowModal(true)}
+          onClick={() => { setDrawerCategory(category); setSearch(''); setShowModal(true) }}
           className="flex items-center gap-1 px-3 py-1.5 text-sm bg-[#7C3AED] text-white rounded-lg hover:bg-[#6D28D9]"
         >
           <Plus className="w-4 h-4" /> Check In
@@ -117,42 +125,42 @@ export default function AttendancePage() {
       </div>
 
       {isLoading ? (
-        <div className="text-center py-8 text-[#55557A]">Loading...</div>
+        <div className="text-center py-8 text-fg-muted">Loading...</div>
       ) : (
-        <div className="glass-card rounded-xl border border-white/10 shadow-sm overflow-hidden flex flex-col min-h-0">
+        <div className="glass-card rounded-xl overflow-hidden flex flex-col min-h-0">
           <div className="overflow-x-auto flex-1">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-white/10 bg-white/5">
-                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Name</th>
-                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Role</th>
-                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Check-in</th>
-                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Check-out</th>
-                  <th className="text-center px-3 py-2 text-sm font-medium text-[#55557A]">Actions</th>
+                <tr className="border-b border-line bg-overlay-5">
+                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Name</th>
+                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Role</th>
+                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Check-in</th>
+                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Check-out</th>
+                  <th className="text-center px-3 py-2 text-sm font-medium text-fg-muted">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {sessions?.map(s => (
-                  <tr key={s.id} className="border-b border-white/5 last:border-0 hover:bg-[#7C3AED]/5">
-                    <td className="px-3 py-2 text-sm font-medium text-[#ECECFC]">
+                  <tr key={s.id} className="border-b border-line-soft last:border-0 hover:bg-[#7C3AED]/5">
+                    <td className="px-3 py-2 text-sm font-medium text-fg-strong">
                       {s.profiles?.full_name}
                       <span className="ml-2 text-xs font-mono text-[#7C3AED]">{s.profiles?.code}</span>
                     </td>
-                    <td className="px-3 py-2 text-sm text-[#B4B4D0] capitalize">{s.profiles?.role || 'member'}</td>
+                    <td className="px-3 py-2 text-sm text-fg capitalize">{s.profiles?.role || 'member'}</td>
                     <td className="px-3 py-2 text-sm">
-                      <span className="inline-flex items-center gap-1 text-[#4ADE80]">
+                      <span className="inline-flex items-center gap-1 text-accent-green">
                         <LogIn className="w-3 h-3" />
                         {new Date(s.check_in_time).toLocaleTimeString()}
                       </span>
                     </td>
                     <td className="px-3 py-2 text-sm">
                       {s.check_out_time ? (
-                        <span className="inline-flex items-center gap-1 text-[#B4B4D0]">
+                        <span className="inline-flex items-center gap-1 text-fg">
                           <LogOut className="w-3 h-3" />
                           {new Date(s.check_out_time).toLocaleTimeString()}
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-[#FBBF24] text-xs font-medium">
+                        <span className="inline-flex items-center gap-1 text-accent-amber text-xs font-medium">
                           <Clock className="w-3 h-3" />
                           Until {new Date(s.expires_at).toLocaleTimeString()}
                         </span>
@@ -163,7 +171,7 @@ export default function AttendancePage() {
                         <button
                           onClick={() => checkoutMutation.mutate(s.member_id)}
                           disabled={checkoutMutation.isPending}
-                          className="px-3 py-1 text-xs bg-[#F59E0B]/15 text-[#FBBF24] rounded-lg hover:bg-[#F59E0B]/25 disabled:opacity-50"
+                          className="px-3 py-1 text-xs bg-[#F59E0B]/15 text-accent-amber rounded-lg hover:bg-[#F59E0B]/25 disabled:opacity-50"
                         >
                           Check Out
                         </button>
@@ -172,7 +180,7 @@ export default function AttendancePage() {
                   </tr>
                 ))}
                 {sessions?.length === 0 && (
-                  <tr><td colSpan={5} className="px-3 py-6 text-center text-[#55557A]">No attendance records</td></tr>
+                  <tr><td colSpan={5} className="px-3 py-6 text-center text-fg-muted">No attendance records</td></tr>
                 )}
               </tbody>
             </table>
@@ -181,30 +189,71 @@ export default function AttendancePage() {
       )}
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setShowModal(false)}>
-          <div className="glass-card rounded-xl shadow-xl max-w-lg w-full mx-4 max-h-[80vh] flex flex-col border border-white/10" onClick={e => e.stopPropagation()}>
-            <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-[#ECECFC]">Select {category === 'trainer' ? 'Trainer' : 'Member'}</h2>
-              <button onClick={() => setShowModal(false)} className="text-[#55557A] hover:text-[#B4B4D0]">
-                <X className="w-5 h-5" />
-              </button>
+        <div className="fixed inset-0 bg-black/60 z-50" onClick={() => setShowModal(false)}>
+          <div className="glass-card slide-in-right fixed right-0 top-0 h-full w-full max-w-md flex flex-col rounded-l-2xl border-l border-line" onClick={e => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-line">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-fg-strong">Select {drawerCategory === 'trainer' ? 'Trainer' : 'Member'}</h2>
+                <button onClick={() => setShowModal(false)} className="text-fg-muted hover:text-fg">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="flex gap-2 mt-3">
+                <button
+                  onClick={() => setDrawerCategory('member')}
+                  className={`px-4 py-1.5 text-sm rounded-lg font-medium transition-colors ${
+                    drawerCategory === 'member'
+                      ? 'bg-[#7C3AED] text-white'
+                      : 'bg-overlay-8 text-fg hover:bg-overlay-10'
+                  }`}
+                >
+                  Member
+                </button>
+                <button
+                  onClick={() => setDrawerCategory('trainer')}
+                  className={`px-4 py-1.5 text-sm rounded-lg font-medium transition-colors ${
+                    drawerCategory === 'trainer'
+                      ? 'bg-[#7C3AED] text-white'
+                      : 'bg-overlay-8 text-fg hover:bg-overlay-10'
+                  }`}
+                >
+                  Trainer
+                </button>
+              </div>
+            </div>
+            <div className="px-6 py-3 border-b border-line">
+              <input
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search by name, email, or code..."
+                className="w-full px-3 py-2 bg-overlay-8 border border-line rounded-lg text-sm text-fg-strong focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50 focus:border-[#7C3AED] placeholder:text-fg-muted"
+              />
             </div>
             <div className="px-6 py-4 flex-1 overflow-y-auto space-y-2">
-              {people?.length === 0 ? (
-                <p className="text-[#55557A] text-center py-8">No {category === 'trainer' ? 'trainers' : 'members'} found</p>
+              {peopleLoading ? (
+                <p className="text-fg-muted text-center py-8">Loading...</p>
+              ) : filteredPeople.length === 0 ? (
+                <p className="text-fg-muted text-center py-8">
+                  {search
+                    ? 'No results found'
+                    : drawerCategory === 'trainer'
+                      ? 'No trainers found'
+                      : 'No members found'}
+                </p>
               ) : (
-                people?.map(p => (
+                filteredPeople.map(p => (
                   <button
                     key={p.id}
                     onClick={() => checkinMutation.mutate(p.id)}
                     disabled={checkinMutation.isPending}
-                    className="w-full flex items-center justify-between p-3 rounded-lg border border-white/10 hover:bg-[#7C3AED]/10 cursor-pointer disabled:opacity-50 text-left transition-colors"
+                    className="w-full flex items-center justify-between p-3 rounded-lg border border-line hover:bg-[#7C3AED]/10 cursor-pointer disabled:opacity-50 text-left transition-colors"
                   >
                     <div>
-                      <p className="font-medium text-sm text-[#ECECFC]">{p.full_name}</p>
-                      <p className="text-xs text-[#55557A]">{p.code} — {p.email}</p>
+                      <p className="font-medium text-sm text-fg-strong">{p.full_name}</p>
+                      <p className="text-xs text-fg-muted">{p.code} — {p.email}</p>
                     </div>
-                    <LogIn className="w-4 h-4 text-[#4ADE80] shrink-0" />
+                    <LogIn className="w-4 h-4 text-accent-green shrink-0" />
                   </button>
                 ))
               )}

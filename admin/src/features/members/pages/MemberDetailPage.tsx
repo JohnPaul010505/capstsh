@@ -7,11 +7,13 @@ import StatsCard from '@/components/StatsCard'
 import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line,
 } from 'recharts'
+import { useChartTheme } from '@/hooks/useChartTheme'
 
 export default function MemberDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { data: member, isLoading } = useMember(id!)
+  const chart = useChartTheme()
 
   const { data: address } = useQuery({
     queryKey: ['member-address', id],
@@ -61,29 +63,29 @@ export default function MemberDetailPage() {
     },
   })
 
-  if (isLoading) return <div className="text-center py-8 text-[#55557A]">Loading...</div>
-  if (!member) return <div className="text-center py-8 text-[#55557A]">Member not found</div>
+  if (isLoading) return <div className="text-center py-8 text-fg-muted">Loading...</div>
+  if (!member) return <div className="text-center py-8 text-fg-muted">Member not found</div>
 
   const structuredAddress = address ? [address.line1, address.line2, address.city, address.state, address.postal_code, address.country].filter(Boolean).join(', ') : null
   const fullAddress = structuredAddress || member.address || null
 
   return (
     <div className="space-y-3">
-      <button onClick={() => navigate('/members')} className="flex items-center gap-1 text-sm text-[#55557A] hover:text-[#B4B4D0]">
+      <button onClick={() => navigate('/members')} className="flex items-center gap-1 text-sm text-fg-muted hover:text-fg">
         <ArrowLeft className="w-4 h-4" /> Back to Members
       </button>
 
       {/* Profile header */}
-      <div className="glass-card p-4 rounded-xl border border-white/10 shadow-sm">
+      <div className="glass-card p-4 rounded-xl">
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#7C3AED]/30 to-[#C084FC]/30 flex items-center justify-center">
-            <span className="text-xl font-bold text-[#C084FC]">
+            <span className="text-xl font-bold text-accent-purple">
               {member.full_name.charAt(0)}
             </span>
           </div>
           <div>
-            <div className="text-lg font-bold text-[#ECECFC]">{member.full_name}</div>
-            <p className="text-sm text-[#B4B4D0]">{member.email}</p>
+            <div className="text-lg font-bold text-fg-strong">{member.full_name}</div>
+            <p className="text-sm text-fg">{member.email}</p>
             <p className="text-xs font-mono text-[#7C3AED] mt-1">{member.code}</p>
           </div>
         </div>
@@ -91,74 +93,74 @@ export default function MemberDetailPage() {
 
       {/* Trainer assignment */}
       {trainerAssignment && (
-        <div className="glass-card p-4 rounded-xl border border-white/10 shadow-sm">
-          <h2 className="text-base font-semibold mb-3 text-[#ECECFC]">Assigned Trainer</h2>
+        <div className="glass-card p-4 rounded-xl">
+          <h2 className="text-base font-semibold mb-3 text-fg-strong">Assigned Trainer</h2>
           <div className="flex items-center gap-3 cursor-pointer"
             onClick={() => navigate(`/trainers/${trainerAssignment.trainer_id}`)}
           >
             <div className="w-9 h-9 rounded-full bg-[#22C55E]/20 flex items-center justify-center">
-              <span className="text-sm font-bold text-[#4ADE80]">
+              <span className="text-sm font-bold text-accent-green">
                 {trainerAssignment.profiles?.full_name?.charAt(0)}
               </span>
             </div>
             <div>
-              <p className="font-medium text-[#ECECFC]">{trainerAssignment.profiles?.full_name}</p>
-              <p className="text-xs text-[#B4B4D0]">{trainerAssignment.profiles?.email}</p>
+              <p className="font-medium text-fg-strong">{trainerAssignment.profiles?.full_name}</p>
+              <p className="text-xs text-fg">{trainerAssignment.profiles?.email}</p>
             </div>
           </div>
         </div>
       )}
 
       {/* Personal Info */}
-      <div className="glass-card p-4 rounded-xl border border-white/10 shadow-sm">
-        <h2 className="text-base font-semibold mb-3 text-[#ECECFC]">Personal Information</h2>
+      <div className="glass-card p-4 rounded-xl">
+        <h2 className="text-base font-semibold mb-3 text-fg-strong">Personal Information</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="flex items-center gap-3">
-            <Phone className="w-4 h-4 text-[#55557A]" />
+            <Phone className="w-4 h-4 text-fg-muted" />
             <div>
-              <p className="text-xs text-[#55557A]">Phone</p>
-              <p className="text-sm text-[#ECECFC]">{member.phone || '—'}</p>
+              <p className="text-xs text-fg-muted">Phone</p>
+              <p className="text-sm text-fg-strong">{member.phone || '—'}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Calendar className="w-4 h-4 text-[#55557A]" />
+            <Calendar className="w-4 h-4 text-fg-muted" />
             <div>
-              <p className="text-xs text-[#55557A]">Date of Birth</p>
-              <p className="text-sm text-[#ECECFC]">{member.date_of_birth || '—'}</p>
+              <p className="text-xs text-fg-muted">Date of Birth</p>
+              <p className="text-sm text-fg-strong">{member.date_of_birth || '—'}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="w-4 h-4 flex items-center justify-center text-[#55557A]">
+            <div className="w-4 h-4 flex items-center justify-center text-fg-muted">
               <span className="text-xs font-bold">G</span>
             </div>
             <div>
-              <p className="text-xs text-[#55557A]">Gender</p>
-              <p className="text-sm text-[#ECECFC] capitalize">{member.gender || '—'}</p>
+              <p className="text-xs text-fg-muted">Gender</p>
+              <p className="text-sm text-fg-strong capitalize">{member.gender || '—'}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <MapPin className="w-4 h-4 text-[#55557A]" />
+            <MapPin className="w-4 h-4 text-fg-muted" />
             <div>
-              <p className="text-xs text-[#55557A]">Address</p>
-              <p className="text-sm text-[#ECECFC]">{fullAddress || '—'}</p>
+              <p className="text-xs text-fg-muted">Address</p>
+              <p className="text-sm text-fg-strong">{fullAddress || '—'}</p>
             </div>
           </div>
         </div>
-        <div className="border-t border-white/10 mt-3 pt-3">
-          <h3 className="text-sm font-semibold text-[#ECECFC] mb-2">Emergency Contact</h3>
+        <div className="border-t border-line mt-3 pt-3">
+          <h3 className="text-sm font-semibold text-fg-strong mb-2">Emergency Contact</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="flex items-center gap-3">
-              <PhoneCall className="w-4 h-4 text-[#55557A]" />
+              <PhoneCall className="w-4 h-4 text-fg-muted" />
               <div>
-                <p className="text-xs text-[#55557A]">Contact Name</p>
-                <p className="text-sm text-[#ECECFC]">{member.emergency_contact_name || '—'}</p>
+                <p className="text-xs text-fg-muted">Contact Name</p>
+                <p className="text-sm text-fg-strong">{member.emergency_contact_name || '—'}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <Phone className="w-4 h-4 text-[#55557A]" />
+              <Phone className="w-4 h-4 text-fg-muted" />
               <div>
-                <p className="text-xs text-[#55557A]">Contact Phone</p>
-                <p className="text-sm text-[#ECECFC]">{member.emergency_contact_phone || '—'}</p>
+                <p className="text-xs text-fg-muted">Contact Phone</p>
+                <p className="text-sm text-fg-strong">{member.emergency_contact_phone || '—'}</p>
               </div>
             </div>
           </div>
@@ -180,23 +182,23 @@ export default function MemberDetailPage() {
 
       {/* Weight chart */}
       {measurements && measurements.length > 0 && (
-        <div className="glass-card p-4 rounded-xl border border-white/10 shadow-sm">
-          <h2 className="text-base font-semibold mb-3 text-[#ECECFC]">Weight Progress</h2>
+        <div className="glass-card p-4 rounded-xl">
+          <h2 className="text-base font-semibold mb-3 text-fg-strong">Weight Progress</h2>
           <div className="h-40">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={measurements}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
                 <XAxis
                   dataKey="measured_at"
                   tickFormatter={v => new Date(v).toLocaleDateString()}
-                  tick={{ fontSize: 12, fill: '#9494BD' }}
-                  axisLine={{ stroke: 'rgba(255,255,255,0.06)' }}
+                  tick={chart.axisTickSm}
+                  axisLine={chart.axisLineStyle}
                   tickLine={false}
                 />
-                <YAxis tick={{ fontSize: 12, fill: '#9494BD' }} axisLine={false} tickLine={false} width={32} />
+                <YAxis tick={chart.axisTickSm} axisLine={false} tickLine={false} width={32} />
                 <Tooltip
-                  contentStyle={{ backgroundColor: 'rgba(20,20,42,0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: '#ECECFC' }}
-                  labelStyle={{ color: '#B4B4D0' }}
+                  contentStyle={chart.tooltipStyle}
+                  labelStyle={{ color: chart.tooltipLabel }}
                 />
                 <Line type="monotone" dataKey="weight_kg" stroke="#7C3AED" strokeWidth={2} dot={{ fill: '#C084FC', r: 3 }} />
               </LineChart>

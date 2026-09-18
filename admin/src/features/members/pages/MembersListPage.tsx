@@ -39,13 +39,13 @@ export default function MembersListPage() {
         placeholder="Search members..."
         value={search}
         onChange={e => setSearch(e.target.value)}
-        className="w-full max-w-xs px-3 py-2 bg-white/[0.08] border border-white/10 rounded-lg text-sm text-[#ECECFC] focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50 focus:border-[#7C3AED] placeholder:text-[#55557A]"
+        className="w-full max-w-xs px-3 py-2 bg-overlay-8 border border-line rounded-lg text-sm text-fg-strong focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50 focus:border-[#7C3AED] placeholder:text-fg-muted"
       />
 
       {isLoading ? (
-        <div className="text-center py-8 text-[#55557A]">Loading...</div>
+        <div className="text-center py-8 text-fg-muted">Loading...</div>
       ) : (
-        <div className="glass-card rounded-xl border border-white/10 shadow-sm overflow-hidden flex flex-col min-h-0 flex-1 mt-3">
+        <div className="glass-card rounded-xl overflow-hidden flex flex-col min-h-0 flex-1 mt-3">
           <div className="overflow-x-auto overflow-y-auto flex-1 min-h-0">
             <MemberTable members={members ?? []} onDelete={setDeleteTarget} />
           </div>
@@ -54,13 +54,13 @@ export default function MembersListPage() {
 
       {deleteTarget && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setDeleteTarget(null)}>
-          <div className="glass-card rounded-xl shadow-xl max-w-sm w-full mx-4 p-6 border border-white/10" onClick={e => e.stopPropagation()}>
-            <h2 className="text-lg font-bold text-[#ECECFC] mb-2">Delete Member?</h2>
-            <p className="text-sm text-[#B4B4D0] mb-4">
-              This will permanently delete <strong className="text-[#ECECFC]">{deleteTarget.full_name}</strong>'s account and all access. They will not be able to log in again.
+          <div className="glass-card rounded-xl max-w-sm w-full mx-4 p-6" onClick={e => e.stopPropagation()}>
+            <h2 className="text-lg font-bold text-fg-strong mb-2">Delete Member?</h2>
+            <p className="text-sm text-fg mb-4">
+              This will permanently delete <strong className="text-fg-strong">{deleteTarget.full_name}</strong>'s account and all access. They will not be able to log in again.
             </p>
             <div className="flex justify-end gap-3">
-              <button onClick={() => setDeleteTarget(null)} className="px-4 py-2 text-sm border border-white/10 rounded-lg text-[#B4B4D0] hover:bg-white/[0.08]">Cancel</button>
+              <button onClick={() => setDeleteTarget(null)} className="px-4 py-2 text-sm border border-line rounded-lg text-fg hover:bg-overlay-8">Cancel</button>
               <button onClick={handleDelete} disabled={deleting}
                 className="px-4 py-2 text-sm bg-[#EF4444] text-white rounded-lg hover:bg-[#DC2626] disabled:opacity-50">
                 {deleting ? 'Deleting...' : 'Delete'}

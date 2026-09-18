@@ -2,7 +2,7 @@
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { useTrainers } from '../hooks/useTrainers'
-import { Trash2 } from 'lucide-react'
+import { Trash2, X } from 'lucide-react'
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
@@ -89,6 +89,15 @@ export default function TrainersListPage() {
     )
   }
 
+  useEffect(() => {
+    if (!showModal) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowModal(false)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [showModal])
+
   const handleDelete = async () => {
     if (!deleteTarget) return
     setDeleting(true)
@@ -122,86 +131,87 @@ export default function TrainersListPage() {
       </div>
 
       {isLoading ? (
-        <div className="text-center py-8 text-[#55557A]">Loading...</div>
+        <div className="text-center py-8 text-fg-muted">Loading...</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {trainers?.map(trainer => (
             <div
               key={trainer.id}
-              className="glass-card p-4 rounded-xl border border-white/10 shadow-sm hover:border-[#7C3AED]/30 cursor-pointer transition-all duration-200 relative group"
+              className="glass-card p-4 rounded-xl hover:border-[#7C3AED]/30 cursor-pointer transition-all duration-200 relative group"
               onClick={() => navigate(`/trainers/${trainer.id}`)}
             >
               <button
                 onClick={e => { e.stopPropagation(); setDeleteTarget(trainer) }}
-                className="absolute top-3 right-3 p-1.5 text-[#55557A] hover:text-[#EF4444] opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute top-3 right-3 p-1.5 text-fg-muted hover:text-[#EF4444] opacity-0 group-hover:opacity-100 transition-opacity"
                 title="Delete"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#22C55E]/30 to-[#4ADE80]/30 flex items-center justify-center">
-                  <span className="text-base font-bold text-[#4ADE80]">{trainer.full_name.charAt(0)}</span>
+                  <span className="text-base font-bold text-accent-green">{trainer.full_name.charAt(0)}</span>
                 </div>
                   <div>
-                    <p className="font-semibold text-[#ECECFC]">{trainer.full_name}</p>
+                    <p className="font-semibold text-fg-strong">{trainer.full_name}</p>
                     <p className="text-xs font-mono text-[#7C3AED] mt-0.5">{trainer.code}</p>
-                    <p className="text-sm text-[#B4B4D0] mt-0.5">{trainer.email}</p>
+                    <p className="text-sm text-fg mt-0.5">{trainer.email}</p>
                     {trainer.specialty && <p className="text-xs text-[#22C55E] mt-1">{trainer.specialty}</p>}
                   </div>
               </div>
             </div>
           ))}
           {trainers?.length === 0 && (
-            <p className="text-[#55557A] col-span-full text-center py-8">No trainers found</p>
+            <p className="text-fg-muted col-span-full text-center py-8">No trainers found</p>
           )}
         </div>
       )}
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setShowModal(false)}>
-          <div className="glass-card rounded-xl shadow-xl max-w-md w-full mx-4 border border-white/10" onClick={e => e.stopPropagation()}>
-            <div className="px-6 py-4 border-b border-white/10">
-              <h2 className="text-lg font-semibold text-[#ECECFC]">Create Trainer Account</h2>
+        <div className="fixed inset-0 bg-black/60 z-50" onClick={() => setShowModal(false)}>
+          <div className="glass-card slide-in-right fixed right-0 top-0 h-full w-full max-w-md flex flex-col rounded-l-2xl border-l border-line" onClick={e => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-line flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-fg-strong">Create Trainer Account</h2>
+              <button onClick={() => setShowModal(false)} className="text-fg-muted hover:text-fg cursor-pointer"><X className="w-5 h-5" /></button>
             </div>
-            <div className="px-6 py-4 space-y-4">
+            <div className="px-6 py-4 space-y-4 flex-1 overflow-y-auto">
               <div>
-                <label className="block text-sm font-medium text-[#B4B4D0] mb-1">Full Name *</label>
+                <label className="block text-sm font-medium text-fg mb-1">Full Name *</label>
                 <input value={fullName} onChange={e => { setFullName(e.target.value); setErrors(prev => ({...prev, fullName: ''})) }}
-                  className="w-full px-3 py-2 bg-white/[0.08] border border-white/10 rounded-lg text-sm text-[#ECECFC] focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50" />
+                  className="w-full px-3 py-2 bg-overlay-8 border border-line rounded-lg text-sm text-fg-strong focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50" />
                 {errors.fullName && <p className="text-xs text-[#EF4444] mt-1">{errors.fullName}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#B4B4D0] mb-1">Email *</label>
+                <label className="block text-sm font-medium text-fg mb-1">Email *</label>
                 <input value={email} onChange={e => { setEmail(e.target.value); setErrors(prev => ({...prev, email: ''})) }}
-                  className="w-full px-3 py-2 bg-white/[0.08] border border-white/10 rounded-lg text-sm text-[#ECECFC] focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50" type="email" />
+                  className="w-full px-3 py-2 bg-overlay-8 border border-line rounded-lg text-sm text-fg-strong focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50" type="email" />
                 {errors.email && <p className="text-xs text-[#EF4444] mt-1">{errors.email}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#B4B4D0] mb-1">Password *</label>
+                <label className="block text-sm font-medium text-fg mb-1">Password *</label>
                 <input value={password} onChange={e => { setPassword(e.target.value); setErrors(prev => ({...prev, password: ''})) }}
-                  className="w-full px-3 py-2 bg-white/[0.08] border border-white/10 rounded-lg text-sm text-[#ECECFC] focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50" type="password" />
+                  className="w-full px-3 py-2 bg-overlay-8 border border-line rounded-lg text-sm text-fg-strong focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50" type="password" />
                 {errors.password && <p className="text-xs text-[#EF4444] mt-1">{errors.password}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#B4B4D0] mb-1">Confirm Password *</label>
+                <label className="block text-sm font-medium text-fg mb-1">Confirm Password *</label>
                 <input value={passwordConfirm} onChange={e => { setPasswordConfirm(e.target.value); setErrors(prev => ({...prev, passwordConfirm: ''})) }}
-                  className="w-full px-3 py-2 bg-white/[0.08] border border-white/10 rounded-lg text-sm text-[#ECECFC] focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50" type="password" />
+                  className="w-full px-3 py-2 bg-overlay-8 border border-line rounded-lg text-sm text-fg-strong focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50" type="password" />
                 {errors.passwordConfirm && <p className="text-xs text-[#EF4444] mt-1">{errors.passwordConfirm}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#B4B4D0] mb-1">Specialty</label>
+                <label className="block text-sm font-medium text-fg mb-1">Specialty</label>
                 <input value={specialty} onChange={e => setSpecialty(e.target.value)} placeholder="e.g. Weight Training, Yoga, Cardio"
-                  className="w-full px-3 py-2 bg-white/[0.08] border border-white/10 rounded-lg text-sm text-[#ECECFC] focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50 placeholder-[#55557A]" />
+                  className="w-full px-3 py-2 bg-overlay-8 border border-line rounded-lg text-sm text-fg-strong focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50 placeholder-fg-muted" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#B4B4D0] mb-2">Available Days</label>
+                <label className="block text-sm font-medium text-fg mb-2">Available Days</label>
                 <div className="flex gap-1.5 flex-wrap">
                   {DAYS.map(day => (
                     <button key={day} type="button" onClick={() => toggleDay(day)}
                       className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
                         availableDays.includes(day)
                           ? 'bg-[#7C3AED] text-white'
-                          : 'bg-white/[0.08] text-[#B4B4D0] border border-white/10 hover:border-[#7C3AED]/50'
+                          : 'bg-overlay-8 text-fg border border-line hover:border-[#7C3AED]/50'
                       }`}>
                       {day}
                     </button>
@@ -209,15 +219,15 @@ export default function TrainersListPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#B4B4D0] mb-1">Phone</label>
+                <label className="block text-sm font-medium text-fg mb-1">Phone</label>
                 <input value={phone} onChange={e => { setPhone(e.target.value); setErrors(prev => ({...prev, phone: ''})) }} placeholder="09171234567"
-                  className="w-full px-3 py-2 bg-white/[0.08] border border-white/10 rounded-lg text-sm text-[#ECECFC] focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50 placeholder-[#55557A]" />
+                  className="w-full px-3 py-2 bg-overlay-8 border border-line rounded-lg text-sm text-fg-strong focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50 placeholder-fg-muted" />
                 {errors.phone && <p className="text-xs text-[#EF4444] mt-1">{errors.phone}</p>}
               </div>
             </div>
-            <div className="px-6 py-4 border-t border-white/10 flex justify-end gap-3">
+            <div className="px-6 py-4 border-t border-line flex justify-end gap-3">
               <button onClick={() => setShowModal(false)}
-                className="px-4 py-2 text-sm border border-white/10 rounded-lg text-[#B4B4D0] hover:bg-white/[0.08]">Cancel</button>
+                className="px-4 py-2 text-sm border border-line rounded-lg text-fg hover:bg-overlay-8">Cancel</button>
               <button onClick={handleCreate} disabled={saving || !fullName || !email || !password || password !== passwordConfirm}
                 className="px-4 py-2 text-sm bg-[#7C3AED] text-white rounded-lg hover:bg-[#6D28D9] disabled:opacity-50">
                 {saving ? 'Creating...' : 'Create Trainer'}
@@ -229,14 +239,14 @@ export default function TrainersListPage() {
 
       {deleteTarget && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setDeleteTarget(null)}>
-          <div className="glass-card rounded-xl shadow-xl max-w-sm w-full mx-4 p-6 border border-white/10" onClick={e => e.stopPropagation()}>
-            <h2 className="text-lg font-bold text-[#ECECFC] mb-2">Delete Trainer?</h2>
-            <p className="text-sm text-[#B4B4D0] mb-4">
-              This will permanently delete <strong className="text-[#ECECFC]">{deleteTarget.full_name}</strong>'s account and all access.
+          <div className="glass-card rounded-xl max-w-sm w-full mx-4 p-6" onClick={e => e.stopPropagation()}>
+            <h2 className="text-lg font-bold text-fg-strong mb-2">Delete Trainer?</h2>
+            <p className="text-sm text-fg mb-4">
+              This will permanently delete <strong className="text-fg-strong">{deleteTarget.full_name}</strong>'s account and all access.
             </p>
             <div className="flex justify-end gap-3">
               <button onClick={() => setDeleteTarget(null)}
-                className="px-4 py-2 text-sm border border-white/10 rounded-lg text-[#B4B4D0] hover:bg-white/[0.08]">Cancel</button>
+                className="px-4 py-2 text-sm border border-line rounded-lg text-fg hover:bg-overlay-8">Cancel</button>
               <button onClick={handleDelete} disabled={deleting}
                 className="px-4 py-2 text-sm bg-[#EF4444] text-white rounded-lg hover:bg-[#DC2626] disabled:opacity-50">
                 {deleting ? 'Deleting...' : 'Delete'}

@@ -15,6 +15,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   signIn: async () => null,
   signOut: async () => {},
+  refreshProfile: async () => {},
 })
 
 export function AuthProvider({ children }: { children: ReactNode }) {

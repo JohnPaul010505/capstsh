@@ -48,20 +48,20 @@ export default function NotificationsPage() {
 
   return (
     <div className="space-y-3">
-      <div className="glass-card p-4 rounded-xl border border-white/10 shadow-sm">
-        <h2 className="text-base font-semibold mb-3 text-[#ECECFC]">Send Notification</h2>
+      <div className="glass-card p-4 rounded-xl">
+        <h2 className="text-base font-semibold mb-3 text-fg-strong">Send Notification</h2>
         <div className="space-y-3">
           <div>
-            <label className="block text-sm font-medium text-[#B4B4D0] mb-1">Target</label>
+            <label className="block text-sm font-medium text-fg mb-1">Target</label>
             <div className="flex gap-2">
               {(['all', 'member', 'trainer'] as const).map(role => (
                 <button
                   key={role}
                   onClick={() => setTargetRole(role)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm border transition-colors ${
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm border transition-colors cursor-pointer ${
                     targetRole === role
-                      ? 'bg-[#7C3AED]/20 border-[#7C3AED] text-[#C084FC]'
-                      : 'bg-white/[0.08] border-white/10 text-[#B4B4D0] hover:border-[#55557A]'
+                      ? 'bg-[#7C3AED] border-[#7C3AED] text-white'
+                      : 'bg-overlay-8 border-line text-fg hover:border-fg-muted'
                   }`}
                 >
                   <Users className="w-4 h-4" />
@@ -71,20 +71,20 @@ export default function NotificationsPage() {
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-[#B4B4D0] mb-1">Title</label>
+            <label className="block text-sm font-medium text-fg mb-1">Title</label>
             <input
               value={title}
               onChange={e => setTitle(e.target.value)}
-              className="w-full px-3 py-2 bg-white/[0.08] border border-white/10 rounded-lg text-sm text-[#ECECFC] focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50"
+              className="w-full px-3 py-2 bg-overlay-8 border border-line rounded-lg text-sm text-fg-strong focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50"
               placeholder="Notification title..."
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-[#B4B4D0] mb-1">Message</label>
+            <label className="block text-sm font-medium text-fg mb-1">Message</label>
             <textarea
               value={body}
               onChange={e => setBody(e.target.value)}
-              className="w-full px-3 py-2 bg-white/[0.08] border border-white/10 rounded-lg text-sm text-[#ECECFC] focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50 min-h-[100px]"
+              className="w-full px-3 py-2 bg-overlay-8 border border-line rounded-lg text-sm text-fg-strong focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50 min-h-[100px]"
               placeholder="Notification message body..."
             />
           </div>
@@ -103,42 +103,42 @@ export default function NotificationsPage() {
         </div>
       </div>
 
-      <div className="glass-card rounded-xl border border-white/10 shadow-sm overflow-hidden flex flex-col min-h-0">
-        <div className="px-4 py-3 border-b border-white/10 flex items-center gap-2">
-          <Bell className="w-4 h-4 text-[#C084FC]" />
-          <h2 className="font-semibold text-[#ECECFC]">Recent Notifications</h2>
+      <div className="glass-card rounded-xl overflow-hidden flex flex-col min-h-0">
+        <div className="px-4 py-3 border-b border-line flex items-center gap-2">
+          <Bell className="w-4 h-4 text-accent-purple" />
+          <h2 className="font-semibold text-fg-strong">Recent Notifications</h2>
         </div>
         <div className="overflow-x-auto flex-1 max-h-[420px]">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-white/10 bg-white/5">
-                <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Title</th>
-                <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Body</th>
-                <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">User</th>
-                <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Read</th>
-                <th className="text-right px-3 py-2 text-sm font-medium text-[#55557A]">Date</th>
+              <tr className="border-b border-line bg-overlay-5">
+                <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Title</th>
+                <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Body</th>
+                <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">User</th>
+                <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Read</th>
+                <th className="text-right px-3 py-2 text-sm font-medium text-fg-muted">Date</th>
               </tr>
             </thead>
             <tbody>
               {sentNotifications?.map(n => (
-                <tr key={n.id} className="border-b border-white/5 last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
-                  <td className="px-3 py-2 text-sm font-medium text-[#ECECFC]">{n.title}</td>
-                  <td className="px-3 py-2 text-sm text-[#B4B4D0] max-w-xs truncate">{n.body}</td>
-                  <td className="px-3 py-2 text-sm text-[#B4B4D0]">{n.profiles?.full_name ?? '—'}</td>
+                <tr key={n.id} className="border-b border-line-soft last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
+                  <td className="px-3 py-2 text-sm font-medium text-fg-strong">{n.title}</td>
+                  <td className="px-3 py-2 text-sm text-fg max-w-xs truncate">{n.body}</td>
+                  <td className="px-3 py-2 text-sm text-fg">{n.profiles?.full_name ?? '—'}</td>
                   <td className="px-3 py-2">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                      n.read ? 'bg-[#22C55E]/15 text-[#4ADE80]' : 'bg-[#F59E0B]/15 text-[#FBBF24]'
+                      n.read ? 'bg-[#22C55E]/15 text-accent-green' : 'bg-[#F59E0B]/15 text-accent-amber'
                     }`}>
                       {n.read ? 'Read' : 'Unread'}
                     </span>
                   </td>
-                  <td className="px-3 py-2 text-sm text-[#55557A] text-right whitespace-nowrap">
+                  <td className="px-3 py-2 text-sm text-fg-muted text-right whitespace-nowrap">
                     {new Date(n.created_at).toLocaleString()}
                   </td>
                 </tr>
               ))}
               {sentNotifications?.length === 0 && (
-                <tr><td colSpan={5} className="px-3 py-6 text-center text-[#55557A]">No notifications sent yet</td></tr>
+                <tr><td colSpan={5} className="px-3 py-6 text-center text-fg-muted">No notifications sent yet</td></tr>
               )}
             </tbody>
           </table>

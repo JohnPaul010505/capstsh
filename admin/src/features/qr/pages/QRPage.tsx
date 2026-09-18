@@ -1,10 +1,12 @@
-﻿import { useState } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { QRCodeSVG } from 'qrcode.react'
 import { supabase } from '@/lib/supabase'
 import EnrollmentForm, { emptyForm, type EnrollmentFormData } from '../components/EnrollmentForm'
 import { useAuth } from '@/features/auth/hooks/useAuth'
+import { useTheme } from '@/contexts/ThemeContext'
 import { Eye, Check, X, Plus } from 'lucide-react'
+import AppBackground from '@/components/AppBackground'
 
 const ORIGIN = import.meta.env.VITE_PUBLIC_URL || window.location.origin
 const PAGE_URL = `${ORIGIN}/qr`
@@ -12,9 +14,21 @@ const PAGE_URL = `${ORIGIN}/qr`
 export default function QRPage() {
   const { profile } = useAuth()
   const isAdmin = !!profile
+  const { theme } = useTheme()
+  const qrBg = theme === 'light' ? '#FFFFFF' : '#14142A'
+  const qrFg = theme === 'light' ? '#0F172A' : '#ECECFC'
   const queryClient = useQueryClient()
   const [selected, setSelected] = useState<any>(null)
   const [showModal, setShowModal] = useState(false)
+
+  useEffect(() => {
+    if (!showModal) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowModal(false)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [showModal])
   const [isManual, setIsManual] = useState(false)
   const [formData, setFormData] = useState<EnrollmentFormData>(emptyForm)
   const [password, setPassword] = useState('')
@@ -142,24 +156,24 @@ export default function QRPage() {
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-[#0D0D1A] flex items-center justify-center py-8">
-        <div className="fixed inset-0 app-bg-image -z-10" aria-hidden="true" />
-        <div className="fixed inset-0 bg-[#0D0D1A]/70 backdrop-blur-[3px] -z-10" aria-hidden="true" />
+      <div className="min-h-screen flex items-center justify-center py-8 relative overflow-hidden">
+        <AppBackground />
+        <div className="fixed inset-0 bg-page-deep/70 backdrop-blur-[3px] -z-10" aria-hidden="true" />
         <div className="glass-card p-8 rounded-xl max-w-2xl w-full mx-4">
           {enrollSubmitted ? (
             <div className="text-center">
               <div className="w-16 h-16 bg-[#22C55E]/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-[#4ADE80]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-8 h-8 text-accent-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h1 className="text-xl font-bold text-[#ECECFC] mb-2">Application Submitted!</h1>
-              <p className="text-[#B4B4D0] text-sm">The admin will review your information and confirm your membership.</p>
+              <h1 className="text-xl font-bold text-fg-strong mb-2">Application Submitted!</h1>
+              <p className="text-fg text-sm">The admin will review your information and confirm your membership.</p>
             </div>
           ) : (
             <>
-              <h1 className="text-xl font-bold text-[#ECECFC] mb-1">Gym Membership Enrollment</h1>
-              <p className="text-sm text-[#55557A] mb-6">Fill in your details to apply for membership.</p>
+              <h1 className="text-xl font-bold text-fg-strong mb-1">Gym Membership Enrollment</h1>
+              <p className="text-sm text-fg-muted mb-6">Fill in your details to apply for membership.</p>
               <EnrollmentForm data={enrollFormData} onChange={setEnrollFormData} />
               {enrollError && <p className="text-sm text-[#EF4444] mt-4">{enrollError}</p>}
               <button onClick={handleEnrollSubmit}
@@ -184,47 +198,47 @@ export default function QRPage() {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <div className="glass-card p-4 rounded-xl border border-white/10 shadow-sm flex flex-col items-center justify-center">
-          <p className="text-sm font-semibold text-[#ECECFC] mb-3">Enrollment Form</p>
-          <QRCodeSVG value={PAGE_URL} size={160} bgColor="#14142A" fgColor="#ECECFC" />
+        <div className="glass-card p-4 rounded-xl flex flex-col items-center justify-center">
+          <p className="text-sm font-semibold text-fg-strong mb-3">Enrollment Form</p>
+          <QRCodeSVG value={PAGE_URL} size={160} bgColor={qrBg} fgColor={qrFg} />
         </div>
-        <div className="glass-card p-4 rounded-xl border border-white/10 shadow-sm flex flex-col items-center justify-center border-[#22C55E]/30">
-          <p className="text-sm font-semibold text-[#ECECFC] mb-3">Check-in / Check-out</p>
-          <QRCodeSVG value="FITGYM:ATTENDANCE" size={160} bgColor="#14142A" fgColor="#ECECFC" />
-          <p className="text-xs text-[#55557A] mt-3 text-center">Scan in fitness app to check in or out</p>
+        <div className="glass-card p-4 rounded-xl flex flex-col items-center justify-center border-[#22C55E]/30">
+          <p className="text-sm font-semibold text-fg-strong mb-3">Check-in / Check-out</p>
+          <QRCodeSVG value="FITGYM:ATTENDANCE" size={160} bgColor={qrBg} fgColor={qrFg} />
+          <p className="text-xs text-fg-muted mt-3 text-center">Scan in fitness app to check in or out</p>
         </div>
       </div>
 
       {/* Pending enrollments */}
-      <div className="glass-card rounded-xl border border-white/10 shadow-sm overflow-hidden flex flex-col min-h-0">
-        <div className="px-4 py-3 border-b border-white/10">
-          <h2 className="font-semibold text-[#ECECFC]">Pending ({pending.length})</h2>
+      <div className="glass-card rounded-xl overflow-hidden flex flex-col min-h-0">
+        <div className="px-4 py-3 border-b border-line">
+          <h2 className="font-semibold text-fg-strong">Pending ({pending.length})</h2>
         </div>
         {isLoading ? (
-          <div className="text-center py-6 text-[#55557A]">Loading...</div>
+          <div className="text-center py-6 text-fg-muted">Loading...</div>
         ) : pending.length === 0 ? (
-          <div className="text-center py-6 text-[#55557A]">No pending enrollments</div>
+          <div className="text-center py-6 text-fg-muted">No pending enrollments</div>
         ) : (
           <div className="overflow-x-auto flex-1">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-white/10 bg-white/5">
-                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Name</th>
-                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Email</th>
-                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Date</th>
-                  <th className="text-right px-3 py-2 text-sm font-medium text-[#55557A]">Actions</th>
+                <tr className="border-b border-line bg-overlay-5">
+                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Name</th>
+                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Email</th>
+                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Date</th>
+                  <th className="text-right px-3 py-2 text-sm font-medium text-fg-muted">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {pending.map(e => (
-                  <tr key={e.id} className="border-b border-white/5 last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
-                    <td className="px-3 py-2 text-sm font-medium text-[#ECECFC]">{e.full_name}</td>
-                    <td className="px-3 py-2 text-sm text-[#B4B4D0]">{e.email}</td>
-                    <td className="px-3 py-2 text-sm text-[#B4B4D0]">{new Date(e.created_at).toLocaleDateString()}</td>
+                  <tr key={e.id} className="border-b border-line-soft last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
+                    <td className="px-3 py-2 text-sm font-medium text-fg-strong">{e.full_name}</td>
+                    <td className="px-3 py-2 text-sm text-fg">{e.email}</td>
+                    <td className="px-3 py-2 text-sm text-fg">{new Date(e.created_at).toLocaleDateString()}</td>
                     <td className="px-3 py-2 text-sm text-right">
-                      <button onClick={() => openView(e)} className="p-1 text-[#55557A] hover:text-[#C084FC]" title="View"><Eye className="w-4 h-4 inline" /></button>
-                      <button onClick={() => handleConfirm(e)} className="p-1 text-[#55557A] hover:text-[#4ADE80]" title="Confirm"><Check className="w-4 h-4 inline" /></button>
-                      <button onClick={() => handleReject(e.id)} className="p-1 text-[#55557A] hover:text-[#EF4444]" title="Reject"><X className="w-4 h-4 inline" /></button>
+                      <button onClick={() => openView(e)} className="p-1 text-fg-muted hover:text-accent-purple" title="View"><Eye className="w-4 h-4 inline" /></button>
+                      <button onClick={() => handleConfirm(e)} className="p-1 text-fg-muted hover:text-accent-green" title="Confirm"><Check className="w-4 h-4 inline" /></button>
+                      <button onClick={() => handleReject(e.id)} className="p-1 text-fg-muted hover:text-[#EF4444]" title="Reject"><X className="w-4 h-4 inline" /></button>
                     </td>
                   </tr>
                 ))}
@@ -235,28 +249,28 @@ export default function QRPage() {
       </div>
 
       {/* Confirmed enrollments */}
-      <div className="glass-card rounded-xl border border-white/10 shadow-sm overflow-hidden flex flex-col min-h-0">
-        <div className="px-4 py-3 border-b border-white/10">
-          <h2 className="font-semibold text-[#ECECFC]">Confirmed ({confirmed.length})</h2>
+      <div className="glass-card rounded-xl overflow-hidden flex flex-col min-h-0">
+        <div className="px-4 py-3 border-b border-line">
+          <h2 className="font-semibold text-fg-strong">Confirmed ({confirmed.length})</h2>
         </div>
         {confirmed.length === 0 ? (
-          <div className="text-center py-6 text-[#55557A]">No confirmed members</div>
+          <div className="text-center py-6 text-fg-muted">No confirmed members</div>
         ) : (
           <div className="overflow-x-auto flex-1">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-white/10 bg-white/5">
-                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Name</th>
-                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Email</th>
-                  <th className="text-left px-3 py-2 text-sm font-medium text-[#55557A]">Confirmed</th>
+                <tr className="border-b border-line bg-overlay-5">
+                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Name</th>
+                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Email</th>
+                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Confirmed</th>
                 </tr>
               </thead>
               <tbody>
                 {confirmed.map(e => (
-                  <tr key={e.id} className="border-b border-white/5 last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
-                    <td className="px-3 py-2 text-sm font-medium text-[#ECECFC]">{e.full_name}</td>
-                    <td className="px-3 py-2 text-sm text-[#B4B4D0]">{e.email}</td>
-                    <td className="px-3 py-2 text-sm text-[#B4B4D0]">{new Date(e.confirmed_at).toLocaleDateString()}</td>
+                  <tr key={e.id} className="border-b border-line-soft last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
+                    <td className="px-3 py-2 text-sm font-medium text-fg-strong">{e.full_name}</td>
+                    <td className="px-3 py-2 text-sm text-fg">{e.email}</td>
+                    <td className="px-3 py-2 text-sm text-fg">{new Date(e.confirmed_at).toLocaleDateString()}</td>
                   </tr>
                 ))}
               </tbody>
@@ -265,25 +279,29 @@ export default function QRPage() {
         )}
       </div>
 
-      {/* Modal */}
+      {/* Drawer */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setShowModal(false)}>
-          <div className="glass-card rounded-xl shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto border border-white/10" onClick={e => e.stopPropagation()}>
-            <div className="px-6 py-4 border-b border-white/10">
-              <h2 className="text-lg font-semibold text-[#ECECFC]">
+        <div className="fixed inset-0 bg-black/60 z-50" onClick={() => setShowModal(false)}>
+          <div className="glass-card slide-in-right fixed right-0 top-0 h-full w-full max-w-md flex flex-col rounded-l-2xl border-l border-line" onClick={e => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-line flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-fg-strong">
                 {isManual ? 'Add Member Manually' : selected?.status === 'pending' ? 'Review Enrollment' : 'View Enrollment'}
               </h2>
+              <button onClick={() => setShowModal(false)} className="text-fg-muted hover:text-fg">
+                <X className="w-5 h-5" />
+              </button>
             </div>
-            <div className="px-6 py-4">
+            <div className="px-6 py-4 flex-1 overflow-y-auto">
               <EnrollmentForm
                 data={formData} onChange={setFormData}
                 includePassword={isManual} password={password} onPasswordChange={setPassword}
                 confirmPassword={confirmPassword} onConfirmPasswordChange={setConfirmPassword}
+                singleColumn
               />
             </div>
-            <div className="px-6 py-4 border-t border-white/10 flex justify-end gap-3">
+            <div className="px-6 py-4 border-t border-line flex justify-end gap-3">
               <button onClick={() => setShowModal(false)}
-                className="px-4 py-2 text-sm border border-white/10 rounded-lg text-[#B4B4D0] hover:bg-white/[0.08]">Cancel</button>
+                className="px-4 py-2 text-sm border border-line rounded-lg text-fg hover:bg-overlay-8">Cancel</button>
               {isManual && (
                 <button onClick={handleManualSave} disabled={saving || !formData.fullName || !formData.email || !password || password !== confirmPassword}
                   className="px-4 py-2 text-sm bg-[#7C3AED] text-white rounded-lg hover:bg-[#6D28D9] disabled:opacity-50">

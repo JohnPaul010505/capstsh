@@ -4,6 +4,7 @@ import { useAuth } from '@/features/auth/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
 import { Bell } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import ThemeToggle from '@/components/ThemeToggle'
 
 interface HeaderProps {
   title: string
@@ -85,65 +86,68 @@ export default function Header({ title }: HeaderProps) {
   }
 
   return (
-    <header className="h-14 bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.25)] flex items-center justify-between px-5">
-      <h1 className="text-[30px] font-bold text-[#ECECFC]">{title}</h1>
+    <header className="glass-chrome h-14 rounded-2xl flex items-center justify-between px-5">
+      <h1 className="text-[30px] font-bold text-fg-strong">{title}</h1>
       <div className="flex items-center gap-3">
+        <ThemeToggle />
         <div className="relative">
           <button
             ref={buttonRef}
             onClick={() => setNotificationDropdownOpen(!notificationDropdownOpen)}
-            className="p-2 rounded-lg transition-colors"
+            className="p-2 rounded-lg transition-colors cursor-pointer"
             aria-label="Notifications"
           >
             <Bell
-              className={`w-5 h-5 transition-colors ${notificationDropdownOpen ? 'text-[#C084FC]' : 'text-white'}`}
+              className={`w-5 h-5 transition-colors ${notificationDropdownOpen ? 'text-accent-purple' : 'text-fg-strong'}`}
               strokeWidth={2}
             />
           </button>
         </div>
-        <span className="text-sm text-[#B4B4D0]">{profile?.full_name || 'System Admin'}</span>
+        <span className="text-sm text-fg">{profile?.full_name || 'System Admin'}</span>
       </div>
       {notificationDropdownOpen && createPortal(
         <div
           ref={dropdownRef}
-          className="w-80 glass-card rounded-xl border border-white/10 shadow-lg z-50 overflow-hidden"
+          className="w-80 glass-card rounded-xl z-50 overflow-hidden"
           style={dropdownStyle}
         >
-          <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
-            <h2 className="font-semibold text-[#ECECFC]">Recent Notifications</h2>
-            <span className="text-xs text-[#55557A]">{notifications.length} total</span>
+          <div className="px-4 py-3 border-b border-line flex items-center justify-between">
+            <h2 className="font-semibold text-fg-strong">Recent Notifications</h2>
+            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#7C3AED]/15 text-accent-purple">
+              {`Total:${notifications.length}`}
+            </span>
           </div>
           <div className="max-h-96 overflow-y-auto">
             {notifications.length === 0 ? (
-              <div className="px-4 py-8 text-center text-sm text-[#55557A]">No notifications yet</div>
+              <div className="px-4 py-8 text-center text-sm text-fg-muted">No notifications yet</div>
             ) : (
               notifications.map(n => (
                 <div
                   key={n.id}
-                  className={`px-4 py-3 border-b border-white/5 hover:bg-[#7C3AED]/5 transition-colors ${
+                  className={`px-4 py-3 border-b border-line-soft hover:bg-[#7C3AED]/5 transition-colors ${
                     n.read ? '' : 'bg-[#7C3AED]/10'
                   }`}
                 >
-                  <p className="text-sm font-medium text-[#ECECFC]">{n.title}</p>
-                  <p className="text-sm text-[#B4B4D0] mt-1 line-clamp-2">{n.body}</p>
+                  <p className="text-sm font-medium text-fg-strong">{n.title}</p>
+                  <p className="text-sm text-fg mt-1 line-clamp-2">{n.body}</p>
                   <div className="flex items-center justify-between mt-2">
-                    <span className="text-xs text-[#55557A]">{n.profiles?.full_name ? `- ${n.profiles.full_name}` : '- Admin'}</span>
+                    <span className="text-xs text-fg-muted">{n.profiles?.full_name ? `- ${n.profiles.full_name}` : '- Admin'}</span>
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                      n.read ? 'bg-[#22C55E]/15 text-[#4ADE80]' : 'bg-[#F59E0B]/15 text-[#FBBF24]'
+                      n.read ? 'bg-[#22C55E]/15 text-accent-green' : 'bg-[#F59E0B]/15 text-accent-amber'
                     }`}>
                       {n.read ? 'Read' : 'Unread'}
                     </span>
                   </div>
-                  <p className="text-xs text-[#55557A] mt-1">{formatDate(n.created_at)}</p>
+                  <p className="text-xs text-fg-muted mt-1">{formatDate(n.created_at)}</p>
                 </div>
               ))
             )}
           </div>
-          <div className="px-4 py-2 border-t border-white/10">
+          <div className="px-4 py-2 border-t border-line">
             <Link
               to="/notifications"
               onClick={() => setNotificationDropdownOpen(false)}
-              className="text-sm text-[#C084FC] hover:underline"
+              className="text-sm text-accent-purple hover:underline"
             >
               View all notifications
             </Link>

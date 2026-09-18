@@ -17,6 +17,7 @@ interface EnrollmentFormProps {
   onPasswordChange?: (v: string) => void
   confirmPassword?: string
   onConfirmPasswordChange?: (v: string) => void
+  singleColumn?: boolean
 }
 
 const emptyForm: EnrollmentFormData = {
@@ -30,9 +31,9 @@ const emptyForm: EnrollmentFormData = {
   emergencyContactPhone: '',
 }
 
-const inputCls = 'w-full px-3 py-2.5 bg-white/[0.08] border border-white/10 rounded-lg text-sm text-[#ECECFC] focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50 focus:border-[#7C3AED] placeholder:text-[#55557A]'
-const inputErrorCls = 'w-full px-3 py-2.5 bg-white/[0.08] border border-[#EF4444] rounded-lg text-sm text-[#ECECFC] focus:outline-none focus:ring-2 focus:ring-[#EF4444]/50 focus:border-[#EF4444] placeholder:text-[#55557A]'
-const labelCls = 'block text-sm font-medium text-[#B4B4D0] mb-1'
+const inputCls = 'w-full px-3 py-2.5 bg-overlay-8 border border-line rounded-lg text-sm text-fg-strong focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50 focus:border-[#7C3AED] placeholder:text-fg-muted'
+const inputErrorCls = 'w-full px-3 py-2.5 bg-overlay-8 border border-[#EF4444] rounded-lg text-sm text-fg-strong focus:outline-none focus:ring-2 focus:ring-[#EF4444]/50 focus:border-[#EF4444] placeholder:text-fg-muted'
+const labelCls = 'block text-sm font-medium text-fg mb-1'
 
 function getPhoneError(v: string): string | null {
   if (!v) return null
@@ -44,16 +45,17 @@ function getPhoneError(v: string): string | null {
 export { emptyForm }
 export type { EnrollmentFormData }
 
-export default function EnrollmentForm({ data, onChange, includePassword, password, onPasswordChange, confirmPassword, onConfirmPasswordChange }: EnrollmentFormProps) {
+export default function EnrollmentForm({ data, onChange, includePassword, password, onPasswordChange, confirmPassword, onConfirmPasswordChange, singleColumn }: EnrollmentFormProps) {
   const phoneError = getPhoneError(data.phone)
   const emergencyPhoneError = getPhoneError(data.emergencyContactPhone)
   const set = (field: keyof EnrollmentFormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     onChange({ ...data, [field]: e.target.value })
   }
+  const gridCls = singleColumn ? 'grid grid-cols-1 gap-4' : 'grid grid-cols-1 md:grid-cols-2 gap-4'
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className={gridCls}>
         <div>
           <label className={labelCls}>Full Name *</label>
           <input value={data.fullName} onChange={set('fullName')} className={inputCls} placeholder="Enter full name" />
@@ -74,10 +76,10 @@ export default function EnrollmentForm({ data, onChange, includePassword, passwo
         <div>
           <label className={labelCls}>Gender</label>
           <select value={data.gender} onChange={set('gender')} className={inputCls}>
-            <option className="bg-white/[0.08]" value="">Select</option>
-            <option className="bg-white/[0.08]" value="male">Male</option>
-            <option className="bg-white/[0.08]" value="female">Female</option>
-            <option className="bg-white/[0.08]" value="other">Other</option>
+            <option className="bg-overlay-8" value="">Select</option>
+            <option className="bg-overlay-8" value="male">Male</option>
+            <option className="bg-overlay-8" value="female">Female</option>
+            <option className="bg-overlay-8" value="other">Other</option>
           </select>
         </div>
         <div className="md:col-span-2">
@@ -86,9 +88,9 @@ export default function EnrollmentForm({ data, onChange, includePassword, passwo
         </div>
       </div>
 
-      <div className="border-t border-white/10 pt-4">
-        <h4 className="text-sm font-semibold text-[#ECECFC] mb-3">Emergency Contact</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="border-t border-line pt-4">
+        <h4 className="text-sm font-semibold text-fg-strong mb-3">Emergency Contact</h4>
+        <div className={gridCls}>
           <div>
             <label className={labelCls}>Contact Name</label>
             <input value={data.emergencyContactName} onChange={set('emergencyContactName')} className={inputCls} placeholder="Emergency contact name" />
@@ -102,9 +104,9 @@ export default function EnrollmentForm({ data, onChange, includePassword, passwo
       </div>
 
       {includePassword && (
-        <div className="border-t border-white/10 pt-4">
-          <h4 className="text-sm font-semibold text-[#ECECFC] mb-3">Account Setup</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-md">
+        <div className="border-t border-line pt-4">
+          <h4 className="text-sm font-semibold text-fg-strong mb-3">Account Setup</h4>
+          <div className={`${gridCls} max-w-md`}>
             <div>
               <label className={labelCls}>Password *</label>
               <input value={password ?? ''} onChange={e => onPasswordChange?.(e.target.value)} className={inputCls} type="password" placeholder="Enter password" />

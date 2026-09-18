@@ -17,13 +17,13 @@ interface ChartCardProps {
 export default function ChartCard({ title, icon: Icon, badge, isLoading, isEmpty, emptyMessage, ariaLabel, footer, children }: ChartCardProps) {
   const showFooter = footer && !isLoading && !isEmpty
   return (
-    <div className="glass-panel rounded-2xl border border-white/10 shadow-sm flex flex-col">
+    <div className="glass-panel rounded-2xl flex flex-col">
       <div className="flex items-start justify-between gap-3 px-4 pt-3 pb-2">
         <div className="flex items-center gap-2.5">
-          <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-[#7C3AED]/15 text-[#C084FC] shrink-0">
+          <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-[#7C3AED]/15 text-accent-purple shrink-0">
             <Icon className="w-3.5 h-3.5" strokeWidth={2} />
           </span>
-          <h2 className="text-[13px] font-semibold text-[#ECECFC]">{title}</h2>
+          <h2 className="text-[13px] font-semibold text-fg-strong">{title}</h2>
         </div>
         {badge}
       </div>
@@ -31,19 +31,19 @@ export default function ChartCard({ title, icon: Icon, badge, isLoading, isEmpty
         {isLoading ? (
           <div className="h-full w-full flex items-end gap-2 animate-pulse" aria-hidden="true">
             {[35, 62, 48, 80, 40, 70, 52, 90, 45, 58].map((h, i) => (
-              <div key={i} className="flex-1 rounded-t-md bg-[#1F1F3D]" style={{ height: `${h}%` }} />
+              <div key={i} className="flex-1 rounded-t-md bg-skeleton" style={{ height: `${h}%` }} />
             ))}
           </div>
         ) : isEmpty ? (
           <div className="h-full w-full flex flex-col items-center justify-center gap-1.5 text-center px-4">
-            <span className="flex items-center justify-center w-9 h-9 rounded-full bg-white/[0.08] text-[#5A5A82]">
+            <span className="flex items-center justify-center w-9 h-9 rounded-full bg-overlay-8 text-fg-faint">
               <Inbox className="w-4 h-4" strokeWidth={1.75} />
             </span>
-            <p className="text-[13px] text-[#8888B3]">{emptyMessage ?? 'No data yet'}</p>
+            <p className="text-[13px] text-fg-faint">{emptyMessage ?? 'No data yet'}</p>
           </div>
         ) : children}
       </div>
-      {showFooter ? <div className="px-4 py-2 border-t border-white/10">{footer}</div> : null}
+      {showFooter ? <div className="px-4 py-2 border-t border-line">{footer}</div> : null}
     </div>
   )
 }

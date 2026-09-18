@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 
-export function useAttendance(date?: string, category?: 'daily' | 'monthly' | 'trainer') {
+export function useAttendance(date?: string, category?: 'member' | 'trainer') {
   return useQuery({
     queryKey: ['attendance', date, category],
     queryFn: async () => {
@@ -11,12 +11,12 @@ export function useAttendance(date?: string, category?: 'daily' | 'monthly' | 't
         .order('check_in_time', { ascending: false })
 
       if (date) query = query.eq('check_in_date', date)
-      if (category && category !== 'trainer') {
-        const { data: planIds } = await supabase
-          .from('memberships')
-          .select('member_id')
-          .eq('plan_name', category === 'daily' ? 'Daily' : 'Monthly')
-        const ids = (planIds ?? []).map(r => r.member_id)
+      if (category === 'member') {
+        const { data: memberIds } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('role', 'member')
+        const ids = (memberIds ?? []).map(r => r.id)
         query = ids.length > 0 ? query.in('member_id', ids) : query.in('member_id', [''])
       } else if (category === 'trainer') {
         const { data: roleIds } = await supabase
