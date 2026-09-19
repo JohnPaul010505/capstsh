@@ -93,7 +93,9 @@ class _ExerciseCard extends StatelessWidget {
     final name = exercise.name;
     final hasVideo = exercise.hasProof;
     final duration = exercise.isDone
-        ? _fmt(exercise.doneAt!.difference(exercise.startedAt ?? sessionStartedAt ?? exercise.doneAt!).inSeconds)
+        ? (exercise.sessionElapsedSeconds != null
+            ? _fmtClock(exercise.sessionElapsedSeconds!)
+            : _fmt(exercise.doneAt!.difference(exercise.startedAt ?? sessionStartedAt ?? exercise.doneAt!).inSeconds))
         : null;
 
     return Padding(
@@ -171,29 +173,31 @@ class _ExerciseCard extends StatelessWidget {
                 onDone: onDone,
               ),
               const SizedBox(height: 8),
-              Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [Color(0xFF5E3AEE), Color(0xFFC56BF0)]),
-                  borderRadius: BorderRadius.circular(999),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFFC56BF0).withAlpha(60),
-                      blurRadius: 14,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: TextButton(
-                  onPressed: hasVideo ? onDone : null,
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    disabledForegroundColor: Colors.white.withAlpha(120),
+              Center(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(colors: [Color(0xFF22C55E), Color(0xFF16A34A)]),
+                    borderRadius: BorderRadius.circular(999),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF16A34A).withAlpha(60),
+                        blurRadius: 14,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-                  child: Text(
-                    hasVideo ? 'Done — Timestamp Now' : 'Record proof to unlock Done',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                  child: TextButton(
+                    onPressed: hasVideo ? onDone : null,
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      disabledForegroundColor: Colors.white.withAlpha(120),
+                    ),
+                    child: Text(
+                      hasVideo ? 'Done — Timestamp Now' : 'Record proof to unlock Done',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                 ),
               ),
@@ -225,5 +229,12 @@ class _ExerciseCard extends StatelessWidget {
     final m = s ~/ 60;
     final sec = s % 60;
     return m > 0 ? '${m}m ${sec}s' : '${sec}s';
+  }
+
+  String _fmtClock(int s) {
+    final h = s ~/ 3600;
+    final m = (s % 3600) ~/ 60;
+    final sec = s % 60;
+    return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}:${sec.toString().padLeft(2, '0')}';
   }
 }

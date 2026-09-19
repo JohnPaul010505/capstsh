@@ -8,10 +8,17 @@ class AppGlowBackground extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-         const Positioned(top: -80, right: -60, child: _GlowBlob(size: 220, colors: [Color(0x337C3AED), Color(0x007C3AED)])),
-         const Positioned(top: 40, left: -70, child: _GlowBlob(size: 200, colors: [Color(0x33A78BFA), Color(0x00A78BFA)])),
-         const Positioned(top: 260, right: -90, child: _GlowBlob(size: 260, colors: [Color(0x33A78BFA), Color(0x00A78BFA)])),
-         const Positioned(bottom: -60, left: -70, child: _GlowBlob(size: 240, colors: [Color(0x336D28D9), Color(0x006D28D9)])),
+        // Top band
+        const Positioned(top: -80, right: -60, child: _GlowBlob(size: 230, colors: [Color(0x4D7C3AED), Color(0x007C3AED)])),
+        const Positioned(top: 30, left: -80, child: _GlowBlob(size: 220, colors: [Color(0x4DA78BFA), Color(0x00A78BFA)])),
+        const Positioned(top: 120, right: 40, child: _GlowBlob(size: 150, colors: [Color(0x3DD946EF), Color(0x00D946EF)])),
+        // Middle band
+        const Positioned(top: 330, left: -90, child: _GlowBlob(size: 250, colors: [Color(0x3D5E3AEE), Color(0x005E3AEE)])),
+        const Positioned(top: 430, right: -80, child: _GlowBlob(size: 240, colors: [Color(0x40EC4899), Color(0x00EC4899)])),
+        // Lower band
+        const Positioned(bottom: 60, left: 30, child: _GlowBlob(size: 170, colors: [Color(0x3322D3EE), Color(0x0022D3EE)])),
+        const Positioned(bottom: -70, right: -70, child: _GlowBlob(size: 260, colors: [Color(0x4D6D28D9), Color(0x006D28D9)])),
+        const Positioned(bottom: -30, left: -60, child: _GlowBlob(size: 200, colors: [Color(0x40C56BF0), Color(0x00C56BF0)])),
         child,
       ],
     );

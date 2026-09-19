@@ -245,6 +245,10 @@ class _MemberShellState extends State<MemberShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // Transparent + extendBody so the page's glow background stays visible
+      // behind/around the floating nav pill (no black band underneath).
+      backgroundColor: Colors.transparent,
+      extendBody: true,
       body: widget.navigationShell,
       bottomNavigationBar: MemberNavBar(
         currentIndex: widget.navigationShell.currentIndex,
@@ -305,6 +309,10 @@ class _TrainerShellState extends State<TrainerShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // Transparent + extendBody so the page's glow background stays visible
+      // behind/around the floating nav pill (no black band underneath).
+      backgroundColor: Colors.transparent,
+      extendBody: true,
       body: widget.child,
       bottomNavigationBar: TrainerNavBar(
         currentIndex: _currentIndex,

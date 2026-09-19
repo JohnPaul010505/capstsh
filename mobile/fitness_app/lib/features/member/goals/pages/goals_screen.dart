@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared/services/supabase_client.dart';
 import 'package:shared/services/notification_service.dart';
 import '../../../../app/design_tokens.dart';
+import '../../../../features/shared/widgets/clay/clay_card.dart';
 import '../../../shared/widgets/app_glow_background.dart';
 import 'create_goal_card.dart';
 import 'goal_card.dart';
@@ -70,11 +71,12 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
                           ? const SizedBox.shrink()
                           : Padding(
                               padding: const EdgeInsets.only(top: 24),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: cardDark,
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
+                              child: ClayCard(
+                                variant: ClayCardVariant.outlined,
+                                backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
+                                customPadding: const EdgeInsets.all(16),
+                                padding: ClayCardPadding.none,
+                                borderRadius: BorderRadius.circular(16),
                                 child: Column(
                                   children: goals.asMap().entries.map((entry) {
                                     final g = entry.value;
@@ -143,7 +145,7 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
           CupertinoButton(
             padding: EdgeInsets.zero,
             onPressed: () => context.pop(),
-            child: Icon(CupertinoIcons.back, color: ClayTokens.clayPrimary),
+            child: Icon(CupertinoIcons.back, color: Colors.white),
           ),
           Expanded(
             child: Text(

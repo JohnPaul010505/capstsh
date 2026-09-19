@@ -52,7 +52,9 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
     try {
       final client = SupabaseClientService().client;
       final now = DateTime.now().toUtc().toIso8601String();
-      final today = now.split('T')[0];
+      // The date column is a calendar date — use the LOCAL day so check-ins
+      // between midnight and 8 AM (PH) don't land on the previous day.
+      final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
       final rows = await client
           .from('attendance')

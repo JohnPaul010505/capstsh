@@ -6,6 +6,8 @@ import 'package:shared/services/supabase_client.dart';
 import 'package:shared/providers/body_measurement_provider.dart';
 import 'package:shared/services/notification_service.dart';
 import '../../../../app/design_tokens.dart';
+import '../../../shared/widgets/clay/clay_card.dart';
+import '../../../shared/widgets/animations.dart';
 import 'date_card.dart';
 
 const bgDark = Color(0xFF0B0D1A);
@@ -15,6 +17,13 @@ const primaryPurple = Color(0xFF7C3AED);
 const highlightPurple = Color(0xFFA855F7);
 const textPrimary = Color(0xFFFFFFFF);
 const textSecondary = Color(0xFFA0A4B8);
+const goalFieldFill = Color(0xFF33335C);
+const fieldIdleBorder = Color(0x12B4B4D0);
+const fieldPlaceholder = Color(0xFFC4C4DC);
+final _calendarFill = Color.alphaBlend(
+  ClayTokens.clayPrimaryLight.withAlpha(25),
+  ClayTokens.clayDarkBase,
+);
 
 final List<String> _goalTypeValues = [
   'Lose Weight',
@@ -297,16 +306,37 @@ class _CreateGoalCardState extends ConsumerState<CreateGoalCard> {
     return 'kg';
   }
 
+  Widget _calendarBuilder(BuildContext context, Widget? child) {
+    return Theme(
+      data: Theme.of(context).copyWith(
+        colorScheme: const ColorScheme.dark(
+          primary: Color(0xFF7C3AED),
+          onPrimary: Color(0xFFFFFFFF),
+          surface: Color(0xFF26233F),
+          onSurface: Color(0xFFECECFC),
+          onSurfaceVariant: Color(0xFFB4B4D0),
+        ),
+        scaffoldBackgroundColor: _calendarFill,
+        datePickerTheme: DatePickerThemeData(
+          backgroundColor: _calendarFill,
+          headerBackgroundColor: _calendarFill,
+          headerForegroundColor: const Color(0xFFFFFFFF),
+        ),
+      ),
+      child: child ?? const SizedBox.shrink(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: cardDark,
+    return StaggeredFadeIn(
+      index: 0,
+      child: ClayCard(
+        variant: ClayCardVariant.outlined,
+        backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
+        customPadding: const EdgeInsets.all(20),
+        padding: ClayCardPadding.none,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withAlpha(14)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -456,6 +486,8 @@ class _CreateGoalCardState extends ConsumerState<CreateGoalCard> {
                         initialDate: startDate,
                         firstDate: DateTime(2000),
                         lastDate: DateTime(2030),
+                        barrierColor: Colors.transparent,
+                        builder: _calendarBuilder,
                       );
                       if (picked != null && picked != startDate) {
                         setState(() {
@@ -477,6 +509,8 @@ class _CreateGoalCardState extends ConsumerState<CreateGoalCard> {
                         initialDate: endDate,
                         firstDate: DateTime(2000),
                         lastDate: DateTime(2030),
+                        barrierColor: Colors.transparent,
+                        builder: _calendarBuilder,
                       );
                       if (picked != null && picked != endDate) {
                         setState(() => endDate = picked);
@@ -566,11 +600,12 @@ class _CreateGoalCardState extends ConsumerState<CreateGoalCard> {
         CupertinoTextField(
           controller: controller,
           placeholder: placeholder,
-          placeholderStyle: TextStyle(color: textSecondary),
+          placeholderStyle: TextStyle(color: fieldPlaceholder),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
           decoration: BoxDecoration(
-            color: inputDark,
+            color: goalFieldFill,
             borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: fieldIdleBorder),
           ),
           keyboardType: suffix == null
               ? TextInputType.text
@@ -584,7 +619,7 @@ class _CreateGoalCardState extends ConsumerState<CreateGoalCard> {
           suffix: suffix != null
               ? Padding(
                   padding: const EdgeInsets.only(right: 12),
-                  child: Text(suffix, style: TextStyle(color: textSecondary)),
+                  child: Text(suffix, style: TextStyle(color: fieldPlaceholder)),
                 )
               : null,
           onChanged: onChanged,
@@ -681,10 +716,10 @@ class _DropdownFieldState extends State<DropdownField> {
           curve: Curves.easeInOut,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
           decoration: BoxDecoration(
-            color: inputDark,
+            color: goalFieldFill,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: _open ? primaryPurple.withAlpha(80) : Colors.transparent,
+              color: _open ? primaryPurple.withAlpha(80) : fieldIdleBorder,
             ),
           ),
           child: Row(
@@ -704,7 +739,7 @@ class _DropdownFieldState extends State<DropdownField> {
                 duration: const Duration(milliseconds: 200),
                 child: Icon(
                   CupertinoIcons.chevron_down,
-                  color: textSecondary,
+                  color: fieldPlaceholder,
                   size: 16,
                 ),
               ),
@@ -738,9 +773,9 @@ class _DropdownMenu extends StatelessWidget {
       child: Container(
         width: width,
         decoration: BoxDecoration(
-          color: cardDark,
+          color: goalFieldFill,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: primaryPurple.withAlpha(20)),
+          border: Border.all(color: fieldIdleBorder),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -800,7 +835,7 @@ class _MenuItem extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                  color: isSelected ? textPrimary : textSecondary,
+                  color: isSelected ? textPrimary : fieldPlaceholder,
                 ),
               ),
             ),

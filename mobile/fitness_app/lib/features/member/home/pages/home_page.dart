@@ -8,7 +8,7 @@ import 'package:shared/services/supabase_client.dart'
     show SupabaseClientService;
 import '../../../shared/widgets/skeleton.dart';
 import '../../../shared/widgets/animations.dart'
-    show StaggeredFadeIn, AnimatedCountUp, AnimatedPulseDot;
+    show StaggeredFadeIn, AnimatedCountUp;
 import '../../onboarding/pages/onboarding_splash_screen.dart';
 import '../../onboarding/providers/onboarding_provider.dart';
 import '../../../../app/design_tokens.dart';
@@ -395,7 +395,9 @@ class _HomeContentState extends State<HomeContent> {
     final offset = showMembershipCard ? 1 : 0;
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(14, 0, 14, 96),
+      // extendBody already reserves the nav-bar height via SafeArea;
+      // this is just a small breathing buffer above the pill.
+      padding: const EdgeInsets.fromLTRB(14, 0, 14, 16),
       physics: const ClampingScrollPhysics(),
       children: [
             const SizedBox(height: 14),
@@ -408,6 +410,7 @@ class _HomeContentState extends State<HomeContent> {
               onBellTap: _toggleNotifications,
               isNotificationOpen: _isNotificationOpen,
               bellKey: _bellKey,
+              memberId: profile.id,
             ),
             NotificationPopup(
               isOpen: _isNotificationOpen,
@@ -450,6 +453,7 @@ class _GreetingRow extends ConsumerWidget {
   final VoidCallback onBellTap;
   final bool isNotificationOpen;
   final GlobalKey bellKey;
+  final String memberId;
 
   const _GreetingRow({
     required this.greeting,
@@ -460,6 +464,7 @@ class _GreetingRow extends ConsumerWidget {
     required this.onBellTap,
     required this.isNotificationOpen,
     required this.bellKey,
+    required this.memberId,
   });
 
   @override
@@ -472,12 +477,19 @@ class _GreetingRow extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(firstName, style: ClayTokens.displaySmall.copyWith(letterSpacing: 0, color: Color(0xFFFFB6C1))),
+              Text(firstName, style: ClayTokens.displaySmall.copyWith(letterSpacing: 0, color: ClayTokens.clayPrimary)),
               const SizedBox(height: 2),
               Row(
                 children: [
-                  const AnimatedPulseDot(),
-                  const SizedBox(width: 5),
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF22C55E),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
                   Text(greeting, style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w500)),
                 ],
               ),
@@ -492,7 +504,10 @@ class _GreetingRow extends ConsumerWidget {
               imageUrl: imageUrl,
               initials: initials,
               size: ClayAvatarSize.md,
-              backgroundColor: Colors.transparent,
+              backgroundColor: ClayTokens.clayDarkSurface,
+              borderColor: Colors.transparent,
+              borderWidth: 0,
+              textColor: Colors.white,
               onTap: onAvatarTap,
             ),
           ],
@@ -566,7 +581,7 @@ class _MembershipCardState extends State<_MembershipCard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('MEMBERSHIP', style: ClayTokens.labelSmall.copyWith(color: ClayTokens.clayPrimaryLight)),
+                Text('MEMBERSHIP', style: ClayTokens.labelSmall.copyWith(color: Colors.white)),
                 const SizedBox(height: 3),
                 Text(plan, style: ClayTokens.titleLarge.copyWith(color: ClayTokens.clayDarkTextPrimary)),
                 const SizedBox(height: 2),
@@ -633,7 +648,7 @@ class _WeekChartState extends State<_WeekChart> {
                       opacity: 1.0,
                       child: Text(
                         '${labels[_selectedDay!]}: ${widget.weekCounts[_selectedDay!]} workout${widget.weekCounts[_selectedDay!] == 1 ? '' : 's'}',
-                        style: TextStyle(fontSize: 10, color: ClayTokens.clayPrimaryLight, fontWeight: FontWeight.w600),
+                        style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w600),
                       ),
                     )
                   else
@@ -999,7 +1014,7 @@ class _MonthSummary extends StatelessWidget {
         Expanded(
           child: _StatCard(
             icon: Icons.fitness_center,
-            iconColor: ClayTokens.clayPrimaryLight,
+            iconColor: Colors.white,
             valueWidget: AnimatedCountUp(
               target: totalWorkouts,
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: ClayTokens.clayDarkTextPrimary),
@@ -1024,3 +1039,4 @@ class _MonthSummary extends StatelessWidget {
     );
   }
 }
+

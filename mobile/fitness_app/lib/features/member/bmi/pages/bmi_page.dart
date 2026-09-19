@@ -8,7 +8,7 @@ import 'package:shared/services/supabase_client.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../shared/widgets/animations.dart';
 import '../../../shared/widgets/app_glow_background.dart';
-import '../../../shared/widgets/glass_card.dart';
+import '../../../shared/widgets/clay/clay_card.dart';
 import '../data/bmi_info.dart';
 import '../providers/bmi_history_provider.dart';
 import 'package:shared/providers/body_measurement_provider.dart';
@@ -202,8 +202,11 @@ class _BmiPageState extends ConsumerState<BmiPage> {
     final weightKg = measurement?['weight_kg'] as num?;
     return StaggeredFadeIn(
       index: 0,
-      child: GlassCard(
-        padding: const EdgeInsets.all(20),
+      child: ClayCard(
+        variant: ClayCardVariant.outlined,
+        backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
+        customPadding: const EdgeInsets.all(20),
+        padding: ClayCardPadding.none,
         borderRadius: BorderRadius.circular(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -215,9 +218,9 @@ class _BmiPageState extends ConsumerState<BmiPage> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF7C3AED).withAlpha(25),
+                    color: const Color(0xFF7C3AED),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFF7C3AED).withAlpha(60)),
+                    border: Border.all(color: Colors.white.withAlpha(20)),
                   ),
                   child: Text(
                     latest.label,
@@ -299,8 +302,11 @@ class _BmiPageState extends ConsumerState<BmiPage> {
     final live = _liveBmi();
     return StaggeredFadeIn(
       index: 1,
-      child: GlassCard(
-        padding: const EdgeInsets.all(16),
+      child: ClayCard(
+        variant: ClayCardVariant.outlined,
+        backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
+        customPadding: const EdgeInsets.all(16),
+        padding: ClayCardPadding.none,
         borderRadius: BorderRadius.circular(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -337,13 +343,13 @@ class _BmiPageState extends ConsumerState<BmiPage> {
                   child: SizedBox(
                     height: 44,
                     child: CupertinoButton(
-                      color: ClayTokens.clayDarkSurfaceElevated,
+                      color: const Color(0xFF2E2E5A),
                       borderRadius: BorderRadius.circular(12),
                       onPressed: _saving ? null : _cancelEditing,
                       child: const Text(
                         'Cancel',
                         style: TextStyle(
-                          color: Color(0xFFB4B4D0),
+                          color: Colors.white,
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                         ),
@@ -433,7 +439,7 @@ class _BmiPageState extends ConsumerState<BmiPage> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: color.withAlpha(25),
+              color: color.withAlpha(80),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: color.withAlpha(60)),
             ),
@@ -470,8 +476,11 @@ class _BmiPageState extends ConsumerState<BmiPage> {
       child: rowsAsync.when(
         data: (rows) {
           if (rows.isEmpty) {
-            return GlassCard(
-              padding: const EdgeInsets.all(20),
+            return ClayCard(
+              variant: ClayCardVariant.outlined,
+              backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
+              customPadding: const EdgeInsets.all(20),
+              padding: ClayCardPadding.none,
               borderRadius: BorderRadius.circular(16),
               child: const Column(
                 children: [
@@ -486,8 +495,11 @@ class _BmiPageState extends ConsumerState<BmiPage> {
               ),
             );
           }
-          return GlassCard(
-            padding: const EdgeInsets.all(16),
+          return ClayCard(
+            variant: ClayCardVariant.outlined,
+            backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
+            customPadding: const EdgeInsets.all(16),
+            padding: ClayCardPadding.none,
             borderRadius: BorderRadius.circular(16),
             child: Column(
               children: rows.asMap().entries.map((entry) {
@@ -529,7 +541,6 @@ class _BmiPageState extends ConsumerState<BmiPage> {
       weightKg: weightKg,
       measuredAt: measuredAt,
     );
-    final color = info == null ? ClayTokens.clayDarkTextTertiary : bmiCategoryColor(info.bmi);
     final detail = [
       if (heightCm != null) '${heightCm.toStringAsFixed(0)} cm',
       if (weightKg != null) '${weightKg.toStringAsFixed(1)} kg',
@@ -560,13 +571,13 @@ class _BmiPageState extends ConsumerState<BmiPage> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: color.withAlpha(25),
+                          color: const Color(0xFF7C3AED),
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: color.withAlpha(60)),
+                          border: Border.all(color: Colors.white.withAlpha(20)),
                         ),
                         child: Text(
                           info.label,
-                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: color),
+                          style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.white),
                         ),
                       ),
                   ],
@@ -619,8 +630,9 @@ class _BmiPageState extends ConsumerState<BmiPage> {
           placeholderStyle: ClayTokens.bodyMedium.copyWith(color: ClayTokens.clayDarkTextTertiary),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
           decoration: BoxDecoration(
-            color: ClayTokens.clayDarkSurfaceElevated,
+            color: const Color(0xFF2A2A4E),
             borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: ClayTokens.clayDarkBorder),
           ),
           keyboardType: keyboardType,
           inputFormatters: [

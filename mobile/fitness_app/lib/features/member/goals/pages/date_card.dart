@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../app/design_tokens.dart';
+
 const bgDark = Color(0xFF0B0D1A);
 const cardDark = Color(0xFF15172A);
 const inputDark = Color(0xFF1E2035);
@@ -7,6 +9,8 @@ const primaryPurple = Color(0xFF7C3AED);
 const highlightPurple = Color(0xFFA855F7);
 const textPrimary = Color(0xFFFFFFFF);
 const textSecondary = Color(0xFFA0A4B8);
+const goalFieldFill = Color(0xFF33335C);
+const fieldIdleBorder = Color(0x12B4B4D0);
 
 class DateCard extends StatelessWidget {
   final String label;
@@ -33,9 +37,16 @@ class DateCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: inputDark,
+          color: ClayTokens.clayPrimaryLight.withAlpha(25),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withAlpha(10)),
+          border: Border.all(color: fieldIdleBorder),
+          boxShadow: [
+            BoxShadow(
+              color: ClayTokens.clayDarkShadowDark,
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

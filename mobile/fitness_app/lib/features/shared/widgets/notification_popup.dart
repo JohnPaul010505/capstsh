@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -277,7 +278,7 @@ class _PopupOverlayState extends ConsumerState<_PopupOverlay> {
           left: arrowLeft,
           child: CustomPaint(
             size: const Size(arrowWidth, arrowHeight),
-            painter: _ArrowPainter(ClayTokens.clayDarkBase), // same as header
+            painter: _ArrowPainter(Colors.white.withAlpha(36)), // glass
           ),
         ),
         Positioned(
@@ -287,30 +288,61 @@ class _PopupOverlayState extends ConsumerState<_PopupOverlay> {
           child: Material(
             color: Colors.transparent,
             child: Container(
-              height: 500,
               decoration: BoxDecoration(
-                color: ClayTokens.clayDarkSurface,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: ClayTokens.clayDarkBorder.withAlpha(50)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withAlpha(100),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
+                    color: Colors.black.withAlpha(105),
+                    blurRadius: 24,
+                    offset: const Offset(0, 10),
+                  ),
+                  BoxShadow(
+                    color: ClayTokens.clayPrimary.withAlpha(36),
+                    blurRadius: 44,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
-              child: Column(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                  child: Container(
+                    height: 500,
+                    decoration: BoxDecoration(
+                      // Dark liquid glass: mostly opaque so text stays crisp,
+                      // but the live background still ghosts through the blur.
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          const Color(0xFF14142A).withAlpha(150),
+                          const Color(0xFF221A4A).withAlpha(120),
+                          const Color(0xFF14142A).withAlpha(160),
+                        ],
+                        stops: const [0.0, 0.55, 1.0],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white.withAlpha(38)),
+                    ),
+                    child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // Header — swaps between plain title and back+title
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                     decoration: BoxDecoration(
-                      color: ClayTokens.clayDarkBase,
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.white.withAlpha(18),
+                          Colors.white.withAlpha(5),
+                        ],
+                      ),
                       borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                      border: Border(
-                        bottom: BorderSide(color: ClayTokens.clayDarkBorder.withAlpha(50)),
+                      border: const Border(
+                        bottom: BorderSide(color: Colors.white24, width: 1.0),
                       ),
                     ),
                     child: Row(
@@ -364,9 +396,12 @@ class _PopupOverlayState extends ConsumerState<_PopupOverlay> {
                   ),
                 ],
               ),
+                ),
+              ),
             ),
           ),
         ),
+      ),
       ],
     );
   }
@@ -423,10 +458,10 @@ class _NotificationItem extends StatelessWidget {
         decoration: BoxDecoration(
           color: notification.read
               ? Colors.transparent
-              : ClayTokens.clayDarkSurfaceElevated,
+              : Colors.white.withAlpha(16),
           border: Border(
             bottom: BorderSide(
-              color: ClayTokens.clayDarkBorder.withAlpha(100),
+              color: Colors.white.withAlpha(18),
               width: 1.0,
             ),
           ),
@@ -475,7 +510,7 @@ class _NotificationDetail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: ClayTokens.clayDarkSurface,
+      color: Colors.transparent,
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

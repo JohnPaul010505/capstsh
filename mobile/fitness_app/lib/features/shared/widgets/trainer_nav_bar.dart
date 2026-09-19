@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../app/design_tokens.dart';
@@ -37,67 +38,116 @@ class TrainerNavBar extends StatelessWidget {
           alignment: Alignment.topCenter,
           clipBehavior: Clip.none,
           children: [
+            // Bar body — liquid glass over the live page background
             Positioned(
               left: 0,
               right: 0,
               bottom: 0,
               child: Container(
-                height: barH,
                 decoration: BoxDecoration(
-                  color: ClayTokens.clayPrimaryLight.withAlpha(25),
                   borderRadius: BorderRadius.circular(40),
-                  border: Border.all(color: Colors.white.withAlpha(18)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: purple.withValues(alpha: 0.16),
+                      blurRadius: 22,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
                 ),
-                child: Row(
-                  children: List.generate(_tabs.length, (i) {
-                    if (i == 2) {
-                      // Center slot: text only for "In & Out"
-                      return Expanded(
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: () => onTap(2),
-                          child: Padding(
-                            padding: EdgeInsets.only(top: circleD - 21),
-                            child: Text(
-                              _tabs[i].label,
-                              textAlign: TextAlign.center,
-                              style: GoogleFonts.dmSans(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: ClayTokens.clayDarkTextSecondary,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(40),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                    child: Container(
+                      height: barH,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Colors.white.withAlpha(21),
+                            ClayTokens.clayPrimaryLight.withAlpha(20),
+                            ClayTokens.clayPrimary.withAlpha(24),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(40),
+                        border: Border.all(color: Colors.white.withAlpha(38)),
+                      ),
+                      child: Stack(
+                        children: [
+                          // Top specular sheen
+                          Positioned(
+                            top: 0,
+                            left: 40,
+                            right: 40,
+                            child: IgnorePointer(
+                              child: Container(
+                                height: 1,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(colors: [
+                                    Colors.white.withAlpha(0),
+                                    Colors.white.withAlpha(120),
+                                    Colors.white.withAlpha(0),
+                                  ]),
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      );
-                    }
-                    final isActive = i == currentIndex;
-                    return Expanded(
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () => onTap(i),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              isActive ? _tabs[i].active : _tabs[i].inactive,
-                              size: 24,
-                              color: isActive ? purple : ClayTokens.clayDarkTextTertiary,
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              _tabs[i].label,
-                              style: GoogleFonts.dmSans(
-                                fontSize: 10,
-                                fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                                color: isActive ? ClayTokens.clayDarkTextPrimary : ClayTokens.clayDarkTextTertiary,
-                              ),
-                            ),
-                          ],
-                        ),
+                          Row(
+                            children: List.generate(_tabs.length, (i) {
+                              if (i == 2) {
+                                // Center slot: text only for "In & Out"
+                                return Expanded(
+                                  child: GestureDetector(
+                                    behavior: HitTestBehavior.opaque,
+                                    onTap: () => onTap(2),
+                                    child: Padding(
+                                      padding: EdgeInsets.only(top: circleD - 21),
+                                      child: Text(
+                                        _tabs[i].label,
+                                        textAlign: TextAlign.center,
+                                        style: GoogleFonts.dmSans(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w600,
+                                          color: ClayTokens.clayDarkTextSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }
+                              final isActive = i == currentIndex;
+                              return Expanded(
+                                child: GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onTap: () => onTap(i),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        isActive ? _tabs[i].active : _tabs[i].inactive,
+                                        size: 24,
+                                        color: isActive ? purple : ClayTokens.clayDarkTextSecondary,
+                                      ),
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        _tabs[i].label,
+                                        style: GoogleFonts.dmSans(
+                                          fontSize: 10,
+                                          fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                                          color: isActive ? ClayTokens.clayDarkTextPrimary : ClayTokens.clayDarkTextSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }),
+                          ),
+                        ],
                       ),
-                    );
-                  }),
+                    ),
+                  ),
                 ),
               ),
             ),

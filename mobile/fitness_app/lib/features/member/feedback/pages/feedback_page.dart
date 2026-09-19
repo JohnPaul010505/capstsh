@@ -6,7 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:shared/services/supabase_client.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../shared/widgets/app_glow_background.dart';
-import '../../../shared/widgets/glass_card.dart';
+import '../../../shared/widgets/clay/clay_card.dart';
 
 final feedbackListProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
   final userId = SupabaseClientService().client.auth.currentUser!.id;
@@ -65,8 +65,11 @@ class _FeedbackPageState extends ConsumerState<FeedbackPage> {
                 child: ListView(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                   children: [
-                    GlassCard(
-                      padding: const EdgeInsets.all(16),
+                    ClayCard(
+                      variant: ClayCardVariant.outlined,
+                      backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
+                      customPadding: const EdgeInsets.all(16),
+                      padding: ClayCardPadding.none,
                       borderRadius: BorderRadius.circular(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -104,8 +107,9 @@ class _FeedbackPageState extends ConsumerState<FeedbackPage> {
                             placeholderStyle: ClayTokens.bodyMedium.copyWith(color: ClayTokens.clayDarkTextTertiary),
                             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                             decoration: BoxDecoration(
-                              color: ClayTokens.clayDarkSurfaceElevated,
+                              color: const Color(0xFF2A2A4E),
                               borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: ClayTokens.clayDarkBorder),
                             ),
                             maxLines: 4,
                             cursorColor: ClayTokens.clayPrimary,
@@ -155,8 +159,11 @@ class _FeedbackPageState extends ConsumerState<FeedbackPage> {
                     ),
                     feedbackAsync.when(
                       data: (feedback) => feedback.isEmpty
-                          ? GlassCard(
-                              padding: const EdgeInsets.all(20),
+                          ? ClayCard(
+                              variant: ClayCardVariant.outlined,
+                              backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
+                              customPadding: const EdgeInsets.all(20),
+                              padding: ClayCardPadding.none,
                               borderRadius: BorderRadius.circular(16),
                               child: const Column(
                                 children: [
@@ -174,8 +181,11 @@ class _FeedbackPageState extends ConsumerState<FeedbackPage> {
                                 ],
                               ),
                             )
-                          : GlassCard(
-                              padding: const EdgeInsets.all(16),
+                          : ClayCard(
+                              variant: ClayCardVariant.outlined,
+                              backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
+                              customPadding: const EdgeInsets.all(16),
+                              padding: ClayCardPadding.none,
                               borderRadius: BorderRadius.circular(16),
                               child: Column(
                                 children: feedback.asMap().entries.map((entry) {

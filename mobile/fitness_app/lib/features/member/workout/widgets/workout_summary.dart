@@ -154,7 +154,12 @@ class WorkoutSummary extends ConsumerWidget {
             const SizedBox(height: 12),
             ...session.exercises.map((e) {
               final name = e.name;
-              final duration = _formatDuration(e.startedAt, e.doneAt);
+              // Cumulative session-clock time at completion — same basis as
+              // the Session Duration readout above (e.g. done at 00:03:23
+              // shows 00:03:23, not wall-clock time).
+              final duration = e.sessionElapsedSeconds != null
+                  ? _format(e.sessionElapsedSeconds!)
+                  : _formatDuration(e.startedAt, e.doneAt);
               final hasVideo = e.hasProof;
               final kcal = session.caloriesFor(e, session.weightKg);
               return Padding(

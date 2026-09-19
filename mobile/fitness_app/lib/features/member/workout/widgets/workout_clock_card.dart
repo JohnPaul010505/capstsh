@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fitness_app/app/design_tokens.dart';
 import '../providers/workout_session_provider.dart';
 import '../../../shared/widgets/animations.dart';
+import '../../../shared/widgets/clay/clay_card.dart';
 
 class WorkoutClockCard extends ConsumerWidget {
   final WorkoutSessionState session;
@@ -19,13 +20,11 @@ class WorkoutClockCard extends ConsumerWidget {
     final isRunning = session.isRunning;
     final canStart = !isRunning && !session.sessionEnded && session.exercises.isNotEmpty;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 22),
-      decoration: BoxDecoration(
-        color: ClayTokens.clayDarkSurface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF38383A).withAlpha(100)),
-      ),
+    return ClayCard(
+      variant: ClayCardVariant.outlined,
+      backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
+      customPadding: const EdgeInsets.symmetric(vertical: 22),
+      padding: ClayCardPadding.none,
       child: Column(
         children: [
           Row(

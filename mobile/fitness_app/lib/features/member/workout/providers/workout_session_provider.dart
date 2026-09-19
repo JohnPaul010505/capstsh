@@ -146,12 +146,29 @@ class WorkoutSessionState {
   /// Calories from the last session summary (0 before a session completes).
   int get latestCalories => _latestCalories ?? 0;
 
-  /// Calories for an individual exercise given the member's weight in kg.
-  double caloriesFor(SessionExercise exercise, double weightKg) {
+  /// Active session-clock seconds spent on [exercise]: the delta between its
+  /// completion point on the session clock and the previous exercise's.
+  /// Falls back to wall-clock time for legacy sessions persisted before
+  /// `sessionElapsedSeconds` was recorded.
+  int activeSecondsFor(SessionExercise exercise) {
+    final idx = exercises.indexOf(exercise);
+    if (idx < 0) return 0;
+    if (exercise.sessionElapsedSeconds != null) {
+      final prev = idx > 0 ? (exercises[idx - 1].sessionElapsedSeconds ?? 0) : 0;
+      final delta = exercise.sessionElapsedSeconds! - prev;
+      return delta < 0 ? 0 : delta;
+    }
     final end = exercise.doneAt ?? DateTime.now();
-    final start = exercise.startedAt ?? startedAt;
-    final seconds = start == null ? 0 : end.difference(start).inSeconds;
-    final hours = seconds / 3600.0;
+    final start = exercise.startedAt ?? startedAt ?? end;
+    final seconds = end.difference(start).inSeconds;
+    return seconds < 0 ? 0 : seconds;
+  }
+
+  /// Calories for an individual exercise given the member's weight in kg.
+  /// kcal = MET x weight(kg) x duration(hours) — based on active session
+  /// time so idle windows don't inflate the burn.
+  double caloriesFor(SessionExercise exercise, double weightKg) {
+    final hours = activeSecondsFor(exercise) / 3600.0;
     return exercise.met * weightKg * hours;
   }
 
@@ -264,11 +281,7 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
   double get weightKg => _weightKg;
 
   double _caloriesFor(SessionExercise exercise) {
-    final end = exercise.doneAt ?? DateTime.now();
-    final start = exercise.startedAt;
-    final seconds = start == null ? 0 : end.difference(start).inSeconds;
-    final hours = seconds / 3600.0;
-    return exercise.met * _weightKg * hours;
+    return state.caloriesFor(exercise, _weightKg);
   }
 
   Future<void> _loadSessionHistory() async {
@@ -361,8 +374,8 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
           memberId: userId,
           exerciseName: e.name,
           workoutName: workoutName,
-          durationMinutes: e.doneAt!.difference(e.startedAt ?? state.startedAt ?? e.doneAt!).inMinutes,
-          durationSeconds: e.doneAt!.difference(e.startedAt ?? state.startedAt ?? e.doneAt!).inSeconds,
+          durationMinutes: state.activeSecondsFor(e) ~/ 60,
+          durationSeconds: state.activeSecondsFor(e),
           weightKg: _weightKg,
           proofUrl: e.proofUrl,
           proofType: e.hasProof ? 'video' : null,
@@ -513,6 +526,9 @@ InteractionMonitor.instance.ensureStarted();
     final e = state.exercises[index];
     if (!e.hasProof) return;
     e.doneAt = DateTime.now();
+    // Stamp where this exercise landed on the session clock so the summary
+    // card shows the same time basis as the session duration.
+    e.sessionElapsedSeconds = state.elapsedSeconds;
     final next = index + 1;
     if (next < state.exercises.length) {
       state.exercises[next].startedAt ??= e.doneAt;
