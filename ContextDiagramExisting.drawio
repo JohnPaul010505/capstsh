@@ -1,0 +1,83 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" agent="Cline" version="24.7.17" type="device">
+  <diagram id="existing-page" name="EXISTING">
+    <mxGraphModel dx="1600" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="eTitle" value="3.4 CONTEXT DIAGRAM" style="text;html=1;align=left;verticalAlign=middle;fontFamily=Times New Roman;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="16" width="400" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="eSub" value="EXISTING" style="text;html=1;align=left;verticalAlign=middle;fontFamily=Times New Roman;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="46" width="200" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="eM" value="GYM MEMBER" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Times New Roman;fontSize=14;fontStyle=1;fillColor=#F5F5F5;strokeColor=#000000;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="100" width="230" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="eT" value="GYM TRAINER / STAFF" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Times New Roman;fontSize=14;fontStyle=1;fillColor=#F5F5F5;strokeColor=#000000;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1090" y="100" width="230" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="eP" value="0&amp;#10;&amp;#10;Existing Manual Fitness&amp;#10;Tracking Process of&amp;#10;Triple J Fitness Center" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Times New Roman;fontSize=12;fillColor=none;strokeColor=#000000;verticalAlign=top;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="500" y="430" width="340" height="240" as="geometry" />
+        </mxCell>
+        <mxCell id="eCap" value="Figure 3: Context Diagram of the Existing Manual Fitness Tracking Process of Triple J Fitness Center" style="text;html=1;align=center;verticalAlign=middle;fontFamily=Times New Roman;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="250" y="800" width="900" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="eA1" value="Workout Records" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;fontFamily=Times New Roman;fontSize=10;labelBackgroundColor=#FFFFFF;strokeColor=#000000;exitX=0.12;exitY=1;exitDx=0;exitDy=0;entryX=0.06;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="eM" target="eP">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eA2" value="Body Measurements" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;fontFamily=Times New Roman;fontSize=10;labelBackgroundColor=#FFFFFF;strokeColor=#000000;exitX=0.31;exitY=1;exitDx=0;exitDy=0;entryX=0.19;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="eM" target="eP">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eA3" value="Calorie Intake Estimates" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;fontFamily=Times New Roman;fontSize=10;labelBackgroundColor=#FFFFFF;strokeColor=#000000;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.32;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="eM" target="eP">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eA4" value="Notebook / Log Sheet" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;fontFamily=Times New Roman;fontSize=10;labelBackgroundColor=#FFFFFF;strokeColor=#000000;exitX=0.69;exitY=1;exitDx=0;exitDy=0;entryX=0.45;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="eM" target="eP">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eA5" value="Advice Applied" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;fontFamily=Times New Roman;fontSize=10;labelBackgroundColor=#FFFFFF;strokeColor=#000000;exitX=0.88;exitY=1;exitDx=0;exitDy=0;entryX=0.58;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="eM" target="eP">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eB1" value="Verbal Advice" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;fontFamily=Times New Roman;fontSize=10;labelBackgroundColor=#FFFFFF;strokeColor=#000000;exitX=0;exitY=0.1;exitDx=0;exitDy=0;entryX=1;entryY=0.12;entryDx=0;entryDy=0;" edge="1" parent="1" source="eP" target="eM">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eB2" value="Suggested Adjustments" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;fontFamily=Times New Roman;fontSize=10;labelBackgroundColor=#FFFFFF;strokeColor=#000000;exitX=0;exitY=0.28;exitDx=0;exitDy=0;entryX=1;entryY=0.3;entryDx=0;entryDy=0;" edge="1" parent="1" source="eP" target="eM">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eB3" value="Incomplete Records / Skipped Days" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;fontFamily=Times New Roman;fontSize=10;labelBackgroundColor=#FFFFFF;strokeColor=#000000;exitX=0;exitY=0.46;exitDx=0;exitDy=0;entryX=1;entryY=0.48;entryDx=0;entryDy=0;" edge="1" parent="1" source="eP" target="eM">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eB4" value="No Data for Review" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;fontFamily=Times New Roman;fontSize=10;labelBackgroundColor=#FFFFFF;strokeColor=#000000;exitX=0;exitY=0.64;exitDx=0;exitDy=0;entryX=1;entryY=0.66;entryDx=0;entryDy=0;" edge="1" parent="1" source="eP" target="eM">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eB5" value="Progress Satisfaction Query" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;fontFamily=Times New Roman;fontSize=10;labelBackgroundColor=#FFFFFF;strokeColor=#000000;exitX=0;exitY=0.82;exitDx=0;exitDy=0;entryX=1;entryY=0.86;entryDx=0;entryDy=0;" edge="1" parent="1" source="eP" target="eM">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eC1" value="Manual Record Review" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;fontFamily=Times New Roman;fontSize=10;labelBackgroundColor=#FFFFFF;strokeColor=#000000;exitX=0.15;exitY=1;exitDx=0;exitDy=0;entryX=0.72;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="eT" target="eP">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eC2" value="Review Availability" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;fontFamily=Times New Roman;fontSize=10;labelBackgroundColor=#FFFFFF;strokeColor=#000000;exitX=0.36;exitY=1;exitDx=0;exitDy=0;entryX=0.81;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="eT" target="eP">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eC3" value="Verbal Feedback / Written Notes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;fontFamily=Times New Roman;fontSize=10;labelBackgroundColor=#FFFFFF;strokeColor=#000000;exitX=0.58;exitY=1;exitDx=0;exitDy=0;entryX=0.9;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="eT" target="eP">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eC4" value="Observation-Based Adjustments" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;fontFamily=Times New Roman;fontSize=10;labelBackgroundColor=#FFFFFF;strokeColor=#000000;exitX=0.8;exitY=1;exitDx=0;exitDy=0;entryX=0.97;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="eT" target="eP">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eD1" value="Member Notebook / Log Sheet" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;fontFamily=Times New Roman;fontSize=10;labelBackgroundColor=#FFFFFF;strokeColor=#000000;exitX=1;exitY=0.1;exitDx=0;exitDy=0;entryX=0;entryY=0.12;entryDx=0;entryDy=0;" edge="1" parent="1" source="eP" target="eT">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eD2" value="Member Progress Records" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;fontFamily=Times New Roman;fontSize=10;labelBackgroundColor=#FFFFFF;strokeColor=#000000;exitX=1;exitY=0.35;exitDx=0;exitDy=0;entryX=0;entryY=0.38;entryDx=0;entryDy=0;" edge="1" parent="1" source="eP" target="eT">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eD3" value="Review Request" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;fontFamily=Times New Roman;fontSize=10;labelBackgroundColor=#FFFFFF;strokeColor=#000000;exitX=1;exitY=0.6;exitDx=0;exitDy=0;entryX=0;entryY=0.64;entryDx=0;entryDy=0;" edge="1" parent="1" source="eP" target="eT">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eD4" value="&amp;#34;Come Back Later&amp;#34; Notice" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;fontFamily=Times New Roman;fontSize=10;labelBackgroundColor=#FFFFFF;strokeColor=#000000;exitX=1;exitY=0.85;exitDx=0;exitDy=0;entryX=0;entryY=0.88;entryDx=0;entryDy=0;" edge="1" parent="1" source="eP" target="eT">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
