@@ -29,16 +29,8 @@ export function useGeneratePredictions() {
         throw new Error(err.detail || err.error || 'Failed to generate predictions')
       }
       const data = await res.json()
-      const { error: insertError } = await supabase.from('predictions').insert(
-        data.map((p: any) => ({
-          member_id: memberId,
-          metric_name: p.prediction_type,
-          predicted_value: String(p.predicted_value),
-          predicted_date: new Date(Date.now() + daysAhead * 86400000).toISOString().split('T')[0],
-          confidence: p.confidence,
-        }))
-      )
-      if (insertError) throw insertError
+      // The AI service persists the forecasts itself (service role) — inserting
+      // here as well would create duplicate rows.
       return data
     },
     onSuccess: () => {

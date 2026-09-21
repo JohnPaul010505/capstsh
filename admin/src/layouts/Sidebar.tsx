@@ -6,6 +6,7 @@ import ConfirmDialog from '@/components/ConfirmDialog'
 import {
   LayoutDashboard, Users, Dumbbell, CreditCard,
   CalendarCheck, BarChart3, QrCode, Settings, LogOut, MessageSquare, Bell,
+  TrendingUp,
 } from 'lucide-react'
 
 const navItems = [
@@ -17,6 +18,7 @@ const navItems = [
   { to: '/attendance', label: 'Attendance', icon: CalendarCheck },
   { to: '/reports/inactive', label: 'Reports', icon: BarChart3, end: true },
   { to: '/reports/feedback', label: 'Feedback', icon: MessageSquare },
+  { to: '/predictions', label: 'Predictions', icon: TrendingUp },
   { to: '/notifications', label: 'Notifications', icon: Bell },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]

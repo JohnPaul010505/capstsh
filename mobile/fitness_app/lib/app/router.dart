@@ -19,6 +19,7 @@ import '../features/trainer/progress/pages/member_progress_page.dart';
 import '../features/trainer/chat/pages/chat_list_page.dart';
 import '../features/trainer/chat/pages/chat_room_page.dart';
 import '../features/trainer/profile/pages/profile_page.dart' as trainer_profile;
+import '../features/trainer/feedback/pages/give_feedback_page.dart';
 import 'package:fitness_app/features/trainer/set_plan/pages/create_plan_screen.dart';
 import 'package:fitness_app/features/trainer/set_plan/pages/record_screen.dart';
 import '../features/shared/checkin/checkin_page.dart';
@@ -213,6 +214,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/trainer/set-plan',
         pageBuilder: (_, __) => _iosPush(const CreatePlanScreen()),
+      ),
+      GoRoute(
+        path: '/trainer/feedback',
+        pageBuilder: (_, __) => _iosPush(const GiveFeedbackPage()),
       ),
       GoRoute(
         path: '/trainer/notifications',

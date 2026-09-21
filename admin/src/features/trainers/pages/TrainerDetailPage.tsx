@@ -41,7 +41,7 @@ export default function TrainerDetailPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from('trainer_feedback')
-        .select('*, profiles!trainer_feedback_member_id_fkey(full_name)')
+        .select('*, profiles!trainer_feedback_member_id_fkey(full_name), rating, rated_at')
         .eq('trainer_id', id)
         .order('created_at', { ascending: false })
         .limit(10)
@@ -193,8 +193,23 @@ export default function TrainerDetailPage() {
       </div>
 
       <div className="glass-card rounded-xl overflow-hidden flex flex-col min-h-0">
-        <div className="px-4 py-3 border-b border-line">
+        <div className="px-4 py-3 border-b border-line flex items-center justify-between">
           <h2 className="font-semibold text-fg-strong">Recent Feedback</h2>
+          {(() => {
+            const rated = (recentFeedback ?? []).filter((f: any) => f.rating != null)
+            if (rated.length === 0) return null
+            const avg = rated.reduce((s: number, f: any) => s + f.rating, 0) / rated.length
+            return (
+              <span className="inline-flex items-center gap-2 text-xs text-fg-muted">
+                <span className="text-[#FFC107] text-sm">
+                  {'★'.repeat(Math.round(avg))}
+                  <span className="text-fg-faint">{'★'.repeat(5 - Math.round(avg))}</span>
+                </span>
+                <span className="font-semibold text-fg-strong">{avg.toFixed(1)}</span>
+                <span>/ 5 · {rated.length} rated</span>
+              </span>
+            )
+          })()}
         </div>
         {recentFeedback?.length === 0 ? (
           <div className="text-center py-6 text-fg-muted">No feedback yet</div>
@@ -205,6 +220,7 @@ export default function TrainerDetailPage() {
                 <tr className="border-b border-line bg-overlay-5">
                   <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Member</th>
                   <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Feedback</th>
+                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Rating</th>
                   <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Date</th>
                 </tr>
               </thead>
@@ -213,6 +229,16 @@ export default function TrainerDetailPage() {
                   <tr key={f.id} className="border-b border-line-soft last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
                     <td className="px-3 py-2 text-sm font-medium text-fg-strong">{f.profiles?.full_name}</td>
                     <td className="px-3 py-2 text-sm text-fg max-w-md truncate">{f.content}</td>
+                    <td className="px-3 py-2 text-sm whitespace-nowrap">
+                      {f.rating ? (
+                        <span className="text-[#FFC107]">
+                          {'★'.repeat(f.rating)}
+                          <span className="text-fg-faint">{'★'.repeat(5 - f.rating)}</span>
+                        </span>
+                      ) : (
+                        <span className="text-fg-faint">—</span>
+                      )}
+                    </td>
                     <td className="px-3 py-2 text-sm text-fg-muted">{new Date(f.created_at).toLocaleDateString()}</td>
                   </tr>
                 ))}

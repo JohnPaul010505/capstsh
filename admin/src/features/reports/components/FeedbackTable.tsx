@@ -5,7 +5,11 @@ interface FeedbackRow {
   trainer_id: string
   member_id: string
   content: string
+  rating?: number | null
+  rated_at?: string | null
   created_at: string
+  member?: { full_name: string }
+  trainer?: { full_name: string }
   profiles?: { full_name: string }
 }
 
@@ -38,17 +42,33 @@ export function FeedbackTable({ data, isLoading }: FeedbackTableProps) {
             <thead>
               <tr className="border-b border-line bg-overlay-5">
                 <th className="text-left px-4 py-3 text-sm font-medium text-fg-muted">Member</th>
+                <th className="text-left px-4 py-3 text-sm font-medium text-fg-muted">Trainer</th>
                 <th className="text-left px-4 py-3 text-sm font-medium text-fg-muted">Feedback</th>
+                <th className="text-left px-4 py-3 text-sm font-medium text-fg-muted">Rating</th>
                 <th className="text-right px-4 py-3 text-sm font-medium text-fg-muted">Date</th>
               </tr>
             </thead>
             <tbody>
               {data.map(f => (
                 <tr key={f.id} className="border-b border-line-soft last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
-                  <td className="px-4 py-3 text-sm font-medium text-fg-strong">{f.profiles?.full_name ?? 'Unknown'}</td>
+                  <td className="px-4 py-3 text-sm font-medium text-fg-strong">{f.member?.full_name ?? f.profiles?.full_name ?? 'Unknown'}</td>
+                  <td className="px-4 py-3 text-sm text-fg">{f.trainer?.full_name ?? '—'}</td>
                   <td className="px-4 py-3 text-sm text-fg flex items-start gap-2">
                     <MessageSquare className="w-3.5 h-3.5 text-fg-muted mt-0.5 shrink-0" />
                     <span>{f.content}</span>
+                  </td>
+                  <td className="px-4 py-3 text-sm whitespace-nowrap">
+                    {f.rating ? (
+                      <span className="inline-flex items-center gap-1">
+                        <span className="text-[#FFC107]">
+                          {'★'.repeat(f.rating)}
+                          <span className="text-fg-faint">{'★'.repeat(5 - f.rating)}</span>
+                        </span>
+                        <span className="text-fg-muted">{f.rating}/5</span>
+                      </span>
+                    ) : (
+                      <span className="text-fg-faint">Not rated</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-sm text-right text-fg whitespace-nowrap">
                     {new Date(f.created_at).toLocaleDateString()}

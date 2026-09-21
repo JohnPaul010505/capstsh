@@ -18,6 +18,7 @@ import CoachFeedbackPage from '@/features/reports/pages/CoachFeedbackPage'
 import QRPage from '@/features/qr/pages/QRPage'
 import NotificationsPage from '@/features/notifications/pages/NotificationsPage'
 import SettingsPage from '@/features/settings/pages/SettingsPage'
+import PredictionsPage from '@/features/predictions/pages/PredictionsPage'
 
 /** How long the login overlay stays mounted during the exit handoff (ms). */
 const LOGIN_EXIT_MS = 750
@@ -75,6 +76,7 @@ function AppRoutes() {
             <Route path="/reports" element={<ReportsPage />} />
             <Route path="/reports/inactive" element={<InactiveReportPage />} />
             <Route path="/reports/feedback" element={<CoachFeedbackPage />} />
+            <Route path="/predictions" element={<PredictionsPage />} />
             <Route path="/qr" element={<QRPage />} />
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
