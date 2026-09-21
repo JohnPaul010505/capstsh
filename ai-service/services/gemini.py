@@ -4,11 +4,14 @@ from typing import Any, Optional
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GEMINI_ENABLED = bool(GEMINI_API_KEY)
+# google-generativeai 0.8.x passes the model string straight to the REST API - any valid
+# model name works. "gemini-3.6-flash" does not exist and made every call raise.
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
 
 if GEMINI_ENABLED:
     import google.generativeai as genai  # type: ignore
     genai.configure(api_key=GEMINI_API_KEY)  # type: ignore
-    model = genai.GenerativeModel("gemini-3.6-flash")  # type: ignore
+    model = genai.GenerativeModel(GEMINI_MODEL)  # type: ignore
 
 def food_recommendations_ai(
     meal_type: str,

@@ -16,10 +16,11 @@ from services import db
 logger = logging.getLogger(__name__)
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
 BLUR_THRESHOLD = float(os.getenv("BLUR_THRESHOLD", "100.0"))
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)  # type: ignore
-    model = genai.GenerativeModel("gemini-3.6-flash")  # type: ignore
+    model = genai.GenerativeModel(GEMINI_MODEL)  # type: ignore
 
 
 class IdentifyFoodRequest(BaseModel):

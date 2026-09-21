@@ -67,6 +67,8 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
   _AiStep _aiStep = _AiStep.idle;
   double _aiProgress = 0.0;
   String? _identificationError;
+  String? _saveError;
+  bool _memberEdited = false;
 
   final _foodController = TextEditingController();
   final _searchController = TextEditingController();
@@ -74,7 +76,7 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
   final _proteinController = TextEditingController();
   final _carbsController = TextEditingController();
   final _fatController = TextEditingController();
-  String _mealType = 'breakfast';
+  String? _mealType;
   File? _image;
   String? _imagePublicUrl;
 
@@ -125,6 +127,9 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
       _customPortionController.clear();
       _baseServingSizeG = null;
       _mealTypeSelected = false;
+      _mealType = null;
+      _memberEdited = false;
+      _saveError = null;
       _searchResults = [];
       _showSearch = false;
       _searching = false;
@@ -152,6 +157,9 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
       _customPortionController.clear();
       _baseServingSizeG = null;
       _mealTypeSelected = false;
+      _mealType = null;
+      _memberEdited = false;
+      _saveError = null;
       _searchResults = [];
       _showSearch = false;
       _searching = false;
@@ -221,7 +229,7 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
       _aiStep = _AiStep.idle;
       _aiProgress = 0.0;
       _identificationError = null;
-      _mealTypeSelected = false;
+      _memberEdited = false;
     });
   }
 
@@ -252,6 +260,8 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
       _aiStep = _AiStep.uploading;
       _aiProgress = 0.0;
       _identificationError = null;
+      _memberEdited = false;
+      _saveError = null;
     });
 
     try {
@@ -260,7 +270,7 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
       final bytes = await _image!.readAsBytes();
       final path = 'meals/$userId/${DateTime.now().millisecondsSinceEpoch}.jpg';
 
-      setState(() => _aiProgress = 0.15);
+      setState(() => _aiProgress = 0.2);
       await client.storage.from('proofs').uploadBinary(
         path, bytes,
         fileOptions: const FileOptions(contentType: 'image/jpeg'),
@@ -270,7 +280,7 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
 
       setState(() {
         _aiStep = _AiStep.identifying;
-        _aiProgress = 0.35;
+        _aiProgress = 0.6;
       });
 
       final apiBase = _getApiBaseUrl();
@@ -289,7 +299,7 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
         setState(() {
           _candidates = candidates;
           _aiStep = _AiStep.loadingNutrition;
-          _aiProgress = 0.9;
+          _aiProgress = 0.85;
         });
         if (_candidates.isNotEmpty) {
           _selectCandidate(_candidates.first);
@@ -350,6 +360,8 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
     setState(() {
       _selectedCandidate = null;
       _candidates = [];
+      // Overriding the AI pick (photo mode) with a database hit counts as an edit.
+      _memberEdited = _addFoodMode != AddFoodMode.manual;
       _autoFilled = true;
       _autoFillSource = food.source.isEmpty ? 'Nutrition database' : food.source;
       _portionMultiplier = 1.0;
@@ -367,9 +379,13 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
     _fatController.text = food.fatG.toStringAsFixed(1);
   }
 
-  void _selectCandidate(Map<String, dynamic> candidate) {
+  void _selectCandidate(Map<String, dynamic> candidate, {bool userInitiated = false}) {
     setState(() {
       _selectedCandidate = candidate;
+      if (userInitiated) {
+        // The member picked a chip themselves - an edit only if it is not the AI's top pick.
+        _memberEdited = _candidates.isEmpty || !identical(candidate, _candidates.first);
+      }
       _autoFilled = candidate['matched'] == true;
       _autoFillSource = candidate['source'] ?? 'AI guess';
       _portionMultiplier = 1.0;
@@ -448,19 +464,26 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
 
   bool get _canSave {
     if (_saving) return false;
+    if (_mealType == null) return false; // meal type is required in every mode
     if (_addFoodMode == AddFoodMode.manual) {
       return _foodController.text.trim().isNotEmpty &&
              _caloriesController.text.trim().isNotEmpty;
     }
     if (_addFoodMode == AddFoodMode.capture || _addFoodMode == AddFoodMode.gallery) {
-      return _imagePublicUrl != null && _selectedCandidate != null;
+      // An unmatched AI candidate is still saveable (macros stay editable) as long as
+      // the photo went through and we have a name from the member or the AI.
+      return _imagePublicUrl != null &&
+             (_selectedCandidate != null || _foodController.text.trim().isNotEmpty);
     }
     return false;
   }
 
   Future<void> _save() async {
-    if (_foodController.text.trim().isEmpty) return;
-    setState(() => _saving = true);
+    if (_foodController.text.trim().isEmpty || _mealType == null) return;
+    setState(() {
+      _saving = true;
+      _saveError = null;
+    });
     try {
       final client = SupabaseClientService().client;
       final userId = client.auth.currentUser!.id;
@@ -474,6 +497,13 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
         );
         imageUrl = client.storage.from('proofs').getPublicUrl(path);
       }
+      // member_edited (Table 19): picked a non-top candidate, overrode via search,
+      // or renamed the AI's pick before saving.
+      final aiName = _selectedCandidate?['name']?.toString();
+      final memberEdited = _memberEdited ||
+          (aiName != null &&
+              aiName.isNotEmpty &&
+              _foodController.text.trim() != aiName);
       await client.from('meal_logs').insert({
         'member_id': userId,
         'meal_type': _mealType,
@@ -485,6 +515,21 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
         'photo_url': imageUrl,
         'meal_time': DateTime.now().toIso8601String(),
       });
+      // AI provenance log (Table 19) - only when the entry came from a photo.
+      // Secondary to the meal itself: a failure here warns but never loses the meal.
+      if (imageUrl != null) {
+        try {
+          await client.from('food_identification_logs').insert({
+            'member_id': userId,
+            'photo_url': imageUrl,
+            'ai_candidates': _candidates,
+            'selected_food': _foodController.text.trim(),
+            'member_edited': memberEdited,
+          });
+        } catch (logError) {
+          debugPrint('FOOD IDENTIFICATION LOG failed (meal was saved): $logError');
+        }
+      }
       _foodController.clear();
       _caloriesController.clear();
       _proteinController.clear();
@@ -492,7 +537,14 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
       _fatController.clear();
       _closeForm();
       ref.invalidate(todayMealsProvider);
-    } catch (_) {} finally {
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _saveError =
+              'Could not save the meal. Check your connection and try again.\n$e';
+        });
+      }
+    } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
@@ -726,6 +778,7 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
             ],
             DropdownButtonFormField<String>(
               initialValue: _mealType,
+              hint: const Text('Select meal type *', style: TextStyle(color: Color(0xFF8E8E93), fontSize: 13)),
               items: mealTypes.map((t) => DropdownMenuItem(
                 value: t,
                 child: Text(t[0].toUpperCase() + t.substring(1), style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 13)),
@@ -733,12 +786,10 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
               onChanged: (v) {
                 setState(() {
                   _mealType = v!;
-                  if (!isManual) {
-                    _mealTypeSelected = true;
-                  }
+                  _mealTypeSelected = true;
                 });
               },
-              decoration: const InputDecoration(labelText: 'Meal Type', filled: true),
+              decoration: const InputDecoration(labelText: 'Meal Type *', filled: true),
               dropdownColor: const Color(0xFF2C2C2E),
               style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 13),
             ),
@@ -951,7 +1002,7 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
                   return ChoiceChip(
                     label: Text(c['name'] ?? 'Unknown', style: const TextStyle(fontSize: 12)),
                     selected: isSelected,
-                    onSelected: isAiBusy ? null : (_) => _selectCandidate(c),
+                    onSelected: isAiBusy ? null : (_) => _selectCandidate(c, userInitiated: true),
                     selectedColor: const Color(0xFF30D158),
                     backgroundColor: const Color(0xFF2C2C2E),
                     labelStyle: TextStyle(color: isSelected ? Colors.white : const Color(0xFF8E8E93)),
@@ -960,6 +1011,46 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
               ),
               const SizedBox(height: 8),
             ],
+            if (!isManual &&
+                _selectedCandidate != null &&
+                _selectedCandidate!['matched'] != true) ...[
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFF9500).withAlpha(25),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Text(
+                  'This dish is not in the FNRI nutrition database yet, so the macros are blank. Search below to fill them, or type them manually.',
+                  style: TextStyle(fontSize: 11, color: Color(0xFFFF9500)),
+                ),
+              ),
+              const SizedBox(height: 8),
+              _buildSearchField(),
+              ..._buildSearchResults(),
+              const SizedBox(height: 8),
+            ],
+            if (_saveError != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(_saveError!, style: const TextStyle(fontSize: 12, color: Color(0xFFFF453A))),
+                    const SizedBox(height: 8),
+                    ElevatedButton.icon(
+                      onPressed: _saving ? null : _save,
+                      icon: const Icon(CupertinoIcons.refresh, size: 16),
+                      label: const Text('Retry save'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2C2C2E),
+                        foregroundColor: const Color(0xFFD6A5FF),
+                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             if (_identificationError != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
