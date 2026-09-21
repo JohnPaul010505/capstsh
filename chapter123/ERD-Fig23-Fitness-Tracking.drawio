@@ -1,0 +1,100 @@
+<mxfile host="app.diagrams.net" agent="Cline">
+  <diagram id="fig23" name="FIG 23 - ERD Fitness Tracking, Goals and Trainer Feedback">
+    <mxGraphModel dx="419" dy="308" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1380" pageHeight="1082" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="e0" parent="1" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=12;" value="&lt;table border=&quot;1&quot; cellpadding=&quot;4&quot; cellspacing=&quot;0&quot; width=&quot;100%&quot;&gt;&lt;tr&gt;&lt;td align=&quot;center&quot;&gt;&lt;b&gt;workout_logs&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;------------------------------&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;&lt;u&gt;id (PK)&lt;/u&gt;&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;member_id (FK)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;exercise_name&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;sets&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;reps&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;weight&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;weight_kg&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;duration_minutes&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;duration_seconds&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;workout_name&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;total_calories&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;notes&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;proof_url&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;proof_type&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;logged_at&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" vertex="1">
+          <mxGeometry height="424" width="130" x="270" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" parent="1" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=12;" value="&lt;table border=&quot;1&quot; cellpadding=&quot;4&quot; cellspacing=&quot;0&quot; width=&quot;100%&quot;&gt;&lt;tr&gt;&lt;td align=&quot;center&quot;&gt;&lt;b&gt;body_measurements&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;------------------------------&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;&lt;u&gt;id (PK)&lt;/u&gt;&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;member_id (FK)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;weight_kg&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;height_cm&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;body_fat_pct&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;chest_cm&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;waist_cm&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;hips_cm&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;arm_cm&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;thigh_cm&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;measured_at&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" vertex="1">
+          <mxGeometry height="326" width="137.5" x="146" y="520" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" parent="1" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=12;" value="&lt;table border=&quot;1&quot; cellpadding=&quot;4&quot; cellspacing=&quot;0&quot; width=&quot;100%&quot;&gt;&lt;tr&gt;&lt;td align=&quot;center&quot;&gt;&lt;b&gt;goals&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;------------------------------&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;&lt;u&gt;id (PK)&lt;/u&gt;&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;member_id (FK)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;title&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;description&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;target_value&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;current_value&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;unit&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;deadline&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;status&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" vertex="1">
+          <mxGeometry height="274" width="137.5" x="330" y="730" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" parent="1" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=12;" value="&lt;table border=&quot;1&quot; cellpadding=&quot;4&quot; cellspacing=&quot;0&quot; width=&quot;100%&quot;&gt;&lt;tr&gt;&lt;td align=&quot;center&quot;&gt;&lt;b&gt;member_goal_plans&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;------------------------------&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;&lt;u&gt;id (PK)&lt;/u&gt;&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;member_id (FK)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;trainer_id (FK)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;start_date&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;end_date&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;timeframe&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;notes&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;food_plan&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;exercise_plan&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" vertex="1">
+          <mxGeometry height="274" width="110" x="1020" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" parent="1" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=12;" value="&lt;table border=&quot;1&quot; cellpadding=&quot;4&quot; cellspacing=&quot;0&quot; width=&quot;100%&quot;&gt;&lt;tr&gt;&lt;td align=&quot;center&quot;&gt;&lt;b&gt;plan_day_completions&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;------------------------------&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;&lt;u&gt;id (PK)&lt;/u&gt;&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;plan_id (FK)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;member_id (FK)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;day_number&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;date&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;completed_exercises&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;completed_foods&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;is_complete&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;notified_member&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;notified_trainer&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" vertex="1">
+          <mxGeometry height="304" width="130" x="1210" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" parent="1" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=12;" value="&lt;table border=&quot;1&quot; cellpadding=&quot;4&quot; cellspacing=&quot;0&quot; width=&quot;100%&quot;&gt;&lt;tr&gt;&lt;td align=&quot;center&quot;&gt;&lt;b&gt;trainer_feedback&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;------------------------------&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;&lt;u&gt;id (PK)&lt;/u&gt;&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;trainer_id (FK)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;member_id (FK)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;content&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;created_at&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" vertex="1">
+          <mxGeometry height="187" width="130" x="1060" y="560" as="geometry" />
+        </mxCell>
+        <mxCell id="ehub" parent="1" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=12;" value="&lt;table border=&quot;1&quot; cellpadding=&quot;4&quot; cellspacing=&quot;0&quot; width=&quot;100%&quot;&gt;&lt;tr&gt;&lt;td align=&quot;center&quot;&gt;&lt;b&gt;profiles&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;------------------------------&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;&lt;u&gt;id (PK)&lt;/u&gt;&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;role&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;full_name&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;email&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;phone&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;avatar_url&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;date_of_birth&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;gender&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;code&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;emergency_contact_name&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;emergency_contact_phone&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;specialty&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;available_days&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;fitness_goal&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;is_active&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" vertex="1">
+          <mxGeometry height="418" width="137.5" x="560" y="340" as="geometry" />
+        </mxCell>
+        <mxCell id="r0" edge="1" parent="1" source="e0" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;endArrow=open;endFill=0;fontFamily=Times New Roman;fontSize=10;fontStyle=1;labelBackgroundColor=#FFFFFF;exitX=1.000;exitY=0.500;exitDx=0;exitDy=0;entryX=0.000;entryY=0.250;entryDx=0;entryDy=0;" target="ehub" value="belongs to  |  member (mandatory)">
+          <mxGeometry relative="1" x="-0.488" y="-12" as="geometry">
+            <mxPoint x="12" y="-12" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="r1" edge="1" parent="1" source="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;endArrow=open;endFill=0;fontFamily=Times New Roman;fontSize=10;fontStyle=1;labelBackgroundColor=#FFFFFF;exitX=1.000;exitY=0.500;exitDx=0;exitDy=0;entryX=0.000;entryY=0.500;entryDx=0;entryDy=0;" target="ehub" value="belongs to  |  member (mandatory)">
+          <mxGeometry relative="1" x="0.5128" y="9" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="r2" edge="1" parent="1" source="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;endArrow=open;endFill=0;fontFamily=Times New Roman;fontSize=10;fontStyle=1;labelBackgroundColor=#FFFFFF;exitX=1.000;exitY=0.500;exitDx=0;exitDy=0;entryX=0.000;entryY=0.750;entryDx=0;entryDy=0;" target="ehub" value="belongs to  |  member (mandatory)">
+          <mxGeometry relative="1" x="0.394" y="74" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="r3" edge="1" parent="1" source="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;endArrow=open;endFill=0;fontFamily=Times New Roman;fontSize=10;fontStyle=1;labelBackgroundColor=#FFFFFF;exitX=0.000;exitY=0.300;exitDx=0;exitDy=0;entryX=1.000;entryY=0.167;entryDx=0;entryDy=0;" target="ehub" value="belongs to  |  member (mandatory)">
+          <mxGeometry relative="1" x="-0.4387" y="-12" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="790" y="162.2" />
+              <mxPoint x="790" y="409.8" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="r4" edge="1" parent="1" source="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;endArrow=open;endFill=0;fontFamily=Times New Roman;fontSize=10;fontStyle=1;labelBackgroundColor=#FFFFFF;exitX=0.000;exitY=0.700;exitDx=0;exitDy=0;" value="assigned to  |  trainer (mandatory)">
+          <mxGeometry relative="1" x="-0.6805" y="8" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="858.75" y="271.83" />
+              <mxPoint x="858.75" y="450" />
+              <mxPoint x="697.5" y="450" />
+            </Array>
+            <mxPoint x="697.5" y="450" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="r5" edge="1" parent="1" source="e4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;endArrow=open;endFill=0;fontFamily=Times New Roman;fontSize=10;fontStyle=1;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.500;entryY=0.000;entryDx=0;entryDy=0;" target="e3" value="is part of  |  plan (mandatory)">
+          <mxGeometry relative="1" x="0.4211" y="10" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1275" y="20" />
+              <mxPoint x="1075" y="20" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="r6" edge="1" parent="1" source="e4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;endArrow=open;endFill=0;fontFamily=Times New Roman;fontSize=10;fontStyle=1;labelBackgroundColor=#FFFFFF;exitX=0.000;exitY=0.500;exitDx=0;exitDy=0;entryX=1.001;entryY=0.352;entryDx=0;entryDy=0;entryPerimeter=0;" target="ehub" value="belongs to  |  member (mandatory)">
+          <mxGeometry relative="1" x="-0.0338" y="-12" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="697.62" y="482" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="r7" edge="1" parent="1" source="e5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;endArrow=open;endFill=0;fontFamily=Times New Roman;fontSize=10;fontStyle=1;labelBackgroundColor=#FFFFFF;exitX=0.000;exitY=0.300;exitDx=0;exitDy=0;entryX=1.000;entryY=0.667;entryDx=0;entryDy=0;" target="ehub" value="belongs to  |  member (mandatory)">
+          <mxGeometry relative="1" x="-0.1082" y="-10" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1060.03" y="620" />
+              <mxPoint x="697.48" y="620" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="r8" edge="1" parent="1" source="e5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;endArrow=open;endFill=0;fontFamily=Times New Roman;fontSize=10;fontStyle=1;labelBackgroundColor=#FFFFFF;dashed=1;exitX=0.000;exitY=0.700;exitDx=0;exitDy=0;entryX=1.000;entryY=0.833;entryDx=0;entryDy=0;" target="ehub" value="assigned to  |  trainer (optional)">
+          <mxGeometry relative="1" x="-0.3279" y="-8" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1060.03" y="688.21" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

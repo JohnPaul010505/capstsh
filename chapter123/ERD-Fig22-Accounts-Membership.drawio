@@ -1,0 +1,88 @@
+<mxfile host="app.diagrams.net" agent="Cline">
+  <diagram id="fig22" name="FIG 22 - ERD Accounts, Membership and Attendance">
+    <mxGraphModel dx="880" dy="646" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1380" pageHeight="782" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="e0" parent="1" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=12;" value="&lt;table border=&quot;1&quot; cellpadding=&quot;4&quot; cellspacing=&quot;0&quot; width=&quot;100%&quot;&gt;&lt;tr&gt;&lt;td align=&quot;center&quot;&gt;&lt;b&gt;enrollments&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;------------------------------&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;&lt;u&gt;id (PK)&lt;/u&gt;&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;full_name&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;email&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;phone&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;date_of_birth&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;gender&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;address&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;emergency_contact_name&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;emergency_contact_phone&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;status&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;confirmed_by (FK)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;confirmed_at&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" vertex="1">
+          <mxGeometry height="344" width="140" x="70" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="zTYqncalSzP-qBMywRxP-2" edge="1" parent="1" source="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.02;exitY=0.555;exitDx=0;exitDy=0;entryX=-0.019;entryY=0.54;entryDx=0;entryDy=0;entryPerimeter=0;exitPerimeter=0;" target="e0">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="10.06" y="551.65" />
+              <mxPoint x="10.06" y="245.76" />
+            </Array>
+            <mxPoint x="105" y="410" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e1" parent="1" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=12;" value="&lt;table border=&quot;1&quot; cellpadding=&quot;4&quot; cellspacing=&quot;0&quot; width=&quot;100%&quot;&gt;&lt;tr&gt;&lt;td align=&quot;center&quot;&gt;&lt;b&gt;trainer_assignments&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;------------------------------&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;&lt;u&gt;id (PK)&lt;/u&gt;&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;trainer_id (FK)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;member_id (FK)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;assigned_at&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;status&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" vertex="1">
+          <mxGeometry height="194" width="130" x="80" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" parent="1" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=12;" value="&lt;table border=&quot;1&quot; cellpadding=&quot;4&quot; cellspacing=&quot;0&quot; width=&quot;100%&quot;&gt;&lt;tr&gt;&lt;td align=&quot;center&quot;&gt;&lt;b&gt;check_ins&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;------------------------------&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;&lt;u&gt;id (PK)&lt;/u&gt;&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;member_id (FK)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;check_in_time&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" vertex="1">
+          <mxGeometry height="140" width="130" x="190" y="640" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" parent="1" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=12;" value="&lt;table border=&quot;1&quot; cellpadding=&quot;4&quot; cellspacing=&quot;0&quot; width=&quot;100%&quot;&gt;&lt;tr&gt;&lt;td align=&quot;center&quot;&gt;&lt;b&gt;addresses&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;------------------------------&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;&lt;u&gt;member_id (PK, FK)&lt;/u&gt;&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;line1&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;line2&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;city&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;state&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;postal_code&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;country&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" vertex="1">
+          <mxGeometry height="232" width="130" x="940" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" parent="1" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=12;" value="&lt;table border=&quot;1&quot; cellpadding=&quot;4&quot; cellspacing=&quot;0&quot; width=&quot;100%&quot;&gt;&lt;tr&gt;&lt;td align=&quot;center&quot;&gt;&lt;b&gt;memberships&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;------------------------------&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;&lt;u&gt;id (PK)&lt;/u&gt;&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;member_id (FK)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;plan_name&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;price&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;start_date&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;end_date&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;status&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" vertex="1">
+          <mxGeometry height="238" width="130" x="980" y="272" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" parent="1" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=12;" value="&lt;table border=&quot;1&quot; cellpadding=&quot;4&quot; cellspacing=&quot;0&quot; width=&quot;100%&quot;&gt;&lt;tr&gt;&lt;td align=&quot;center&quot;&gt;&lt;b&gt;attendance&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;------------------------------&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;&lt;u&gt;id (PK)&lt;/u&gt;&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;member_id (FK)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;check_in_time&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;check_in_date&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;check_out_time&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;expires_at&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" vertex="1">
+          <mxGeometry height="213" width="130" x="930" y="527" as="geometry" />
+        </mxCell>
+        <mxCell id="ehub" parent="1" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=12;" value="&lt;table border=&quot;1&quot; cellpadding=&quot;4&quot; cellspacing=&quot;0&quot; width=&quot;100%&quot;&gt;&lt;tr&gt;&lt;td align=&quot;center&quot;&gt;&lt;b&gt;profiles&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;------------------------------&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;&lt;u&gt;id (PK)&lt;/u&gt;&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;role&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;full_name&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;email&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;phone&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;avatar_url&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;date_of_birth&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;gender&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;code&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;emergency_contact_name&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;emergency_contact_phone&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;specialty&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;available_days&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;fitness_goal&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;is_active&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" vertex="1">
+          <mxGeometry height="418" width="140" x="590" y="182" as="geometry" />
+        </mxCell>
+        <mxCell id="r0" edge="1" parent="1" source="e0" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;endArrow=open;endFill=0;fontFamily=Times New Roman;fontSize=10;fontStyle=1;labelBackgroundColor=#FFFFFF;dashed=1;exitX=1.000;exitY=0.500;exitDx=0;exitDy=0;entryX=-0.021;entryY=0.122;entryDx=0;entryDy=0;entryPerimeter=0;" target="ehub" value="is confirmed by&amp;nbsp;">
+          <mxGeometry relative="1" x="-0.4681" y="12" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="r1" edge="1" parent="1" source="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;endArrow=open;endFill=0;fontFamily=Times New Roman;fontSize=10;fontStyle=1;labelBackgroundColor=#FFFFFF;exitX=1.000;exitY=0.300;exitDx=0;exitDy=0;entryX=-0.013;entryY=0.732;entryDx=0;entryDy=0;entryPerimeter=0;" target="ehub" value="assigned to  |  trainer (mandatory)">
+          <mxGeometry relative="1" x="0.2744" y="18" as="geometry">
+            <mxPoint as="offset" />
+            <mxPoint x="580" y="488.24" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="r2" edge="1" parent="1" source="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;endArrow=open;endFill=0;fontFamily=Times New Roman;fontSize=10;fontStyle=1;labelBackgroundColor=#FFFFFF;exitX=1.000;exitY=0.700;exitDx=0;exitDy=0;entryX=0.007;entryY=0.906;entryDx=0;entryDy=0;entryPerimeter=0;" target="ehub" value="belongs to  |  member (mandatory)">
+          <mxGeometry relative="1" x="0.3216" y="11" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="210" y="560" />
+              <mxPoint x="400" y="560" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="r3" edge="1" parent="1" source="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;endArrow=open;endFill=0;fontFamily=Times New Roman;fontSize=10;fontStyle=1;labelBackgroundColor=#FFFFFF;exitX=1.000;exitY=0.500;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" target="ehub" value="belongs to  |  member (mandatory)">
+          <mxGeometry relative="1" x="-0.1556" y="10" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="r4" edge="1" parent="1" source="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;endArrow=open;endFill=0;fontFamily=Times New Roman;fontSize=10;fontStyle=1;labelBackgroundColor=#FFFFFF;exitX=0.000;exitY=0.500;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="ehub" value="belongs to  |  member">
+          <mxGeometry relative="1" x="0.1008" y="-10" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="940" y="130" />
+              <mxPoint x="660" y="130" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="r5" edge="1" parent="1" source="e4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;endArrow=open;endFill=0;fontFamily=Times New Roman;fontSize=10;fontStyle=1;labelBackgroundColor=#FFFFFF;exitX=0.000;exitY=0.500;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="ehub" value="belongs to  |  member (mandatory)">
+          <mxGeometry relative="1" x="0.2" y="-11" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="960.03" y="391" />
+              <mxPoint x="730.01" y="390.01" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="r6" edge="1" parent="1" source="e5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;endArrow=open;endFill=0;fontFamily=Times New Roman;fontSize=10;fontStyle=1;labelBackgroundColor=#FFFFFF;exitX=0.000;exitY=0.500;exitDx=0;exitDy=0;entryX=1.000;entryY=0.750;entryDx=0;entryDy=0;" target="ehub" value="belongs to  |  member (mandatory)">
+          <mxGeometry relative="1" x="-0.4034" y="-9" as="geometry">
+            <mxPoint x="-9" y="9" as="offset" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

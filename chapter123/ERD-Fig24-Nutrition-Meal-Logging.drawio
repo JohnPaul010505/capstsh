@@ -1,0 +1,64 @@
+<mxfile host="app.diagrams.net" agent="Cline">
+  <diagram id="fig24" name="FIG 24 - ERD Nutrition, Meal Logging and Reference Data">
+    <mxGraphModel dx="1257" dy="923" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1380" pageHeight="952" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="e0" parent="1" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=12;" value="&lt;table border=&quot;1&quot; cellpadding=&quot;4&quot; cellspacing=&quot;0&quot; width=&quot;100%&quot;&gt;&lt;tr&gt;&lt;td align=&quot;center&quot;&gt;&lt;b&gt;meal_records&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;------------------------------&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;&lt;u&gt;id (PK)&lt;/u&gt;&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;member_id (FK)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;meal_type&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;food_name&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;calories&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;protein_g&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;carbs_g&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;fat_g&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;photo_url&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;meal_time&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" vertex="1">
+          <mxGeometry height="306" width="130" x="120" y="64" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" parent="1" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=12;" value="&lt;table border=&quot;1&quot; cellpadding=&quot;4&quot; cellspacing=&quot;0&quot; width=&quot;100%&quot;&gt;&lt;tr&gt;&lt;td align=&quot;center&quot;&gt;&lt;b&gt;meal_logs&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;------------------------------&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;&lt;u&gt;id (PK)&lt;/u&gt;&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;member_id (FK)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;meal_type&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;food_name&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;calories&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;protein_g&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;carbs_g&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;fat_g&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;photo_url&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;meal_time&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" vertex="1">
+          <mxGeometry height="304" width="130" x="110" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" parent="1" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=12;" value="&lt;table border=&quot;1&quot; cellpadding=&quot;4&quot; cellspacing=&quot;0&quot; width=&quot;100%&quot;&gt;&lt;tr&gt;&lt;td align=&quot;center&quot;&gt;&lt;b&gt;food_recommendations&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;------------------------------&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;&lt;u&gt;id (PK)&lt;/u&gt;&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;member_id (FK)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;recommended_foods&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;recommendation_type&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;generated_at&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" vertex="1">
+          <mxGeometry height="184" width="130" x="310" y="630" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" parent="1" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=12;" value="&lt;table border=&quot;1&quot; cellpadding=&quot;4&quot; cellspacing=&quot;0&quot; width=&quot;100%&quot;&gt;&lt;tr&gt;&lt;td align=&quot;center&quot;&gt;&lt;b&gt;food_identification_logs&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;------------------------------&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;&lt;u&gt;id (PK)&lt;/u&gt;&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;member_id (FK)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;photo_url&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;ai_candidates&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;selected_food&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;member_edited&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;created_at&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" vertex="1">
+          <mxGeometry height="224" width="135" x="920" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" parent="1" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=12;" value="&lt;table border=&quot;1&quot; cellpadding=&quot;4&quot; cellspacing=&quot;0&quot; width=&quot;100%&quot;&gt;&lt;tr&gt;&lt;td align=&quot;center&quot;&gt;&lt;b&gt;met_exercises&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;------------------------------&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;&lt;u&gt;id (PK)&lt;/u&gt;&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;name&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;category&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;met_value&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;is_ai_estimated&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;is_verified&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;confidence&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;verified_by (FK)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;verified_at&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" vertex="1">
+          <mxGeometry height="268" width="135" x="1080" y="310" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" parent="1" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=12;" value="&lt;table border=&quot;1&quot; cellpadding=&quot;4&quot; cellspacing=&quot;0&quot; width=&quot;100%&quot;&gt;&lt;tr&gt;&lt;td align=&quot;center&quot;&gt;&lt;b&gt;nutrition_foods&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;------------------------------&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;&lt;u&gt;id (PK)&lt;/u&gt;&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;food_name&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;aliases&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;category&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;serving_label&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;serving_size_g&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;calories_kcal&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;protein_g&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;carbs_g&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;fat_g&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;source&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" vertex="1">
+          <mxGeometry height="332" width="130" x="775" y="540" as="geometry" />
+        </mxCell>
+        <mxCell id="ehub" parent="1" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=12;" value="&lt;table border=&quot;1&quot; cellpadding=&quot;4&quot; cellspacing=&quot;0&quot; width=&quot;100%&quot;&gt;&lt;tr&gt;&lt;td align=&quot;center&quot;&gt;&lt;b&gt;profiles&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;------------------------------&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;&lt;u&gt;id (PK)&lt;/u&gt;&lt;/b&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;role&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;full_name&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;email&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;phone&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;avatar_url&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;date_of_birth&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;gender&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;code&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;emergency_contact_name&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;emergency_contact_phone&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;specialty&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;available_days&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;fitness_goal&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;is_active&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" vertex="1">
+          <mxGeometry height="418" width="135" x="560" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="note_nutrition_foods" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontFamily=Times New Roman;fontSize=10;fontStyle=2;strokeColor=none;fillColor=none;" value="&lt;b&gt;(reference table no foreign key)&lt;/b&gt;" vertex="1">
+          <mxGeometry height="22" width="280" x="700" y="518" as="geometry" />
+        </mxCell>
+        <mxCell id="r0" edge="1" parent="1" source="e0" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;endArrow=open;endFill=0;fontFamily=Times New Roman;fontSize=10;fontStyle=1;labelBackgroundColor=#FFFFFF;exitX=1.000;exitY=0.500;exitDx=0;exitDy=0;entryX=0.000;entryY=0.250;entryDx=0;entryDy=0;" target="ehub" value="belongs to  |  member (mandatory)">
+          <mxGeometry relative="1" x="0.6503" y="15" as="geometry">
+            <mxPoint y="1" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="r1" edge="1" parent="1" source="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;endArrow=open;endFill=0;fontFamily=Times New Roman;fontSize=10;fontStyle=1;labelBackgroundColor=#FFFFFF;exitX=1.000;exitY=0.500;exitDx=0;exitDy=0;entryX=0.000;entryY=0.500;entryDx=0;entryDy=0;" target="ehub" value="belongs to  |  member (mandatory)">
+          <mxGeometry relative="1" x="0.5174" y="19" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="r2" edge="1" parent="1" source="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;endArrow=open;endFill=0;fontFamily=Times New Roman;fontSize=10;fontStyle=1;labelBackgroundColor=#FFFFFF;exitX=1.000;exitY=0.500;exitDx=0;exitDy=0;entryX=0.000;entryY=0.750;entryDx=0;entryDy=0;" target="ehub" value="belongs to  |  member (mandatory)">
+          <mxGeometry relative="1" x="0.5535" y="33" as="geometry">
+            <mxPoint x="-30" y="19" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="r3" edge="1" parent="1" source="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;endArrow=open;endFill=0;fontFamily=Times New Roman;fontSize=10;fontStyle=1;labelBackgroundColor=#FFFFFF;exitX=0.000;exitY=0.500;exitDx=0;exitDy=0;" value="belongs to  |  member (mandatory)">
+          <mxGeometry relative="1" y="-12" as="geometry">
+            <mxPoint as="offset" />
+            <mxPoint x="700" y="312" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="r4" edge="1" parent="1" source="e4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;endArrow=open;endFill=0;fontFamily=Times New Roman;fontSize=10;fontStyle=1;labelBackgroundColor=#FFFFFF;dashed=1;exitX=0.000;exitY=0.500;exitDx=0;exitDy=0;" value="is verified by&amp;nbsp;">
+          <mxGeometry relative="1" x="-0.0176" y="-10" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1080" y="450" />
+            </Array>
+            <mxPoint x="700" y="450" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

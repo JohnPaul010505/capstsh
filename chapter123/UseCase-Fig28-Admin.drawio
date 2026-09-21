@@ -1,0 +1,118 @@
+<mxfile host="app.diagrams.net" agent="Cline">
+  <diagram id="uc28" name="FIG 28 - USE CASE Admin Module">
+    <mxGraphModel dx="1257" dy="923" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="810" pageHeight="1714" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="bound" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#000000;fontFamily=Times New Roman;fontSize=13;fontStyle=1;verticalAlign=top;spacingTop=8;" value="Intelligent Fitness Progress Monitoring Application Using Predictive Analytics" vertex="1">
+          <mxGeometry height="1564" width="550" x="220" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_Login" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=11;" value="Login" vertex="1">
+          <mxGeometry height="56" width="210" x="260" y="174" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_View Admin Dashboard" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=11;" value="View Admin Dashboard" vertex="1">
+          <mxGeometry height="56" width="210" x="260" y="264" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_Manage Members" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=11;" value="Manage Members" vertex="1">
+          <mxGeometry height="56" width="210" x="260" y="354" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_Manage Trainers" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=11;" value="Manage Trainers" vertex="1">
+          <mxGeometry height="56" width="210" x="260" y="444" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_Assign Trainer to Member" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=11;" value="Assign Trainer to Member" vertex="1">
+          <mxGeometry height="56" width="210" x="260" y="534" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_Confirm Enrollment" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=11;" value="Confirm Enrollment" vertex="1">
+          <mxGeometry height="56" width="210" x="260" y="624" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_Manage Memberships" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=11;" value="Manage Memberships" vertex="1">
+          <mxGeometry height="56" width="210" x="260" y="714" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_View Attendance Records" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=11;" value="View Attendance Records" vertex="1">
+          <mxGeometry height="56" width="210" x="260" y="804" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_View Workout Records" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=11;" value="View Workout Records" vertex="1">
+          <mxGeometry height="56" width="210" x="260" y="894" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_Generate Inactive Member Report" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=11;" value="Generate Inactive Member Report" vertex="1">
+          <mxGeometry height="56" width="210" x="260" y="984" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_Generate Coach Feedback Report" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=11;" value="Generate Coach Feedback Report" vertex="1">
+          <mxGeometry height="56" width="210" x="260" y="1074" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_Manage QR Codes" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=11;" value="Manage QR Codes" vertex="1">
+          <mxGeometry height="56" width="210" x="260" y="1164" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_Send and Broadcast Notifications" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=11;" value="Send and Broadcast Notifications" vertex="1">
+          <mxGeometry height="56" width="210" x="260" y="1254" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_View Progress Predictions" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=11;" value="View Progress Predictions" vertex="1">
+          <mxGeometry height="56" width="210" x="260" y="1344" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_View Activity Logs" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=11;" value="View Activity Logs" vertex="1">
+          <mxGeometry height="56" width="210" x="260" y="1434" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_Configure Settings" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=11;" value="Configure Settings" vertex="1">
+          <mxGeometry height="56" width="210" x="260" y="1524" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_Detect Inactive Members" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=11;" value="Detect Inactive Members" vertex="1">
+          <mxGeometry height="56" width="210" x="530" y="680" as="geometry" />
+        </mxCell>
+        <mxCell id="act_Admin" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=12;fontStyle=1;" value="Admin" vertex="1">
+          <mxGeometry height="60" width="40" x="70" y="847" as="geometry" />
+        </mxCell>
+        <mxCell id="as0" edge="1" parent="1" source="act_Admin" style="endArrow=none;html=1;strokeColor=#000000;exitX=1.000;exitY=0.059;exitDx=0;exitDy=0;entryX=0.000;entryY=0.500;entryDx=0;entryDy=0;" target="uc_Login" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="as1" edge="1" parent="1" source="act_Admin" style="endArrow=none;html=1;strokeColor=#000000;exitX=1.000;exitY=0.118;exitDx=0;exitDy=0;entryX=0.000;entryY=0.500;entryDx=0;entryDy=0;" target="uc_View Admin Dashboard" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="as2" edge="1" parent="1" source="act_Admin" style="endArrow=none;html=1;strokeColor=#000000;exitX=1.000;exitY=0.176;exitDx=0;exitDy=0;entryX=0.000;entryY=0.500;entryDx=0;entryDy=0;" target="uc_Manage Members" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="as3" edge="1" parent="1" source="act_Admin" style="endArrow=none;html=1;strokeColor=#000000;exitX=1.000;exitY=0.235;exitDx=0;exitDy=0;entryX=0.000;entryY=0.500;entryDx=0;entryDy=0;" target="uc_Manage Trainers" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="as4" edge="1" parent="1" source="act_Admin" style="endArrow=none;html=1;strokeColor=#000000;exitX=1.000;exitY=0.294;exitDx=0;exitDy=0;entryX=0.000;entryY=0.500;entryDx=0;entryDy=0;" target="uc_Assign Trainer to Member" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="as5" edge="1" parent="1" source="act_Admin" style="endArrow=none;html=1;strokeColor=#000000;exitX=1.000;exitY=0.353;exitDx=0;exitDy=0;entryX=0.000;entryY=0.500;entryDx=0;entryDy=0;" target="uc_Confirm Enrollment" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="as6" edge="1" parent="1" source="act_Admin" style="endArrow=none;html=1;strokeColor=#000000;exitX=1.000;exitY=0.412;exitDx=0;exitDy=0;entryX=0.000;entryY=0.500;entryDx=0;entryDy=0;" target="uc_Manage Memberships" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="as7" edge="1" parent="1" source="act_Admin" style="endArrow=none;html=1;strokeColor=#000000;exitX=1.000;exitY=0.471;exitDx=0;exitDy=0;entryX=0.000;entryY=0.500;entryDx=0;entryDy=0;" target="uc_View Attendance Records" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="as8" edge="1" parent="1" source="act_Admin" style="endArrow=none;html=1;strokeColor=#000000;exitX=1.000;exitY=0.529;exitDx=0;exitDy=0;entryX=0.000;entryY=0.500;entryDx=0;entryDy=0;" target="uc_View Workout Records" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="as9" edge="1" parent="1" source="act_Admin" style="endArrow=none;html=1;strokeColor=#000000;exitX=1.000;exitY=0.588;exitDx=0;exitDy=0;entryX=0.000;entryY=0.500;entryDx=0;entryDy=0;" target="uc_Generate Inactive Member Report" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="as10" edge="1" parent="1" source="act_Admin" style="endArrow=none;html=1;strokeColor=#000000;exitX=1.000;exitY=0.647;exitDx=0;exitDy=0;entryX=0.000;entryY=0.500;entryDx=0;entryDy=0;" target="uc_Generate Coach Feedback Report" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="as11" edge="1" parent="1" source="act_Admin" style="endArrow=none;html=1;strokeColor=#000000;exitX=1.000;exitY=0.706;exitDx=0;exitDy=0;entryX=0.000;entryY=0.500;entryDx=0;entryDy=0;" target="uc_Manage QR Codes" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="as12" edge="1" parent="1" source="act_Admin" style="endArrow=none;html=1;strokeColor=#000000;exitX=1.000;exitY=0.765;exitDx=0;exitDy=0;entryX=0.000;entryY=0.500;entryDx=0;entryDy=0;" target="uc_Send and Broadcast Notifications" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="as13" edge="1" parent="1" source="act_Admin" style="endArrow=none;html=1;strokeColor=#000000;exitX=1.000;exitY=0.824;exitDx=0;exitDy=0;entryX=0.000;entryY=0.500;entryDx=0;entryDy=0;" target="uc_View Progress Predictions" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="as14" edge="1" parent="1" source="act_Admin" style="endArrow=none;html=1;strokeColor=#000000;exitX=1.000;exitY=0.882;exitDx=0;exitDy=0;entryX=0.000;entryY=0.500;entryDx=0;entryDy=0;" target="uc_View Activity Logs" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="as15" edge="1" parent="1" source="act_Admin" style="endArrow=none;html=1;strokeColor=#000000;exitX=1.000;exitY=0.941;exitDx=0;exitDy=0;entryX=0.000;entryY=0.500;entryDx=0;entryDy=0;" target="uc_Configure Settings" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="inc0" edge="1" parent="1" source="uc_Generate Inactive Member Report" style="endArrow=open;endFill=0;dashed=1;html=1;strokeColor=#000000;fontFamily=Times New Roman;fontSize=10;fontStyle=1;labelBackgroundColor=#FFFFFF;exitX=1.000;exitY=0.500;exitDx=0;exitDy=0;entryX=0.000;entryY=0.500;entryDx=0;entryDy=0;" target="uc_Detect Inactive Members" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
