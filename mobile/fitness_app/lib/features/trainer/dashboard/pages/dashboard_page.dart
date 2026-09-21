@@ -8,6 +8,7 @@ import '../../../shared/widgets/skeleton.dart';
 import '../../../shared/widgets/animations.dart';
 import '../../../shared/widgets/app_glow_background.dart';
 import '../../../shared/widgets/clay/clay_card.dart';
+import '../../../shared/services/prediction_service.dart';
 import '../../../shared/widgets/notification_popup.dart';
 
 final trainerDashboardProvider = FutureProvider<Map<String, dynamic>>((ref) async {
@@ -25,6 +26,7 @@ final trainerDashboardProvider = FutureProvider<Map<String, dynamic>>((ref) asyn
     return {
       'totalMembers': 0, 'canChat': 0, 'expiringSoon': 0,
       'weekCounts': List.generate(7, (_) => 0),
+      'atRisk': const <Map<String, dynamic>>[],
     };
   }
 
@@ -91,11 +93,36 @@ final trainerDashboardProvider = FutureProvider<Map<String, dynamic>>((ref) asyn
     }
   }
 
+  // Retention risk (AI service, local scikit-learn) for each assigned member.
+  // Parallel requests capped at 30 members; a member without enough data or a
+  // failed call simply drops out of the risk list instead of failing the page.
+  final predictionService = PredictionService();
+  final atRisk = <Map<String, dynamic>>[];
+  try {
+    final forecasts = await Future.wait(
+      memberIds.take(30).map((id) => predictionService.getForecast(id)),
+    );
+    for (var i = 0; i < forecasts.length; i++) {
+      final risk = forecasts[i].retention;
+      if (risk == null) continue;
+      atRisk.add({
+        'member_id': memberIds[i],
+        'name': profileMap[memberIds[i]] ?? 'Unknown',
+        'score': risk.predictedValue,
+        'label': risk.riskLabel,
+      });
+    }
+  } catch (e) {
+    debugPrint('Retention risk fetch failed: $e');
+  }
+  atRisk.sort((a, b) => (b['score'] as double).compareTo(a['score'] as double));
+
   return {
     'totalMembers': totalMembers,
     'canChat': canChat,
     'expiringSoon': expiringSoon,
     'weekCounts': weekCounts,
+    'atRisk': atRisk,
   };
 });
 
@@ -246,6 +273,8 @@ class _DashboardContent extends StatelessWidget {
     final canChat = data['canChat'] as int;
     final expiringSoon = data['expiringSoon'] as int;
     final weekCounts = data['weekCounts'] as List<int>;
+    final atRisk = (data['atRisk'] as List?)?.cast<Map<String, dynamic>>() ??
+        const <Map<String, dynamic>>[];
     final maxCount = weekCounts.reduce((a, b) => a > b ? a : 1).clamp(1, 100);
     final today = DateTime.now().weekday - 1;
     final labels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -358,6 +387,63 @@ class _DashboardContent extends StatelessWidget {
             ],
           ),
         ),
+        const SizedBox(height: 14),
+        Text('AT-RISK MEMBERS', style: TextStyle(
+          fontSize: 11, fontWeight: FontWeight.w800,
+          color: ClayTokens.clayDarkTextTertiary, letterSpacing: 0.6,
+        )),
+        const SizedBox(height: 8),
+        if (atRisk.isEmpty)
+          ClayCard(
+            variant: ClayCardVariant.elevated,
+            padding: ClayCardPadding.small,
+            child: Text(
+              'No retention data yet — members need a few check-ins and measurements first.',
+              style: TextStyle(fontSize: 12, color: ClayTokens.clayDarkTextTertiary),
+            ),
+          )
+        else
+          ...atRisk.take(5).map((m) {
+            final label = m['label'] as String;
+            final score = (m['score'] as double).toStringAsFixed(2);
+            final color = label == 'high'
+                ? const Color(0xFFFF453A)
+                : label == 'medium'
+                    ? const Color(0xFFFF9500)
+                    : const Color(0xFF30D158);
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: ClayTokens.clayDarkSurfaceElevated,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: color.withAlpha(60)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      m['name'] as String,
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white),
+                    ),
+                  ),
+                  Text('risk $score', style: TextStyle(fontSize: 11, color: ClayTokens.clayDarkTextTertiary)),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: color.withAlpha(25),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      label.toUpperCase(),
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: color),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
         const SizedBox(height: 16),
       ],
     );

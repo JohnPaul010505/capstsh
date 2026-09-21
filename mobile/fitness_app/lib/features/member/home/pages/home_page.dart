@@ -20,6 +20,7 @@ import '../../../shared/widgets/clay_area_chart.dart';
 import '../../calendar/providers/calendar_seed_data.dart';
 import '../../../shared/widgets/notification_popup.dart';
 import '../../../shared/widgets/activity_status_badge.dart';
+import '../../../shared/services/prediction_service.dart';
 
 // Kept alive for the whole session: independent queries run in parallel, and
 // the previous result stays cached so returning to Home renders instantly
@@ -426,20 +427,177 @@ class _HomeContentState extends State<HomeContent> {
             const SizedBox(height: 8),
             StaggeredFadeIn(index: 1 + offset, child: _WeekChart(weekCounts: weekCounts, maxCount: maxCount)),
             const SizedBox(height: 8),
-            StaggeredFadeIn(index: 2 + offset, child: _YearChart(
+            StaggeredFadeIn(index: 2 + offset, child: _PredictionCard(memberId: profile.id)),
+            const SizedBox(height: 8),
+            StaggeredFadeIn(index: 3 + offset, child: _YearChart(
               monthlyCounts: monthlyCounts,
               totalWorkouts: totalWorkouts,
               yearLabel: '${DateTime.now().year}',
             )),
             const SizedBox(height: 8),
-            StaggeredFadeIn(index: 3 + offset, child: _GrowthChart(monthlyWeights: monthlyWeights)),
+            StaggeredFadeIn(index: 4 + offset, child: _GrowthChart(monthlyWeights: monthlyWeights)),
             const SizedBox(height: 8),
             if (trainer != null) ...[
-              StaggeredFadeIn(index: 4 + offset, child: _TrainerCard(trainer: trainer)),
+              StaggeredFadeIn(index: 5 + offset, child: _TrainerCard(trainer: trainer)),
               const SizedBox(height: 8),
             ],
             const SizedBox(height: 16),
           ],
+    );
+  }
+}
+
+class _PredictionCard extends StatefulWidget {
+  final String memberId;
+
+  const _PredictionCard({required this.memberId});
+
+  @override
+  State<_PredictionCard> createState() => _PredictionCardState();
+}
+
+class _PredictionCardState extends State<_PredictionCard> {
+  MemberForecast? _forecast;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final forecast = await PredictionService().getForecast(widget.memberId);
+    if (mounted) setState(() => _forecast = forecast);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final forecast = _forecast;
+
+    Widget body;
+    if (forecast == null) {
+      body = const Row(
+        children: [
+          SizedBox(
+            width: 14,
+            height: 14,
+            child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFD6A5FF)),
+          ),
+          SizedBox(width: 10),
+          Text('Forecasting your progress...', style: TextStyle(fontSize: 12, color: Color(0xFF8E8E93))),
+        ],
+      );
+    } else if (forecast.notEnoughData) {
+      body = const Text(
+        'Log body measurements and check in a few times to unlock your AI progress forecast.',
+        style: TextStyle(fontSize: 12, color: Color(0xFF8E8E93)),
+      );
+    } else if (forecast.error != null || forecast.results.isEmpty) {
+      body = Text(
+        forecast.error ?? 'No forecast available right now.',
+        style: const TextStyle(fontSize: 12, color: Color(0xFF8E8E93)),
+      );
+    } else {
+      final weight = forecast.byType('weight');
+      final bodyFat = forecast.byType('body_fat');
+      body = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (weight != null)
+            _ForecastRow(
+              icon: Icons.monitor_weight_outlined,
+              label: 'Weight',
+              current: '${weight.currentValue.toStringAsFixed(1)} ${weight.unit}',
+              predicted:
+                  '${weight.predictedValue.toStringAsFixed(1)} ${weight.unit} in ${weight.daysAhead} days',
+              confidence: weight.confidence,
+            ),
+          if (bodyFat != null) ...[
+            const SizedBox(height: 8),
+            _ForecastRow(
+              icon: Icons.speed,
+              label: 'Body fat',
+              current: '${bodyFat.currentValue.toStringAsFixed(1)} ${bodyFat.unit}',
+              predicted:
+                  '${bodyFat.predictedValue.toStringAsFixed(1)} ${bodyFat.unit} in ${bodyFat.daysAhead} days',
+              confidence: bodyFat.confidence,
+            ),
+          ],
+        ],
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C1C1E),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF38383A).withAlpha(100)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFBF5AF2).withAlpha(25),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.insights, color: Color(0xFFBF5AF2), size: 16),
+              ),
+              const SizedBox(width: 8),
+              const Text('AI PROGRESS FORECAST', style: TextStyle(
+                fontSize: 11, fontWeight: FontWeight.w800,
+                color: Color(0xFF8E8E93), letterSpacing: 0.6,
+              )),
+            ],
+          ),
+          const SizedBox(height: 10),
+          body,
+        ],
+      ),
+    );
+  }
+}
+
+class _ForecastRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String current;
+  final String predicted;
+  final double confidence;
+
+  const _ForecastRow({
+    required this.icon,
+    required this.label,
+    required this.current,
+    required this.predicted,
+    required this.confidence,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 15, color: const Color(0xFF8E8E93)),
+        const SizedBox(width: 6),
+        Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF8E8E93))),
+        const Spacer(),
+        Flexible(
+          child: Text(
+            '$current → $predicted',
+            textAlign: TextAlign.right,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF)),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text('${(confidence * 100).toStringAsFixed(0)}%', style: const TextStyle(
+          fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF30D158),
+        )),
+      ],
     );
   }
 }
