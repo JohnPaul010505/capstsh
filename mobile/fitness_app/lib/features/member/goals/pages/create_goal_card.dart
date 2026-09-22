@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/services/supabase_client.dart';
 import 'package:shared/providers/body_measurement_provider.dart';
 import 'package:shared/services/notification_service.dart';
+import 'package:fitness_app/features/shared/services/goal_suggestion_service.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../shared/widgets/clay/clay_card.dart';
 import '../../../shared/widgets/animations.dart';
@@ -62,6 +63,8 @@ class _CreateGoalCardState extends ConsumerState<CreateGoalCard> {
   String? _validationMessage;
   String? _targetError;
   bool _maintainLocked = false;
+  bool _suggesting = false;
+  String? _aiSuggestionReason;
 
   @override
   void dispose() {
@@ -107,6 +110,47 @@ class _CreateGoalCardState extends ConsumerState<CreateGoalCard> {
   Future<double?> _getCurrentWeight() async {
     final measurement = await _getCurrentWeightAsync();
     return measurement?['weight_kg'] as double?;
+  }
+
+  /// Figure 26 «include» Generate Goal Suggestion: prefill the target from the
+  /// AI service (deterministic fallback when Gemini is unavailable).
+  Future<void> _suggestTarget() async {
+    final userId = SupabaseClientService().client.auth.currentUser?.id;
+    if (userId == null) return;
+    setState(() {
+      _suggesting = true;
+      _aiSuggestionReason = null;
+    });
+    try {
+      final suggestions = await GoalSuggestionService().getSuggestions(userId);
+      if (!mounted) return;
+      if (suggestions.isEmpty) {
+        setState(() => _aiSuggestionReason =
+            'No suggestion available yet — log measurements and workouts first.');
+        return;
+      }
+      // Prefer a suggestion that matches the selected goal type when possible.
+      final key = (goalType ?? '').toLowerCase();
+      GoalSuggestion pick = suggestions.first;
+      for (final s in suggestions) {
+        final t = s.goalType.toLowerCase();
+        if ((key.contains('lose') && t.contains('lose')) ||
+            (key.contains('gain') && t.contains('gain')) ||
+            (key.contains('maintain') && t.contains('maintain'))) {
+          pick = s;
+          break;
+        }
+      }
+      setState(() {
+        if (pick.suggestedValue > 0 && !_maintainLocked) {
+          _targetController.text = pick.suggestedValue.toStringAsFixed(1);
+        }
+        _aiSuggestionReason = pick.reason;
+      });
+      await _validateTarget();
+    } finally {
+      if (mounted) setState(() => _suggesting = false);
+    }
   }
 
   Future<void> _save() async {
@@ -440,6 +484,46 @@ class _CreateGoalCardState extends ConsumerState<CreateGoalCard> {
               enabled: !_maintainLocked,
               onChanged: (_) => _validateTarget(),
             ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                GestureDetector(
+                  onTap: _suggesting ? null : _suggestTarget,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: primaryPurple.withAlpha(30),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_suggesting)
+                          const CupertinoActivityIndicator(radius: 7)
+                        else
+                          const Icon(Icons.auto_awesome, size: 14, color: highlightPurple),
+                        const SizedBox(width: 6),
+                        Text(
+                          _suggesting ? 'Thinking...' : 'Suggest target with AI',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: highlightPurple,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (_aiSuggestionReason != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                _aiSuggestionReason!,
+                style: const TextStyle(fontSize: 12, color: textSecondary),
+              ),
+            ],
             if (_targetError != null) ...[
               const SizedBox(height: 8),
               Row(

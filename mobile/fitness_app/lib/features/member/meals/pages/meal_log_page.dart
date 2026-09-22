@@ -13,6 +13,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared/services/supabase_client.dart';
 import 'package:shared/services/nutrition_service.dart';
 import 'package:shared/models/nutrition_food.dart';
+import '../../../shared/services/food_recommendation_service.dart';
 import '../../../shared/widgets/pressable.dart';
 import '../../../shared/widgets/animations.dart';
 import '../../../shared/widgets/app_glow_background.dart';
@@ -96,6 +97,82 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
   bool _showSearch = false;
   bool _searching = false;
   String? _searchError;
+
+  List<FoodSuggestion> _suggestions = [];
+  bool _loadingSuggestions = false;
+  String? _suggestionsError;
+  String? _suggestionsMealType;
+
+  @override
+  void initState() {
+    super.initState();
+    // Objective 6 / Figure 26 «include» Generate Food Recommendation.
+    _loadSuggestions(_defaultMealType());
+  }
+
+  String _defaultMealType() {
+    final h = DateTime.now().hour;
+    if (h < 10) return 'breakfast';
+    if (h < 15) return 'lunch';
+    if (h < 18) return 'snack';
+    return 'dinner';
+  }
+
+  Future<void> _loadSuggestions(String mealType) async {
+    final userId = SupabaseClientService().client.auth.currentUser?.id;
+    if (userId == null) return;
+    setState(() {
+      _loadingSuggestions = true;
+      _suggestionsError = null;
+      _suggestionsMealType = mealType;
+    });
+    final result = await FoodRecommendationService().getSuggestions(userId, mealType);
+    if (!mounted) return;
+    setState(() {
+      _suggestions = result.suggestions;
+      _loadingSuggestions = false;
+      _suggestionsError = result.error;
+      if (result.suggestions.isEmpty && result.error == null) {
+        _suggestionsError = 'No suggestions for $mealType right now.';
+      }
+    });
+  }
+
+  /// Tap an AI suggestion → prefills the Add Food form (manual mode) with the
+  /// suggested dish, macros and meal type, ready to save in one tap.
+  void _applySuggestion(FoodSuggestion s) {
+    setState(() {
+      _showForm = true;
+      _addFoodMode = AddFoodMode.manual;
+      _image = null;
+      _imagePublicUrl = null;
+      _candidates = [];
+      _selectedCandidate = null;
+      _autoFilled = true;
+      _autoFillSource = 'AI suggestion';
+      _identificationError = null;
+      _aiStep = _AiStep.idle;
+      _aiProgress = 0.0;
+      _portionMultiplier = 1.0;
+      _showCustomPortion = false;
+      _customPortionController.clear();
+      _baseServingSizeG = null;
+      _memberEdited = false;
+      _saveError = null;
+      _mealType = _suggestionsMealType ?? _defaultMealType();
+      _mealTypeSelected = true;
+      _searchResults = [];
+      _showSearch = false;
+      _searching = false;
+      _searchError = null;
+      _searchController.clear();
+    });
+    _foodController.text = s.foodName;
+    _caloriesController.text = s.calories.toStringAsFixed(0);
+    _proteinController.text = s.proteinG.toStringAsFixed(1);
+    _carbsController.text = s.carbsG.toStringAsFixed(1);
+    _fatController.text = s.fatG.toStringAsFixed(1);
+  }
 
   @override
   void dispose() {
@@ -484,6 +561,7 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
       _saving = true;
       _saveError = null;
     });
+    final savedMealType = _mealType;
     try {
       final client = SupabaseClientService().client;
       final userId = client.auth.currentUser!.id;
@@ -537,6 +615,10 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
       _fatController.clear();
       _closeForm();
       ref.invalidate(todayMealsProvider);
+      // Refresh the AI suggestion card for the meal type just logged.
+      if (savedMealType != null) {
+        _loadSuggestions(savedMealType);
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -613,6 +695,8 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
                     loading: () => const _TodayMacroRing(meals: []),
                     error: (_, __) => const _TodayMacroRing(meals: []),
                   ),
+                  const SizedBox(height: 16),
+                  _buildSuggestionsCard(),
                   const SizedBox(height: 16),
                   Text('MEALS TODAY', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: const Color(0xFF8E8E93), letterSpacing: 0)),
                   const SizedBox(height: 9),
@@ -712,6 +796,118 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildSuggestionsCard() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C1C1E),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF38383A).withAlpha(100)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF30D158).withAlpha(25),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.auto_awesome, color: Color(0xFF30D158), size: 15),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'AI SUGGESTIONS${_suggestionsMealType != null ? ' · ${_suggestionsMealType!.toUpperCase()}' : ''}',
+                  style: const TextStyle(
+                    fontSize: 11, fontWeight: FontWeight.w800,
+                    color: Color(0xFF8E8E93), letterSpacing: 0.6,
+                  ),
+                ),
+              ),
+              GestureDetector(
+                onTap: _loadingSuggestions
+                    ? null
+                    : () => _loadSuggestions(_suggestionsMealType ?? _defaultMealType()),
+                child: const Padding(
+                  padding: EdgeInsets.all(4),
+                  child: Icon(Icons.refresh, size: 18, color: Color(0xFF8E8E93)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (_loadingSuggestions)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 13, height: 13,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF30D158)),
+                  ),
+                  SizedBox(width: 10),
+                  Text('Getting Filipino meal ideas for you...', style: TextStyle(fontSize: 12, color: Color(0xFF8E8E93))),
+                ],
+              ),
+            )
+          else if (_suggestionsError != null)
+            Row(
+              children: [
+                Expanded(
+                  child: Text(_suggestionsError!, style: const TextStyle(fontSize: 12, color: Color(0xFF8E8E93))),
+                ),
+                GestureDetector(
+                  onTap: () => _loadSuggestions(_suggestionsMealType ?? _defaultMealType()),
+                  child: const Text('Retry', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF30D158))),
+                ),
+              ],
+            )
+          else
+            ..._suggestions.map((s) => Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: GestureDetector(
+                    onTap: () => _applySuggestion(s),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2C2C2E),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  s.foodName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF)),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${s.portion} · ${s.calories.toStringAsFixed(0)} kcal · P${s.proteinG.toStringAsFixed(0)} C${s.carbsG.toStringAsFixed(0)} F${s.fatG.toStringAsFixed(0)}',
+                                  style: const TextStyle(fontSize: 11, color: Color(0xFF8E8E93)),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.add_circle_outline, size: 18, color: Color(0xFF30D158)),
+                        ],
+                      ),
+                    ),
+                  ),
+                )),
+        ],
       ),
     );
   }

@@ -1,4 +1,7 @@
+from datetime import date
+
 from fastapi import APIRouter
+
 from schemas import MemberIdentifier, FoodRecommendation
 from services.gemini import food_recommendations_ai
 from services import db
@@ -6,40 +9,75 @@ from typing import Any
 
 router = APIRouter()
 
+# Filipino fallbacks aligned with the nutrition_foods seed (DOST-FNRI PhilFCT).
+# Macros are estimates for one serving including rice/sides where noted.
 FALLBACKS: dict[str, list[dict[str, Any]]] = {
     "breakfast": [
-        {"food_name": "Oatmeal with Berries", "portion": "1 bowl (200g)", "calories": 280, "protein_g": 10, "carbs_g": 45, "fat_g": 6, "reason": "High fiber, slow-release energy"},
-        {"food_name": "Greek Yogurt Parfait", "portion": "1 cup (250g)", "calories": 220, "protein_g": 20, "carbs_g": 25, "fat_g": 5, "reason": "Rich in protein and probiotics"},
-        {"food_name": "Egg White Omelette", "portion": "3 eggs + veggies", "calories": 180, "protein_g": 24, "carbs_g": 5, "fat_g": 4, "reason": "Lean protein source"},
+        {"food_name": "Tapsilog (Beef Tapa + Sinangag + Egg)", "portion": "1 plate (300g)", "calories": 450, "protein_g": 28, "carbs_g": 45, "fat_g": 16, "reason": "High-protein Filipino breakfast for steady morning energy"},
+        {"food_name": "Champorado with Dilis", "portion": "1 bowl (300g)", "calories": 320, "protein_g": 12, "carbs_g": 58, "fat_g": 6, "reason": "Carb-forward but balanced by the salty dilis protein"},
+        {"food_name": "Pandesal with Kesong Puti", "portion": "3 pcs (150g)", "calories": 300, "protein_g": 14, "carbs_g": 40, "fat_g": 9, "reason": "Light, classic start that keeps calories in check"},
     ],
     "lunch": [
-        {"food_name": "Grilled Chicken Salad", "portion": "1 plate (300g)", "calories": 350, "protein_g": 35, "carbs_g": 15, "fat_g": 12, "reason": "Balanced macros, nutrient-dense"},
-        {"food_name": "Quinoa Buddha Bowl", "portion": "1 bowl (350g)", "calories": 380, "protein_g": 15, "carbs_g": 50, "fat_g": 14, "reason": "Complete protein + complex carbs"},
-        {"food_name": "Turkey Wrap", "portion": "1 wrap (250g)", "calories": 320, "protein_g": 28, "carbs_g": 30, "fat_g": 10, "reason": "Portable, lean protein"},
+        {"food_name": "Chicken Adobo with Rice", "portion": "1 cup viand + 1 cup rice", "calories": 520, "protein_g": 28, "carbs_g": 60, "fat_g": 16, "reason": "Balanced macros with the classic Filipino flavor"},
+        {"food_name": "Sinigang na Baboy with Rice", "portion": "1 bowl + 1 cup rice", "calories": 460, "protein_g": 20, "carbs_g": 58, "fat_g": 10, "reason": "Vegetable-rich sour soup keeps it light"},
+        {"food_name": "Pinakbet with Grilled Bangus", "portion": "1 plate (350g)", "calories": 430, "protein_g": 26, "carbs_g": 32, "fat_g": 18, "reason": "High protein and fiber from mixed vegetables"},
     ],
     "dinner": [
-        {"food_name": "Baked Salmon with Asparagus", "portion": "1 fillet + sides", "calories": 420, "protein_g": 38, "carbs_g": 12, "fat_g": 22, "reason": "Omega-3 rich, muscle recovery"},
-        {"food_name": "Lean Steak with Sweet Potato", "portion": "200g steak + 1 potato", "calories": 450, "protein_g": 42, "carbs_g": 35, "fat_g": 14, "reason": "Iron-rich, sustained energy"},
-        {"food_name": "Stir-fried Tofu with Vegetables", "portion": "1 plate (300g)", "calories": 310, "protein_g": 22, "carbs_g": 25, "fat_g": 14, "reason": "Plant-based, high protein"},
+        {"food_name": "Tinola with Rice", "portion": "1 bowl + 1 cup rice", "calories": 420, "protein_g": 18, "carbs_g": 56, "fat_g": 9, "reason": "Light dinner with a ginger-rich broth"},
+        {"food_name": "Ginisang Monggo with Malunggay", "portion": "1 bowl (300g)", "calories": 380, "protein_g": 18, "carbs_g": 50, "fat_g": 10, "reason": "Plant protein and fiber for the evening"},
+        {"food_name": "Grilled Bangus with Ensaladang Talong", "portion": "1 fillet + side", "calories": 400, "protein_g": 26, "carbs_g": 18, "fat_g": 22, "reason": "Omega-3 rich fish with a fresh vegetable side"},
     ],
     "snack": [
-        {"food_name": "Protein Shake", "portion": "1 scoop (30g)", "calories": 120, "protein_g": 25, "carbs_g": 3, "fat_g": 2, "reason": "Quick post-workout recovery"},
-        {"food_name": "Apple with Almond Butter", "portion": "1 apple + 1 tbsp", "calories": 200, "protein_g": 5, "carbs_g": 28, "fat_g": 10, "reason": "Healthy fats + natural sugars"},
-        {"food_name": "Cottage Cheese with Pineapple", "portion": "1 cup (200g)", "calories": 180, "protein_g": 22, "carbs_g": 14, "fat_g": 5, "reason": "Casein protein, satiating"},
+        {"food_name": "Boiled Saba Banana", "portion": "2 pcs (150g)", "calories": 200, "protein_g": 3, "carbs_g": 50, "fat_g": 1, "reason": "Quick pre- or post-workout carbohydrates"},
+        {"food_name": "Puto with Cheese", "portion": "2 pcs (120g)", "calories": 240, "protein_g": 6, "carbs_g": 42, "fat_g": 5, "reason": "Light snack that refills glycogen between sessions"},
+        {"food_name": "Fresh Buko Juice", "portion": "1 glass (250ml)", "calories": 120, "protein_g": 1, "carbs_g": 28, "fat_g": 1, "reason": "Natural electrolytes for hydration"},
     ],
 }
+
+
+def _age_from_dob(dob: Any) -> Any:
+    """Age computed from date_of_birth; None when unknown. profiles has no
+    'age' column (that query used to 400 and silently drop all context)."""
+    if not dob:
+        return None
+    try:
+        born = date.fromisoformat(str(dob)[:10])
+        today = date.today()
+        return today.year - born.year - ((today.month, today.day) < (born.month, born.day))
+    except Exception:
+        return None
+
+
+def _member_context(member_id: str) -> dict[str, Any]:
+    """Profile context for the Gemini prompt, built only from real columns:
+    profiles(full_name, date_of_birth, gender) + goals(title, status)."""
+    profile: dict[str, Any] = {}
+    try:
+        p = db.select_single("profiles", "full_name, date_of_birth, gender", id=member_id) or {}
+        profile["full_name"] = p.get("full_name", "")
+        profile["age"] = _age_from_dob(p.get("date_of_birth"))
+        profile["gender"] = p.get("gender", "")
+    except Exception:
+        pass
+    try:
+        goals = db.select("goals", "title, status", member_id=member_id, order="created_at.desc", limit=5)  # type: ignore[assignment]
+        active = [g.get("title", "") for g in goals if g.get("status") == "active" and g.get("title")]
+        if active:
+            profile["fitness_goal"] = ", ".join(active)
+    except Exception:
+        pass
+    return profile
+
 
 @router.post("/food-recommendations", response_model=list[FoodRecommendation])
 async def get_food_recommendations(req: MemberIdentifier):
     meal_type = (req.meal_type or "lunch").lower()
     try:
-        logs = db.select("meal_logs", "*", member_id=req.member_id, order="logged_at.desc", limit=20)
+        # meal_logs timestamps live in meal_time (logged_at does not exist here).
+        logs = db.select("meal_logs", "meal_type, food_name, calories, meal_time", member_id=req.member_id, order="meal_time.desc", limit=20)  # type: ignore[assignment]
     except Exception:
         logs = []
-    try:
-        profile = db.select_single("profiles", "full_name, age, fitness_goal", id=req.member_id) or {}
-    except Exception:
-        profile = {}
+    profile = _member_context(req.member_id)
     result = food_recommendations_ai(meal_type, logs, profile)
     if result and isinstance(result, list):
         return [FoodRecommendation(**r) for r in result[:5]]
