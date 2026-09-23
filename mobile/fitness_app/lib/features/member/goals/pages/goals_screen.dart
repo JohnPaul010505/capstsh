@@ -141,8 +141,9 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
 }
 
 
-/// Goals list body: while any goal is in progress only the goals show;
-/// once every goal is done (or none exists yet) the Create card shows above.
+/// Goals list body: while any goal's window is still running only the goals
+/// show; the Create card shows above the list only when every goal's end
+/// date has passed (or none exists yet).
 class _GoalsBody extends StatelessWidget {
   final List<Map<String, dynamic>> goals;
   final VoidCallback onGoalAdded;
@@ -154,18 +155,20 @@ class _GoalsBody extends StatelessWidget {
     required this.onToggleStatus,
   });
 
-  /// A goal is "in progress" when its DB status is still active and its end
-  /// date has not passed — this matches how GoalCard renders it (an overdue
-  /// row already displays as completed).
-  bool _inProgress(Map<String, dynamic> g) {
-    if ((g['status'] as String? ?? 'active') != 'active') return false;
+  /// A goal is ongoing while its end date has not passed — regardless of DB
+  /// status (active, in_progress, or completed-early) — so the member always
+  /// sees just their goal and cannot accidentally add a second one while the
+  /// window is still running. A missing/unparseable end date counts as
+  /// ongoing (safe side: the Create card stays hidden). The date comparison
+  /// matches GoalCard's own isOverdue check so UI and predicate stay in sync.
+  bool _ongoing(Map<String, dynamic> g) {
     final end = DateTime.tryParse(g['end_date']?.toString() ?? '');
     return end == null || !end.isBefore(DateTime.now());
   }
 
   @override
   Widget build(BuildContext context) {
-    final hasActiveGoal = goals.any(_inProgress);
+    final hasActiveGoal = goals.any(_ongoing);
 
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
