@@ -24,7 +24,7 @@ const MOCK_PENDING_RENEWALS: MembershipRenewalRequest[] = [
     requested_at: new Date(Date.now() - 2 * 3600_000).toISOString(),
     decided_at: null,
     decided_by: null,
-    profiles: { full_name: 'Maria Santos', code: 'M002', email: 'member2@mock.fit' },
+    profiles: { full_name: 'Maria Santos', code: 'M005', email: 'member2@mock.fit' },
   },
   {
     id: 'mock-renewal-2',
@@ -37,7 +37,7 @@ const MOCK_PENDING_RENEWALS: MembershipRenewalRequest[] = [
     requested_at: new Date(Date.now() - 24 * 60 * 60_000).toISOString(),
     decided_at: null,
     decided_by: null,
-    profiles: { full_name: 'Juan Dela Cruz', code: 'M001', email: 'member1@mock.fit' },
+    profiles: { full_name: 'Juan Dela Cruz', code: 'M004', email: 'member1@mock.fit' },
   },
   {
     id: 'mock-renewal-3',
@@ -50,10 +50,13 @@ const MOCK_PENDING_RENEWALS: MembershipRenewalRequest[] = [
     requested_at: new Date(Date.now() - 3 * 24 * 60 * 60_000).toISOString(),
     decided_at: null,
     decided_by: null,
-    profiles: { full_name: 'Ana Reyes', code: 'M004', email: 'member4@mock.fit' },
+    profiles: { full_name: 'Ana Reyes', code: 'M007', email: 'member4@mock.fit' },
   },
 ]
 
+  const MOCK_RENEWAL_EMAILS: string[] = [...new Set(
+    MOCK_PENDING_RENEWALS.map(m => m.profiles?.email).filter((e): e is string => !!e)
+  )]
 function todayStr() {
   return new Date().toISOString().split('T')[0]
 }
@@ -256,7 +259,22 @@ export default function MembershipsPage() {
   const { data: pendingData } = useRenewalRequests()
   const [dismissedMocks, setDismissedMocks] = useState<string[]>([])
   const visibleMocks = MOCK_PENDING_RENEWALS.filter(m => !dismissedMocks.includes(m.id))
-  const pendingList = useMemo(() => [...visibleMocks, ...(pendingData ?? [])], [pendingData, dismissedMocks])
+  const { data: mockProfiles } = useQuery({
+    queryKey: ['mock-renewal-profiles'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('profiles').select('id, email, code').in('email', MOCK_RENEWAL_EMAILS)
+      return (data ?? [])
+    },
+  })
+  const pendingList = useMemo(() => {
+    const byEmail = new Map((mockProfiles ?? []).map(p => [p.email, p]))
+    return visibleMocks.map(m => {
+      const hit = m.profiles?.email ? byEmail.get(m.profiles.email) : undefined
+      if (!hit || !m.profiles) return m
+      return { ...m, member_id: hit.id, profiles: { ...m.profiles, code: hit.code ?? m.profiles.code } }
+    }).concat(pendingData ?? [])
+  }, [pendingData, dismissedMocks, mockProfiles])
   const pendingByMember = useRef<Map<string, MembershipRenewalRequest>>(new Map())
   useEffect(() => {
     pendingByMember.current.clear()
