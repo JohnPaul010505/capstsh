@@ -7,15 +7,12 @@ import 'package:shared/services/notification_service.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../../features/shared/widgets/clay/clay_card.dart';
 import '../../../shared/widgets/app_glow_background.dart';
+import '../../../shared/widgets/animations.dart' show StaggeredFadeIn;
 import 'create_goal_card.dart';
 import 'goal_card.dart';
+import 'empty_goals_state.dart';
 
 const bgDark = Color(0xFF0B0D1A);
-const cardDark = Color(0xFF15172A);
-const inputDark = Color(0xFF1E2035);
-const primaryPurple = Color(0xFF7C3AED);
-const highlightPurple = Color(0xFFA855F7);
-const textPrimary = Color(0xFFFFFFFF);
 const textSecondary = Color(0xFFA0A4B8);
 
 final goalsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
@@ -49,85 +46,62 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
             children: [
               _buildHeader('Goals'),
               Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 16,
-                  ),
-                  children: [
-                    CreateGoalCard(
-                      onGoalAdded: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: const Text('Goal created'),
-                            backgroundColor: const Color(0xFF22C55E),
-                            duration: const Duration(seconds: 2),
-                          ),
-                        );
-                      },
-                    ),
-                    goalsAsync.when(
-                      data: (goals) => goals.isEmpty
-                          ? const SizedBox.shrink()
-                          : Padding(
-                              padding: const EdgeInsets.only(top: 24),
-                              child: ClayCard(
-                                variant: ClayCardVariant.outlined,
-                                backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
-                                customPadding: const EdgeInsets.all(16),
-                                padding: ClayCardPadding.none,
-                                borderRadius: BorderRadius.circular(16),
-                                child: Column(
-                                  children: goals.asMap().entries.map((entry) {
-                                    final g = entry.value;
-                                    return GoalCard(
-                                      goal: g,
-                                      onToggleStatus: () async {
-                                        final currentStatus =
-                                            g['status'] as String? ?? 'active';
-                                        final newStatus =
-                                            currentStatus == 'active'
-                                            ? 'completed'
-                                            : 'active';
-                                        await SupabaseClientService().client
-                                            .from('goals')
-                                            .update({'status': newStatus})
-                                            .eq('id', g['id']);
-                                        final userId = SupabaseClientService()
-                                            .client
-                                            .auth
-                                            .currentUser!
-                                            .id;
-                                        if (newStatus == 'completed') {
-                                          await NotificationService()
-                                              .createNotification(
-                                                userId: userId,
-                                                title: 'Goal Completed',
-                                                body:
-                                                    'Congratulations! You completed your ${g['goal_type'] ?? 'fitness'} goal.',
-                                              );
-                                        }
-                                        ref.invalidate(goalsProvider);
-                                      },
-                                    );
-                                  }).toList(),
-                                ),
-                              ),
-                            ),
-                      loading: () =>
-                          const Center(child: CupertinoActivityIndicator()),
-                      error: (e, _) => Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Text(
-                          'Error: $e',
-                          style: TextStyle(
-                            color: Colors.redAccent,
-                            fontSize: 14,
-                          ),
+                child: goalsAsync.when(
+                  data: (goals) => _GoalsBody(
+                    goals: goals,
+                    onGoalAdded: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text('Goal created'),
+                          backgroundColor: const Color(0xFF22C55E),
+                          duration: const Duration(seconds: 2),
                         ),
+                      );
+                    },
+                    onToggleStatus: (g) async {
+                      final currentStatus = g['status'] as String? ?? 'active';
+                      final newStatus =
+                          currentStatus == 'active' ? 'completed' : 'active';
+                      await SupabaseClientService().client
+                          .from('goals')
+                          .update({'status': newStatus})
+                          .eq('id', g['id']);
+                      final userId = SupabaseClientService()
+                          .client
+                          .auth
+                          .currentUser!
+                          .id;
+                      if (newStatus == 'completed') {
+                        // Self-notifications are denied by the notifications insert policy
+                        // (user_id <> auth.uid()); a failed notification must never block
+                        // the status refresh below.
+                        try {
+                          await NotificationService().createNotification(
+                            userId: userId,
+                            title: 'Goal Completed',
+                            body:
+                                'Congratulations! You completed your ${g['goal_type'] ?? 'fitness'} goal.',
+                          );
+                        } catch (e) {
+                          debugPrint('GOAL NOTIFY failed: $e');
+                        }
+                      }
+                      ref.invalidate(goalsProvider);
+                    },
+                  ),
+                  loading: () => const Center(
+                    child: CupertinoActivityIndicator(),
+                  ),
+                  error: (e, _) => Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      'Error: $e',
+                      style: TextStyle(
+                        color: Colors.redAccent,
+                        fontSize: 14,
                       ),
                     ),
-                  ],
+                  ),
                 ),
               ),
             ],
@@ -162,6 +136,69 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
           const SizedBox(width: 32),
         ],
       ),
+    );
+  }
+}
+
+
+/// Goals list body: while any goal is in progress only the goals show;
+/// once every goal is done (or none exists yet) the Create card shows above.
+class _GoalsBody extends StatelessWidget {
+  final List<Map<String, dynamic>> goals;
+  final VoidCallback onGoalAdded;
+  final void Function(Map<String, dynamic> goal) onToggleStatus;
+
+  const _GoalsBody({
+    required this.goals,
+    required this.onGoalAdded,
+    required this.onToggleStatus,
+  });
+
+  /// A goal is "in progress" when its DB status is still active and its end
+  /// date has not passed — this matches how GoalCard renders it (an overdue
+  /// row already displays as completed).
+  bool _inProgress(Map<String, dynamic> g) {
+    if ((g['status'] as String? ?? 'active') != 'active') return false;
+    final end = DateTime.tryParse(g['end_date']?.toString() ?? '');
+    return end == null || !end.isBefore(DateTime.now());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasActiveGoal = goals.any(_inProgress);
+
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      children: [
+        if (!hasActiveGoal) ...[
+          StaggeredFadeIn(
+            index: 0,
+            child: CreateGoalCard(onGoalAdded: onGoalAdded),
+          ),
+          const SizedBox(height: 16),
+        ],
+        if (goals.isEmpty)
+          const EmptyGoalsState()
+        else
+          StaggeredFadeIn(
+            index: hasActiveGoal ? 0 : 1,
+            child: ClayCard(
+              variant: ClayCardVariant.outlined,
+              backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
+              customPadding: const EdgeInsets.all(16),
+              padding: ClayCardPadding.none,
+              borderRadius: BorderRadius.circular(16),
+              child: Column(
+                children: goals
+                    .map((g) => GoalCard(
+                          goal: g,
+                          onToggleStatus: () => onToggleStatus(g),
+                        ))
+                    .toList(),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

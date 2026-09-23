@@ -66,12 +66,6 @@ final homeDataProvider = FutureProvider<Map<String, dynamic>>((ref) async {
         .eq('member_id', userId)
         .eq('status', 'active')
         .limit(1),
-    client
-        .from('memberships')
-        .select('plan_name, end_date, status')
-        .eq('member_id', userId)
-        .eq('status', 'active')
-        .limit(1),
     // This Week chart counts actual logged workouts (not QR check-ins).
     client
         .from('workout_logs')
@@ -85,10 +79,7 @@ final homeDataProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   final measurements = results[1] as List;
   final goals = results[2] as List;
   final assignment = results[3] as List;
-  final membershipResp = results[4] as List;
-  final weekWorkouts = results[5] as List;
-
-  final todayStr = today.toIso8601String().split('T').first;
+  final weekWorkouts = results[4] as List;
 
   final isM002 = profile?.code == 'M002';
   if (isM002 && today.year == 2026 && today.month == 8 && today.day == 14) {
@@ -111,15 +102,11 @@ final homeDataProvider = FutureProvider<Map<String, dynamic>>((ref) async {
 
   final monthlyCounts = List.generate(12, (i) => 0);
   final monthCounts = List.generate(monthEnd, (i) => 0);
-  Map<String, dynamic>? openSession;
   for (final a in yearList.cast<Map<String, dynamic>>()) {
     final t = DateTime.parse(a['check_in_time'] as String);
     final day = t.day - 1;
     if (t.month - 1 >= 0 && t.month - 1 < 12) monthlyCounts[t.month - 1]++;
     if (t.month == today.month && day >= 0 && day < monthEnd) monthCounts[day]++;
-    if (a['check_in_date'] == todayStr && a['check_out_time'] == null) {
-      openSession ??= a;
-    }
   }
 
   final totalWorkouts = monthCounts.reduce((a, b) => a + b);
@@ -162,11 +149,6 @@ final homeDataProvider = FutureProvider<Map<String, dynamic>>((ref) async {
     trainerProfile = trainerResp;
   }
 
-  Map<String, dynamic>? membership;
-  if (membershipResp.isNotEmpty) {
-    membership = membershipResp[0];
-  }
-
   return {
     'profile': profile,
     'weekCounts': weekCounts,
@@ -178,8 +160,6 @@ final homeDataProvider = FutureProvider<Map<String, dynamic>>((ref) async {
     'activeDays': activeDays,
     'activeGoal': activeGoal,
     'trainer': trainerProfile,
-    'membership': membership,
-    'openSession': openSession,
   };
 });
 
@@ -376,8 +356,6 @@ class _HomeContentState extends State<HomeContent> {
     final totalWorkouts = data['totalWorkouts'] as int;
     final activeDays = data['activeDays'] as int;
     final trainer = data['trainer'] as Map<String, dynamic>?;
-    final membership = data['membership'] as Map<String, dynamic>?;
-    final openSession = data['openSession'] as Map<String, dynamic>?;
     final name = profile?.fullName ?? 'there';
     final firstName = name.split(' ').first;
     final initials = name.isNotEmpty ? name.split(' ').map((n) => n[0]).take(2).join() : '?';
@@ -386,14 +364,6 @@ class _HomeContentState extends State<HomeContent> {
     final greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
     final maxCount = weekCounts.reduce((a, b) => a > b ? a : b).clamp(1, 100);
-
-    final planName = membership?['plan_name'] as String?;
-    final endDate = membership?['end_date'] as String?;
-    final status = membership?['status'] as String? ?? 'active';
-    final parsedEndDate = endDate != null ? DateTime.tryParse(endDate) : null;
-    final isExpired = parsedEndDate != null && parsedEndDate.isBefore(DateTime.now());
-    final showMembershipCard = membership != null && status == 'active' && !isExpired && (planName != 'Daily' || openSession != null);
-    final offset = showMembershipCard ? 1 : 0;
 
     return ListView(
       // extendBody already reserves the nav-bar height via SafeArea;
@@ -420,25 +390,22 @@ class _HomeContentState extends State<HomeContent> {
               bellKey: _bellKey,
             ),
             const SizedBox(height: 12),
-            if (showMembershipCard)
-              StaggeredFadeIn(index: 0, child: _MembershipCard(membership: membership, openSession: openSession)),
-            if (showMembershipCard) const SizedBox(height: 8),
-            StaggeredFadeIn(index: offset, child: _MonthSummary(totalWorkouts: totalWorkouts, activeDays: activeDays, memberId: profile.id)),
+            StaggeredFadeIn(index: 0, child: _MonthSummary(totalWorkouts: totalWorkouts, activeDays: activeDays, memberId: profile.id)),
             const SizedBox(height: 8),
-            StaggeredFadeIn(index: 1 + offset, child: _WeekChart(weekCounts: weekCounts, maxCount: maxCount)),
+            StaggeredFadeIn(index: 1, child: _WeekChart(weekCounts: weekCounts, maxCount: maxCount)),
             const SizedBox(height: 8),
-            StaggeredFadeIn(index: 2 + offset, child: _PredictionCard(memberId: profile.id)),
+            StaggeredFadeIn(index: 2, child: _PredictionCard(memberId: profile.id)),
             const SizedBox(height: 8),
-            StaggeredFadeIn(index: 3 + offset, child: _YearChart(
+            StaggeredFadeIn(index: 3, child: _YearChart(
               monthlyCounts: monthlyCounts,
               totalWorkouts: totalWorkouts,
               yearLabel: '${DateTime.now().year}',
             )),
             const SizedBox(height: 8),
-            StaggeredFadeIn(index: 4 + offset, child: _GrowthChart(monthlyWeights: monthlyWeights)),
+            StaggeredFadeIn(index: 4, child: _GrowthChart(monthlyWeights: monthlyWeights)),
             const SizedBox(height: 8),
             if (trainer != null) ...[
-              StaggeredFadeIn(index: 5 + offset, child: _TrainerCard(trainer: trainer)),
+              StaggeredFadeIn(index: 5, child: _TrainerCard(trainer: trainer)),
               const SizedBox(height: 8),
             ],
             const SizedBox(height: 16),
@@ -675,98 +642,6 @@ class _GreetingRow extends ConsumerWidget {
   }
 }
 
-class _MembershipCard extends StatefulWidget {
-  final Map<String, dynamic> membership;
-  final Map<String, dynamic>? openSession;
-
-  const _MembershipCard({required this.membership, this.openSession});
-
-  @override
-  State<_MembershipCard> createState() => _MembershipCardState();
-}
-
-class _MembershipCardState extends State<_MembershipCard> {
-  Timer? _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    final plan = widget.membership['plan_name'] as String? ?? 'Basic';
-    if (plan == 'Daily' && widget.openSession?['expires_at'] != null) {
-      _timer = Timer.periodic(const Duration(minutes: 1), (_) => setState(() {}));
-    }
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  String _formatCountdown(DateTime expiresAt) {
-    final diff = expiresAt.difference(DateTime.now());
-    if (diff.isNegative) return 'Session expired';
-    final hours = diff.inHours;
-    final minutes = diff.inMinutes % 60;
-    return '$hours h ${minutes.toString().padLeft(2, '0')} m';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final membership = widget.membership;
-    final openSession = widget.openSession;
-    final plan = membership['plan_name'] as String? ?? 'Basic';
-    final endDate = membership['end_date'] as String?;
-    final status = membership['status'] as String? ?? 'active';
-    final formattedDate = endDate != null && endDate.length >= 10
-        ? endDate.substring(0, 10)
-        : 'N/A';
-
-    final isActive = status == 'active';
-    final isDaily = plan == 'Daily';
-
-    final subtitle = isDaily && openSession != null
-        ? 'Expires in ${_formatCountdown(DateTime.parse(openSession['expires_at'] as String))}'
-        : 'Valid until $formattedDate';
-
-    return ClayCard(
-      variant: ClayCardVariant.outlined,
-      padding: ClayCardPadding.medium,
-      backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('MEMBERSHIP', style: ClayTokens.labelSmall.copyWith(color: Colors.white)),
-                const SizedBox(height: 3),
-                Text(plan, style: ClayTokens.titleLarge.copyWith(color: ClayTokens.clayDarkTextPrimary)),
-                const SizedBox(height: 2),
-                Text(subtitle, style: ClayTokens.bodySmall.copyWith(
-                  color: isDaily ? ClayTokens.clayWarning : ClayTokens.clayDarkTextTertiary,
-                )),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-            decoration: BoxDecoration(
-              color: isActive ? ClayTokens.clayAccent.withAlpha(25) : ClayTokens.clayWarning.withAlpha(25),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: isActive ? ClayTokens.clayAccent.withAlpha(60) : ClayTokens.clayWarning.withAlpha(60)),
-            ),
-            child: Text(
-              isActive ? 'ACTIVE' : status.toUpperCase(),
-              style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: isActive ? Colors.white : ClayTokens.clayWarning),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _WeekChart extends StatefulWidget {
   final List<int> weekCounts;
   final int maxCount;
@@ -981,7 +856,7 @@ class _TrainerCard extends StatelessWidget {
           const SizedBox(height: 10),
           ClayButton(
             label: 'Ask a question',
-            onPressed: () => context.go('/member/chat'),
+            onPressed: () => context.push('/member/chat'),
             style: ClayButtonStyle.primary,
             fullWidth: true,
             size: ClayButtonSize.small,
@@ -1171,8 +1046,8 @@ class _MonthSummary extends StatelessWidget {
       children: [
         Expanded(
           child: _StatCard(
-            icon: Icons.fitness_center,
-            iconColor: Colors.white,
+            icon: Icons.sports_gymnastics,
+            iconColor: ClayTokens.clayPrimary,
             valueWidget: AnimatedCountUp(
               target: totalWorkouts,
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: ClayTokens.clayDarkTextPrimary),
@@ -1183,8 +1058,8 @@ class _MonthSummary extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: _StatCard(
-            icon: Icons.calendar_month,
-            iconColor: ClayTokens.clayPrimaryDark,
+            icon: Icons.event_available,
+            iconColor: ClayTokens.clayPrimary,
             valueWidget: AnimatedCountUp(
               target: activeDays,
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: ClayTokens.clayDarkTextPrimary),
