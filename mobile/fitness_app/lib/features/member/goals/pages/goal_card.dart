@@ -47,17 +47,17 @@ class GoalCard extends ConsumerWidget {
     double? remaining;
     if (targetValue == null || targetValue <= 0) {
       progressPct = 0.0;
-    } else if (goalType.isNotEmpty && liveWeight != null && baselineWeight != null) {
-      final low = baselineWeight < targetValue
-          ? baselineWeight
-          : targetValue;
-      final high = baselineWeight < targetValue
-          ? targetValue
-          : baselineWeight;
+    } else if (goalType.isNotEmpty &&
+        liveWeight != null &&
+        baselineWeight != null) {
+      final low = baselineWeight < targetValue ? baselineWeight : targetValue;
+      final high = baselineWeight < targetValue ? targetValue : baselineWeight;
       if (high == low) {
         progressPct = 0.0;
       } else {
-        final current = goalType.toLowerCase() == 'lose weight' ? high - liveWeight : liveWeight - low;
+        final current = goalType.toLowerCase() == 'lose weight'
+            ? high - liveWeight
+            : liveWeight - low;
         progressPct = (current / (high - low) * 100.0).clamp(0.0, 100.0);
       }
       if (goalType.toLowerCase() == 'gain muscle') {
@@ -74,16 +74,21 @@ class GoalCard extends ConsumerWidget {
       remaining = targetValue - (currentValue ?? 0);
     }
 
-    final daysRemaining = ((endDate.difference(DateTime.now()).inHours) / 24).ceil();
+    final daysRemaining = ((endDate.difference(DateTime.now()).inHours) / 24)
+        .ceil();
     final isOverdue = endDate.isBefore(DateTime.now());
-    final effectiveStatus = isOverdue && status == 'active' ? 'completed' : status;
+    final effectiveStatus = isOverdue && status == 'active'
+        ? 'completed'
+        : status;
 
     final icon = _goalIcon(goalType);
     final unitLabel = _unitLabel(goalType);
-    final currentDisplay =
-        goalType.isNotEmpty ? (liveWeight ?? baselineWeight) : currentValue;
-    final remainingDisplay =
-        remaining == null ? null : (remaining < 0 ? 0.0 : remaining);
+    final currentDisplay = goalType.isNotEmpty
+        ? (liveWeight ?? baselineWeight)
+        : currentValue;
+    final remainingDisplay = remaining == null
+        ? null
+        : (remaining < 0 ? 0.0 : remaining);
 
     // Momentum-hero derived state: time progress runs alongside weight
     // progress so the member sees movement even at 0%, and days-remaining
@@ -97,16 +102,18 @@ class GoalCard extends ConsumerWidget {
     final daysColor = isCompleted
         ? goalSuccessGreen
         : isOverdue
-            ? goalDangerRed
-            : daysRemaining <= 3
-                ? goalDangerRed
-                : daysRemaining <= 7
-                    ? goalWarningAmber
-                    : goalSuccessGreen;
-    final statusLabel =
-        isCompleted ? 'COMPLETED' : (isOverdue ? 'EXPIRED' : 'IN PROGRESS');
-    final statusColor =
-        isCompleted ? goalSuccessGreen : (isOverdue ? textSecondary : highlightPurple);
+        ? goalDangerRed
+        : daysRemaining <= 3
+        ? goalDangerRed
+        : daysRemaining <= 7
+        ? goalWarningAmber
+        : goalSuccessGreen;
+    final statusLabel = isCompleted
+        ? 'COMPLETED'
+        : (isOverdue ? 'EXPIRED' : 'IN PROGRESS');
+    final statusColor = isCompleted
+        ? goalSuccessGreen
+        : (isOverdue ? textSecondary : highlightPurple);
 
     return Column(
       children: [
@@ -253,10 +260,7 @@ class GoalCard extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
+              Center(
                 child: Column(
                   children: [
                     Semantics(
@@ -280,8 +284,7 @@ class GoalCard extends ConsumerWidget {
                                 height: 140,
                                 child: CircularProgressIndicator(
                                   value: value,
-                                  backgroundColor:
-                                      primaryPurple.withAlpha(28),
+                                  backgroundColor: primaryPurple.withAlpha(28),
                                   color: isCompleted
                                       ? goalSuccessGreen
                                       : highlightPurple,
@@ -320,10 +323,7 @@ class GoalCard extends ConsumerWidget {
                       const Text(
                         'Log a weight in Progress to grow this ring',
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: textSecondary,
-                          fontSize: 13,
-                        ),
+                        style: TextStyle(color: textSecondary, fontSize: 13),
                       ),
                     ],
                   ],
@@ -362,8 +362,6 @@ class GoalCard extends ConsumerWidget {
                 dateRange:
                     '${_shortDate(startDate)} – ${_shortDate(endDate)}, ${endDate.year}',
               ),
-            ],
-              ),
               const SizedBox(height: 14),
               ClipRRect(
                 borderRadius: BorderRadius.circular(999),
@@ -381,10 +379,7 @@ class GoalCard extends ConsumerWidget {
                 isOverdue && !isCompleted
                     ? 'Ended ${_shortDate(endDate)}, ${endDate.year}'
                     : 'Day $elapsedDays of $totalDays',
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: textSecondary,
-                ),
+                style: const TextStyle(fontSize: 12, color: textSecondary),
               ),
             ],
           ),
@@ -510,11 +505,7 @@ class _DaysBanner extends StatelessWidget {
               color: daysColor.withAlpha(30),
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              CupertinoIcons.calendar,
-              size: 18,
-              color: daysColor,
-            ),
+            child: Icon(CupertinoIcons.calendar, size: 18, color: daysColor),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -550,10 +541,7 @@ class _DaysBanner extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   dateRange,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: textSecondary,
-                  ),
+                  style: const TextStyle(fontSize: 12, color: textSecondary),
                 ),
               ],
             ),
