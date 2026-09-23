@@ -294,33 +294,49 @@ export default function MembershipsPage() {
 
   const handleApprove = async (request: MembershipRenewalRequest) => {
     if (request.id.startsWith('mock-')) {
+      if (!request.member_id.startsWith('mock-')) {
+        const { data: existing } = await supabase
+          .from('memberships').select('id, plan_name, price, end_date')
+          .eq('member_id', request.member_id).order('end_date', { ascending: false }).limit(1).single()
+        const lastEnd = existing?.end_date
+        const newStart = lastEnd && endOfDay(lastEnd).getTime() > Date.now()
+          ? addDays(lastEnd, 1) : todayStr()
+        const planKey = (request.plan_name || '').toLowerCase() as keyof typeof PLANS
+        const plan = PLANS[planKey] ?? PLANS.monthly
+        const durationDays = planKey === 'daily' ? 1 : request.months * 30
+        const samePlanPrice = existing && existing.plan_name === request.plan_name ? existing.price : null
+        await supabase.from('memberships').insert({
+          member_id: request.member_id,
+          plan_name: request.plan_name,
+          price: samePlanPrice ?? plan.price,
+          start_date: newStart,
+          end_date: addDays(newStart, durationDays),
+          status: 'active',
+        })
+        await qc.invalidateQueries({ queryKey: ['memberships'] })
+        setActiveTab(planKey === 'daily' ? 'daily' : 'monthly')
+      }
       setDismissedMocks(prev => prev.includes(request.id) ? prev : [...prev, request.id])
       return
     }
     setSavingRequest(request.id)
     try {
       const { data: existing } = await supabase
-        .from('memberships')
-        .select('id, plan_name, price, end_date')
-        .eq('member_id', request.member_id)
-        .order('end_date', { ascending: false })
-        .limit(1)
-        .single()
+        .from('memberships').select('id, plan_name, price, end_date')
+        .eq('member_id', request.member_id).order('end_date', { ascending: false }).limit(1).single()
       const lastEnd = existing?.end_date
       const newStart = lastEnd && endOfDay(lastEnd).getTime() > Date.now()
-        ? addDays(lastEnd, 1)
-        : todayStr()
+        ? addDays(lastEnd, 1) : todayStr()
       const planKey = (request.plan_name || '').toLowerCase() as keyof typeof PLANS
       const plan = PLANS[planKey] ?? PLANS.monthly
       const durationDays = planKey === 'daily' ? 1 : request.months * 30
-      const newEnd = addDays(newStart, durationDays)
       const price = existing?.price ? existing.price : plan.price
       await supabase.from('memberships').insert({
         member_id: request.member_id,
         plan_name: request.plan_name,
         price,
         start_date: newStart,
-        end_date: newEnd,
+        end_date: addDays(newStart, durationDays),
         status: 'active',
       })
       await supabase
@@ -329,6 +345,7 @@ export default function MembershipsPage() {
         .eq('id', request.id)
       await qc.invalidateQueries({ queryKey: ['memberships'] })
       await qc.invalidateQueries({ queryKey: ['membership_renewal_requests'] })
+      setActiveTab(planKey === 'daily' ? 'daily' : 'monthly')
     } catch (err) {
       console.error('[ renewals ] approve:', err)
     } finally {
