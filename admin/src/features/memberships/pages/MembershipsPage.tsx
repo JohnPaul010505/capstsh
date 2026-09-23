@@ -152,7 +152,15 @@ function MemberSelect({ members, value, onChange }: { members: MemberOption[] | 
 export default function MembershipsPage() {
   const [activeTab, setActiveTab] = useState<'daily' | 'monthly' | 'renewal'>('daily')
   const [showModal, setShowModal] = useState(false)
-  const [form, setForm] = useState({ member_id: '', plan_type: 'daily' as 'daily' | 'monthly', months: 1, price: String(PLANS.daily.price), start_date: todayStr() })
+  const [form, setForm] = useState({
+    member_id: '',
+    plan_type: 'daily' as 'daily' | 'monthly',
+    months: 1,
+    custom: false,
+    end_date: addDays(todayStr(), 30),
+    price: String(PLANS.daily.price),
+    start_date: todayStr(),
+  })
   const [saving, setSaving] = useState(false)
   const [planError, setPlanError] = useState('')
 
@@ -193,7 +201,12 @@ export default function MembershipsPage() {
 
   // Monthly length = selected months × 30-day plan cycle; Daily stays 1 day.
   const durationDays = PLANS[form.plan_type].days * (form.plan_type === 'monthly' ? form.months : 1)
-  const endDate = addDays(form.start_date, durationDays)
+  // Monthly + Custom: the admin picks the end date by hand instead of the auto calculation.
+  const endDate = form.plan_type === 'monthly' && form.custom
+    ? form.end_date
+    : addDays(form.start_date, durationDays)
+  const customInvalid = form.plan_type === 'monthly' && form.custom
+    && (!form.end_date || form.end_date <= form.start_date)
 
   // Close the drawer with the Escape key.
   useEffect(() => {
@@ -206,13 +219,16 @@ export default function MembershipsPage() {
   }, [showModal])
 
   const openCreate = () => {
-    setForm({ member_id: '', plan_type: 'daily', months: 1, price: String(PLANS.daily.price), start_date: todayStr() })
+    setForm({
+      member_id: '', plan_type: 'daily', months: 1, custom: false,
+      end_date: addDays(todayStr(), 30), price: String(PLANS.daily.price), start_date: todayStr(),
+    })
     setPlanError('')
     setShowModal(true)
   }
 
   const handleSave = async () => {
-    if (!form.member_id || !Number(form.price)) return
+    if (!form.member_id || !Number(form.price) || customInvalid) return
     setPlanError('')
     setSaving(true)
     try {
@@ -418,52 +434,67 @@ export default function MembershipsPage() {
 
       {activeTab === 'renewal' ? (
         pendingList.length > 0 ? (
-          <div className="glass-card rounded-xl p-4">
-            <div className="flex items-center justify-between mb-3">
+          <div className="glass-card rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-line flex items-center justify-between">
               <h2 className="text-sm font-semibold text-fg-strong">Pending Renewals</h2>
               <span className="text-xs text-fg-muted">{pendingList.length} request{pendingList.length === 1 ? '' : 's'}</span>
             </div>
-            <div className="space-y-3">
-              {pendingList.map(request => (
-                <div key={request.id} className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm font-medium text-fg-strong">{request.profiles?.full_name ?? '—'}</span>
-                      {request.profiles?.code != null && <span className="text-xs font-mono text-accent-purple">{request.profiles.code}</span>}
-                    </div>
-                    {request.profiles?.email != null && <p className="text-xs text-fg-muted mb-2">{request.profiles.email}</p>}
-                    <div className="flex flex-wrap gap-1.5">
-                      <span className="bg-[#7C3AED]/10 text-accent-purple px-2 py-0.5 rounded-full text-xs font-medium">{request.plan_name}</span>
-                      <span className="text-xs text-fg-muted">{request.plan_name.toLowerCase() === 'daily' ? '1 day' : `${request.months} month${request.months === 1 ? '' : 's'}`}</span>
-                      {request.note != null && request.note.trim() !== '' && <span className="text-xs text-fg">"{request.note}"</span>}
-                    </div>
-                    <p className="text-xs text-fg-muted mt-1">
-                      Requested{' '}
-                      {new Date(request.requested_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                      {' at '}
-                      {new Date(request.requested_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      onClick={() => handleApprove(request)}
-                      disabled={savingRequest === request.id}
-                      className="flex items-center gap-1 px-3 py-1.5 text-xs bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50"
-                    >
-                      <CheckCircle className="w-3.5 h-3.5" />
-                      {savingRequest === request.id ? 'Saving...' : 'Approve'}
-                    </button>
-                    <button
-                      onClick={() => handleDecline(request)}
-                      disabled={savingRequest === request.id}
-                      className="flex items-center gap-1 px-3 py-1.5 text-xs bg-rose-600 text-white rounded-lg hover:bg-rose-700 disabled:opacity-50"
-                    >
-                      <XCircle className="w-3.5 h-3.5" />
-                      {savingRequest === request.id ? 'Saving...' : 'Decline'}
-                    </button>
-                  </div>
-                </div>
-              ))}
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-line bg-overlay-5">
+                    <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Member</th>
+                    <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Plan</th>
+                    <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Requested</th>
+                    <th className="text-right px-3 py-2 text-sm font-medium text-fg-muted">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pendingList.map(request => (
+                    <tr key={request.id} className="border-b border-line-soft last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
+                      <td className="px-3 py-2 align-top">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-fg-strong">{request.profiles?.full_name ?? '—'}</span>
+                          {request.profiles?.code != null && <span className="text-xs font-mono text-accent-purple">{request.profiles.code}</span>}
+                        </div>
+                        {request.profiles?.email != null && <p className="text-xs text-fg-muted mt-0.5">{request.profiles.email}</p>}
+                      </td>
+                      <td className="px-3 py-2 align-top">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="bg-[#7C3AED]/10 text-accent-purple px-2 py-0.5 rounded-full text-xs font-medium">{request.plan_name}</span>
+                          <span className="text-xs text-fg-muted">{request.plan_name.toLowerCase() === 'daily' ? '1 day' : `${request.months} month${request.months === 1 ? '' : 's'}`}</span>
+                        </div>
+                        {request.note != null && request.note.trim() !== '' && <p className="text-xs text-fg mt-1">"{request.note}"</p>}
+                      </td>
+                      <td className="px-3 py-2 align-top text-xs text-fg-muted whitespace-nowrap">
+                        {new Date(request.requested_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        {' at '}
+                        {new Date(request.requested_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                      </td>
+                      <td className="px-3 py-2 align-top text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => handleApprove(request)}
+                            disabled={savingRequest === request.id}
+                            className="flex items-center gap-1 px-3 py-1.5 text-xs bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50"
+                          >
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            {savingRequest === request.id ? 'Saving...' : 'Approve'}
+                          </button>
+                          <button
+                            onClick={() => handleDecline(request)}
+                            disabled={savingRequest === request.id}
+                            className="flex items-center gap-1 px-3 py-1.5 text-xs bg-rose-600 text-white rounded-lg hover:bg-rose-700 disabled:opacity-50"
+                          >
+                            <XCircle className="w-3.5 h-3.5" />
+                            {savingRequest === request.id ? 'Saving...' : 'Decline'}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         ) : (
@@ -518,7 +549,7 @@ export default function MembershipsPage() {
                           {pendingRequest && (
                             <button
                               onClick={() => handleRenewClick(m.member_id)}
-                              className="text-xs font-medium text-accent-purple bg-[#7C3AED]/10 px-2 py-1 rounded border border-[#7C3AED]/20 hover:bg-[#7C3AED]/20 transition-colors"
+                              className="text-xs font-medium text-white bg-[#7C3AED] px-2.5 py-1 rounded-lg hover:bg-[#6D28D9] transition-colors"
                             >
                               Renew
                             </button>
@@ -567,10 +598,10 @@ export default function MembershipsPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
-                    onClick={() => setForm({ ...form, plan_type: 'daily', months: 1, price: String(PLANS.daily.price) })}
+                    onClick={() => setForm({ ...form, plan_type: 'daily', months: 1, custom: false, price: String(PLANS.daily.price) })}
                     className={`px-4 py-3 rounded-lg border text-sm font-medium transition-all ${
                       form.plan_type === 'daily'
-                        ? 'bg-[#7C3AED]/15 border-[#7C3AED] text-accent-purple'
+                        ? 'bg-[#7C3AED] border-[#7C3AED] text-white shadow-sm'
                         : 'bg-overlay-8 border-line text-fg hover:border-fg-muted'
                     }`}
                   >
@@ -578,10 +609,10 @@ export default function MembershipsPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setForm({ ...form, plan_type: 'monthly', months: 1, price: String(PLANS.monthly.price) })}
+                    onClick={() => setForm({ ...form, plan_type: 'monthly', months: 1, custom: false, price: String(PLANS.monthly.price) })}
                     className={`px-4 py-3 rounded-lg border text-sm font-medium transition-all ${
                       form.plan_type === 'monthly'
-                        ? 'bg-[#7C3AED]/15 border-[#7C3AED] text-accent-purple'
+                        ? 'bg-[#7C3AED] border-[#7C3AED] text-white shadow-sm'
                         : 'bg-overlay-8 border-line text-fg hover:border-fg-muted'
                     }`}
                   >
@@ -592,21 +623,32 @@ export default function MembershipsPage() {
               {form.plan_type === 'monthly' && (
                 <div>
                   <label className="block text-sm font-medium text-fg mb-1">Duration (months)</label>
-                  <div className="grid grid-cols-6 gap-2">
+                  <div className="grid grid-cols-4 gap-2">
                     {[1, 2, 3, 4, 5, 6].map(n => (
                       <button
                         key={n}
                         type="button"
-                        onClick={() => setForm({ ...form, months: n })}
+                        onClick={() => setForm({ ...form, months: n, custom: false })}
                         className={`py-2 rounded-lg border text-sm font-medium transition-all ${
-                          form.months === n
-                            ? 'bg-[#7C3AED]/15 border-[#7C3AED] text-accent-purple'
+                          form.months === n && !form.custom
+                            ? 'bg-[#7C3AED] border-[#7C3AED] text-white shadow-sm'
                             : 'bg-overlay-8 border-line text-fg hover:border-fg-muted'
                         }`}
                       >
                         {n}
                       </button>
                     ))}
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, custom: true })}
+                      className={`py-2 col-span-2 rounded-lg border text-sm font-medium transition-all ${
+                        form.custom
+                          ? 'bg-[#7C3AED] border-[#7C3AED] text-white shadow-sm'
+                          : 'bg-overlay-8 border-line text-fg hover:border-fg-muted'
+                      }`}
+                    >
+                      Custom
+                    </button>
                   </div>
                 </div>
               )}
@@ -635,10 +677,29 @@ export default function MembershipsPage() {
               {form.plan_type === 'monthly' && (
                 <div>
                   <label className="block text-sm font-medium text-fg mb-1">End Date</label>
-                  <div className="w-full px-3 py-2 bg-overlay-8 border border-line rounded-lg text-sm text-fg-strong opacity-80 cursor-not-allowed">
-                    {endDate}
-                  </div>
-                  <p className="text-xs text-fg-muted mt-1">Auto-calculated: start date + {durationDays} days</p>
+                  {form.custom ? (
+                    <>
+                      <input
+                        type="date"
+                        value={form.end_date}
+                        min={form.start_date}
+                        onChange={e => setForm({ ...form, end_date: e.target.value })}
+                        className="w-full px-3 py-2 bg-overlay-8 border border-line rounded-lg text-sm text-fg-strong"
+                      />
+                      <p className={`text-xs mt-1 ${customInvalid ? 'text-[#EF4444]' : 'text-fg-muted'}`}>
+                        {customInvalid
+                          ? 'Custom end date must be after the start date.'
+                          : 'Custom range — set your own end date.'}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-full px-3 py-2 bg-overlay-8 border border-line rounded-lg text-sm text-fg-strong opacity-80 cursor-not-allowed">
+                        {endDate}
+                      </div>
+                      <p className="text-xs text-fg-muted mt-1">Auto-calculated: start date + {durationDays} days</p>
+                    </>
+                  )}
                 </div>
               )}
               <div className="bg-overlay-8 rounded-lg px-4 py-3 border border-line">
@@ -661,7 +722,7 @@ export default function MembershipsPage() {
             </div>
             <div className="px-6 py-4 border-t border-line flex justify-end gap-3">
               <button onClick={() => setShowModal(false)} className="px-4 py-2 text-sm border border-line rounded-lg text-fg hover:bg-overlay-8">Cancel</button>
-              <button onClick={handleSave} disabled={saving || !form.member_id || !!livePlanError || !Number(form.price)} className="px-4 py-2 text-sm bg-[#7C3AED] text-white rounded-lg hover:bg-[#6D28D9] disabled:opacity-50 cursor-pointer">
+              <button onClick={handleSave} disabled={saving || !form.member_id || !!livePlanError || !Number(form.price) || customInvalid} className="px-4 py-2 text-sm bg-[#7C3AED] text-white rounded-lg hover:bg-[#6D28D9] disabled:opacity-50 cursor-pointer">
                 {saving ? 'Saving...' : 'Create'}
               </button>
             </div>

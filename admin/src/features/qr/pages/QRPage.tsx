@@ -236,9 +236,32 @@ export default function QRPage() {
                     <td className="px-3 py-2 text-sm text-fg">{e.email}</td>
                     <td className="px-3 py-2 text-sm text-fg">{new Date(e.created_at).toLocaleDateString()}</td>
                     <td className="px-3 py-2 text-sm text-right">
-                      <button onClick={() => openView(e)} className="p-1 text-fg-muted hover:text-accent-purple" title="View"><Eye className="w-4 h-4 inline" /></button>
-                      <button onClick={() => handleConfirm(e)} className="p-1 text-fg-muted hover:text-accent-green" title="Confirm"><Check className="w-4 h-4 inline" /></button>
-                      <button onClick={() => handleReject(e.id)} className="p-1 text-fg-muted hover:text-[#EF4444]" title="Reject"><X className="w-4 h-4 inline" /></button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => openView(e)}
+                          title="View"
+                          aria-label="View enrollment"
+                          className="p-1.5 rounded-lg border border-[#7C3AED]/40 bg-[#7C3AED]/15 text-accent-purple hover:bg-[#7C3AED] hover:text-white hover:border-[#7C3AED] transition-colors"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleConfirm(e)}
+                          title="Confirm"
+                          aria-label="Confirm enrollment"
+                          className="p-1.5 rounded-lg border border-[#22C55E]/50 bg-[#22C55E]/15 text-accent-green hover:bg-[#22C55E] hover:text-white hover:border-[#22C55E] transition-colors"
+                        >
+                          <Check className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleReject(e.id)}
+                          title="Reject"
+                          aria-label="Reject enrollment"
+                          className="p-1.5 rounded-lg border border-[#EF4444]/50 bg-[#EF4444]/15 text-[#EF4444] hover:bg-[#EF4444] hover:text-white hover:border-[#EF4444] transition-colors"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
