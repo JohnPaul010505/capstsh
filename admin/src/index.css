@@ -275,9 +275,25 @@ html.theme-light {
     animation: appFadeIn 0.8s ease-out both;
   }
 
+  /* Sign-out direction. ease-in so the dashboard lingers while the login panels
+     are still sliding back in and only drops away at the end, by which point the
+     reformin card's backdrop has already covered the viewport. */
+  .app-fade-out {
+    animation: appFadeOut 0.55s ease-in both;
+  }
+
   .login-exit-overlay {
     animation: loginOverlayOut 0.7s ease both;
   }
+
+  /* Reverse handoff: the login overlay deliberately does NOT animate its own
+     backdrop. LoginPage and the dashboard both render <AppBackground />, so the
+     two copies are pixel-identical: animating one in (or fading one out) is
+     invisible while forcing three extra blurred/box-shadowed layers through the
+     compositor, which stalled the first frame of the transition by ~700ms
+     (measured: appFadeOut sat at currentTime 0 for the whole stall).
+     Leaving the login copy static keeps the shared-looking backdrop constant
+     while the dashboard chrome fades out and the panels fly back in. */
 
   @media (min-width: 768px) {
     .panel-exit-left {
@@ -287,6 +303,17 @@ html.theme-light {
     .panel-exit-right {
       animation: panelExitRight 0.55s cubic-bezier(0.4, 0, 0.2, 1) both;
     }
+
+    /* Sign-out direction: the login card slides back in from the edges,
+       converging on the same centre it split from. Mirrors the exit kurves
+       so both directions feel like one continuous spring system. */
+    .panel-enter-left {
+      animation: panelEnterLeft 0.55s cubic-bezier(0.4, 0, 0.2, 1) both;
+    }
+
+    .panel-enter-right {
+      animation: panelEnterRight 0.55s cubic-bezier(0.4, 0, 0.2, 1) both;
+    }
   }
 
   @keyframes appFadeIn {
@@ -295,6 +322,15 @@ html.theme-light {
     }
     to {
       opacity: 1;
+    }
+  }
+
+  @keyframes appFadeOut {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
     }
   }
 
@@ -336,6 +372,30 @@ html.theme-light {
     }
   }
 
+  @keyframes panelEnterLeft {
+    from {
+      transform: translateX(-115%);
+      opacity: 0;
+    }
+    45% { opacity: 1; }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes panelEnterRight {
+    from {
+      transform: translateX(115%);
+      opacity: 0;
+    }
+    45% { opacity: 1; }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
   @keyframes fadeUp {
     from {
       opacity: 0;
@@ -371,13 +431,16 @@ html.theme-light {
       transform: none;
     }
 
-    .app-fade-in {
+    .app-fade-in,
+    .app-fade-out {
       animation: none;
       opacity: 1;
     }
 
     .panel-exit-left,
-    .panel-exit-right {
+    .panel-exit-right,
+    .panel-enter-left,
+    .panel-enter-right {
       animation: none;
       opacity: 1;
       transform: none;
@@ -460,4 +523,15 @@ html.theme-transitioning *::after {
 /* Softer, wider vignette in light mode: just enough depth at the edges. */
 html.theme-light .theme-vignette {
   background: radial-gradient(circle at center, transparent 55%, var(--vignette) 100%);
+}
+
+/* =================================
+   Login field: native password-reveal (Edge/IE ::-ms-reveal) and the
+   reset button (::-ms-clear) that would otherwise duplicate the custom
+   toggle icon inside the password input. Kept outside @layer so Tailwind
+   never strips it.
+   ================================= */
+input[type='password']::-ms-reveal,
+input[type='password']::-ms-clear {
+  display: none;
 }

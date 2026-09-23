@@ -37,7 +37,7 @@ function Field({ label, type, value, onChange, icon, trailing }: {
   )
 }
 
-export default function LoginPage({ exiting = false }: { exiting?: boolean }) {
+export default function LoginPage({ exiting = false, entering = false }: { exiting?: boolean; entering?: boolean }) {
   const { signIn } = useAuth()
   const { setTheme } = useTheme()
   const [email, setEmail] = useState('')
@@ -79,7 +79,7 @@ export default function LoginPage({ exiting = false }: { exiting?: boolean }) {
         {/* ============ LEFT — BRAND PANEL ============ */}
         <div
           className={`relative hidden md:flex flex-col items-center justify-center overflow-hidden min-h-[580px] ${
-            exiting ? 'panel-exit-left' : ''
+            exiting ? 'panel-exit-left' : entering ? 'panel-enter-left' : ''
           }`}
         >
           {/* base: deep navy (man phase) */}
@@ -176,7 +176,7 @@ export default function LoginPage({ exiting = false }: { exiting?: boolean }) {
         {/* ============ RIGHT — FORM PANEL ============ */}
         <div
           className={`flex flex-col justify-center px-6 py-10 sm:px-10 md:py-12 lg:px-14 ${
-            exiting ? 'panel-exit-right' : ''
+            exiting ? 'panel-exit-right' : entering ? 'panel-enter-right' : ''
           }`}
         >
           {/* compact brand row for small screens */}
