@@ -5,7 +5,15 @@ import { useAttendance } from '../hooks/useAttendance'
 import { Plus, LogOut, LogIn, X, Clock } from 'lucide-react'
 
 export default function AttendancePage() {
-  const today = new Date().toISOString().split('T')[0]
+  // check_in_date is written by the mobile app in the DEVICE-LOCAL day, so the
+  // admin default must be local too — toISOString() is UTC (PH local and UTC
+  // differ from midnight to 8 AM), which silently hid same-day scans.
+  const localToday = () => {
+    const d = new Date()
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+  }
+  const today = localToday()
   const [date, setDate] = useState(today)
   const [category, setCategory] = useState<'member' | 'trainer'>('member')
   const [showModal, setShowModal] = useState(false)
