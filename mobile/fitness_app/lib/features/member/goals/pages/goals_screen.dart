@@ -7,7 +7,8 @@ import 'package:shared/services/notification_service.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../../features/shared/widgets/clay/clay_card.dart';
 import '../../../shared/widgets/app_glow_background.dart';
-import '../../../shared/widgets/animations.dart' show StaggeredFadeIn;
+import '../../../shared/widgets/animations.dart'
+    show StaggeredFadeIn, Shimmer;
 import 'create_goal_card.dart';
 import 'goal_card.dart';
 import 'empty_goals_state.dart';
@@ -89,8 +90,15 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
                       ref.invalidate(goalsProvider);
                     },
                   ),
-                  loading: () => const Center(
-                    child: CupertinoActivityIndicator(),
+                  loading: () => ListView(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    children: [
+                      StaggeredFadeIn(
+                        index: 0,
+                        child: _GoalsSkeletonCard(),
+                      ),
+                    ],
                   ),
                   error: (e, _) => Padding(
                     padding: const EdgeInsets.all(16),
@@ -169,10 +177,15 @@ class _GoalsBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasActiveGoal = goals.any(_ongoing);
+    final activeCount = goals.where(_ongoing).length;
 
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       children: [
+        _GoalsSectionHeader(
+          hasActiveGoal: hasActiveGoal,
+          activeCount: activeCount,
+        ),
         if (!hasActiveGoal) ...[
           StaggeredFadeIn(
             index: 0,
@@ -202,6 +215,139 @@ class _GoalsBody extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// Section header above the goal list: anchors the screen with one line of
+/// narrative so a single running goal no longer leaves the page feeling
+/// empty. Tight below the header, generous above the cards (spacing check).
+class _GoalsSectionHeader extends StatelessWidget {
+  final bool hasActiveGoal;
+  final int activeCount;
+
+  const _GoalsSectionHeader({
+    required this.hasActiveGoal,
+    required this.activeCount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final headline = !hasActiveGoal
+        ? 'Start your next goal'
+        : activeCount == 1
+            ? 'Your goal is on track'
+            : '$activeCount goals running';
+    final sub = !hasActiveGoal
+        ? 'Set a target and track it here.'
+        : 'Stay consistent — every check-in counts.';
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            headline,
+            style: ClayTokens.titleMedium.copyWith(
+              color: ClayTokens.clayDarkTextPrimary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            sub,
+            style: const TextStyle(
+              fontSize: 13,
+              color: Color(0xFFA0A4B8),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Loading skeleton for the goal list: mirrors the hero card's mass (ring
+/// placeholder + rows) so content does not jump when goals arrive.
+class _GoalsSkeletonCard extends StatelessWidget {
+  const _GoalsSkeletonCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Shimmer(
+      child: ClayCard(
+        variant: ClayCardVariant.outlined,
+        backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
+        customPadding: const EdgeInsets.all(20),
+        padding: ClayCardPadding.none,
+        borderRadius: BorderRadius.circular(16),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(25),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        height: 18,
+                        width: 150,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withAlpha(25),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        height: 12,
+                        width: 90,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withAlpha(18),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  width: 76,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(25),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              width: 140,
+              height: 140,
+              decoration: const BoxDecoration(
+                color: Color(0xFF2C2C2E),
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              height: 56,
+              decoration: BoxDecoration(
+                color: Colors.white.withAlpha(18),
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
