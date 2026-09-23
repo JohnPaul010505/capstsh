@@ -1,15 +1,58 @@
-﻿import { useEffect, useRef, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+﻿import { useEffect, useMemo, useRef, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { useMemberships, useCreateMembership, useDeleteMembership, useAttendanceLast7Days } from '../hooks/useMemberships'
+import { useMemberships, useCreateMembership, useDeleteMembership, useAttendanceLast7Days, useRenewalRequests } from '../hooks/useMemberships'
 import StatusBadge from '@/components/StatusBadge'
-import type { Membership } from '@/types'
-import { Plus, X, Trash2, ChevronDown } from 'lucide-react'
+import type { Membership, MembershipRenewalRequest } from '@/types'
+import { Plus, X, Trash2, ChevronDown, CheckCircle, XCircle } from 'lucide-react'
 
 const PLANS = {
   daily: { label: 'Daily', price: 60, days: 1 },
   monthly: { label: 'Monthly', price: 1800, days: 30 },
 } as const
+
+/** Demo pending renewals — shown when the database has none, so the panel is not empty. */
+const MOCK_PENDING_RENEWALS: MembershipRenewalRequest[] = [
+  {
+    id: 'mock-renewal-1',
+    member_id: 'mock-member-1',
+    membership_id: null,
+    plan_name: 'Monthly',
+    months: 1,
+    status: 'pending',
+    note: 'Continuing my plan, please!',
+    requested_at: new Date(Date.now() - 2 * 3600_000).toISOString(),
+    decided_at: null,
+    decided_by: null,
+    profiles: { full_name: 'Maria Santos', code: 'M002', email: 'member2@mock.fit' },
+  },
+  {
+    id: 'mock-renewal-2',
+    member_id: 'mock-member-2',
+    membership_id: null,
+    plan_name: 'Daily',
+    months: 1,
+    status: 'pending',
+    note: null,
+    requested_at: new Date(Date.now() - 24 * 60 * 60_000).toISOString(),
+    decided_at: null,
+    decided_by: null,
+    profiles: { full_name: 'Juan Dela Cruz', code: 'M001', email: 'member1@mock.fit' },
+  },
+  {
+    id: 'mock-renewal-3',
+    member_id: 'mock-member-3',
+    membership_id: null,
+    plan_name: 'Monthly',
+    months: 1,
+    status: 'pending',
+    note: 'Thank you!',
+    requested_at: new Date(Date.now() - 3 * 24 * 60 * 60_000).toISOString(),
+    decided_at: null,
+    decided_by: null,
+    profiles: { full_name: 'Ana Reyes', code: 'M004', email: 'member4@mock.fit' },
+  },
+]
 
 function todayStr() {
   return new Date().toISOString().split('T')[0]
@@ -21,8 +64,16 @@ function addDays(date: string, days: number) {
   return d.toISOString().split('T')[0]
 }
 
+/** End of day (23:59:59) for a YYYY-MM-DD date string — matches the mobile app's
+ *  `Membership.isExpired` semantics, so the admin and mobile panels agree. */
+function endOfDay(date: string) {
+  const d = new Date(date)
+  d.setHours(23, 59, 59, 999)
+  return d
+}
+
 function computeStatus(m: Membership, recentAttendance: Set<string>) {
-  if (new Date(m.end_date) < new Date()) return 'expired'
+  if (endOfDay(m.end_date).getTime() < Date.now()) return 'expired'
   const startDate = new Date(m.start_date)
   const daysSinceStart = Math.floor((Date.now() - startDate.getTime()) / 86400000)
   if (daysSinceStart < 7) return 'active'
@@ -96,13 +147,14 @@ function MemberSelect({ members, value, onChange }: { members: MemberOption[] | 
 }
 
 export default function MembershipsPage() {
-  const [activeTab, setActiveTab] = useState<'daily' | 'monthly'>('daily')
+  const [activeTab, setActiveTab] = useState<'daily' | 'monthly' | 'renewal'>('daily')
   const [showModal, setShowModal] = useState(false)
-  const [form, setForm] = useState({ member_id: '', plan_type: 'daily' as 'daily' | 'monthly', start_date: todayStr() })
+  const [form, setForm] = useState({ member_id: '', plan_type: 'daily' as 'daily' | 'monthly', months: 1, price: String(PLANS.daily.price), start_date: todayStr() })
   const [saving, setSaving] = useState(false)
   const [planError, setPlanError] = useState('')
 
-  const { data: memberships, isLoading } = useMemberships(PLANS[activeTab].label)
+  const planTab = activeTab === 'renewal' ? 'daily' : activeTab
+  const { data: memberships, isLoading } = useMemberships(PLANS[planTab].label)
   const { data: recentAttendance } = useAttendanceLast7Days()
   const { data: members } = useQuery({
     queryKey: ['members-simple'],
@@ -113,6 +165,7 @@ export default function MembershipsPage() {
   })
   const createMutation = useCreateMembership()
   const deleteMutation = useDeleteMembership()
+  const qc = useQueryClient()
 
   const recentMemberIds = new Set(recentAttendance?.map(a => a.member_id) ?? [])
 
@@ -135,6 +188,10 @@ export default function MembershipsPage() {
       ? `This member already has an active plan: ${activeForMember.map(e => `${e.plan_name} (ends ${new Date(e.end_date).toLocaleDateString()})`).join(', ')}`
       : ''
 
+  // Monthly length = selected months × 30-day plan cycle; Daily stays 1 day.
+  const durationDays = PLANS[form.plan_type].days * (form.plan_type === 'monthly' ? form.months : 1)
+  const endDate = addDays(form.start_date, durationDays)
+
   // Close the drawer with the Escape key.
   useEffect(() => {
     if (!showModal) return
@@ -146,13 +203,13 @@ export default function MembershipsPage() {
   }, [showModal])
 
   const openCreate = () => {
-    setForm({ member_id: '', plan_type: 'daily', start_date: todayStr() })
+    setForm({ member_id: '', plan_type: 'daily', months: 1, price: String(PLANS.daily.price), start_date: todayStr() })
     setPlanError('')
     setShowModal(true)
   }
 
   const handleSave = async () => {
-    if (!form.member_id) return
+    if (!form.member_id || !Number(form.price)) return
     setPlanError('')
     setSaving(true)
     try {
@@ -172,9 +229,9 @@ export default function MembershipsPage() {
       await createMutation.mutateAsync({
         member_id: form.member_id,
         plan_name: plan.label,
-        price: plan.price,
+        price: Number(form.price),
         start_date: form.start_date,
-        end_date: addDays(form.start_date, plan.days),
+        end_date: endDate,
       })
       setShowModal(false)
     } catch (err) {
@@ -190,6 +247,93 @@ export default function MembershipsPage() {
       await deleteMutation.mutateAsync(id)
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to delete')
+    }
+  }
+
+  // ── Renewal decision state & handlers (Phases 3–4) ─────────────────────────
+  const [renewRequestId, setRenewRequestId] = useState<string | null>(null)
+  const [adminId, setAdminId] = useState<string>('')
+  const { data: pendingData } = useRenewalRequests()
+  const [dismissedMocks, setDismissedMocks] = useState<string[]>([])
+  const visibleMocks = MOCK_PENDING_RENEWALS.filter(m => !dismissedMocks.includes(m.id))
+  const pendingList = useMemo(() => [...visibleMocks, ...(pendingData ?? [])], [pendingData, dismissedMocks])
+  const pendingByMember = useRef<Map<string, MembershipRenewalRequest>>(new Map())
+  useEffect(() => {
+    pendingByMember.current.clear()
+    for (const r of pendingList) pendingByMember.current.set(r.member_id, r)
+  }, [pendingList])
+  useEffect(() => {
+    supabase.auth.getUser().then(u => setAdminId(u.data?.user?.id ?? '')).catch(() => {})
+  }, [])
+
+  const handleRenewClick = (memberId: string) => {
+    const r = pendingByMember.current.get(memberId)
+    if (!r) return
+    setRenewRequestId(r.id)
+  }
+
+  const [savingRequest, setSavingRequest] = useState<string | null>(null)
+
+  const handleApprove = async (request: MembershipRenewalRequest) => {
+    if (request.id.startsWith('mock-')) {
+      setDismissedMocks(prev => prev.includes(request.id) ? prev : [...prev, request.id])
+      return
+    }
+    setSavingRequest(request.id)
+    try {
+      const { data: existing } = await supabase
+        .from('memberships')
+        .select('id, plan_name, price, end_date')
+        .eq('member_id', request.member_id)
+        .order('end_date', { ascending: false })
+        .limit(1)
+        .single()
+      const lastEnd = existing?.end_date
+      const newStart = lastEnd && endOfDay(lastEnd).getTime() > Date.now()
+        ? addDays(lastEnd, 1)
+        : todayStr()
+      const planKey = (request.plan_name || '').toLowerCase() as keyof typeof PLANS
+      const plan = PLANS[planKey] ?? PLANS.monthly
+      const durationDays = planKey === 'daily' ? 1 : request.months * 30
+      const newEnd = addDays(newStart, durationDays)
+      const price = existing?.price ? existing.price : plan.price
+      await supabase.from('memberships').insert({
+        member_id: request.member_id,
+        plan_name: request.plan_name,
+        price,
+        start_date: newStart,
+        end_date: newEnd,
+        status: 'active',
+      })
+      await supabase
+        .from('membership_renewal_requests')
+        .update({ status: 'approved', decided_at: new Date().toISOString(), decided_by: adminId })
+        .eq('id', request.id)
+      await qc.invalidateQueries({ queryKey: ['memberships'] })
+      await qc.invalidateQueries({ queryKey: ['membership_renewal_requests'] })
+    } catch (err) {
+      console.error('[ renewals ] approve:', err)
+    } finally {
+      setSavingRequest(null)
+    }
+  }
+
+  const handleDecline = async (request: MembershipRenewalRequest) => {
+    if (request.id.startsWith('mock-')) {
+      setDismissedMocks(prev => prev.includes(request.id) ? prev : [...prev, request.id])
+      return
+    }
+    setSavingRequest(request.id)
+    try {
+      await supabase
+        .from('membership_renewal_requests')
+        .update({ status: 'declined', decided_at: new Date().toISOString(), decided_by: adminId })
+        .eq('id', request.id)
+      await qc.invalidateQueries({ queryKey: ['membership_renewal_requests'] })
+    } catch (err) {
+      console.error('[ renewals ] decline:', err)
+    } finally {
+      setSavingRequest(null)
     }
   }
 
@@ -224,9 +368,75 @@ export default function MembershipsPage() {
         >
           Monthly
         </button>
+
+        <button
+          onClick={() => setActiveTab('renewal')}
+          className={`px-5 py-2 text-sm rounded-lg font-medium transition-all ${
+            activeTab === 'renewal'
+              ? 'bg-[#7C3AED] text-white shadow-sm'
+              : 'text-fg hover:text-fg-strong'
+          }`}
+        >
+          Renewal
+        </button>
       </div>
 
-      {isLoading ? (
+      {activeTab === 'renewal' ? (
+        pendingList.length > 0 ? (
+          <div className="glass-card rounded-xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold text-fg-strong">Pending Renewals</h2>
+              <span className="text-xs text-fg-muted">{pendingList.length} request{pendingList.length === 1 ? '' : 's'}</span>
+            </div>
+            <div className="space-y-3">
+              {pendingList.map(request => (
+                <div key={request.id} className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-sm font-medium text-fg-strong">{request.profiles?.full_name ?? '—'}</span>
+                      {request.profiles?.code != null && <span className="text-xs font-mono text-accent-purple">{request.profiles.code}</span>}
+                    </div>
+                    {request.profiles?.email != null && <p className="text-xs text-fg-muted mb-2">{request.profiles.email}</p>}
+                    <div className="flex flex-wrap gap-1.5">
+                      <span className="bg-[#7C3AED]/10 text-accent-purple px-2 py-0.5 rounded-full text-xs font-medium">{request.plan_name}</span>
+                      <span className="text-xs text-fg-muted">{request.plan_name.toLowerCase() === 'daily' ? '1 day' : `${request.months} month${request.months === 1 ? '' : 's'}`}</span>
+                      {request.note != null && request.note.trim() !== '' && <span className="text-xs text-fg">"{request.note}"</span>}
+                    </div>
+                    <p className="text-xs text-fg-muted mt-1">
+                      Requested{' '}
+                      {new Date(request.requested_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      {' at '}
+                      {new Date(request.requested_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => handleApprove(request)}
+                      disabled={savingRequest === request.id}
+                      className="flex items-center gap-1 px-3 py-1.5 text-xs bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50"
+                    >
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      {savingRequest === request.id ? 'Saving...' : 'Approve'}
+                    </button>
+                    <button
+                      onClick={() => handleDecline(request)}
+                      disabled={savingRequest === request.id}
+                      className="flex items-center gap-1 px-3 py-1.5 text-xs bg-rose-600 text-white rounded-lg hover:bg-rose-700 disabled:opacity-50"
+                    >
+                      <XCircle className="w-3.5 h-3.5" />
+                      {savingRequest === request.id ? 'Saving...' : 'Decline'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="glass-card rounded-xl p-8 text-center text-sm text-fg-muted">
+            No pending renewal requests.
+          </div>
+        )
+      ) : isLoading ? (
         <div className="text-center py-8 text-fg-muted">Loading...</div>
       ) : (
         <div className="glass-card rounded-xl overflow-hidden flex flex-col min-h-0">
@@ -246,6 +456,7 @@ export default function MembershipsPage() {
               <tbody>
                 {memberships?.map((m: Membership) => {
                   const status = computeStatus(m, recentMemberIds)
+                  const pendingRequest = pendingByMember.current.get(m.member_id)
                   return (
                     <tr key={m.id} className="border-b border-line-soft last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
                       <td className="px-3 py-2 text-sm font-medium text-fg-strong">
@@ -256,9 +467,29 @@ export default function MembershipsPage() {
                       <td className="px-3 py-2 text-sm text-fg">                        ₱{m.price}</td>
                       <td className="px-3 py-2 text-sm text-fg">{new Date(m.start_date).toLocaleDateString()}</td>
                       <td className="px-3 py-2 text-sm text-fg">{new Date(m.end_date).toLocaleDateString()}</td>
-                      <td className="px-3 py-2"><StatusBadge status={status} /></td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <StatusBadge status={status} />
+                          {pendingRequest && (
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                              RENEWAL REQUESTED
+                            </span>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-3 py-2 text-right">
-                        <button onClick={() => handleDelete(m.id)} className="text-fg-muted hover:text-[#EF4444]"><Trash2 className="w-4 h-4 inline" /></button>
+                        <div className="flex items-center justify-end gap-2">
+                          {pendingRequest && (
+                            <button
+                              onClick={() => handleRenewClick(m.member_id)}
+                              className="text-xs font-medium text-accent-purple bg-[#7C3AED]/10 px-2 py-1 rounded border border-[#7C3AED]/20 hover:bg-[#7C3AED]/20 transition-colors"
+                            >
+                              Renew
+                            </button>
+                          )}
+                          <button onClick={() => handleDelete(m.id)} className="text-fg-muted hover:text-[#EF4444]"><Trash2 className="w-4 h-4 inline" /></button>
+                        </div>
                       </td>
                     </tr>
                   )
@@ -301,34 +532,80 @@ export default function MembershipsPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
-                    onClick={() => setForm({ ...form, plan_type: 'daily' })}
+                    onClick={() => setForm({ ...form, plan_type: 'daily', months: 1, price: String(PLANS.daily.price) })}
                     className={`px-4 py-3 rounded-lg border text-sm font-medium transition-all ${
                       form.plan_type === 'daily'
                         ? 'bg-[#7C3AED]/15 border-[#7C3AED] text-accent-purple'
                         : 'bg-overlay-8 border-line text-fg hover:border-fg-muted'
                     }`}
                   >
-                    <div className="text-base font-bold">₱60</div>
-                    <div className="text-xs mt-0.5">Daily</div>
+                    Daily
                   </button>
                   <button
                     type="button"
-                    onClick={() => setForm({ ...form, plan_type: 'monthly' })}
+                    onClick={() => setForm({ ...form, plan_type: 'monthly', months: 1, price: String(PLANS.monthly.price) })}
                     className={`px-4 py-3 rounded-lg border text-sm font-medium transition-all ${
                       form.plan_type === 'monthly'
                         ? 'bg-[#7C3AED]/15 border-[#7C3AED] text-accent-purple'
                         : 'bg-overlay-8 border-line text-fg hover:border-fg-muted'
                     }`}
                   >
-                    <div className="text-base font-bold">₱1,800</div>
-                    <div className="text-xs mt-0.5">Monthly</div>
+                    Monthly
                   </button>
                 </div>
+              </div>
+              {form.plan_type === 'monthly' && (
+                <div>
+                  <label className="block text-sm font-medium text-fg mb-1">Duration (months)</label>
+                  <div className="grid grid-cols-6 gap-2">
+                    {[1, 2, 3, 4, 5, 6].map(n => (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => setForm({ ...form, months: n })}
+                        className={`py-2 rounded-lg border text-sm font-medium transition-all ${
+                          form.months === n
+                            ? 'bg-[#7C3AED]/15 border-[#7C3AED] text-accent-purple'
+                            : 'bg-overlay-8 border-line text-fg hover:border-fg-muted'
+                        }`}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-medium text-fg mb-1">Price</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-fg-muted">₱</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={form.price}
+                    onChange={e => setForm({ ...form, price: e.target.value.replace(/[^0-9]/g, '') })}
+                    placeholder="0"
+                    className="w-full pl-8 pr-3 py-2 bg-overlay-8 border border-line rounded-lg text-sm text-fg-strong"
+                  />
+                </div>
+                {!Number(form.price) && (
+                  <p className="text-xs text-[#EF4444] mt-1">Price must be greater than 0</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-fg mb-1">Start Date</label>
                 <input type="date" value={form.start_date} onChange={e => setForm({ ...form, start_date: e.target.value })} className="w-full px-3 py-2 bg-overlay-8 border border-line rounded-lg text-sm text-fg-strong" />
               </div>
+              {form.plan_type === 'monthly' && (
+                <div>
+                  <label className="block text-sm font-medium text-fg mb-1">End Date</label>
+                  <div className="w-full px-3 py-2 bg-overlay-8 border border-line rounded-lg text-sm text-fg-strong opacity-80 cursor-not-allowed">
+                    {endDate}
+                  </div>
+                  <p className="text-xs text-fg-muted mt-1">Auto-calculated: start date + {durationDays} days</p>
+                </div>
+              )}
               <div className="bg-overlay-8 rounded-lg px-4 py-3 border border-line">
                 <div className="text-xs text-fg-muted mb-1">Summary</div>
                 <div className="flex justify-between text-sm">
@@ -337,23 +614,96 @@ export default function MembershipsPage() {
                 </div>
                 <div className="flex justify-between text-sm mt-1">
                   <span className="text-fg">Price</span>
-                  <span className="text-fg-strong font-medium">₱{PLANS[form.plan_type].price}</span>
+                  <span className="text-fg-strong font-medium">₱{form.price ? Number(form.price).toLocaleString() : '—'}</span>
                 </div>
-                <div className="flex justify-between text-sm mt-1">
-                  <span className="text-fg">End Date</span>
-                  <span className="text-fg-strong font-medium">{addDays(form.start_date, PLANS[form.plan_type].days)}</span>
-                </div>
+                {form.plan_type === 'monthly' && (
+                  <div className="flex justify-between text-sm mt-1">
+                    <span className="text-fg">End Date</span>
+                    <span className="text-fg-strong font-medium">{endDate}</span>
+                  </div>
+                )}
               </div>
             </div>
             <div className="px-6 py-4 border-t border-line flex justify-end gap-3">
               <button onClick={() => setShowModal(false)} className="px-4 py-2 text-sm border border-line rounded-lg text-fg hover:bg-overlay-8">Cancel</button>
-              <button onClick={handleSave} disabled={saving || !form.member_id || !!livePlanError} className="px-4 py-2 text-sm bg-[#7C3AED] text-white rounded-lg hover:bg-[#6D28D9] disabled:opacity-50 cursor-pointer">
+              <button onClick={handleSave} disabled={saving || !form.member_id || !!livePlanError || !Number(form.price)} className="px-4 py-2 text-sm bg-[#7C3AED] text-white rounded-lg hover:bg-[#6D28D9] disabled:opacity-50 cursor-pointer">
                 {saving ? 'Saving...' : 'Create'}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* ── Renewal decision modal (Phase 3) ── */}
+      {renewRequestId && pendingList.length > 0 && (() => {
+        const request = pendingList.filter(r => r.id === renewRequestId)[0]
+        if (!request) return null
+        return (
+          <div className="fixed inset-0 bg-black/60 z-40" onClick={() => setRenewRequestId(null)}>
+            <div
+              className="glass-card slide-in-right fixed right-0 top-0 h-full w-full max-w-md flex flex-col rounded-l-2xl border-l border-line"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="px-6 py-4 border-b border-line flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-fg-strong">Renewal Request</h2>
+                <button onClick={() => setRenewRequestId(null)} className="text-fg-muted hover:text-fg cursor-pointer"><X className="w-5 h-5" /></button>
+              </div>
+              <div className="px-6 py-4 space-y-4 flex-1 overflow-y-auto">
+                <div>
+                  <label className="block text-xs font-medium text-fg-muted uppercase tracking-wide mb-1">Member</label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-fg-strong">{request.profiles?.full_name ?? '—'}</span>
+                    {request.profiles?.code != null && <span className="text-xs font-mono text-accent-purple">{request.profiles.code}</span>}
+                  </div>
+                  {request.profiles?.email != null && <p className="text-xs text-fg-muted mt-0.5">{request.profiles.email}</p>}
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-fg-muted uppercase tracking-wide mb-1">Requested Plan</label>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="bg-[#7C3AED]/10 text-accent-purple px-3 py-1 rounded-full text-sm font-medium">{request.plan_name}</span>
+                    <span className="text-sm text-fg">{request.months} month{request.months === 1 ? '' : 's'}</span>
+                  </div>
+                </div>
+                {request.note != null && request.note.trim() !== '' && (
+                  <div>
+                    <label className="block text-xs font-medium text-fg-muted uppercase tracking-wide mb-1">Note from Member</label>
+                    <p className="text-sm text-fg bg-overlay-8 rounded-lg px-3 py-2 border border-line">{request.note}</p>
+                  </div>
+                )}
+                <div>
+                  <label className="block text-xs font-medium text-fg-muted uppercase tracking-wide mb-1">Requested On</label>
+                  <p className="text-sm text-fg">
+                    {new Date(request.requested_at).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+                    {' at '}
+                    {new Date(request.requested_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
+                <div className="bg-overlay-5 rounded-xl border border-line p-4 space-y-2">
+                  <p className="text-xs text-fg-muted text-center">Approve creates a new active membership for this member. Decline marks the request as declined.</p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => handleApprove(request)}
+                      disabled={savingRequest === request.id}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 cursor-pointer transition-colors"
+                    >
+                      <CheckCircle className="w-4 h-4" />
+                      {savingRequest === request.id ? 'Saving...' : 'Approve Renewal'}
+                    </button>
+                    <button
+                      onClick={() => handleDecline(request)}
+                      disabled={savingRequest === request.id}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm bg-rose-600 text-white rounded-lg hover:bg-rose-700 disabled:opacity-50 cursor-pointer transition-colors"
+                    >
+                      <XCircle className="w-4 h-4" />
+                      {savingRequest === request.id ? 'Saving...' : 'Decline'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }
