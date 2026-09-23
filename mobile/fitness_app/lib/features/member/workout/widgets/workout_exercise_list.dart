@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/workout_session_provider.dart';
 import 'package:fitness_app/app/design_tokens.dart';
 import '../widgets/exercise_proof_button.dart';
+import '../../../shared/widgets/clay/clay_card.dart';
 
 class WorkoutExerciseList extends ConsumerWidget {
   final WorkoutSessionState session;
@@ -100,16 +101,15 @@ class _ExerciseCard extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: isCurrent ? const Color(0xFF1C1C2E) : ClayTokens.clayDarkSurface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isCurrent ? const Color(0xFFA78BFA).withAlpha(80) : const Color(0xFF2A2A45),
-            width: isCurrent ? 1.5 : 1,
-          ),
-        ),
+      child: ClayCard(
+        variant: ClayCardVariant.outlined,
+        // Same glass recipe as WorkoutClockCard; brighter tint marks the current card.
+        backgroundColor: isCurrent
+            ? ClayTokens.clayPrimaryLight.withAlpha(45)
+            : ClayTokens.clayPrimaryLight.withAlpha(25),
+        borderRadius: BorderRadius.circular(16),
+        padding: ClayCardPadding.none,
+        customPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -175,27 +175,38 @@ class _ExerciseCard extends StatelessWidget {
               const SizedBox(height: 8),
               Center(
                 child: Container(
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(colors: [Color(0xFF22C55E), Color(0xFF16A34A)]),
-                    borderRadius: BorderRadius.circular(999),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF16A34A).withAlpha(60),
-                        blurRadius: 14,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
+                  decoration: hasVideo
+                      ? BoxDecoration(
+                          gradient: const LinearGradient(
+                              colors: [Color(0xFF22C55E), Color(0xFF16A34A)]),
+                          borderRadius: BorderRadius.circular(999),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF16A34A).withAlpha(60),
+                              blurRadius: 14,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        )
+                      : BoxDecoration(
+                          color: Colors.white.withAlpha(12),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(color: Colors.white.withAlpha(30)),
+                        ),
                   child: TextButton(
                     onPressed: hasVideo ? onDone : null,
                     style: TextButton.styleFrom(
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      disabledForegroundColor: Colors.white.withAlpha(120),
+                      disabledForegroundColor: Colors.white.withAlpha(190),
+                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
                     ),
                     child: Text(
                       hasVideo ? 'Done — Timestamp Now' : 'Record proof to unlock Done',
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: hasVideo ? Colors.white : Colors.white.withAlpha(210),
+                      ),
                       textAlign: TextAlign.center,
                     ),
                   ),

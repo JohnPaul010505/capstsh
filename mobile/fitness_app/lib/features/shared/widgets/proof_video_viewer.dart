@@ -118,7 +118,9 @@ class _ProofViewerDialogState extends State<_ProofViewerDialog> {
           maxHeight: MediaQuery.of(context).size.height * 0.55,
         ),
         child: AspectRatio(
-          aspectRatio: 16 / 9,
+          aspectRatio: (_initialized && (_controller?.value.aspectRatio ?? 0) > 0.01)
+              ? _controller!.value.aspectRatio
+              : 9 / 16,
           child: Container(
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(

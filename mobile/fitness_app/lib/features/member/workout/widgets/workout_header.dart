@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/workout_session_provider.dart';
+import 'package:fitness_app/app/design_tokens.dart';
 import '../../../shared/widgets/animations.dart';
 
 class WorkoutHeader extends ConsumerWidget {
@@ -17,7 +18,21 @@ class WorkoutHeader extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isRunning = session.isRunning;
-    final liveColor = isRunning ? const Color(0xFF30D158) : const Color(0xFF636366);
+    final isDone = session.sessionEnded;
+    final label = isRunning ? 'Live' : isDone ? 'Done' : 'Ready';
+    // Ready = purple · Live = red · Done = green (all with readable text).
+    final Color chipBg;
+    final Color chipFg;
+    if (isRunning) {
+      chipBg = const Color(0xFFEF4444); // red — live workout
+      chipFg = Colors.white;
+    } else if (isDone) {
+      chipBg = const Color(0xFF30D158); // green — workout finished
+      chipFg = const Color(0xFF052E16); // dark text stays readable on green
+    } else {
+      chipBg = ClayTokens.clayPrimary; // purple — not started yet
+      chipFg = Colors.white;
+    }
     return Row(
       children: [
         Expanded(
@@ -34,21 +49,18 @@ class WorkoutHeader extends ConsumerWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
-            color: liveColor.withAlpha(25),
+            color: chipBg,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: liveColor.withAlpha(40)),
+            border: Border.all(color: chipFg.withAlpha(70)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              AnimatedPulseDot(
-                color: isRunning ? const Color(0xFF30D158) : const Color(0xFF8E8E93),
-                size: 6,
-              ),
+              AnimatedPulseDot(color: chipFg, size: 6),
               const SizedBox(width: 5),
               Text(
-                isRunning ? 'Live' : session.sessionEnded ? 'Done' : 'Ready',
-                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: liveColor),
+                label,
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: chipFg),
               ),
             ],
           ),

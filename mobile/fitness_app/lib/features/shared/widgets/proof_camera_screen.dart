@@ -25,6 +25,9 @@ class ProofCameraScreen extends StatefulWidget {
 class _ProofCameraScreenState extends State<ProofCameraScreen>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   CameraController? _camera;
+  List<CameraDescription> _cams = const [];
+  CameraLensDirection _lens = CameraLensDirection.back;
+  bool _flipping = false;
   AnimationController? _progress;
   Timer? _countdownTimer;
   _ProofStage _stage = _ProofStage.initializing;
@@ -61,11 +64,11 @@ class _ProofCameraScreenState extends State<ProofCameraScreen>
 
   Future<void> _initCamera() async {
     try {
-      final cameras = await availableCameras();
-      if (cameras.isEmpty) throw StateError('No camera found on this device');
-      final camera = cameras.firstWhere(
-        (c) => c.lensDirection == CameraLensDirection.back,
-        orElse: () => cameras.first,
+      _cams = await availableCameras();
+      if (_cams.isEmpty) throw StateError('No camera found on this device');
+      final camera = _cams.firstWhere(
+        (c) => c.lensDirection == _lens,
+        orElse: () => _cams.first,
       );
       _camera = CameraController(camera, ResolutionPreset.high, enableAudio: true);
       await _camera!.initialize();
@@ -81,6 +84,27 @@ class _ProofCameraScreenState extends State<ProofCameraScreen>
   void _startFromReady() {
     if (_stage != _ProofStage.ready) return;
     _startCountdown();
+  }
+
+  /// Front/back toggle — only allowed while idling on the Ready gate so the
+  /// active recording/upload pipeline is never disturbed.
+  bool get _canFlip =>
+      _cams.length > 1 && !_flipping && _stage == _ProofStage.ready;
+
+  Future<void> _flipCamera() async {
+    if (!_canFlip) return;
+    setState(() => _flipping = true);
+    _lens = _lens == CameraLensDirection.back
+        ? CameraLensDirection.front
+        : CameraLensDirection.back;
+    final old = _camera;
+    _camera = null;
+    if (mounted) setState(() {}); // preview slot falls back to the spinner
+    try {
+      await old?.dispose();
+    } catch (_) {}
+    await _initCamera();
+    if (mounted) setState(() => _flipping = false);
   }
 
   void _startCountdown() {
@@ -228,35 +252,87 @@ class _ProofCameraScreenState extends State<ProofCameraScreen>
   }
 
   Widget _buildTopBar() {
+    final recording = _stage == _ProofStage.recording;
+    final seconds = ProofCameraScreen.recordDuration.inSeconds;
+    final elapsed = ((_progress?.value ?? 0) * seconds).floor();
     return SafeArea(
       child: Align(
         alignment: Alignment.topCenter,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: Row(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              PressableCard(
-                onTap: _stage == _ProofStage.error
-                    ? () => Navigator.of(context).pop(null)
-                    : _stage == _ProofStage.uploading
-                        ? null
-                        : _close,
-                padding: const EdgeInsets.all(10),
-                borderRadius: BorderRadius.circular(999),
-                child: const Icon(Icons.close, color: Colors.white, size: 20),
-              ),
-              const Spacer(),
-              const Text(
-                'Proof Video',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.3,
+              if (recording)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 10,
+                        height: 10,
+                        decoration: const BoxDecoration(
+                          color: ClayColors.clayError,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'REC ${elapsed < 10 ? '0$elapsed' : '$elapsed'}/$seconds s',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
+              Row(
+                children: [
+                  PressableCard(
+                    onTap: _stage == _ProofStage.error
+                        ? () => Navigator.of(context).pop(null)
+                        : _stage == _ProofStage.uploading
+                            ? null
+                            : _close,
+                    padding: const EdgeInsets.all(10),
+                    borderRadius: BorderRadius.circular(999),
+                    child: const Icon(Icons.close, color: Colors.white, size: 20),
+                  ),
+                  const Spacer(),
+                  const Text(
+                    'Proof Video',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                  const Spacer(),
+                  PressableCard(
+                    onTap: _canFlip ? _flipCamera : null,
+                    padding: const EdgeInsets.all(10),
+                    borderRadius: BorderRadius.circular(999),
+                    child: const Icon(Icons.cameraswitch_outlined,
+                        color: Colors.white, size: 20),
+                  ),
+                ],
               ),
-              const Spacer(),
-              const SizedBox(width: 40),
+              if (recording) ...[
+                const SizedBox(height: 6),
+                SizedBox(
+                  width: double.infinity,
+                  child: LinearProgressIndicator(
+                    value: _progress?.value ?? 0,
+                    minHeight: 4,
+                    backgroundColor: Colors.white24,
+                    color: ClayTokens.clayError,
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -356,36 +432,8 @@ class _ProofCameraScreenState extends State<ProofCameraScreen>
   }
 
   Widget _buildRecordingOverlay() {
-    final seconds = ProofCameraScreen.recordDuration.inSeconds;
-    final elapsed = (_progress?.value ?? 0) * seconds;
     return Column(
       children: [
-        SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 10,
-                  height: 10,
-                  decoration: const BoxDecoration(color: ClayColors.clayError, shape: BoxShape.circle),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'REC ${elapsed.floor() < 10 ? '0${elapsed.floor()}' : elapsed.floor()}/$seconds s',
-                  style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700),
-                ),
-              ],
-            ),
-          ),
-        ),
-        LinearProgressIndicator(
-          value: _progress?.value ?? 0,
-          minHeight: 4,
-          backgroundColor: Colors.white24,
-          color: ClayTokens.clayError,
-        ),
         const Spacer(),
         SafeArea(
           child: Padding(

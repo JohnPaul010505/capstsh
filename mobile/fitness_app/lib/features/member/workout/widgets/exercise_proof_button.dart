@@ -47,7 +47,7 @@ class _ExerciseProofTileState extends State<ExerciseProofTile> {
       await _recordWeb();
       return;
     }
-    final url = await Navigator.of(context).push<String>(
+    final url = await Navigator.of(context, rootNavigator: true).push<String>(
       MaterialPageRoute(builder: (_) => const ProofCameraScreen()),
     );
     if (url != null && mounted) {
@@ -59,7 +59,7 @@ class _ExerciseProofTileState extends State<ExerciseProofTile> {
     setState(() => _busy = true);
     String? uploadedPath;
     try {
-      final url = await Navigator.of(context).push<String>(
+      final url = await Navigator.of(context, rootNavigator: true).push<String>(
         MaterialPageRoute(builder: (_) => const proof_web.WebCameraScreen()),
       );
       if (url != null && mounted) {
@@ -177,9 +177,16 @@ class _ExerciseProofTileState extends State<ExerciseProofTile> {
       height: 64,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: ClayTokens.clayDarkSurfaceElevated,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withAlpha(14),
+            ClayTokens.clayPrimaryLight.withAlpha(22),
+          ],
+        ),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF2A2A45)),
+        border: Border.all(color: Colors.white.withAlpha(30)),
       ),
       child: Row(
         children: [
@@ -223,17 +230,16 @@ class _ExerciseProofTileState extends State<ExerciseProofTile> {
         height: 64,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
-          color: const Color(0xFF1C1C2E),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF2A2A45)),
           gradient: RadialGradient(
             center: const Alignment(0.9, -0.9),
             radius: 1.3,
             colors: [
-              const Color(0xFF7C3AED).withAlpha(50),
-              const Color(0xFF1C1C2E),
+              const Color(0xFF7C3AED).withAlpha(60),
+              const Color(0xFF1C1C2E).withAlpha(215),
             ],
           ),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withAlpha(30)),
         ),
         child: Row(
           children: [
