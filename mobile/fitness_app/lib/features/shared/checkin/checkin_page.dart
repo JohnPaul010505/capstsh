@@ -6,14 +6,23 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:shared/models/attendance_toggle_result.dart';
 import 'package:shared/providers/auth_provider.dart';
-import 'package:shared/services/supabase_client.dart';
+import 'package:shared/services/attendance_service.dart';
 import '../../../app/design_tokens.dart';
 import '../../../features/shared/widgets/app_glow_background.dart';
 
 class CheckinPage extends ConsumerStatefulWidget {
   final bool showBack;
-  const CheckinPage({super.key, this.showBack = true});
+
+  /// Where the success screen returns to. Defaults to the home screen of the
+  /// logged-in role (member home / trainer dashboard).
+  final String? returnRoute;
+  const CheckinPage({
+    super.key,
+    this.showBack = true,
+    this.returnRoute,
+  });
 
   @override
   ConsumerState<CheckinPage> createState() => _CheckinPageState();
@@ -27,9 +36,7 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
   bool _processing = false;
   bool _showScanner = true;
   bool _showSuccess = false;
-  String? _successTitle;
-  String? _successVerb;
-  String? _successTime;
+  AttendanceToggleResult? _lastResult;
   Timer? _returnTimer;
   String? _statusMessage;
   bool _isSuccess = false;
@@ -49,67 +56,41 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
       _statusMessage = null;
     });
 
-    try {
-      final client = SupabaseClientService().client;
-      final now = DateTime.now().toUtc().toIso8601String();
-      // The date column is a calendar date — use the LOCAL day so check-ins
-      // between midnight and 8 AM (PH) don't land on the previous day.
-      final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final result =
+        await AttendanceService().toggleAttendance(memberId: profile.id);
 
-      final rows = await client
-          .from('attendance')
-          .select('id')
-          .eq('member_id', profile.id)
-          .eq('check_in_date', today)
-          .isFilter('check_out_time', null);
-
-      final open = (rows as List).isNotEmpty;
-      if (open) {
-        await client
-            .from('attendance')
-            .update({'check_out_time': now})
-            .eq('member_id', profile.id)
-            .eq('check_in_date', today)
-            .isFilter('check_out_time', null);
-      } else {
-        await client.from('attendance').insert({
-          'member_id': profile.id,
-          'check_in_time': now,
-          'check_in_date': today,
-          'expires_at': DateTime.now().add(const Duration(hours: 12)).toUtc().toIso8601String(),
-        });
-      }
-
-      if (!mounted) return;
-      final localTime = DateFormat('h:mm a').format(DateTime.now());
-      if (!widget.showBack) {
-        setState(() {
-          _showSuccess = true;
-          _successTitle = open ? 'Checked Out!' : 'Checked In!';
-          _successVerb = open ? 'out' : 'in';
-          _successTime = localTime;
-        });
-        _returnTimer = Timer(_returnDelay, () {
-          if (mounted) context.go('/member/home');
-        });
-      } else {
-        setState(() {
-          _statusMessage = open ? 'Checked out!' : 'Checked in!';
-          _isSuccess = true;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _statusMessage = 'Error: $e';
-          _isSuccess = false;
-        });
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _processing = false);
-      }
+    if (!mounted) return;
+    if (!result.isSuccess) {
+      // Show the real error — never a fake success.
+      setState(() {
+        _statusMessage =
+            result.error ?? 'Something went wrong. Please try again.';
+        _isSuccess = false;
+      });
+    } else if (!widget.showBack) {
+      // Full success screen (In & Out tab), then return.
+      setState(() {
+        _lastResult = result;
+        _showSuccess = true;
+      });
+      final returnRoute = widget.returnRoute ??
+          (profile.role == 'trainer'
+              ? '/trainer/dashboard'
+              : '/member/home');
+      _returnTimer = Timer(_returnDelay, () {
+        if (mounted) context.go(returnRoute);
+      });
+    } else {
+      // Inline status (page opened with a back button).
+      setState(() {
+        _statusMessage = result.action == AttendanceAction.checkedOut
+            ? 'Checked out!'
+            : 'Checked in!';
+        _isSuccess = true;
+      });
     }
+
+    if (mounted) setState(() => _processing = false);
   }
 
   void _onDetect(BarcodeCapture capture) {
@@ -284,6 +265,16 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
   }
 
   Widget _buildSuccessScreen() {
+    final result = _lastResult!;
+    final action = result.action!;
+    final isCheckedOut = action == AttendanceAction.checkedOut;
+    final title = isCheckedOut ? 'Checked Out!' : 'Checked In!';
+    final verb = isCheckedOut ? 'out' : 'in';
+    final localTime = DateFormat('h:mm a').format(result.at.toLocal());
+    final duration = result.sessionDuration == null
+        ? null
+        : _durationLabel(result.sessionDuration!);
+
     return ColoredBox(
       color: ClayTokens.clayDarkBase,
       child: SafeArea(
@@ -305,15 +296,34 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
                 ),
               ),
               const SizedBox(height: 24),
-              Text(_successTitle!, style: ClayTokens.darkDisplaySmall),
+              Text(title, style: ClayTokens.darkDisplaySmall),
               const SizedBox(height: 8),
               Text(
-                'You checked $_successVerb at $_successTime',
+                'You checked $verb at $localTime',
                 style: ClayTokens.darkBodyMedium.copyWith(color: ClayTokens.clayDarkTextSecondary),
               ),
+              if (duration != null) ...[
+                const SizedBox(height: 6),
+                Text(
+                  'Session length: $duration',
+                  style: ClayTokens.darkBodySmall.copyWith(color: ClayTokens.clayDarkTextSecondary),
+                ),
+              ],
+              if (result.autoClosedStaleSession) ...[
+                const SizedBox(height: 6),
+                Text(
+                  'Your previous open session was auto-closed.',
+                  style: ClayTokens.darkBodySmall.copyWith(color: ClayTokens.clayDarkTextTertiary),
+                ),
+              ],
               const SizedBox(height: 16),
               Text(
-                'Returning to Home...',
+                'You can scan the QR again to check ${isCheckedOut ? 'in' : 'out'}.',
+                style: ClayTokens.darkBodySmall.copyWith(color: ClayTokens.clayDarkTextTertiary),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Returning...',
                 style: ClayTokens.darkBodySmall.copyWith(color: ClayTokens.clayDarkTextTertiary),
               ),
             ],
@@ -321,6 +331,14 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
         ),
       ),
     );
+  }
+
+  String? _durationLabel(Duration duration) {
+    if (duration.inMinutes < 1) return null;
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes % 60;
+    if (hours <= 0) return '$minutes min';
+    return '$hours h ${minutes.toString().padLeft(2, '0')} m';
   }
 
   Widget _buildHeader(String title, {bool showBack = true}) {

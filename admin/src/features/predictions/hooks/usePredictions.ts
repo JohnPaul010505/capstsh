@@ -15,6 +15,11 @@ export function usePredictions() {
   })
 }
 
+export interface GenerateResult {
+  data: any
+  source: 'ai' | 'fallback'
+}
+
 export function useGeneratePredictions() {
   const qc = useQueryClient()
   return useMutation({
@@ -28,15 +33,23 @@ export function useGeneratePredictions() {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.detail || err.error || 'Failed to generate predictions')
       }
+      const xSource = res.headers.get('x-forecast-source') || 'ai'
       const data = await res.json()
       // The AI service persists the forecasts itself (service role) — inserting
       // here as well would create duplicate rows.
-      return data
+      return { data, source: (xSource === 'fallback' ? 'fallback' : 'ai') as 'ai' | 'fallback' }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['predictions'] })
     },
   })
+}
+
+export interface MemberOption {
+  id: string
+  full_name: string
+  email: string
+  code: string | null
 }
 
 export function useMembersSimple() {
@@ -45,10 +58,10 @@ export function useMembersSimple() {
     queryFn: async () => {
       const { data } = await supabase
         .from('profiles')
-        .select('id, full_name')
+        .select('id, full_name, email, code')
         .eq('role', 'member')
         .order('full_name')
-      return data ?? []
+      return (data ?? []) as MemberOption[]
     },
   })
 }

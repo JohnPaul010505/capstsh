@@ -93,3 +93,19 @@ export function useDeleteMembership() {
     },
   })
 }
+
+/** Pending renewal requests (status = pending), with member profile join. */
+export function useRenewalRequests() {
+  return useQuery({
+    queryKey: ['membership_renewal_requests', 'pending'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('membership_renewal_requests')
+        .select('*, profiles!membership_renewal_requests_member_id_fkey(full_name, code, email)')
+        .eq('status', 'pending')
+        .order('requested_at', { ascending: false })
+      return (data ?? []) as import('@/types').MembershipRenewalRequest[]
+    },
+  })
+}
+

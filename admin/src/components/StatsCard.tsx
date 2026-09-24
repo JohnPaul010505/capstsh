@@ -30,7 +30,7 @@ export default function StatsCard({ title, value, icon: Icon, trend, sparkData, 
     <div className="glass-card rounded-2xl p-4">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[12px] text-fg-faint truncate">{title}</p>
+          <p className="text-[12px] text-fg-strong truncate">{title}</p>
           <p className="text-[30px] font-bold text-fg-strong mt-1 leading-none">{value.toLocaleString()}</p>
           {trend && (
             <p className={`text-[11px] mt-1.5 font-medium ${trend.value >= 0 ? 'text-accent-green' : 'text-[#EF4444]'}`}>

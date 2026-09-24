@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fitness_app/app/design_tokens.dart';
 import '../providers/workout_session_provider.dart';
 import '../data/met_exercise_repository.dart';
+import '../../../shared/widgets/clay/clay_card.dart';
 import '../../../shared/widgets/pressable.dart';
 
 class WorkoutAddForm extends ConsumerStatefulWidget {
@@ -96,28 +97,28 @@ class _WorkoutAddFormState extends ConsumerState<WorkoutAddForm> {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 250),
-      curve: Curves.easeInOut,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: ClayTokens.clayDarkSurface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF38383A).withAlpha(100)),
-      ),
+    // Same clay surface as the Session Duration card (workout_clock_card.dart):
+    // outlined variant, translucent primary fill, radius 32, 1.5px border.
+    return ClayCard(
+      variant: ClayCardVariant.outlined,
+      backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
+      customPadding: const EdgeInsets.all(16),
+      padding: ClayCardPadding.none,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'ADD EXERCISE',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF8E8E93),
-              letterSpacing: 0.5,
+          const Center(
+            child: Text(
+              'ADD EXERCISE',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF8E8E93),
+                letterSpacing: 0.5,
+              ),
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           TextField(
             controller: _searchController,
             onChanged: _onQueryChanged,

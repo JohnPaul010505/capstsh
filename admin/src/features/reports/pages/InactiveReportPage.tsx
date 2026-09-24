@@ -210,10 +210,11 @@ export default function InactiveReportPage() {
                       <button
                         onClick={() => handleNotify(r.userId, r.daysInactive)}
                         disabled={notifiedUserIds.has(r.userId)}
-                        className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
-                          {notifiedUserIds.has(r.userId)
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                          notifiedUserIds.has(r.userId)
                             ? 'bg-overlay-8 text-fg-muted border border-line cursor-not-allowed'
-                            : 'bg-[#7C3AED]/20 text-accent-purple border border-[#7C3AED]/40 hover:bg-[#7C3AED]/30'}"
+                            : 'bg-[#7C3AED] text-white hover:bg-[#6D28D9] cursor-pointer'
+                        }`}
                       >
                         {notifiedUserIds.has(r.userId) ? 'Sent' : 'Notify'}
                       </button>

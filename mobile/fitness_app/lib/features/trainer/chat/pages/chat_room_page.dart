@@ -4,7 +4,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/services/supabase_client.dart';
 import '../../../../app/design_tokens.dart';
-import '../../../shared/widgets/clay/clay_input.dart';
 import '../../../shared/widgets/app_glow_background.dart';
 import '../../../shared/widgets/clay/clay_avatar.dart';
 
@@ -218,19 +217,35 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage> {
               Container(
                 padding: const EdgeInsets.fromLTRB(14, 10, 14, 16),
                 decoration: BoxDecoration(
-                  color: ClayTokens.clayDarkBase,
-                  border: Border(top: BorderSide(color: ClayTokens.clayDarkBorder.withAlpha(100))),
+                  color: ClayTokens.clayDarkSurface,
                 ),
                 child: Row(
                   children: [
                     Expanded(
-                      child: ClayInput(
+                      child: TextField(
                         controller: _controller,
-                        label: 'Type a message',
-                        maxLines: 3,
-                        minLines: 1,
                         textInputAction: TextInputAction.send,
                         onSubmitted: (_) => _sendMessage(),
+                        minLines: 1,
+                        maxLines: 3,
+                        style: ClayTokens.darkBodyLarge.copyWith(color: ClayTokens.clayDarkTextPrimary),
+                        cursorColor: ClayTokens.clayPrimary,
+                        decoration: InputDecoration(
+                          hintText: 'Type a message',
+                          isDense: true,
+                          filled: true,
+                          fillColor: ClayTokens.clayDarkSurfaceElevated,
+                          hintStyle: ClayTokens.darkBodyMedium.copyWith(color: ClayTokens.clayDarkTextTertiary),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: ClayTokens.clayDarkBorder),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: ClayTokens.clayPrimary, width: 1.5),
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),

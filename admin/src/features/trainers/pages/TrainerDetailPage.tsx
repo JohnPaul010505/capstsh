@@ -249,15 +249,15 @@ export default function TrainerDetailPage() {
       </div>
 
       {showAssignModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setShowAssignModal(false)}>
-          <div className="glass-card rounded-xl w-full max-w-lg mx-4 max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-4 py-3 border-b border-line">
-              <h3 className="font-semibold text-fg-strong">Assign Member</h3>
-              <button onClick={() => setShowAssignModal(false)} className="text-fg-muted hover:text-fg-strong transition-colors">
+        <div className="fixed inset-0 bg-black/60 z-50" onClick={() => setShowAssignModal(false)}>
+          <div className="glass-card slide-in-right fixed right-0 top-0 h-full w-full max-w-md flex flex-col rounded-l-2xl border-l border-line" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-line">
+              <h3 className="text-lg font-semibold text-fg-strong">Assign Member</h3>
+              <button onClick={() => setShowAssignModal(false)} className="text-fg-muted hover:text-fg-strong transition-colors cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="px-4 py-3 border-b border-line">
+            <div className="px-6 py-4 border-b border-line">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-fg-muted" />
                 <input
@@ -269,7 +269,7 @@ export default function TrainerDetailPage() {
                 />
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-2">
+            <div className="flex-1 overflow-y-auto px-4 py-2">
               {unassignedMembers
                 ?.filter(m =>
                   memberSearch === '' ||

@@ -48,7 +48,7 @@ export default function NotificationsPage() {
 
   return (
     <div className="space-y-3">
-      <div className="glass-card p-4 rounded-xl">
+      <div className="glass-card p-4 rounded-xl w-1/2">
         <h2 className="text-base font-semibold mb-3 text-fg-strong">Send Notification</h2>
         <div className="space-y-3">
           <div>

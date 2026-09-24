@@ -16,7 +16,6 @@ else:
 
 
 from routers.food import router as food_router
-from routers.goals import router as goals_router
 from routers.predictions import router as predictions_router
 from routers.identify_food import router as identify_food_router
 from routers.met import router as met_router
@@ -32,7 +31,6 @@ app.add_middleware(
 )
 
 app.include_router(food_router, prefix="/api/ai")
-app.include_router(goals_router, prefix="/api/ai")
 app.include_router(predictions_router, prefix="/api/ai")
 app.include_router(identify_food_router, prefix="/api/ai")
 app.include_router(met_router, prefix="/api/ai")

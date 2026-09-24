@@ -8,6 +8,7 @@ import '../features/member/meals/pages/meal_log_page.dart';
 import '../features/member/workout/pages/workout_page.dart';
 import '../features/member/chat/pages/chat_page.dart';
 import '../features/member/settings/pages/settings_page.dart';
+import '../features/member/membership/pages/membership_page.dart';
 import '../features/member/bmi/pages/bmi_page.dart';
 import '../features/member/goals/pages/goals_page.dart';
 import '../features/member/feedback/pages/feedback_page.dart';
@@ -127,8 +128,12 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/member/checkin',
-                pageBuilder: (_, __) =>
-                    _iosPush(const CheckinPage(showBack: false)),
+                pageBuilder: (_, __) => _iosPush(
+                  const CheckinPage(
+                    showBack: false,
+                    returnRoute: '/member/home',
+                  ),
+                ),
               ),
             ],
           ),
@@ -137,14 +142,6 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/member/meals',
                 pageBuilder: (_, __) => _iosPush(const MealLogPage()),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/member/chat',
-                pageBuilder: (_, __) => _iosPush(const ChatPage()),
               ),
             ],
           ),
@@ -170,6 +167,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/member/notifications',
         pageBuilder: (_, __) => _iosPush(const NotificationsPage()),
       ),
+      // Full-screen chat (pushed on the root navigator) so the member nav bar
+      // is hidden while chatting and "<" pops back to the previous screen.
+      GoRoute(
+        path: '/member/chat',
+        pageBuilder: (_, __) => _iosPush(const ChatPage()),
+      ),
+      GoRoute(
+        path: '/member/membership',
+        pageBuilder: (_, __) => _iosPush(const MembershipPage()),
+      ),
       ShellRoute(
         navigatorKey: _trainerShellKey,
         builder: (_, __, child) => TrainerShell(child: child),
@@ -181,28 +188,19 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/trainer/members',
             pageBuilder: (_, __) => _iosPush(const ProgressListPage()),
-            routes: [
-              GoRoute(
-                path: ':id',
-                pageBuilder: (_, state) => _iosPush(
-                  MemberProgressPage(id: state.pathParameters['id']!),
-                ),
-              ),
-            ],
           ),
           GoRoute(
             path: '/trainer/checkin',
-            pageBuilder: (_, __) =>
-                _iosPush(const CheckinPage(showBack: false)),
+            pageBuilder: (_, __) => _iosPush(
+              const CheckinPage(
+                showBack: false,
+                returnRoute: '/trainer/dashboard',
+              ),
+            ),
           ),
           GoRoute(
             path: '/trainer/chat',
             pageBuilder: (_, __) => _iosPush(const ChatListPage()),
-          ),
-          GoRoute(
-            path: '/trainer/chat/:roomId',
-            pageBuilder: (_, state) =>
-                _iosPush(ChatRoomPage(roomId: state.pathParameters['roomId']!)),
           ),
           GoRoute(
             path: '/trainer/profile',
@@ -210,6 +208,19 @@ final routerProvider = Provider<GoRouter>((ref) {
                 _iosPush(const trainer_profile.ProfilePage()),
           ),
         ],
+      ),
+      // Full-screen pushes on the root navigator: the trainer nav bar is
+      // hidden while viewing a member's progress / a conversation.
+      GoRoute(
+        path: '/trainer/members/:id',
+        pageBuilder: (_, state) => _iosPush(
+          MemberProgressPage(id: state.pathParameters['id']!),
+        ),
+      ),
+      GoRoute(
+        path: '/trainer/chat/:roomId',
+        pageBuilder: (_, state) =>
+            _iosPush(ChatRoomPage(roomId: state.pathParameters['roomId']!)),
       ),
       GoRoute(
         path: '/trainer/set-plan',
@@ -241,6 +252,12 @@ class MemberShell extends StatefulWidget {
 
 class _MemberShellState extends State<MemberShell> {
   void _onTap(int index) {
+    // Chat (index 4) is a full-screen pushed route, not a shell branch:
+    // the nav bar disappears and "<" on the chat header pops back here.
+    if (index == 4) {
+      context.push('/member/chat');
+      return;
+    }
     widget.navigationShell.goBranch(
       index,
       initialLocation: index == widget.navigationShell.currentIndex,

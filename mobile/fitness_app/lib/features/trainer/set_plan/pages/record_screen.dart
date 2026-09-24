@@ -171,9 +171,9 @@ class RecordScreen extends ConsumerWidget {
           CupertinoButton(
             padding: EdgeInsets.zero,
             onPressed: () => context.go('/trainer/profile'),
-            child: Icon(
+            child: const Icon(
               CupertinoIcons.back,
-              color: ClayTokens.clayPrimary,
+              color: Colors.white,
             ),
           ),
           const Expanded(

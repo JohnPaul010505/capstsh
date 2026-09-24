@@ -434,13 +434,13 @@ class _MonthChart extends StatelessWidget {
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
-                  color: ClayTokens.clayPrimaryLight.withAlpha(25),
+                  color: ClayTokens.clayPrimary,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: ClayTokens.clayPrimaryLight.withAlpha(50)),
+                  border: Border.all(color: ClayTokens.clayPrimaryLight.withAlpha(120)),
                 ),
-                child: Text('Total: ${monthlyCounts.reduce((a, b) => a + b)}', style: TextStyle(fontSize: 10, color: ClayTokens.clayPrimaryLight, fontWeight: FontWeight.w700)),
+                child: Text('Total: ${monthlyCounts.reduce((a, b) => a + b)}', style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w700)),
               ),
             ],
           ),
@@ -489,13 +489,13 @@ class _GrowthChart extends StatelessWidget {
               ),
               if (latestWeight != null)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: ClayTokens.clayPrimaryLight.withAlpha(25),
+                    color: ClayTokens.clayPrimary,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: ClayTokens.clayPrimaryLight.withAlpha(50)),
+                    border: Border.all(color: ClayTokens.clayPrimaryLight.withAlpha(120)),
                   ),
-                  child: Text(latestWeight.toStringAsFixed(1), style: TextStyle(fontSize: 10, color: ClayTokens.clayPrimaryLight, fontWeight: FontWeight.w700)),
+                  child: Text(latestWeight.toStringAsFixed(1), style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w700)),
                 ),
             ],
           ),

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared/services/supabase_client.dart';
 import '../../../shared/widgets/animations.dart';
 import '../../../shared/widgets/clay/clay_input.dart';
@@ -172,28 +173,39 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           child: chatAsync.when(
           data: (data) {
             if (data == null) {
-              return Padding(
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 64, height: 64,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF636366).withAlpha(25),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Icon(CupertinoIcons.person, color: Color(0xFF8E8E93), size: 32),
+              return Column(
+                children: [
+                  _chatHeader(
+                    name: 'Chat',
+                    initials: null,
+                    onBack: _goBack,
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 64, height: 64,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF636366).withAlpha(25),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Icon(CupertinoIcons.person, color: Color(0xFF8E8E93), size: 32),
+                        ),
+                        const SizedBox(height: 16),
+                        const Text('No trainer assigned', style: TextStyle(color: Color(0xFF636366), fontSize: 14)),
+                        const SizedBox(height: 4),
+                        const Text('Contact the gym to get paired with a trainer',
+                          style: TextStyle(color: Color(0xFF8E8E93), fontSize: 11),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 16),
-                    const Text('No trainer assigned', style: TextStyle(color: Color(0xFF636366), fontSize: 14)),
-                    const SizedBox(height: 4),
-                    const Text('Contact the gym to get paired with a trainer',
-                      style: TextStyle(color: Color(0xFF8E8E93), fontSize: 11),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
+                  ),
                 ),
+              ],
               );
             }
 
@@ -203,55 +215,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
 
             return Column(
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  decoration: const BoxDecoration(
-                    border: Border(bottom: BorderSide(color: Color(0xFF38383A))),
-                  ),
-                  child: Row(
-                    children: [
-                      Stack(
-                        children: [
-                          Container(
-                            width: 40, height: 40,
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: LinearGradient(
-                                colors: [Color(0xFFBF5AF2), Color(0xFFD6A5FF)],
-                              ),
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(initials, style: const TextStyle(
-                              color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700,
-                            )),
-                          ),
-                          Positioned(
-                            right: 0, bottom: 0,
-                            child: Container(
-                              width: 10, height: 10,
-                              decoration: const BoxDecoration(
-                                color: Color(0xFF30D158),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(width: 10),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(name, style: const TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFFFFFFFF),
-                          )),
-                          const Text('Your Trainer', style: TextStyle(
-                            fontSize: 10, color: Color(0xFF8E8E93),
-                          )),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
+                _chatHeader(name: name, initials: initials, onBack: _goBack),
                 Expanded(
                   child: _loadingMessages
                       ? const Center(child: CircularProgressIndicator(color: Color(0xFFD6A5FF)))
@@ -356,5 +320,80 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       ),
     ),
   );
+  }
+
+  void _goBack() {
+    // Chat is a pushed full-screen route; pop back to whatever screen the
+    // member came from (Home, Workout, ...). Cold-start fallback: Home.
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/member/home');
+    }
+  }
+
+  /// Full-width header: "<" back chevron + avatar + trainer name.
+  Widget _chatHeader({
+    required String name,
+    required String? initials,
+    required VoidCallback onBack,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: Color(0xFF38383A))),
+      ),
+      child: Row(
+        children: [
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onBack,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              child: Icon(
+                CupertinoIcons.back,
+                color: ClayTokens.clayPrimary,
+                size: 24,
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Container(
+            width: 40,
+            height: 40,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [Color(0xFFBF5AF2), Color(0xFFD6A5FF)],
+              ),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              initials ?? '?',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name, style: const TextStyle(
+                  fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFFFFFFFF),
+                )),
+                if (initials != null)
+                  const Text('Your Trainer', style: TextStyle(
+                    fontSize: 10, color: Color(0xFF8E8E93),
+                  )),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

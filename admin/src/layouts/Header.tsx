@@ -113,7 +113,7 @@ export default function Header({ title }: HeaderProps) {
         >
           <div className="px-4 py-3 border-b border-line flex items-center justify-between">
             <h2 className="font-semibold text-fg-strong">Recent Notifications</h2>
-            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#7C3AED]/15 text-accent-purple">
+            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#7C3AED] text-white">
               {`Total:${notifications.length}`}
             </span>
           </div>

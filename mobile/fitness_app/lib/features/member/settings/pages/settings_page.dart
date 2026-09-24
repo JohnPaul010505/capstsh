@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared/providers/auth_provider.dart';
 import '../../../../app/design_tokens.dart';
 import '../../bmi/providers/bmi_history_provider.dart';
+import '../../../shared/widgets/glass_sign_out_dialog.dart';
 import '../../../shared/widgets/pressable.dart';
 import '../../../shared/widgets/skeleton.dart';
 import '../../../shared/widgets/animations.dart';
@@ -199,32 +200,16 @@ class _SettingsContent extends ConsumerWidget {
         _SettingItem(index: 2, icon: CupertinoIcons.bubble_left, iconColor: const Color(0xFF30D158), label: 'Feedback', onTap: () => context.push('/member/feedback')),
         const SizedBox(height: 10),
         _SettingItem(index: 3, icon: CupertinoIcons.flag, iconColor: const Color(0xFFBF5AF2), label: 'Goals', onTap: () => context.push('/member/goals')),
+        const SizedBox(height: 10),
+        _SettingItem(index: 4, icon: CupertinoIcons.creditcard, iconColor: const Color(0xFF0A84FF), label: 'Membership', onTap: () => context.push('/member/membership')),
         const SizedBox(height: 24),
         const Divider(color: Color(0xFF38383A)),
         const SizedBox(height: 8),
         Consumer(
           builder: (_, ref, __) => PressableCard(
             onTap: () async {
-              final confirm = await showDialog<bool>(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  backgroundColor: ClayTokens.clayDarkSurface,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  title: const Text('Sign Out', style: TextStyle(color: Color(0xFFFFFFFF), fontSize: 17, fontWeight: FontWeight.w700, decoration: TextDecoration.none)),
-                  content: const Text('Are you sure you want to sign out?', style: TextStyle(color: Color(0xFF8E8E93), fontSize: 14, decoration: TextDecoration.none)),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(ctx).pop(false),
-                      child: const Text('No', style: TextStyle(color: Color(0xFF8E8E93), fontSize: 14, fontWeight: FontWeight.w600, decoration: TextDecoration.none)),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.of(ctx).pop(true),
-                      child: const Text('Yes', style: TextStyle(color: Color(0xFFFF453A), fontSize: 14, fontWeight: FontWeight.w600, decoration: TextDecoration.none)),
-                    ),
-                  ],
-                ),
-              );
-              if (confirm == true) {
+              final confirm = await showGlassSignOutDialog(context);
+              if (confirm) {
                 ref.read(authProvider.notifier).signOut();
                 if (context.mounted) {
                   context.go('/login');

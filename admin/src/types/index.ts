@@ -46,6 +46,20 @@ export interface TrainerAssignment {
   status: 'active' | 'ended'
 }
 
+export interface MembershipRenewalRequest {
+  id: string
+  member_id: string
+  membership_id: string | null
+  plan_name: string
+  months: number
+  status: 'pending' | 'approved' | 'declined'
+  note: string | null
+  requested_at: string
+  decided_at: string | null
+  decided_by: string | null
+  profiles?: { full_name: string; code: string | null; email: string }
+}
+
 export interface Attendance {
   id: string
   member_id: string

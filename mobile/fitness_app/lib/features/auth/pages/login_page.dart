@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -133,37 +134,92 @@ class _LoginPageState extends ConsumerState<LoginPage>
       // underline from an ambient theme default.
       style: const TextStyle(decoration: TextDecoration.none),
       child: CupertinoPageScaffold(
-        backgroundColor: CupertinoAppColors.background,
+        backgroundColor: const Color(0xFF05091F),
         child: AnimatedBuilder(
           animation: _bgAnim,
           builder: (context, child) {
             final shift = _bgAnim.value * 60;
             return Stack(
               children: [
-                // Decorative ambient glow — rises toward the top while typing.
+                // Admin-dark atmosphere: purple / blue / indigo light trails.
+                // Two blobs keep the focus-driven `shift` so typing still
+                // pulls the glow toward the top.
                 Positioned(
-                  top: -90 - shift,
-                  left: -70,
+                  top: -140 - shift,
+                  left: -120,
+                  child: const IgnorePointer(
+                    child: _GlowBlob(
+                      size: 320,
+                      colors: [
+                        Color(0x577C3AED),
+                        Color(0x007C3AED),
+                      ],
+                    ),
+                  ),
+                ),
+                const Positioned(
+                  top: -120,
+                  right: -120,
                   child: IgnorePointer(
                     child: _GlowBlob(
-                      size: 240,
+                      size: 300,
                       colors: [
-                        CupertinoAppColors.purple.withValues(alpha: 0.26),
-                        CupertinoAppColors.purple.withValues(alpha: 0.0),
+                        Color(0x573B82F6),
+                        Color(0x003B82F6),
+                      ],
+                    ),
+                  ),
+                ),
+                const Positioned(
+                  top: 200,
+                  left: -80,
+                  child: IgnorePointer(
+                    child: _GlowBlob(
+                      size: 260,
+                      colors: [
+                        Color(0x4D6366F1),
+                        Color(0x006366F1),
                       ],
                     ),
                   ),
                 ),
                 Positioned(
-                  bottom: -110 + shift,
-                  right: -80,
+                  bottom: -140 + shift,
+                  right: -120,
+                  child: const IgnorePointer(
+                    child: _GlowBlob(
+                      size: 320,
+                      colors: [
+                        Color(0x668B5CF6),
+                        Color(0x008B5CF6),
+                      ],
+                    ),
+                  ),
+                ),
+                const Positioned(
+                  bottom: -100,
+                  left: -100,
                   child: IgnorePointer(
                     child: _GlowBlob(
-                      size: 260,
+                      size: 280,
                       colors: [
-                        CupertinoAppColors.primaryBlue.withValues(alpha: 0.22),
-                        CupertinoAppColors.primaryBlue.withValues(alpha: 0.0),
+                        Color(0x4D3B82F6),
+                        Color(0x003B82F6),
                       ],
+                    ),
+                  ),
+                ),
+                // Dark vignette — mirrors the admin .theme-vignette.
+                const Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: RadialGradient(
+                        colors: [
+                          Color(0x00020514),
+                          Color(0x8C020514),
+                        ],
+                        stops: [0.25, 1.0],
+                      ),
                     ),
                   ),
                 ),
@@ -187,29 +243,32 @@ class _LoginPageState extends ConsumerState<LoginPage>
                           clipBehavior: Clip.none,
                           alignment: Alignment.topCenter,
                           children: [
-                            // Card
+                            // Glass card
                             Container(
                               margin: const EdgeInsets.only(top: 42),
-                              padding: const EdgeInsets.fromLTRB(24, 54, 24, 24),
-                              decoration: BoxDecoration(
-                                color: CupertinoAppColors.groupedBackground,
+                              child: ClipRRect(
                                 borderRadius: BorderRadius.circular(22),
-                                border: Border.all(
-                                  color:
-                                      CupertinoAppColors.separator.withValues(alpha: 0.5),
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: CupertinoAppColors.purple
-                                        .withValues(alpha: 0.12),
-                                    blurRadius: 44,
-                                    offset: const Offset(0, 22),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
+                                child: BackdropFilter(
+                                  filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                                  child: Container(
+                                    padding: const EdgeInsets.fromLTRB(24, 54, 24, 24),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.07),
+                                      borderRadius: BorderRadius.circular(22),
+                                      border: Border.all(
+                                        color: Colors.white.withValues(alpha: 0.18),
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(alpha: 0.35),
+                                          blurRadius: 44,
+                                          offset: const Offset(0, 22),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
                                   StaggeredFadeIn(
                                     index: 1,
                                     child: ShaderMask(
@@ -399,18 +458,21 @@ class _LoginPageState extends ConsumerState<LoginPage>
                                   ),
                                   const SizedBox(height: 18),
                                   Text(
-                                    'v1.0.0 \u00b7 Powered by FitTrack',
+                                    'v1.0.0 · Powered by FitTrack',
                                     textAlign: TextAlign.center,
                                     style: _clean(sfText(
                                       fontSize: 10,
                                       color: CupertinoAppColors.textTertiary,
                                     )),
                                   ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
-                            // Floating logo badge — overlaps the top edge of the
-                            // card, matching the reference layout.
+                          ),
+                        ),
+                            // Floating logo — overlaps the top edge of the
+                            // card, without the purple gradient disc.
                             Positioned(
                               top: 0,
                               child: StaggeredFadeIn(
@@ -420,20 +482,12 @@ class _LoginPageState extends ConsumerState<LoginPage>
                                   height: 84,
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
-                                    gradient: const LinearGradient(
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                      colors: [
-                                        CupertinoAppColors.purple,
-                                        CupertinoAppColors.primaryBlue,
-                                      ],
-                                    ),
+                                    color: Colors.transparent,
                                     boxShadow: [
                                       BoxShadow(
-                                        color: CupertinoAppColors.primaryBlue
-                                            .withValues(alpha: 0.38),
-                                        blurRadius: 22,
-                                        offset: const Offset(0, 10),
+                                        color: Colors.black.withValues(alpha: 0.45),
+                                        blurRadius: 18,
+                                        offset: const Offset(0, 8),
                                       ),
                                     ],
                                   ),

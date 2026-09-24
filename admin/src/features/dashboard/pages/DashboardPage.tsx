@@ -84,6 +84,8 @@ function useDashboardStats(yearMonth?: string) {
 }
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const dayKeyOf = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
 function getMonthOptions() {
   const options: { value: string; label: string }[] = []
@@ -104,55 +106,95 @@ function useRevenueChart(range: 'week' | 'month' | 'year') {
     queryKey: ['revenue-chart-v3', range],
     queryFn: async () => {
       const now = new Date()
-      let start: Date
-      let format: 'day' | 'month'
-
-      if (range === 'week') {
-        start = new Date(now.getTime() - 7 * DAY)
-        format = 'day'
-      } else if (range === 'month') {
-        start = new Date(now.getTime() - 30 * DAY)
-        format = 'day'
-      } else {
-        start = new Date(now.getTime() - 365 * DAY)
-        format = 'month'
-      }
 
       const { data } = await supabase
         .from('memberships')
         .select('start_date, created_at, price')
         .eq('status', 'active')
 
-      const map: Record<string, number> = {}
-      let hasInRange = false
+      // Revenue per calendar day, bucketed by membership start date.
+      const daily: Record<string, number> = {}
+      ;(data ?? []).forEach(m => {
+        const rawDate = m.start_date || m.created_at
+        if (!rawDate) return
+        const key = dayKeyOf(new Date(rawDate))
+        daily[key] = (daily[key] || 0) + (Number(m.price) || 0)
+      })
+
+      if (range === 'year') {
+        const start = new Date(now.getTime() - 365 * DAY)
+        const monthly: Record<string, number> = {}
+        let hasInRange = false
+        ;(data ?? []).forEach(m => {
+          const rawDate = m.start_date || m.created_at
+          if (!rawDate) return
+          const d = new Date(rawDate)
+          if (d >= start) hasInRange = true
+          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+          monthly[key] = (monthly[key] || 0) + (Number(m.price) || 0)
+        })
+
+        const entries = Object.entries(monthly)
+          .map(([date, revenue]) => ({ date, revenue: Math.round(revenue) }))
+          .sort((a, b) => a.date.localeCompare(b.date))
+
+        if (hasInRange) {
+          return entries.filter(e => new Date(e.date) >= start)
+        }
+        if (entries.length > 12) {
+          return entries.slice(-12)
+        }
+        return entries
+      }
+
+      // Dense per-day buckets so the X axis shows every label:
+      // Mon..Sun for the current week, 1..daysInMonth for the current month.
+      const days: string[] = []
+      if (range === 'week') {
+        const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7))
+        for (let i = 0; i < 7; i++) {
+          days.push(dayKeyOf(new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i)))
+        }
+      } else {
+        const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+        for (let i = 1; i <= daysInMonth; i++) {
+          days.push(dayKeyOf(new Date(now.getFullYear(), now.getMonth(), i)))
+        }
+      }
+      return days.map(date => ({ date, revenue: Math.round(daily[date] || 0) }))
+    },
+  })
+}
+
+/** Month-over-month revenue for the Total Revenue card (trend + sparkline). */
+function useRevenueMonthlySummary() {
+  return useQuery({
+    queryKey: ['revenue-monthly-summary'],
+    queryFn: async () => {
+      const now = new Date()
+
+      const { data } = await supabase
+        .from('memberships')
+        .select('start_date, created_at, price')
+        .eq('status', 'active')
+
+      const monthly: Record<string, number> = {}
       ;(data ?? []).forEach(m => {
         const rawDate = m.start_date || m.created_at
         if (!rawDate) return
         const d = new Date(rawDate)
-        if (d >= start) hasInRange = true
-        let key: string
-        if (format === 'day') {
-          key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-        } else {
-          key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-        }
-        map[key] = (map[key] || 0) + (Number(m.price) || 0)
+        const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+        monthly[monthKey] = (monthly[monthKey] || 0) + (Number(m.price) || 0)
       })
 
-      const entries = Object.entries(map)
-        .map(([date, revenue]) => ({ date, revenue: Math.round(revenue) }))
-        .sort((a, b) => a.date.localeCompare(b.date))
-
-      if (hasInRange) {
-        return entries.filter(e => new Date(e.date) >= start)
+      // Dense rolling 12-month series so the card sparkline always has a line.
+      const series: { value: number }[] = []
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+        series.push({ value: Math.round(monthly[key] || 0) })
       }
-      if (range === 'year' && entries.length > 12) {
-        return entries.slice(-12)
-      }
-      if ((range === 'week' || range === 'month') && entries.length > 30) {
-        return entries.slice(-30)
-      }
-      return entries
+      return { thisMonthRevenue: series[11].value, lastMonthRevenue: series[10].value, series }
     },
   })
 }
@@ -495,7 +537,7 @@ export default function DashboardPage() {
   const now = new Date()
   const defaultMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
   const [selectedMonth, setSelectedMonth] = useState(defaultMonth)
-  const [revenueRange, setRevenueRange] = useState<'week' | 'month' | 'year'>('week')
+  const [revenueRange, setRevenueRange] = useState<'week' | 'month' | 'year'>('year')
   const monthOptions = useMemo(() => getMonthOptions(), [])
   const chart = useChartTheme()
 
@@ -506,6 +548,7 @@ export default function DashboardPage() {
   const { data: genderActivityData } = useGenderAndActivityData()
   const { data: recentActivity } = useRecentActivity()
   const { data: revenueData } = useRevenueChart(revenueRange)
+  const { data: revenueSummary } = useRevenueMonthlySummary()
 
   const memberTrend = useMemo(() => {
     if (!baseStats?.totalMembers || !growthData || growthData.length < 2) return undefined
@@ -547,34 +590,18 @@ export default function DashboardPage() {
       const [, m] = v.split('-')
       return MONTH_NAMES[Number(m) - 1] || v
     }
-    const d = new Date(v)
-    return `${d.getMonth() + 1}/${d.getDate()}`
+    const d = new Date(`${v}T00:00:00`)
+    return revenueRange === 'week' ? WEEKDAY_NAMES[d.getDay()] : String(d.getDate())
   }
 
   const revenueTrend = useMemo(() => {
-    if (!baseStats?.totalRevenue || !revenueData) return undefined
-    const now = new Date()
-    const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-    const last = new Date(now.getFullYear(), now.getMonth(), 1)
-    const lastMonth = `${last.getFullYear()}-${String(last.getMonth() + 1).padStart(2, '0')}`
-
-    let thisMonthRevenue = 0
-    let lastMonthRevenue = 0
-
-    revenueData.forEach(d => {
-      const monthKey = d.date.slice(0, 7)
-      if (monthKey === thisMonth) {
-        thisMonthRevenue += d.revenue
-      } else if (monthKey === lastMonth) {
-        lastMonthRevenue += d.revenue
-      }
-    })
-
+    if (!revenueSummary) return undefined
+    const { thisMonthRevenue, lastMonthRevenue } = revenueSummary
     if (lastMonthRevenue === 0 && thisMonthRevenue === 0) return undefined
     if (lastMonthRevenue === 0) return 100
 
     return Math.round(((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100)
-  }, [revenueData])
+  }, [revenueSummary])
 
   if (false) return <div className="text-center py-8 text-fg-muted">Loading...</div>
 
@@ -585,7 +612,7 @@ export default function DashboardPage() {
           title="Total Revenue"
           value={baseStats?.totalRevenue ?? 0}
           trend={revenueTrend ? { value: revenueTrend, label: 'from last month' } : undefined}
-          sparkData={revenueChartData?.slice(-10).map(d => ({ value: d.revenue }))}
+          sparkData={revenueSummary?.series.slice(-10)}
           iconVariant="purple"
           sparkColor="#10B981"
         />
@@ -704,14 +731,14 @@ export default function DashboardPage() {
                     axisLine={{ stroke: chart.axisLine }}
                     tickLine={false}
                   />
-                  <YAxis tick={chart.axisTick} axisLine={false} tickLine={false} width={42} tickFormatter={v => `₱${v}`} />
+                  <YAxis tick={chart.axisTick} axisLine={false} tickLine={false} width={42} padding={{ bottom: 6 }} tickFormatter={v => `₱${v}`} />
                   <Tooltip
                     contentStyle={chart.tooltipStyle}
                     labelStyle={{ color: chart.tooltipLabel }}
-                    labelFormatter={v => revenueRange === 'year' ? v : new Date(v).toLocaleDateString()}
+                    labelFormatter={v => revenueRange === 'year' ? v : new Date(`${v}T00:00:00`).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
                     formatter={(value: number) => [`₱${value.toLocaleString()}`, 'Revenue']}
                   />
-                  <Area type="monotone" dataKey="revenue" stroke="#7C3AED" strokeWidth={2} fill="url(#revenueGradient)" dot={{ fill: '#C084FC', r: 2 }} name="Revenue" filter="url(#revenueGlow)" />
+                  <Area type="monotone" dataKey="revenue" stroke="#7C3AED" strokeWidth={2} fill="url(#revenueGradient)" dot={false} name="Revenue" filter="url(#revenueGlow)" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -746,8 +773,8 @@ export default function DashboardPage() {
                   <XAxis dataKey="month" tick={chart.axisTick} interval={0} tickFormatter={v => MONTH_NAMES[Number(v.split('-')[1]) - 1]} axisLine={{ stroke: chart.axisLine }} tickLine={false} />
                   <YAxis tick={chart.axisTick} axisLine={false} tickLine={false} width={28} />
                   <Tooltip contentStyle={chart.tooltipStyle} labelStyle={{ color: chart.tooltipLabel }} />
-                  <Area type="monotone" dataKey="totalMembers" stroke="#7C3AED" strokeWidth={2} fill="url(#growthTotal)" dot={{ fill: '#C084FC', r: 2 }} name="Total Members" filter="url(#growthGlow)" />
-                  <Area type="monotone" dataKey="newMembers" stroke="#22C55E" strokeWidth={2} fill="url(#growthNew)" dot={{ fill: '#4ADE80', r: 2 }} name="New Members" filter="url(#growthGlow)" />
+                  <Area type="monotone" dataKey="totalMembers" stroke="#7C3AED" strokeWidth={2} fill="url(#growthTotal)" dot={false} name="Total Members" filter="url(#growthGlow)" />
+                  <Area type="monotone" dataKey="newMembers" stroke="#22C55E" strokeWidth={2} fill="url(#growthNew)" dot={false} name="New Members" filter="url(#growthGlow)" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>

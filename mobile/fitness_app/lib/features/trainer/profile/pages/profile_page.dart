@@ -5,9 +5,9 @@ import 'package:go_router/go_router.dart';
 import 'package:fitness_app/app/design_tokens.dart';
 
 import 'package:shared/services/supabase_client.dart';
-import 'package:shared/services/feedback_service.dart';
 import 'package:shared/providers/auth_provider.dart';
 import '../../../shared/widgets/app_glow_background.dart';
+import '../../../shared/widgets/glass_sign_out_dialog.dart';
 import '../../../shared/widgets/skeleton.dart';
 import '../../../shared/widgets/pressable.dart';
 import '../../../shared/widgets/animations.dart';
@@ -18,11 +18,6 @@ final trainerProfileProvider = FutureProvider.family<Map<String, dynamic>, Strin
   return response;
 });
 
-/// Average star rating this trainer has received from members (Figure 20).
-final trainerRatingSummaryProvider = FutureProvider.family<Map<String, dynamic>, String>((ref, trainerId) {
-  return FeedbackService().getRatingSummary(trainerId);
-});
-
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
 
@@ -30,7 +25,6 @@ class ProfilePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final currentUserId = SupabaseClientService().client.auth.currentUser!.id;
     final profileAsync = ref.watch(trainerProfileProvider(currentUserId));
-    final ratingAsync = ref.watch(trainerRatingSummaryProvider(currentUserId));
 
     return Scaffold(
       backgroundColor: ClayTokens.clayDarkBase,
@@ -102,46 +96,6 @@ class ProfilePage extends ConsumerWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  ratingAsync.when(
-                    data: (summary) {
-                      final count = summary['count'] as int;
-                      final average = (summary['average'] as num?)?.toDouble() ?? 0.0;
-                      if (count == 0) {
-                        return const SizedBox.shrink();
-                      }
-                      return Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFC107).withAlpha(25),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: Colors.white.withAlpha(18)),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.star_rounded, color: Color(0xFFFFC107), size: 22),
-                            const SizedBox(width: 8),
-                            Text(
-                              average.toStringAsFixed(1),
-                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFFFFFFFF), decoration: TextDecoration.none),
-                            ),
-                            const Text(
-                              ' / 5',
-                              style: TextStyle(fontSize: 12, color: Color(0xFF8E8E93), decoration: TextDecoration.none),
-                            ),
-                            const Spacer(),
-                            Text(
-                              '$count member rating${count == 1 ? '' : 's'}',
-                              style: const TextStyle(fontSize: 11, color: Color(0xFF8E8E93), decoration: TextDecoration.none),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                    loading: () => const SizedBox.shrink(),
-                    error: (_, __) => const SizedBox.shrink(),
-                  ),
                   const SizedBox(height: 24),
                   const Divider(color: Color(0xFF38383A)),
                   const SizedBox(height: 8),
@@ -154,33 +108,14 @@ class ProfilePage extends ConsumerWidget {
                   _SettingItem(index: 3, icon: Icons.rate_review_outlined, iconColor: Color(0xFF30D158), label: 'Feedback', onTap: () => context.push('/trainer/feedback')),
                   const SizedBox(height: 24),
                   InkWell(
-                    onTap: () {
-                      showDialog(
-                        context: context,
-                        barrierDismissible: false,
-                        builder: (ctx) => AlertDialog(
-                          backgroundColor: ClayTokens.clayDarkSurface,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          title: Text('Sign Out', style: TextStyle(color: ClayTokens.clayDarkTextPrimary, fontSize: 17, fontWeight: FontWeight.w700)),
-                          content: Text('Are you sure you want to sign out?', style: TextStyle(color: ClayTokens.clayDarkTextSecondary, fontSize: 14)),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.of(ctx).pop(),
-                              child: Text('No', style: TextStyle(color: ClayTokens.clayDarkTextTertiary, fontSize: 14, fontWeight: FontWeight.w600)),
-                            ),
-                            TextButton(
-                              onPressed: () {
-                                Navigator.of(ctx).pop();
-                                ref.read(authProvider.notifier).signOut();
-                                if (context.mounted) {
-                                  context.go('/login');
-                                }
-                              },
-                              child: Text('Yes', style: TextStyle(color: ClayTokens.clayError, fontSize: 14, fontWeight: FontWeight.w600)),
-                            ),
-                          ],
-                        ),
-                      );
+                    onTap: () async {
+                      final confirm = await showGlassSignOutDialog(context);
+                      if (confirm) {
+                        ref.read(authProvider.notifier).signOut();
+                        if (context.mounted) {
+                          context.go('/login');
+                        }
+                      }
                     },
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 14),

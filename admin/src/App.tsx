@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from '@/features/auth/hooks/useAuth'
 import type { Profile } from '@/types'
 import LoginPage from '@/features/auth/pages/LoginPage'
@@ -117,6 +117,8 @@ function AppRoutes() {
   const navigateRef = useRef(navigate)
   navigateRef.current = navigate
 
+  const location = useLocation()
+
   useEffect(() => {
     if (handoff === 'none') return
     const timer = window.setTimeout(
@@ -136,6 +138,13 @@ function AppRoutes() {
         Loading...
       </div>
     )
+  }
+
+  // Public access: guests who scan the enrollment QR land on /qr without an
+  // account. Show the public enrollment form instead of the login gate.
+  // (An in-flight login handoff animation takes precedence while running.)
+  if (handoff === 'none' && profile === null && location.pathname === '/qr') {
+    return <QRPage />
   }
 
   const loginAriaHidden = handoff !== 'none' ? 'true' : undefined
