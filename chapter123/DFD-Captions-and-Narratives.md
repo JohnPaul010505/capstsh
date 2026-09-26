@@ -130,9 +130,9 @@ page immediately after. Figure numbers assume your §3.4 context diagrams are Fi
 > Figure 9 presents the data flow diagram of the proposed Intelligent Fitness Progress
 > Monitoring Application Using Predictive Analytics. The proposed system is composed of five
 > processes, namely 1.0 Manage Accounts and Attendance, 2.0 Manage Workout and Measurements,
-> 3.0 Manage Nutrition and AI Food Analysis, 4.0 Generate Predictions and Goal Plans, and
-> 5.0 Generate Reports and Communication. The system exchanges data with four external
-> entities: the Member, the Trainer, the Admin, and the Google Gemini API.
+> 3.0 Manage Nutrition and Meal Logging, 4.0 Generate Predictions and Goal Plans, and
+> 5.0 Generate Reports and Communication. The system exchanges data with three external
+> entities: the Member, the Trainer, and the Admin.
 >
 > In process 1.0, the Admin provides enrollment details and trainer assignment requests,
 > while the Member provides registration details and QR code check-in and check-out data.
@@ -147,16 +147,16 @@ page immediately after. Figure numbers assume your §3.4 context diagrams are Fi
 > the Body Measurements, while returning the calories burned and the BMI result to the
 > member and the member workout summary to the trainer.
 >
-> In process 3.0, the Member provides a meal log entry and a food photograph. The food image
-> and nutrition query are sent to the Google Gemini API, which returns the recognized food
-> item and the nutrient breakdown data. The process stores the meal record in the Meal Logs
-> and the analysis result in the AI Food Analysis, and returns the food recommendation and
-> the nutrient breakdown to the member.
+> In process 3.0, the Member provides a meal log entry together with an optional food
+> photograph, which is stored as a meal photo record. The food composition data are
+> retrieved from the Nutrition Foods and scaled by the weight entered to compute the
+> nutrient breakdown. The process stores the meal record in the Meal Logs and returns the
+> nutrient breakdown to the member.
 >
 > In process 4.0, the workout, measurement, and nutrition histories are analysed to produce
 > the prediction record and the goal plan record. The process returns the predicted fitness
-> progress and the adjusted goal suggestion to the member, and the retention risk alert and
-> the plan completion status to the trainer.
+> progress to the member, and the retention risk alert and the plan completion status to
+> the trainer.
 >
 > In process 5.0, the chat messages and trainer ratings of the member, the feedback of the
 > trainer, and the report request and broadcast content of the admin are processed to
@@ -237,28 +237,21 @@ page immediately after. Figure numbers assume your §3.4 context diagrams are Fi
 **Narrative:**
 
 > Figure 12 represents the data flow diagram of process 3 of the proposed system. This
-> diagram decomposes the Manage Nutrition and AI Food Analysis process into six
-> sub-processes: 3.1 Record Meal Log, 3.2 Upload Food Photograph, 3.3 Identify Food Item
-> (Gemini), 3.4 Compute Nutrient Breakdown, 3.5 Generate Food Recommendation, and 3.6
-> Maintain Nutrition Database.
+> diagram decomposes the Manage Nutrition and Meal Logging process into four
+> sub-processes: 3.1 Record Meal Log, 3.2 Upload Food Photograph, 3.3 Compute Nutrient
+> Breakdown, and 3.4 Maintain Nutrition Database.
 >
 > In sub-process 3.1, the Member provides a meal entry containing the food name, the meal
 > type, and the calories, which is written into the Meal Logs. In sub-process 3.2, the
-> Member provides the food photograph, which is stored as the meal photo record, and the
-> food image is passed to sub-process 3.3.
+> Member optionally provides the food photograph, which is stored as the meal photo
+> record, and the meal entry is passed to sub-process 3.3.
 >
-> In sub-process 3.3, the food image and the nutrition query are sent to the Google Gemini
-> API, which returns the recognized food item. The result is written into the AI Food
-> Analysis and the identified food data are passed to sub-process 3.4.
->
-> In sub-process 3.4, the food composition data are retrieved from the Nutrition Foods to
-> compute the nutrient breakdown, which is returned to the Member and written into the AI
-> Food Analysis. In sub-process 3.5, the nutrient data are used to generate the food
-> recommendation, which is returned to the Member and stored in the AI Food Analysis.
->
-> In sub-process 3.6, the food composition data retrieved from the Nutrition Foods are used
-> to maintain the nutrition database record, ensuring that the food reference data used by
-> the AI analysis remain accurate.
+> In sub-process 3.3, the food composition data are retrieved from the Nutrition Foods
+> and scaled by the weight entered to compute the nutrient breakdown, which is returned
+> to the Member and written into the Meal Logs. In sub-process 3.4, the food composition
+> data retrieved from the Nutrition Foods are used to maintain the nutrition database
+> record, ensuring that the food reference data used by the nutrient computation remain
+> accurate.
 
 ---
 
@@ -269,10 +262,10 @@ page immediately after. Figure numbers assume your §3.4 context diagrams are Fi
 **Narrative:**
 
 > Figure 13 represents the data flow diagram of process 4 of the proposed system. This
-> diagram decomposes the Generate Predictions and Goal Plans process into seven
+> diagram decomposes the Generate Predictions and Goal Plans process into six
 > sub-processes: 4.1 Analyze Progress Trend, 4.2 Predict Fitness Progress, 4.3 Assess
-> Retention Risk, 4.4 Generate Goal Adjustment, 4.5 Set Member Goal, 4.6 Create Trainer
-> Plan, and 4.7 Monitor Plan Completion.
+> Retention Risk, 4.4 Set Member Goal, 4.5 Create Trainer Plan, and 4.6 Monitor Plan
+> Completion.
 >
 > In sub-process 4.1, the workout history data, the measurement history data, and the
 > nutrition history data are retrieved from the Workout Logs, the Body Measurements, and the
@@ -281,16 +274,14 @@ page immediately after. Figure numbers assume your §3.4 context diagrams are Fi
 > written into the Predictions, while the prediction history is retrieved for comparison.
 >
 > The prediction data are passed to sub-process 4.3, where the retention risk is assessed
-> and the retention risk alert is returned to the Trainer. The risk assessment data are
-> passed to sub-process 4.4, where the adjusted goal suggestion is generated, returned to
-> the Member, and written into the Goal Plans.
+> and the retention risk alert is returned to the Trainer.
 >
-> In sub-process 4.5, the Member provides the goal setting and the member goal record is
-> written into the Goal Plans, while the goal history is retrieved. In sub-process 4.6, the
+> In sub-process 4.4, the Member provides the goal setting and the member goal record is
+> written into the Goal Plans, while the goal history is retrieved. In sub-process 4.5, the
 > Trainer provides the plan assignment containing the food plan and the exercise plan, and
 > the trainer plan record is written into the Goal Plans.
 >
-> In sub-process 4.7, the plan completion data are retrieved from the Goal Plans and the
+> In sub-process 4.6, the plan completion data are retrieved from the Goal Plans and the
 > plan completion status is returned to the Trainer, while the completion prediction record
 > is written into the Predictions.
 

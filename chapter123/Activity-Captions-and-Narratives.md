@@ -82,24 +82,24 @@ so the Activity Diagram section runs from Figure 15 to Figure 21.
 
 ## Figure 18
 
-**Caption:** Figure 18: Activity Diagram (Meal Logging and AI Food Analysis)
+**Caption:** Figure 18: Activity Diagram (Meal Logging and Nutrient Computation)
 
 **Narrative:**
 
-> Figure 18 shows the activity diagram of the meal logging and AI food analysis process of the
-> proposed system of Triple J Fitness Center. The process begins when the Member opens the meal
-> logging page and enters the meal details containing the food name, the meal type, and the
-> estimated calories. The system then determines whether the Member will upload a food
-> photograph.
+> Figure 18 shows the activity diagram of the meal logging and nutrient computation process
+> of the proposed system of Triple J Fitness Center. The process begins when the Member opens
+> the meal logging page and enters the meal details containing the food name and the meal
+> type. The system then determines whether the Member will attach a food photograph.
 >
-> If a photograph is uploaded, the captured or uploaded image is sent together with a nutrition
-> query to the Google Gemini API, which returns the recognized food item. If no photograph is
-> uploaded, the process proceeds directly using the manually entered meal details.
+> If a photograph is attached, the captured or uploaded image is stored as a meal photo
+> record. The process then continues to the food search, where the Member searches the
+> Nutrition Foods reference database and selects the food item, then enters the portion in
+> grams. If no photograph is attached, the process proceeds directly to the same food search.
 >
-> The system computes the nutrient breakdown by retrieving the food composition data from the
-> Nutrition Foods, generates a food recommendation, and displays the nutrient breakdown
-> together with the recommendation to the Member. Finally, the meal record is saved into the
-> Meal Logs, which ends the process.
+> The system computes the nutrient breakdown by scaling the per-100 gram food composition
+> data retrieved from the Nutrition Foods by the portion entered, and displays the nutrient
+> breakdown to the Member for review. Finally, the meal record is saved into the Meal Logs,
+> which ends the process.
 
 ---
 
@@ -158,9 +158,9 @@ so the Activity Diagram section runs from Figure 15 to Figure 21.
 > nutrition history retrieved from the Workout Logs, the Body Measurements, and the Meal Logs.
 >
 > Using the analyzed trend, the system generates the predicted fitness progress, assesses the
-> retention risk, and notifies the Trainer of the risk result. The adjusted goal suggestion is
-> displayed to the Member, who sets or refines the fitness goal, and the goal is saved into the
-> Goal Plans.
+> retention risk, and notifies the Trainer of the risk result. The predicted progress is
+> displayed to the Member, who sets or refines the fitness goal, and the goal is saved into
+> the Goal Plans.
 >
 > The Trainer reviews the member goal and creates the plan consisting of the food plan and the
 > exercise plan, which is saved into the Goal Plans. The system continuously monitors the plan

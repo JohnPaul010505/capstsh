@@ -13,31 +13,6 @@ if GEMINI_ENABLED:
     genai.configure(api_key=GEMINI_API_KEY)  # type: ignore
     model = genai.GenerativeModel(GEMINI_MODEL)  # type: ignore
 
-def food_recommendations_ai(
-    meal_type: str,
-    recent_logs: list[dict[str, Any]],
-    profile: dict[str, Any]
-) -> Optional[list[dict[str, Any]]]:
-    if not GEMINI_ENABLED:
-        return None
-    try:
-        logs_text = "; ".join(
-            f"{l.get('meal_type','')}: {l.get('food_name','')} ({l.get('calories',0)} cal)"
-            for l in recent_logs[-10:]
-        )
-        prompt = f"""You are a fitness nutritionist. Member: {profile.get('full_name','')}, 
-age {profile.get('age','unknown')}, goal {profile.get('fitness_goal','general')}.
-Recent meals: {logs_text or 'none'}.
-Suggest 3 healthier {meal_type or 'meal'} options. Return JSON array with: 
-food_name, portion, calories, protein_g, carbs_g, fat_g, reason.
-Keep it realistic and specific. Return ONLY valid JSON, no markdown."""
-        resp = model.generate_content(prompt)  # type: ignore
-        text = resp.text.strip().removeprefix("```json").removesuffix("```").strip()
-        return json.loads(text)
-    except Exception as e:
-        print(f"Gemini food error: {e}")
-        return None
-
 def goal_adjustments_ai(
     goals: list[dict[str, Any]],
     measurements: list[dict[str, Any]],

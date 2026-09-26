@@ -62,16 +62,16 @@ continues at Figure 26.
 
 > Figure 24 presents the nutrition, meal logging, and reference data part
 > of the entity relationship diagram. The meal_records and meal_logs
-> entities store the logged meals and their nutrient values; the
-> food_recommendations entity stores the generated food suggestions; and
-> the food_identification_logs entity stores the AI photo recognition
-> candidates and the member's selected correction. The met_exercises
-> reference entity stores the exercise catalog together with the MET
-> value of each exercise and the optional verifier through the
+> entities store the logged meals and their nutrient values. The
+> met_exercises reference entity stores the exercise catalog together with
+> the MET value of each exercise and the optional verifier through the
 > verified_by foreign key. The nutrition_foods reference entity stores
 > the verified Filipino dish composition data taken from the DOST-FNRI
-> reference; it has no foreign key to profiles and is therefore shown as
-> a standalone table in the figure.
+> reference. It is drawn as a standalone table because it carries no
+> foreign key: when a member logs a meal, the nutrient values of the
+> selected food are copied from this reference into the meal record, and
+> the reference to the catalog entry is not persisted. This keeps a logged
+> meal unchanged even if the reference catalog is later corrected.
 
 ## Figure 25
 

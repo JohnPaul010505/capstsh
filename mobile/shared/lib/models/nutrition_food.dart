@@ -1,5 +1,6 @@
 class NutritionFood {
   final String id;
+  final String? fnriId;
   final String foodName;
   final List<String> aliases;
   final String category;
@@ -13,6 +14,7 @@ class NutritionFood {
 
   NutritionFood({
     required this.id,
+    this.fnriId,
     required this.foodName,
     required this.aliases,
     required this.category,
@@ -27,6 +29,7 @@ class NutritionFood {
 
   factory NutritionFood.fromJson(Map<String, dynamic> json) => NutritionFood(
     id: json['id'] as String,
+    fnriId: json['fnri_id'] as String?,
     foodName: json['food_name'] as String,
     aliases: (json['aliases'] as List<dynamic>?)?.cast<String>() ?? const [],
     category: json['category'] as String? ?? '',
@@ -40,6 +43,7 @@ class NutritionFood {
   );
 
   Map<String, dynamic> toJson() => {
+    'fnri_id': fnriId,
     'food_name': foodName,
     'aliases': aliases,
     'category': category,

@@ -23,7 +23,7 @@ const adminClient = createClient(supabaseUrl, serviceRoleKey, {
 })
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', routes: ['enroll', 'users', 'delete-user', 'assign-trainer', 'unassign-trainer', 'backfill-auth', 'backfill-codes', 'ai/predictions', 'ai/identify-food', 'plans/check-daily-completions', 'plans/check-weekly-completions'] })
+  res.json({ status: 'ok', routes: ['enroll', 'users', 'delete-user', 'assign-trainer', 'unassign-trainer', 'backfill-auth', 'backfill-codes', 'ai/predictions', 'plans/check-daily-completions', 'plans/check-weekly-completions'] })
 })
 
 app.post('/api/enroll', async (req, res) => {
@@ -465,38 +465,53 @@ app.post('/api/ai/predictions', async (req, res) => {
     })
     if (response.ok) {
       const data = await response.json()
+      // The client reads this to badge the result; without it a fallback
+      // forecast was silently presented as an AI-service result.
+      res.setHeader('x-forecast-source', 'ai')
       return res.json(data)
     }
   } catch (e) {
     /* AI service not running — use inline fallback */
   }
 
+  // Everything below is the offline fallback: same maths, same guardrails, but
+  // nothing is persisted (the client badges it "not persisted").
+  res.setHeader('x-forecast-source', 'fallback')
   const results = []
+  const notes = []
 
   const { data: measurements } = await adminClient
     .from('body_measurements')
-    .select('weight_kg, body_fat_pct, measured_at')
+    .select('weight_kg, measured_at')
     .eq('member_id', member_id)
     .order('measured_at', { ascending: true })
 
-  if (measurements && measurements.length > 1) {
-    const weights = measurements.map(m => m.weight_kg).filter(Boolean)
-    if (weights.length > 1) {
-      const pred = simpleTrend(weights, days_ahead)
-      results.push({
-        prediction_type: 'weight', current_value: weights[weights.length - 1],
-        predicted_value: pred.value, unit: 'kg',
-        days_ahead, confidence: pred.confidence,
-      })
-    }
-    const bfs = measurements.map(m => m.body_fat_pct).filter(Boolean)
-    if (bfs.length > 1) {
-      const pred = simpleTrend(bfs, days_ahead)
-      results.push({
-        prediction_type: 'body_fat', current_value: bfs[bfs.length - 1],
-        predicted_value: pred.value, unit: '%',
-        days_ahead, confidence: pred.confidence,
-      })
+  if (measurements && measurements.length) {
+    const weights = measurements.map((m) => m.weight_kg)
+    if (weights.some((v) => v !== null && v !== undefined)) {
+      // Weight only, matching the AI service: body fat is not forecast because
+      // no screen in the system captures it.
+      const pred = forecastTrend(weights, measurements.map((m) => m.measured_at), days_ahead)
+      if (!pred.sufficient) {
+        notes.push(`Weight: ${pred.reason}`)
+      } else {
+        results.push({
+          prediction_type: 'weight',
+          current_value: pred.current_value,
+          predicted_value: pred.predicted_value,
+          unit: 'kg',
+          days_ahead,
+          confidence: pred.confidence,
+          data_points: pred.data_points,
+          span_days: pred.span_days,
+          date_from: pred.date_from,
+          date_to: pred.date_to,
+          daily_rate: pred.daily_rate,
+          change: pred.change,
+          clamped: pred.clamped,
+          method: pred.method,
+        })
+      }
     }
   }
 
@@ -508,51 +523,50 @@ app.post('/api/ai/predictions', async (req, res) => {
     .limit(30)
 
   if (attendance && attendance.length > 0) {
-    const weekCounts = {}
+    // Chronological order by earliest check-in: week numbers restart in January,
+    // so sorting by week number would read the "is attendance falling?" trend
+    // backwards across a year boundary.
+    const weekStats = new Map()
     for (const a of attendance) {
       const d = new Date(a.check_in_time)
-      const wk = `${d.getFullYear()}-W${String(getWeekNumber(d)).padStart(2, '0')}`
-      weekCounts[wk] = (weekCounts[wk] || 0) + 1
+      const key = getWeekNumber(d)
+      const slot = weekStats.get(key)
+      if (!slot) weekStats.set(key, { count: 1, first: d })
+      else {
+        slot.count += 1
+        if (d < slot.first) slot.first = d
+      }
     }
-    const rates = Object.values(weekCounts).map(c => Math.min(1, c / 7))
+    const ordered = [...weekStats.values()].sort((a, b) => a.first - b.first)
+    const rates = ordered.map((s) => Math.min(1, s.count / 7))
     const last = new Date(attendance[0].check_in_time)
     const daysSince = Math.floor((Date.now() - last.getTime()) / 86400000)
-    const avgRate = rates.reduce((a, b) => a + b, 0) / rates.length
-    const riskScore = Math.max(0, Math.min(1, 1 - (avgRate * 0.6 + Math.min(1, daysSince / 30) * 0.4)))
+    const risk = retentionForecast(rates, daysSince)
     results.push({
-      prediction_type: 'retention_risk', current_value: Math.round(avgRate * 100) / 100,
-      predicted_value: Math.round(riskScore * 100) / 100, unit: 'score (0-1)',
-      days_ahead: 30, confidence: Math.round((1 - riskScore) * 100) / 100,
+      prediction_type: 'retention_risk',
+      current_value: Math.round(rates[rates.length - 1] * 100) / 100,
+      predicted_value: risk.score,
+      unit: 'risk score (0-1)',
+      days_ahead: 30,
+      // Trust in the estimate (attendance history depth) — not the risk score,
+      // which used to render "high risk" as "high confidence".
+      confidence: risk.confidence,
+      data_points: rates.length,
+      daily_rate: risk.weekly_rate,
+      method: 'weighted-heuristic',
+      note:
+        `60% check-in frequency + 20% falling trend + 20% recency ` +
+        `(last visit ${daysSince}d ago) - risk level ${risk.risk}`,
     })
   }
 
   if (results.length === 0) {
-    return res.status(404).json({ detail: 'Not enough data for predictions. Log measurements and attendance first.' })
+    return res.status(404).json({
+      detail: 'Not enough data for predictions. ' + (notes.length ? notes.join(' ') : 'Log measurements and attendance first.'),
+    })
   }
 
   res.json(results)
-})
-
-app.post('/api/ai/identify-food', async (req, res) => {
-  const { image_url, top_k = 3 } = req.body
-  if (!image_url) return res.status(400).json({ error: 'Missing image_url' })
-
-  try {
-    const response = await fetch(`http://localhost:8001/api/ai/identify-food`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image_url, top_k }),
-      signal: AbortSignal.timeout(30000),
-    })
-    if (response.ok) {
-      const data = await response.json()
-      return res.json(data)
-    }
-    const err = await response.json().catch(() => ({ error: 'AI service error' }))
-    return res.status(response.status).json(err)
-  } catch (e) {
-    return res.status(502).json({ error: `AI service unreachable: ${e.message}` })
-  }
 })
 
 app.get('/api/ai/search-met', async (req, res) => {
@@ -598,22 +612,140 @@ app.post('/api/ai/estimate-met', async (req, res) => {
   }
 })
 
-function simpleTrend(values, steps) {
-  const n = values.length
-  const xMean = (n - 1) / 2
-  const yMean = values.reduce((a, b) => a + b, 0) / n
-  let num = 0, den = 0
+// --- Forecast math (mirrors ai-service/services/ml.py) ----------------------
+// The AI service is the primary path; this fallback runs when it is down, so it
+// has to produce the same numbers or the page would contradict itself.
+const MIN_POINTS = 3
+const MIN_SPAN_DAYS = 7
+const FULL_SAMPLE_POINTS = 5
+const FULL_SAMPLE_DAYS = 28
+const MAX_CONFIDENCE = 0.95 // a forecast is never reported as certain
+const MAX_WEIGHT_CHANGE_PCT = 0.05
+const MIN_PLAUSIBLE_VALUE = 0.5
+const RETENTION_FULL_WEEKS = 6
+const RETENTION_W_FREQUENCY = 0.6
+const RETENTION_W_TREND = 0.2
+const RETENTION_W_RECENCY = 0.2
+
+const round2 = (v) => Math.round(v * 100) / 100
+const round4 = (v) => Math.round(v * 10000) / 10000
+
+function toDayNumber(stamp) {
+  if (stamp === null || stamp === undefined) return null
+  const t = stamp instanceof Date ? stamp.getTime() : new Date(stamp).getTime()
+  return Number.isNaN(t) ? null : t / 86400000
+}
+
+/// Least-squares trend over *elapsed days* (not row indices), clamped to a
+/// physiologically plausible rate, and only forecast once there is enough
+/// history to mean anything.
+function forecastTrend(values, stamps, daysAhead) {
+  const points = []
+  values.forEach((raw, i) => {
+    const v = typeof raw === 'number' ? raw : parseFloat(raw)
+    if (!Number.isFinite(v) || v <= 0) return
+    const stamp = stamps && i < stamps.length ? stamps[i] : null
+    points.push({ value: v, day: toDayNumber(stamp), stamp })
+  })
+  if (points.length === 0) {
+    return { sufficient: false, reason: 'no measurements recorded yet', data_points: 0, current_value: 0 }
+  }
+  const useDates = points.length >= 2 && points.every((p) => p.day !== null)
+  if (useDates) points.sort((a, b) => a.day - b.day)
+  const ys = points.map((p) => p.value)
+  const xs = points.map((p, i) => (useDates ? p.day : i))
+  const n = ys.length
+  const current = ys[n - 1]
+  const spanDays = useDates ? xs[n - 1] - xs[0] : 0
+  const basis = {
+    current_value: round2(current),
+    data_points: n,
+    span_days: Math.round(spanDays),
+    date_from: points[0].stamp ?? null,
+    date_to: points[n - 1].stamp ?? null,
+    method: 'ols-linear-regression',
+  }
+  if (n < 2) {
+    return { ...basis, sufficient: false, reason: `only ${n} measurement logged - at least 2 are needed` }
+  }
+  if (n < MIN_POINTS || (useDates && spanDays < MIN_SPAN_DAYS)) {
+    return {
+      ...basis,
+      sufficient: false,
+      reason: `needs at least ${MIN_POINTS} weigh-ins over ${MIN_SPAN_DAYS}+ days (has ${n} over ${Math.round(spanDays)}d)`,
+    }
+  }
+  const xMean = xs.reduce((a, b) => a + b, 0) / n
+  const yMean = ys.reduce((a, b) => a + b, 0) / n
+  let num = 0
+  let den = 0
   for (let i = 0; i < n; i++) {
-    const dx = i - xMean
-    num += dx * (values[i] - yMean)
+    const dx = xs[i] - xMean
+    num += dx * (ys[i] - yMean)
     den += dx * dx
   }
   const slope = den !== 0 ? num / den : 0
-  const predicted = values[n - 1] + slope * steps
-  const ssRes = values.reduce((a, v) => a + (v - (yMean + slope * (values.indexOf(v) - xMean))) ** 2, 0)
-  const ssTot = values.reduce((a, v) => a + (v - yMean) ** 2, 0)
+  const intercept = yMean - slope * xMean
+  let ssRes = 0
+  let ssTot = 0
+  for (let i = 0; i < n; i++) {
+    const fit = intercept + slope * xs[i]
+    ssRes += (ys[i] - fit) ** 2
+    ssTot += (ys[i] - yMean) ** 2
+  }
   const r2 = ssTot !== 0 ? Math.max(0, Math.min(1, 1 - ssRes / ssTot)) : 0
-  return { value: Math.round(predicted * 100) / 100, confidence: Math.round(r2 * 100) / 100 }
+  const rawPrediction = intercept + slope * (xs[n - 1] + daysAhead)
+  // Body weight may move at most +/-5% in the horizon: the clinical safe rate is
+  // roughly 0.5-1% of body weight per week.
+  const low = Math.max(current * (1 - MAX_WEIGHT_CHANGE_PCT), MIN_PLAUSIBLE_VALUE)
+  const high = current * (1 + MAX_WEIGHT_CHANGE_PCT)
+  const predicted = Math.min(Math.max(rawPrediction, low), high)
+  const sampleFactor = Math.min(1, (n - 1) / (FULL_SAMPLE_POINTS - 1))
+  const spanFactor = useDates ? Math.min(1, spanDays / FULL_SAMPLE_DAYS) : 0.5
+  return {
+    ...basis,
+    sufficient: true,
+    predicted_value: round2(predicted),
+    change: round2(predicted - current),
+    clamped: Math.abs(predicted - rawPrediction) > 1e-9,
+    confidence: round2(Math.max(0, Math.min(MAX_CONFIDENCE, r2 * sampleFactor * spanFactor))),
+    r2: Math.round(r2 * 1000) / 1000,
+    trend: slope > 0 ? 'up' : slope < 0 ? 'down' : 'flat',
+    daily_rate: useDates ? round4(slope) : null,
+  }
+}
+
+/// Mirrors retention_risk(): frequency credit minus falling trend minus recency.
+function retentionForecast(rates, daysSince) {
+  if (!rates.length) return { score: 0.5, confidence: 0, risk: 'unknown', weekly_rate: null, data_points: 0 }
+  const avg = rates.reduce((a, b) => a + b, 0) / rates.length
+  let trend = 0
+  if (rates.length > 1) {
+    const xMean = (rates.length - 1) / 2
+    let num = 0
+    let den = 0
+    for (let i = 0; i < rates.length; i++) {
+      const dx = i - xMean
+      num += dx * (rates[i] - avg)
+      den += dx * dx
+    }
+    trend = den !== 0 ? num / den : 0
+  }
+  const raw = 1 - (
+    avg * RETENTION_W_FREQUENCY
+    + Math.max(0, -trend) * RETENTION_W_TREND
+    + Math.min(1, daysSince / 30) * RETENTION_W_RECENCY
+  )
+  // Round before banding: classifying the raw value labelled a 0.4004 risk as
+  // "medium" for a perfectly consistent attendee.
+  const score = round2(Math.max(0, Math.min(1, raw)))
+  return {
+    score,
+    confidence: round2(Math.max(0.3, Math.min(1, rates.length / RETENTION_FULL_WEEKS))),
+    risk: score > 0.7 ? 'high' : score > 0.4 ? 'medium' : 'low',
+    weekly_rate: Math.round(avg * 1000) / 1000,
+    data_points: rates.length,
+  }
 }
 
 function getWeekNumber(d) {

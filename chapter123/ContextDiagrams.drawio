@@ -227,9 +227,6 @@
         <mxCell id="pM" value="MEMBER" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Times New Roman;fontSize=14;fontStyle=1;fillColor=#F5F5F5;strokeColor=#000000;shadow=1;" vertex="1" parent="1">
           <mxGeometry x="60" y="90" width="210" height="110" as="geometry" />
         </mxCell>
-        <mxCell id="pG" value="GOOGLE GEMINI API" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Times New Roman;fontSize=14;fontStyle=1;fillColor=#F5F5F5;strokeColor=#000000;shadow=1;" vertex="1" parent="1">
-          <mxGeometry x="1230" y="90" width="210" height="110" as="geometry" />
-        </mxCell>
         <mxCell id="pT" value="TRAINER" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Times New Roman;fontSize=14;fontStyle=1;fillColor=#F5F5F5;strokeColor=#000000;shadow=1;" vertex="1" parent="1">
           <mxGeometry x="60" y="780" width="210" height="110" as="geometry" />
         </mxCell>
@@ -272,10 +269,10 @@
         <mxCell id="pN3" value="BMI and Progress Reports" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;fontFamily=Times New Roman;fontSize=10;labelBackgroundColor=#FFFFFF;strokeColor=#000000;exitX=0;exitY=0.16;exitDx=0;exitDy=0;entryX=1;entryY=0.30;entryDx=0;entryDy=0;" edge="1" parent="1" source="pP" target="pM">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="pN4" value="AI Food Recommendations" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;fontFamily=Times New Roman;fontSize=10;labelBackgroundColor=#FFFFFF;strokeColor=#000000;exitX=0;exitY=0.22;exitDx=0;exitDy=0;entryX=1;entryY=0.42;entryDx=0;entryDy=0;" edge="1" parent="1" source="pP" target="pM">
+        <mxCell id="pN4" value="Nutrient Breakdowns for Logged Meals" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;fontFamily=Times New Roman;fontSize=10;labelBackgroundColor=#FFFFFF;strokeColor=#000000;exitX=0;exitY=0.22;exitDx=0;exitDy=0;entryX=1;entryY=0.42;entryDx=0;entryDy=0;" edge="1" parent="1" source="pP" target="pM">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="pN5" value="Predicted Progress / Adjusted Goals" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;fontFamily=Times New Roman;fontSize=10;labelBackgroundColor=#FFFFFF;strokeColor=#000000;exitX=0;exitY=0.28;exitDx=0;exitDy=0;entryX=1;entryY=0.54;entryDx=0;entryDy=0;" edge="1" parent="1" source="pP" target="pM">
+        <mxCell id="pN5" value="Predicted Fitness Progress" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;fontFamily=Times New Roman;fontSize=10;labelBackgroundColor=#FFFFFF;strokeColor=#000000;exitX=0;exitY=0.28;exitDx=0;exitDy=0;entryX=1;entryY=0.54;entryDx=0;entryDy=0;" edge="1" parent="1" source="pP" target="pM">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="pN6" value="Trainer-Assigned Plans" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;fontFamily=Times New Roman;fontSize=10;labelBackgroundColor=#FFFFFF;strokeColor=#000000;exitX=0;exitY=0.34;exitDx=0;exitDy=0;entryX=1;entryY=0.66;entryDx=0;entryDy=0;" edge="1" parent="1" source="pP" target="pM">
@@ -312,21 +309,6 @@
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="pU4" value="Notifications and Alerts" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;fontFamily=Times New Roman;fontSize=10;labelBackgroundColor=#FFFFFF;strokeColor=#000000;exitX=0.38;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0.90;entryDx=0;entryDy=0;" edge="1" parent="1" source="pP" target="pT">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="pV1" value="Food Photograph / Nutrition Query" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;fontFamily=Times New Roman;fontSize=10;labelBackgroundColor=#FFFFFF;strokeColor=#000000;exitX=0.65;exitY=0;exitDx=0;exitDy=0;entryX=0.30;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="pP" target="pG">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="pV2" value="Member Goal and Progress Context" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;fontFamily=Times New Roman;fontSize=10;labelBackgroundColor=#FFFFFF;strokeColor=#000000;exitX=0.90;exitY=0;exitDx=0;exitDy=0;entryX=0.70;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="pP" target="pG">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="pW1" value="Recognized Food Item / Nutrient Breakdown" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;fontFamily=Times New Roman;fontSize=10;labelBackgroundColor=#FFFFFF;strokeColor=#000000;exitX=0.15;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0.05;entryDx=0;entryDy=0;" edge="1" parent="1" source="pG" target="pP">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="pW2" value="Generated Food Recommendations" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;fontFamily=Times New Roman;fontSize=10;labelBackgroundColor=#FFFFFF;strokeColor=#000000;exitX=0.45;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0.14;entryDx=0;entryDy=0;" edge="1" parent="1" source="pG" target="pP">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="pW3" value="Generated Goal Adjustment Suggestions" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;fontFamily=Times New Roman;fontSize=10;labelBackgroundColor=#FFFFFF;strokeColor=#000000;exitX=0.80;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0.23;entryDx=0;entryDy=0;" edge="1" parent="1" source="pG" target="pP">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="pX1" value="Login Credentials" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;fontFamily=Times New Roman;fontSize=10;labelBackgroundColor=#FFFFFF;strokeColor=#000000;exitX=0.10;exitY=0;exitDx=0;exitDy=0;entryX=0.58;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="pA" target="pP">

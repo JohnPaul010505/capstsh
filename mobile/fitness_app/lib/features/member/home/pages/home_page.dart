@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -85,7 +86,9 @@ final homeDataProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   if (isM002 && today.year == 2026 && today.month == 8 && today.day == 14) {
     final currentUserId = client.auth.currentUser!.id;
     yearList.addAll(CalendarSeedData.generateAug14Attendance(currentUserId));
-    measurements.addAll(CalendarSeedData.generateAug14Measurement(currentUserId));
+    measurements.addAll(
+      CalendarSeedData.generateAug14Measurement(currentUserId),
+    );
     weekWorkouts.addAll(CalendarSeedData.generateAug14Workouts(currentUserId));
   }
 
@@ -106,7 +109,9 @@ final homeDataProvider = FutureProvider<Map<String, dynamic>>((ref) async {
     final t = DateTime.parse(a['check_in_time'] as String);
     final day = t.day - 1;
     if (t.month - 1 >= 0 && t.month - 1 < 12) monthlyCounts[t.month - 1]++;
-    if (t.month == today.month && day >= 0 && day < monthEnd) monthCounts[day]++;
+    if (t.month == today.month && day >= 0 && day < monthEnd) {
+      monthCounts[day]++;
+    }
   }
 
   final totalWorkouts = monthCounts.reduce((a, b) => a + b);
@@ -117,9 +122,15 @@ final homeDataProvider = FutureProvider<Map<String, dynamic>>((ref) async {
     final t = DateTime.parse(m['measured_at'] as String);
     final heightCm = (m['height_cm'] as num?)?.toDouble();
     final weightKg = (m['weight_kg'] as num?)?.toDouble();
-    if (heightCm != null && heightCm > 0 && weightKg != null && t.month - 1 >= 0 && t.month - 1 < 12) {
+    if (heightCm != null &&
+        heightCm > 0 &&
+        weightKg != null &&
+        t.month - 1 >= 0 &&
+        t.month - 1 < 12) {
       final h = heightCm / 100;
-      monthlyBmis[t.month - 1] = double.parse((weightKg / (h * h)).toStringAsFixed(1));
+      monthlyBmis[t.month - 1] = double.parse(
+        (weightKg / (h * h)).toStringAsFixed(1),
+      );
     }
   }
 
@@ -130,7 +141,9 @@ final homeDataProvider = FutureProvider<Map<String, dynamic>>((ref) async {
       final step = (latestBmi - baseBmi) / (today.month - 1);
       for (var month = 1; month < today.month; month++) {
         if (monthlyBmis[month - 1] == null) {
-          monthlyBmis[month - 1] = double.parse((baseBmi + step * (month - 1)).toStringAsFixed(1));
+          monthlyBmis[month - 1] = double.parse(
+            (baseBmi + step * (month - 1)).toStringAsFixed(1),
+          );
         }
       }
     }
@@ -170,7 +183,8 @@ class HomePage extends ConsumerStatefulWidget {
   ConsumerState<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends ConsumerState<HomePage> with WidgetsBindingObserver {
+class _HomePageState extends ConsumerState<HomePage>
+    with WidgetsBindingObserver {
   GoRouter? _router;
   bool _wasHome = true;
   StreamSubscription? _attendanceSub;
@@ -218,7 +232,9 @@ class _HomePageState extends ConsumerState<HomePage> with WidgetsBindingObserver
     _periodicInvalidateTimer = Timer.periodic(const Duration(seconds: 3), (_) {
       if (mounted) {
         // Only invalidate if the page is currently visible
-        final isHome = _router?.routerDelegate.currentConfiguration.uri.path == '/member/home';
+        final isHome =
+            _router?.routerDelegate.currentConfiguration.uri.path ==
+            '/member/home';
         if (isHome) {
           ref.invalidate(homeDataProvider);
         }
@@ -238,7 +254,8 @@ class _HomePageState extends ConsumerState<HomePage> with WidgetsBindingObserver
   }
 
   void _onRouteChanged() {
-    final isHome = _router!.routerDelegate.currentConfiguration.uri.path == '/member/home';
+    final isHome =
+        _router!.routerDelegate.currentConfiguration.uri.path == '/member/home';
     if (isHome && !_wasHome && mounted) {
       ref.invalidate(homeDataProvider);
     }
@@ -312,11 +329,19 @@ class _ErrorState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.cloud_download_outlined, color: Color(0xFF8E8E93), size: 48),
+            Icon(
+              Icons.cloud_download_outlined,
+              color: Color(0xFF8E8E93),
+              size: 48,
+            ),
             const SizedBox(height: 12),
             Text('Something went wrong', style: ClayTokens.titleMedium),
             const SizedBox(height: 4),
-            Text(message, style: ClayTokens.bodySmall, textAlign: TextAlign.center),
+            Text(
+              message,
+              style: ClayTokens.bodySmall,
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),
@@ -358,10 +383,16 @@ class _HomeContentState extends State<HomeContent> {
     final trainer = data['trainer'] as Map<String, dynamic>?;
     final name = profile?.fullName ?? 'there';
     final firstName = name.split(' ').first;
-    final initials = name.isNotEmpty ? name.split(' ').map((n) => n[0]).take(2).join() : '?';
+    final initials = name.isNotEmpty
+        ? name.split(' ').map((n) => n[0]).take(2).join()
+        : '?';
     final avatarUrl = profile?.avatarUrl;
     final hour = DateTime.now().hour;
-    final greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+    final greeting = hour < 12
+        ? 'Good morning'
+        : hour < 17
+        ? 'Good afternoon'
+        : 'Good evening';
 
     final maxCount = weekCounts.reduce((a, b) => a > b ? a : b).clamp(1, 100);
 
@@ -371,45 +402,57 @@ class _HomeContentState extends State<HomeContent> {
       padding: const EdgeInsets.fromLTRB(14, 0, 14, 16),
       physics: const ClampingScrollPhysics(),
       children: [
-            const SizedBox(height: 14),
-            _GreetingRow(
-              greeting: greeting,
-              firstName: firstName,
-              initials: initials,
-              imageUrl: avatarUrl,
-              onAvatarTap: () => context.push('/member/settings'),
-              onBellTap: _toggleNotifications,
-              isNotificationOpen: _isNotificationOpen,
-              bellKey: _bellKey,
-              memberId: profile.id,
-            ),
-            NotificationPopup(
-              isOpen: _isNotificationOpen,
-              isMember: true,
-              onClose: _closeNotifications,
-              bellKey: _bellKey,
-            ),
-            const SizedBox(height: 12),
-            StaggeredFadeIn(index: 0, child: _MonthSummary(totalWorkouts: totalWorkouts, activeDays: activeDays, memberId: profile.id)),
-            const SizedBox(height: 8),
-            StaggeredFadeIn(index: 1, child: _WeekChart(weekCounts: weekCounts, maxCount: maxCount)),
-            const SizedBox(height: 8),
-            StaggeredFadeIn(index: 2, child: _PredictionCard(memberId: profile.id)),
-            const SizedBox(height: 8),
-            StaggeredFadeIn(index: 3, child: _YearChart(
-              monthlyCounts: monthlyCounts,
-              totalWorkouts: totalWorkouts,
-              yearLabel: '${DateTime.now().year}',
-            )),
-            const SizedBox(height: 8),
-            StaggeredFadeIn(index: 4, child: _GrowthChart(monthlyWeights: monthlyWeights)),
-            const SizedBox(height: 8),
-            if (trainer != null) ...[
-              StaggeredFadeIn(index: 5, child: _TrainerCard(trainer: trainer)),
-              const SizedBox(height: 8),
-            ],
-            const SizedBox(height: 16),
-          ],
+        const SizedBox(height: 14),
+        _GreetingRow(
+          greeting: greeting,
+          firstName: firstName,
+          initials: initials,
+          imageUrl: avatarUrl,
+          onAvatarTap: () => context.push('/member/settings'),
+          onBellTap: _toggleNotifications,
+          isNotificationOpen: _isNotificationOpen,
+          bellKey: _bellKey,
+          memberId: profile.id,
+        ),
+        NotificationPopup(
+          isOpen: _isNotificationOpen,
+          isMember: true,
+          onClose: _closeNotifications,
+          bellKey: _bellKey,
+        ),
+        const SizedBox(height: 12),
+        StaggeredFadeIn(index: 0, child: _PredictionCard(memberId: profile.id)),
+        const SizedBox(height: 8),
+        StaggeredFadeIn(
+          index: 1,
+          child: _ActiveDaysCard(activeDays: activeDays, memberId: profile.id),
+        ),
+        const SizedBox(height: 8),
+        StaggeredFadeIn(
+          index: 2,
+          child: _WeekChart(weekCounts: weekCounts, maxCount: maxCount),
+        ),
+        const SizedBox(height: 8),
+        StaggeredFadeIn(
+          index: 3,
+          child: _YearChart(
+            monthlyCounts: monthlyCounts,
+            totalWorkouts: totalWorkouts,
+            yearLabel: '${DateTime.now().year}',
+          ),
+        ),
+        const SizedBox(height: 8),
+        StaggeredFadeIn(
+          index: 4,
+          child: _GrowthChart(monthlyWeights: monthlyWeights),
+        ),
+        const SizedBox(height: 8),
+        if (trainer != null) ...[
+          StaggeredFadeIn(index: 5, child: _TrainerCard(trainer: trainer)),
+          const SizedBox(height: 8),
+        ],
+        const SizedBox(height: 16),
+      ],
     );
   }
 }
@@ -448,59 +491,49 @@ class _PredictionCardState extends State<_PredictionCard> {
           SizedBox(
             width: 14,
             height: 14,
-            child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFD6A5FF)),
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: Color(0xFFD6A5FF),
+            ),
           ),
           SizedBox(width: 10),
-          Text('Forecasting your progress...', style: TextStyle(fontSize: 12, color: Color(0xFF8E8E93))),
+          Flexible(
+            child: Text(
+              'Forecasting your progress...',
+              style: TextStyle(fontSize: 12, color: Color(0xFFB9B9C2)),
+            ),
+          ),
         ],
       );
     } else if (forecast.notEnoughData) {
       body = const Text(
         'Log body measurements and check in a few times to unlock your AI progress forecast.',
-        style: TextStyle(fontSize: 12, color: Color(0xFF8E8E93)),
+        style: TextStyle(fontSize: 12, color: Color(0xFFB9B9C2)),
       );
     } else if (forecast.error != null || forecast.results.isEmpty) {
       body = Text(
         forecast.error ?? 'No forecast available right now.',
-        style: const TextStyle(fontSize: 12, color: Color(0xFF8E8E93)),
+        style: const TextStyle(fontSize: 12, color: Color(0xFFB9B9C2)),
       );
     } else {
       final weight = forecast.byType('weight');
-      final bodyFat = forecast.byType('body_fat');
-      body = Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (weight != null)
-            _ForecastRow(
+      // Weight only: body fat is not forecast because no screen records it.
+      body = weight == null
+          ? Text(
+              'Keep logging weigh-ins — a forecast needs at least 3 readings over 7+ days.',
+              style: const TextStyle(fontSize: 12, color: Color(0xFFB9B9C2)),
+            )
+          : _ForecastRow(
               icon: Icons.monitor_weight_outlined,
               label: 'Weight',
               current: '${weight.currentValue.toStringAsFixed(1)} ${weight.unit}',
               predicted:
                   '${weight.predictedValue.toStringAsFixed(1)} ${weight.unit} in ${weight.daysAhead} days',
               confidence: weight.confidence,
-            ),
-          if (bodyFat != null) ...[
-            const SizedBox(height: 8),
-            _ForecastRow(
-              icon: Icons.speed,
-              label: 'Body fat',
-              current: '${bodyFat.currentValue.toStringAsFixed(1)} ${bodyFat.unit}',
-              predicted:
-                  '${bodyFat.predictedValue.toStringAsFixed(1)} ${bodyFat.unit} in ${bodyFat.daysAhead} days',
-              confidence: bodyFat.confidence,
-            ),
-          ],
-        ],
-      );
+            );
     }
 
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1C1C1E),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF38383A).withAlpha(100)),
-      ),
+    return _HomeGlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -510,20 +543,170 @@ class _PredictionCardState extends State<_PredictionCard> {
                 width: 28,
                 height: 28,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFBF5AF2).withAlpha(25),
+                  color: const Color(0xFFBF5AF2).withAlpha(38),
                   borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0x33BF5AF2)),
                 ),
-                child: const Icon(Icons.insights, color: Color(0xFFBF5AF2), size: 16),
+                child: const Icon(
+                  Icons.insights,
+                  color: Color(0xFFD6A5FF),
+                  size: 16,
+                ),
               ),
               const SizedBox(width: 8),
-              const Text('AI PROGRESS FORECAST', style: TextStyle(
-                fontSize: 11, fontWeight: FontWeight.w800,
-                color: Color(0xFF8E8E93), letterSpacing: 0.6,
-              )),
+              const Expanded(
+                child: Text(
+                  'AI PROGRESS FORECAST',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFFD6D6DC),
+                    letterSpacing: 0.6,
+                  ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 10),
           body,
+        ],
+      ),
+    );
+  }
+}
+
+// Shared glass surface for the two top home cards (AI forecast + active
+// days). The frosted blur is clipped to the rounded card and the fill is
+// translucent, so the neon glow behind the list shows through — matching
+// the admin/login glass language. The inner top highlight is the lit edge
+// that makes glass read as glass.
+class _HomeGlassCard extends StatelessWidget {
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+
+  const _HomeGlassCard({
+    required this.child,
+    this.padding = const EdgeInsets.all(14),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(18),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        child: Container(
+          padding: padding,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0x8C1B1E41), Color(0x66140F2A)],
+            ),
+            border: Border.all(color: const Color(0x33BF5AF2)),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x2EBF5AF2),
+                blurRadius: 18,
+                spreadRadius: -6,
+              ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              child,
+              Positioned(
+                top: 0,
+                left: 14,
+                right: 14,
+                child: IgnorePointer(
+                  child: Container(
+                    height: 1,
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Color(0x00FFFFFF),
+                          Color(0x59FFFFFF),
+                          Color(0x00FFFFFF),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Full-width "Active days" stat card with the live fire streak badge,
+// matching the glass surface of the AI forecast card above it. Every text
+// run is Flexible/Expanded and the badge is a fixed box, so the row can
+// never overflow.
+class _ActiveDaysCard extends StatelessWidget {
+  final int activeDays;
+  final String memberId;
+
+  const _ActiveDaysCard({required this.activeDays, required this.memberId});
+
+  @override
+  Widget build(BuildContext context) {
+    return _HomeGlassCard(
+      padding: const EdgeInsets.fromLTRB(14, 10, 12, 12),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: const Color(0xFFBF5AF2).withAlpha(38),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0x33BF5AF2)),
+            ),
+            child: const Icon(
+              Icons.event_available,
+              color: Color(0xFFD6A5FF),
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AnimatedCountUp(
+                  target: activeDays,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    height: 1.1,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                const Text(
+                  'Active days this month',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFFD6D6DC),
+                    letterSpacing: 0.1,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          ActivityStatusBadgeCompact(memberId: memberId, size: 46),
         ],
       ),
     );
@@ -549,21 +732,33 @@ class _ForecastRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, size: 15, color: const Color(0xFF8E8E93)),
+        Icon(icon, size: 15, color: const Color(0xFFA1A1AA)),
         const SizedBox(width: 6),
-        Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF8E8E93))),
-        const Spacer(),
-        Flexible(
+        Text(
+          label,
+          style: const TextStyle(fontSize: 12, color: Color(0xFFB9B9C2)),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
           child: Text(
             '$current → $predicted',
             textAlign: TextAlign.right,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF)),
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFFFFFFFF),
+            ),
           ),
         ),
         const SizedBox(width: 8),
-        Text('${(confidence * 100).toStringAsFixed(0)}%', style: const TextStyle(
-          fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF30D158),
-        )),
+        Text(
+          '${(confidence * 100).toStringAsFixed(0)}%',
+          style: const TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF30D158),
+          ),
+        ),
       ],
     );
   }
@@ -602,7 +797,13 @@ class _GreetingRow extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(firstName, style: ClayTokens.displaySmall.copyWith(letterSpacing: 0, color: ClayTokens.clayPrimary)),
+              Text(
+                firstName,
+                style: ClayTokens.displaySmall.copyWith(
+                  letterSpacing: 0,
+                  color: ClayTokens.clayPrimary,
+                ),
+              ),
               const SizedBox(height: 2),
               Row(
                 children: [
@@ -615,7 +816,14 @@ class _GreetingRow extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(width: 6),
-                  Text(greeting, style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w500)),
+                  Text(
+                    greeting,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -623,7 +831,12 @@ class _GreetingRow extends ConsumerWidget {
         ),
         Row(
           children: [
-            NotificationBell(key: bellKey, isMember: true, onTap: onBellTap, isActive: isNotificationOpen),
+            NotificationBell(
+              key: bellKey,
+              isMember: true,
+              onTap: onBellTap,
+              isActive: isNotificationOpen,
+            ),
             const SizedBox(width: 12),
             ClayAvatar(
               imageUrl: imageUrl,
@@ -670,23 +883,44 @@ class _WeekChartState extends State<_WeekChart> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('This Week', style: ClayTokens.titleMedium.copyWith(fontWeight: FontWeight.w800, color: const Color(0xFFA78BFA))),
-                  const SizedBox(height: 1),
-                  if (_selectedDay != null)
-                    AnimatedOpacity(
-                      duration: ClayTokens.normal,
-                      opacity: 1.0,
-                      child: Text(
-                        '${labels[_selectedDay!]}: ${widget.weekCounts[_selectedDay!]} workout${widget.weekCounts[_selectedDay!] == 1 ? '' : 's'}',
-                        style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w600),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'This Week',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: ClayTokens.titleMedium.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFFA78BFA),
                       ),
-                    )
-                  else
-                     Text('Tap a bar for details', style: TextStyle(fontSize: 10, color: Colors.white)),
-                ],
+                    ),
+                    const SizedBox(height: 1),
+                    if (_selectedDay != null)
+                      AnimatedOpacity(
+                        duration: ClayTokens.normal,
+                        opacity: 1.0,
+                        child: Text(
+                          '${labels[_selectedDay!]}: ${widget.weekCounts[_selectedDay!]} workout${widget.weekCounts[_selectedDay!] == 1 ? '' : 's'}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      )
+                    else
+                      Text(
+                        'Tap a bar for details',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 10, color: Colors.white),
+                      ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -697,7 +931,9 @@ class _WeekChartState extends State<_WeekChart> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: List.generate(7, (i) {
                 final count = widget.weekCounts[i];
-                final pct = widget.maxCount > 0 ? (count / widget.maxCount) : 0.0;
+                final pct = widget.maxCount > 0
+                    ? (count / widget.maxCount)
+                    : 0.0;
                 final barHeight = (pct * 52).clamp(2.0, 52.0);
                 final isToday = i == today;
                 final isFuture = i > today;
@@ -705,19 +941,25 @@ class _WeekChartState extends State<_WeekChart> {
 
                 return Expanded(
                   child: GestureDetector(
-                    onTap: () => setState(() => _selectedDay = _selectedDay == i ? null : i),
+                    onTap: () => setState(
+                      () => _selectedDay = _selectedDay == i ? null : i,
+                    ),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 300),
                       curve: Curves.easeOutCubic,
-                      height: isSelected ? (barHeight + 6).clamp(2.0, 58.0) : barHeight,
+                      height: isSelected
+                          ? (barHeight + 6).clamp(2.0, 58.0)
+                          : barHeight,
                       margin: const EdgeInsets.symmetric(horizontal: 3),
                       decoration: BoxDecoration(
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-                      color: isFuture
-                          ? ClayTokens.clayDarkTextTertiary.withAlpha(50)
-                          : isToday
-                              ? ClayTokens.clayPrimaryDark
-                              : ClayTokens.clayPrimaryDark,
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(4),
+                        ),
+                        color: isFuture
+                            ? ClayTokens.clayDarkTextTertiary.withAlpha(50)
+                            : isToday
+                            ? ClayTokens.clayPrimaryDark
+                            : ClayTokens.clayPrimaryDark,
                       ),
                     ),
                   ),
@@ -729,85 +971,19 @@ class _WeekChartState extends State<_WeekChart> {
           Row(
             children: List.generate(7, (i) {
               return Expanded(
-                child: Text(labels[i],
+                child: Text(
+                  labels[i],
                   textAlign: TextAlign.center,
-                   style: TextStyle(
-                     fontSize: 10, fontWeight: FontWeight.w800,
-                     color: Colors.white,
-                   ),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
                 ),
               );
             }),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final Widget valueWidget;
-  final String label;
-  final Widget? trailing;
-
-  const _StatCard({
-    required this.icon, required this.iconColor,
-    required this.valueWidget,
-    required this.label, this.trailing,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 86,
-      child: ClayCard(
-        variant: ClayCardVariant.outlined,
-        padding: ClayCardPadding.medium,
-        backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              height: 34,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Row(
-                    children: [
-                      Icon(icon, size: 20, color: iconColor),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Baseline(
-                          baseline: 18,
-                          baselineType: TextBaseline.alphabetic,
-                          child: valueWidget,
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (trailing != null)
-                    Positioned(
-                      right: 0,
-                      top: -8,
-                      child: trailing!,
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: ClayTokens.clayDarkTextPrimary,
-                letterSpacing: 0.1,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -838,14 +1014,24 @@ class _TrainerCard extends StatelessWidget {
                 isOnline: true,
                 onlineColor: ClayTokens.clayAccent,
               ),
-              const SizedBox(width: 10              ),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(name, style: ClayTokens.titleMedium.copyWith(color: ClayTokens.clayDarkTextPrimary)),
+                    Text(
+                      name,
+                      style: ClayTokens.titleMedium.copyWith(
+                        color: ClayTokens.clayDarkTextPrimary,
+                      ),
+                    ),
                     const SizedBox(height: 1),
-                    Text('Your Trainer', style: ClayTokens.bodySmall.copyWith(color: ClayTokens.clayDarkTextTertiary)),
+                    Text(
+                      'Your Trainer',
+                      style: ClayTokens.bodySmall.copyWith(
+                        color: ClayTokens.clayDarkTextTertiary,
+                      ),
+                    ),
                     const SizedBox(height: 3),
                     const _StarRow(),
                   ],
@@ -876,14 +1062,28 @@ class _StarRow extends StatelessWidget {
       children: List.generate(5, (i) {
         return Icon(
           i < 4 ? Icons.star : Icons.star_half,
-          color: const Color(0xFFFF9500), size: 10,
+          color: const Color(0xFFFF9500),
+          size: 10,
         );
       }),
     );
   }
 }
 
-const _monthShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const _monthShort = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
 
 class _YearChart extends StatelessWidget {
   final List<int> monthlyCounts;
@@ -913,15 +1113,33 @@ class _YearChart extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Text('This Month', style: ClayTokens.titleMedium.copyWith(fontWeight: FontWeight.w800, color: const Color(0xFFA78BFA))),
+                      Text(
+                        'This Month',
+                        style: ClayTokens.titleMedium.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFFA78BFA),
+                        ),
+                      ),
                       const SizedBox(width: 6),
-                      Text(yearLabel, style: TextStyle(fontSize: 13, fontFamily: ClayTypography.headingFamily, fontWeight: FontWeight.w800, color: const Color(0xFFA78BFA))),
+                      Text(
+                        yearLabel,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontFamily: ClayTypography.headingFamily,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFFA78BFA),
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 2),
                   Text(
                     'Check-ins per month',
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.white),
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
                   ),
                 ],
               ),
@@ -931,8 +1149,15 @@ class _YearChart extends StatelessWidget {
                   color: ClayTokens.clayPrimary,
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Text('Total: $totalWorkouts', style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w700)),
+                child: Text(
+                  'Total: $totalWorkouts',
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
                   ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -989,29 +1214,53 @@ class _GrowthChart extends StatelessWidget {
       backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Growth Over Time', style: ClayTokens.titleMedium.copyWith(fontWeight: FontWeight.w800, color: const Color(0xFFA78BFA))),
-                          const SizedBox(height: 2),
-                           Text('BMI per month', style: TextStyle(fontSize: 10, fontFamily: ClayTypography.headingFamily, fontWeight: FontWeight.w800, color: Colors.white)),
-                        ],
-                      ),
-                      if (latestWeight != null)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: ClayTokens.clayPrimary,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(latestWeight.toStringAsFixed(1), style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w700)),
-                        ),
-                    ],
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Growth Over Time',
+                    style: ClayTokens.titleMedium.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFFA78BFA),
+                    ),
                   ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'BMI per month',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontFamily: ClayTypography.headingFamily,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+              if (latestWeight != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 9,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: ClayTokens.clayPrimary,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    latestWeight.toStringAsFixed(1),
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+            ],
+          ),
           const SizedBox(height: 12),
           Padding(
             padding: const EdgeInsets.only(bottom: 3),
@@ -1028,48 +1277,3 @@ children: [
     );
   }
 }
-
-class _MonthSummary extends StatelessWidget {
-  final int totalWorkouts;
-  final int activeDays;
-  final String memberId;
-
-  const _MonthSummary({
-    required this.totalWorkouts,
-    required this.activeDays,
-    required this.memberId,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: _StatCard(
-            icon: Icons.sports_gymnastics,
-            iconColor: ClayTokens.clayPrimary,
-            valueWidget: AnimatedCountUp(
-              target: totalWorkouts,
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: ClayTokens.clayDarkTextPrimary),
-            ),
-            label: 'Workouts this month',
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _StatCard(
-            icon: Icons.event_available,
-            iconColor: ClayTokens.clayPrimary,
-            valueWidget: AnimatedCountUp(
-              target: activeDays,
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: ClayTokens.clayDarkTextPrimary),
-            ),
-            label: 'Active days',
-            trailing: ActivityStatusBadgeCompact(memberId: memberId, size: 50),
-          ),
-        ),
-      ],
-    );
-  }
-}
-

@@ -23,18 +23,31 @@ import os
 from xml.sax.saxutils import escape
 import xml.etree.ElementTree as ET
 
-OUT_DIR = r"c:\capstsh"
+OUT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 HDR = ("rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#FFFFFF;"
        "strokeColor=#000000;fontFamily=Times New Roman;fontSize=12;")
 CAP = ("text;html=1;align=center;verticalAlign=middle;fontFamily=Times New Roman;"
        "fontSize=13;fontStyle=1;strokeColor=none;fillColor=none;")
-NOTE = ("text;html=1;align=center;verticalAlign=middle;fontFamily=Times New Roman;"
-        "fontSize=10;fontStyle=2;strokeColor=none;fillColor=none;")
+NOTE = ("text;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;"
+        "fontFamily=Times New Roman;fontSize=10;fontStyle=2;"
+        "strokeColor=none;fillColor=none;")
 EBASE = ("edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;"
          "endArrow=open;endFill=0;fontFamily=Times New Roman;fontSize=10;"
          "fontStyle=1;labelBackgroundColor=#FFFFFF;")
 EBASE_OPT = EBASE + "dashed=1;"
+
+# A reference table carries no foreign key, so no relationship line can be
+# drawn to it. Spell out WHY it is unconnected, otherwise the box reads as a
+# mistake to a panelist: the value is copied into the meal log at entry time
+# and the link is not persisted.
+STANDALONE_NOTES = {
+    "nutrition_foods": "(PhilFCT reference catalog - values copied into "
+                       "meal logs at entry; no foreign key)",
+}
+# wrapped caption height (two lines of 10pt Times) and the space reserved for it
+NOTE_H = 30
+NOTE_GAP = 4
 
 # (name, [(column, key)])  key: PK / FK / PKFK / ""
 ENTITIES = [
@@ -616,64 +629,8 @@ ENTITIES = [
             ]
         ]
     ],
-    [
-        "food_recommendations",
-        [
-            [
-                "id",
-                "PK"
-            ],
-            [
-                "member_id",
-                "FK"
-            ],
-            [
-                "recommended_foods",
-                ""
-            ],
-            [
-                "recommendation_type",
-                ""
-            ],
-            [
-                "generated_at",
-                ""
-            ]
-        ]
-    ],
-    [
-        "food_identification_logs",
-        [
-            [
-                "id",
-                "PK"
-            ],
-            [
-                "member_id",
-                "FK"
-            ],
-            [
-                "photo_url",
-                ""
-            ],
-            [
-                "ai_candidates",
-                ""
-            ],
-            [
-                "selected_food",
-                ""
-            ],
-            [
-                "member_edited",
-                ""
-            ],
-            [
-                "created_at",
-                ""
-            ]
-        ]
-    ],
+    # food_recommendations and food_identification_logs were removed with the AI
+    # food features: no code path writes either table (see migration 0031).
     [
         "nutrition_foods",
         [
@@ -993,12 +950,10 @@ PARTS = [
          standalone=[]),
     dict(fig=24, slug="Nutrition-Meal-Logging",
          label="Nutrition, Meal Logging and Reference Data",
-         left=["meal_records", "meal_logs", "food_recommendations"],
-         right=["food_identification_logs", "met_exercises", "nutrition_foods"],
+         left=["meal_records", "meal_logs"],
+         right=["met_exercises", "nutrition_foods"],
          rels=[("meal_records", "profiles", "member_id"),
                ("meal_logs", "profiles", "member_id"),
-               ("food_recommendations", "profiles", "member_id"),
-               ("food_identification_logs", "profiles", "member_id"),
                ("met_exercises", "profiles", "verified_by")],
          internal=[],
          standalone=["nutrition_foods"]),
@@ -1093,7 +1048,7 @@ def layout(part):
     bottom = max(max(col_bottom.values()), hub_y + hub_h)
     # room for the standalone reference-table notes
     if part["standalone"]:
-        bottom += 30
+        bottom += NOTE_GAP + NOTE_H
     page_h = bottom + PAGE_MARGIN
     return boxes, lut, page_w, page_h
 
@@ -1112,8 +1067,9 @@ def build(part):
     for name in part["standalone"]:
         _, x, y, w, h = boxes[name]
         cells.append(vtx("note_" + name,
-                         escape("(reference table - no foreign key)"),
-                         x, y + h + 4, w, 22, NOTE))
+                         escape(STANDALONE_NOTES.get(
+                             name, "(reference table - no foreign key)")),
+                         x, y + h + 4, w, NOTE_H, NOTE))
 
     # --- edge anchor distribution -------------------------------------
     # Hub-facing edges are grouped per side (left / right satellite

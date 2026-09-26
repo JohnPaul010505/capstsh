@@ -5,15 +5,16 @@ import 'supabase_client.dart';
 class NutritionService {
   final SupabaseClient _client = SupabaseClientService().client;
 
+  /// Searches through the FNRI food name, food group, and Filipino alias.
+  /// The RPC performs the text[] alias search, which the PostgREST table
+  /// filter syntax cannot express for this column reliably.
   Future<List<NutritionFood>> searchFoods(String query) async {
-    final q = query.trim().toLowerCase();
+    final q = query.trim();
     if (q.isEmpty) return [];
-    final response = await _client
-        .from('nutrition_foods')
-        .select()
-        .or('food_name.ilike.%$q%,category.ilike.%$q%')
-        .order('food_name', ascending: true)
-        .limit(20);
+    final response = await _client.rpc(
+      'search_nutrition_foods',
+      params: {'search_query': q},
+    );
     return (response as List)
         .map((e) => NutritionFood.fromJson(e as Map<String, dynamic>))
         .toList();

@@ -6,13 +6,15 @@ Captions sit **above** the figure (matching your reference document); the
 narrative goes on the page immediately after. Following the three roles
 defined in Chapter 1 (Admin, Member, and Trainer), the use case is
 presented in three figures, one per role, in the same way the entity
-relationship diagram of Section 3.7 is split. The Gemini API appears as a
-secondary actor in Figure 26, and the AI-assisted use cases shared by more
-than one role are drawn as «include» targets and repeated in each figure
-where they are used, in the same way the profiles entity is repeated in
-the entity relationship diagrams. The role-level use cases shared by more
-than one figure, Login and Receive Notifications, are likewise repeated in
-the figure of every role that can perform them.
+relationship diagram of Section 3.7 is split. The use cases that the system
+computes for more than one role are drawn as «include» targets and repeated
+in each figure where they are used, in the same way the profiles entity is
+repeated in the entity relationship diagrams. The role-level use cases
+shared by more than one figure, Login and Receive Notifications, are
+likewise repeated in the figure of every role that can perform them.
+Figure 26 carries no secondary actor: the third-party photo-recognition
+dependency was removed with that feature, leaving the Member as the only
+actor in that figure.
 
 ---
 
@@ -32,16 +34,14 @@ the figure of every role that can perform them.
 > trainer and rate it, receive notifications, and manage the profile and
 > the settings.
 >
-> The dashed dependencies show the AI-assisted steps behind these use
-> cases. The Log Meal use case includes Identify Food Photo, which is
-> performed with the Gemini API as the secondary actor, together with
-> Generate Food Recommendation and Compute Nutrient Breakdown; the Log
-> Workout use case includes Estimate MET Energy Expenditure, which
-> computes the calories burned; the Set Fitness Goal use case includes
-> Generate Goal Suggestion; and the View Progress Prediction use case
-> includes Generate Progress Prediction. The Record Exercise Proof Video
-> use case extends the Log Workout use case because recording a proof
-> video is optional.
+> The dashed dependencies show the computed steps behind these use
+> cases. The Log Meal use case includes Compute Nutrient Breakdown, which
+> scales the per-100 gram values of the selected food by the portion
+> entered; the Log Workout use case includes Estimate MET Energy
+> Expenditure, which computes the calories burned from the MET catalog;
+> and the View Progress Prediction use case includes Generate Progress
+> Prediction. The Record Exercise Proof Video use case extends the Log
+> Workout use case because recording a proof video is optional.
 
 ## Figure 27
 
@@ -59,10 +59,9 @@ the figure of every role that can perform them.
 >
 > The View Trainer Dashboard with Retention Risk use case includes Assess
 > Retention Risk, and the Create 7-Day Food and Exercise Plan use case
-> includes Generate Goal Suggestion and Search MET Exercise Catalog.
-> These included use cases are performed by the AI service of the system,
-> which supports the trainer in preparing the personalized plan of each
-> member.
+> includes Search MET Exercise Catalog. These included use cases are
+> computed by the predictive service of the system, which supports the
+> trainer in preparing the personalized plan of each member.
 
 ## Figure 28
 

@@ -7,7 +7,13 @@ export function usePredictions() {
     queryFn: async () => {
       const { data } = await supabase
         .from('predictions')
+        // current_value/unit/data_points/span_days/date_from/date_to/daily_rate/
+        // change/clamped come from migration 0030_prediction_basis.sql. Older rows
+        // come back null and render as "recorded before provenance tracking".
         .select('*, profiles!predictions_member_id_fkey(full_name)')
+        // Body-fat rows written before the feature was dropped are hidden: they
+        // were computed from dev-seeded random values, not real measurements.
+        .neq('metric_name', 'body_fat')
         .order('created_at', { ascending: false })
         .limit(50)
       return (data ?? []) as any[]

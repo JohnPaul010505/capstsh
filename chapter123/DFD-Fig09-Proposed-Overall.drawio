@@ -1,6 +1,6 @@
 <mxfile host="app.diagrams.net" agent="Cline">
   <diagram id="fig09" name="FIG 9 - PROPOSED OVERALL">
-    <mxGraphModel dx="4171" dy="2713" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1300" math="0" shadow="0">
+    <mxGraphModel dx="2878" dy="2009" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1300" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -15,9 +15,6 @@
         </mxCell>
         <mxCell id="c6" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Times New Roman;fontSize=13;fontStyle=1;fillColor=#FFFFFF;strokeColor=#000000;" value="ADMIN" vertex="1">
           <mxGeometry height="110" width="210" x="70" y="760" as="geometry" />
-        </mxCell>
-        <mxCell id="c7" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Times New Roman;fontSize=13;fontStyle=1;fillColor=#FFFFFF;strokeColor=#000000;" value="GOOGLE GEMINI API" vertex="1">
-          <mxGeometry height="110" width="210" x="70" y="968" as="geometry" />
         </mxCell>
         <mxCell id="c8" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;" value="" vertex="1">
           <mxGeometry height="120" width="360" x="520" y="96" as="geometry" />
@@ -49,7 +46,7 @@
         <mxCell id="c17" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontFamily=Times New Roman;fontSize=12;fontStyle=1;strokeColor=none;fillColor=none;" value="3.0" vertex="1">
           <mxGeometry height="20" width="348" x="526" y="504" as="geometry" />
         </mxCell>
-        <mxCell id="c18" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontFamily=Times New Roman;fontSize=12;fontStyle=1;strokeColor=none;fillColor=none;" value="Manage Nutrition and AI Food Analysis" vertex="1">
+        <mxCell id="c18" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontFamily=Times New Roman;fontSize=12;fontStyle=1;strokeColor=none;fillColor=none;" value="Manage Nutrition and Meal Logging" vertex="1">
           <mxGeometry height="84" width="348" x="526" y="532" as="geometry" />
         </mxCell>
         <mxCell id="c19" parent="1" style="line;strokeWidth=1;html=1;strokeColor=#000000;" value="" vertex="1">
@@ -150,9 +147,6 @@
         </mxCell>
         <mxCell id="c51" parent="1" style="line;strokeWidth=1;html=1;strokeColor=#000000;direction=north;" value="" vertex="1">
           <mxGeometry height="56" width="1" x="1208" y="576" as="geometry" />
-        </mxCell>
-        <mxCell id="c52" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Times New Roman;fontSize=12;fontStyle=1;fillColor=#FFFFFF;strokeColor=#000000;align=left;spacingLeft=48;" value="AI Food Analysis" vertex="1">
-          <mxGeometry height="56" width="320" x="1170" y="644" as="geometry" />
         </mxCell>
         <mxCell id="c53" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontFamily=Times New Roman;fontSize=12;fontStyle=1;strokeColor=none;fillColor=none;" value="D9" vertex="1">
           <mxGeometry height="56" width="38" x="1170" y="644" as="geometry" />
@@ -333,7 +327,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="c83" edge="1" parent="1" source="c8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;fontFamily=Times New Roman;fontSize=11;fontStyle=1;labelBackgroundColor=#FFFFFF;strokeColor=#000000;exitX=0.944;exitY=-0.005;exitDx=0;exitDy=0;exitPerimeter=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="c61" value="Notification Record">
+        <mxCell id="c83" edge="1" parent="1" source="c8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;fontFamily=Times New Roman;fontSize=11;fontStyle=1;labelBackgroundColor=#FFFFFF;strokeColor=#000000;exitX=0.944;exitY=-0.005;exitDx=0;exitDy=0;exitPerimeter=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="c61" value="">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="859.82" y="30" />
@@ -489,37 +483,6 @@
             </Array>
             <mxPoint x="880.0799999999999" y="610.16" as="sourcePoint" />
             <mxPoint x="1168.9999999999998" y="671.9999999999999" as="targetPoint" />
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="c102" edge="1" parent="1" source="c16" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;fontFamily=Times New Roman;fontSize=11;fontStyle=1;labelBackgroundColor=#FFFFFF;strokeColor=#000000;entryX=-0.013;entryY=0.206;entryDx=0;entryDy=0;entryPerimeter=0;exitX=0;exitY=0.75;exitDx=0;exitDy=0;" target="c7" value="">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="520" y="595.04" />
-              <mxPoint x="-60" y="595.04" />
-              <mxPoint x="-60" y="990.7" />
-            </Array>
-            <mxPoint x="500" y="595.02" as="sourcePoint" />
-            <mxPoint x="60.629999999999654" y="1035.38" as="targetPoint" />
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="c103" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;fontFamily=Times New Roman;fontSize=11;fontStyle=1;labelBackgroundColor=#FFFFFF;strokeColor=#000000;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.002;entryY=0.636;entryDx=0;entryDy=0;entryPerimeter=0;" target="c16" value="">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="-80" y="1018" />
-              <mxPoint x="-80" y="576.26" />
-            </Array>
-            <mxPoint x="70" y="1018" as="sourcePoint" />
-            <mxPoint x="519.2799999999997" y="590.7600000000002" as="targetPoint" />
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="c104" edge="1" parent="1" source="c7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;fontFamily=Times New Roman;fontSize=11;fontStyle=1;labelBackgroundColor=#FFFFFF;strokeColor=#000000;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=-0.011;exitY=0.894;exitDx=0;exitDy=0;exitPerimeter=0;" target="c16" value="">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="-110" y="1066.3" />
-              <mxPoint x="-110" y="560.01" />
-            </Array>
-            <mxPoint x="40" y="1070.07" as="sourcePoint" />
-            <mxPoint x="520.2000000000003" y="575.6000000000004" as="targetPoint" />
           </mxGeometry>
         </mxCell>
         <mxCell id="c105" edge="1" parent="1" source="c4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;fontFamily=Times New Roman;fontSize=11;fontStyle=1;labelBackgroundColor=#FFFFFF;strokeColor=#000000;exitX=1;exitY=0.75;exitDx=0;exitDy=0;entryX=0.0;entryY=0.1;entryDx=0;entryDy=0;" target="c20" value="">
@@ -804,17 +767,11 @@
         <mxCell id="op9onmPmpSvLL9UT02kB-38" parent="1" style="text;whiteSpace=wrap;html=1;" value="&lt;span style=&quot;color: rgb(0, 0, 0); font-family: &amp;quot;Times New Roman&amp;quot;; font-size: 11px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 700; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: nowrap; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;&quot;&gt;BMI Result&lt;/span&gt;" vertex="1">
           <mxGeometry height="20" width="65" x="80" y="269" as="geometry" />
         </mxCell>
-        <mxCell id="op9onmPmpSvLL9UT02kB-39" parent="1" style="text;whiteSpace=wrap;html=1;" value="&lt;span style=&quot;color: rgb(0, 0, 0); font-family: &amp;quot;Times New Roman&amp;quot;; font-size: 11px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 700; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: nowrap; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;&quot;&gt;Food Recommendation&lt;/span&gt;" vertex="1">
-          <mxGeometry height="20" width="140" x="60" y="289" as="geometry" />
-        </mxCell>
         <mxCell id="op9onmPmpSvLL9UT02kB-42" parent="1" style="text;whiteSpace=wrap;html=1;" value="&lt;span style=&quot;color: rgb(0, 0, 0); font-family: &amp;quot;Times New Roman&amp;quot;; font-size: 11px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 700; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: nowrap; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;&quot;&gt;Nutrient Breakdown&lt;/span&gt;" vertex="1">
           <mxGeometry height="20" width="130" x="40" y="306.5" as="geometry" />
         </mxCell>
         <mxCell id="op9onmPmpSvLL9UT02kB-44" parent="1" style="text;whiteSpace=wrap;html=1;" value="&lt;span style=&quot;color: rgb(0, 0, 0); font-family: &amp;quot;Times New Roman&amp;quot;; font-size: 11px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 700; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: nowrap; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;&quot;&gt;Predicted Progress&lt;/span&gt;" vertex="1">
           <mxGeometry height="20" width="120" x="23" y="327" as="geometry" />
-        </mxCell>
-        <mxCell id="op9onmPmpSvLL9UT02kB-45" parent="1" style="text;whiteSpace=wrap;html=1;" value="&lt;span style=&quot;color: rgb(0, 0, 0); font-family: &amp;quot;Times New Roman&amp;quot;; font-size: 11px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 700; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: nowrap; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;&quot;&gt;Adjusted Goal Suggestion&lt;/span&gt;" vertex="1">
-          <mxGeometry height="40" width="160" x="-15" y="346.5" as="geometry" />
         </mxCell>
         <mxCell id="op9onmPmpSvLL9UT02kB-46" parent="1" style="text;whiteSpace=wrap;html=1;" value="&lt;span style=&quot;color: rgb(0, 0, 0); font-family: &amp;quot;Times New Roman&amp;quot;; font-size: 11px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 700; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: nowrap; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;&quot;&gt;Progress Report&lt;/span&gt;" vertex="1">
           <mxGeometry height="40" width="110" x="-40" y="369" as="geometry" />
@@ -855,15 +812,6 @@
         <mxCell id="op9onmPmpSvLL9UT02kB-62" parent="1" style="text;whiteSpace=wrap;html=1;" value="&lt;span style=&quot;color: rgb(0, 0, 0); font-family: &amp;quot;Times New Roman&amp;quot;; font-size: 11px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 700; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: nowrap; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;&quot;&gt;Meal Log Entry&lt;/span&gt;" vertex="1">
           <mxGeometry height="40" width="110" x="436" y="490" as="geometry" />
         </mxCell>
-        <mxCell id="op9onmPmpSvLL9UT02kB-63" parent="1" style="text;whiteSpace=wrap;html=1;" value="&lt;span style=&quot;color: rgb(0, 0, 0); font-family: &amp;quot;Times New Roman&amp;quot;; font-size: 11px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 700; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: nowrap; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; float: none; display: inline !important;&quot;&gt;&amp;nbsp;Food Item&lt;/span&gt;" vertex="1">
-          <mxGeometry height="20" width="65" x="455" y="555" as="geometry" />
-        </mxCell>
-        <mxCell id="op9onmPmpSvLL9UT02kB-64" parent="1" style="text;whiteSpace=wrap;html=1;" value="&lt;span style=&quot;color: rgb(0, 0, 0); font-family: &amp;quot;Times New Roman&amp;quot;; font-size: 11px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 700; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: nowrap; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; float: none; display: inline !important;&quot;&gt;Nutrient Data&lt;/span&gt;" vertex="1">
-          <mxGeometry height="20" width="65" x="441" y="540" as="geometry" />
-        </mxCell>
-        <mxCell id="op9onmPmpSvLL9UT02kB-66" parent="1" style="text;whiteSpace=wrap;html=1;" value="&lt;span style=&quot;color: rgb(0, 0, 0); font-family: &amp;quot;Times New Roman&amp;quot;; font-size: 11px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 700; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: nowrap; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; float: none; display: inline !important;&quot;&gt;Food Image&amp;nbsp;&lt;/span&gt;" vertex="1">
-          <mxGeometry height="40" width="57" x="-6" y="969" as="geometry" />
-        </mxCell>
         <mxCell id="op9onmPmpSvLL9UT02kB-67" parent="1" style="text;whiteSpace=wrap;html=1;" value="&lt;span style=&quot;color: rgb(0, 0, 0); font-family: &amp;quot;Times New Roman&amp;quot;; font-size: 11px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 700; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: nowrap; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;&quot;&gt;Goal Setting&lt;/span&gt;" vertex="1">
           <mxGeometry height="40" width="90" x="442.5" y="354" as="geometry" />
         </mxCell>
@@ -896,6 +844,9 @@
         </mxCell>
         <mxCell id="op9onmPmpSvLL9UT02kB-78" parent="1" style="text;whiteSpace=wrap;html=1;" value="&lt;span style=&quot;color: rgb(0, 0, 0); font-family: &amp;quot;Times New Roman&amp;quot;; font-size: 11px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 700; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: nowrap; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;&quot;&gt;Attendance Record&lt;/span&gt;" vertex="1">
           <mxGeometry height="40" width="120" x="-36.5" y="828" as="geometry" />
+        </mxCell>
+        <mxCell id="op9onmPmpSvLL9UT02kB-80" parent="1" style="text;whiteSpace=wrap;html=1;" value="&lt;span style=&quot;color: rgb(0, 0, 0); font-family: &amp;quot;Times New Roman&amp;quot;; font-size: 11px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 700; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: nowrap; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;&quot;&gt;Notification Record&lt;/span&gt;" vertex="1">
+          <mxGeometry height="40" width="130" x="1500" y="916" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>

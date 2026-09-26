@@ -10,7 +10,8 @@ import '../../shared/widgets/animations.dart';
 
 /// Small helper: forces off any inherited text decoration (e.g. underline)
 /// so labels always render clean regardless of ambient theme defaults.
-TextStyle _clean(TextStyle style) => style.copyWith(decoration: TextDecoration.none);
+TextStyle _clean(TextStyle style) =>
+    style.copyWith(decoration: TextDecoration.none);
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -141,70 +142,140 @@ class _LoginPageState extends ConsumerState<LoginPage>
             final shift = _bgAnim.value * 60;
             return Stack(
               children: [
-                // Admin-dark atmosphere: purple / blue / indigo light trails.
-                // Two blobs keep the focus-driven `shift` so typing still
-                // pulls the glow toward the top.
-                Positioned(
-                  top: -140 - shift,
-                  left: -120,
-                  child: const IgnorePointer(
-                    child: _GlowBlob(
-                      size: 320,
-                      colors: [
-                        Color(0x577C3AED),
-                        Color(0x007C3AED),
-                      ],
-                    ),
-                  ),
-                ),
-                const Positioned(
-                  top: -120,
-                  right: -120,
+                // Admin atmosphere (admin/src/components/AppBackground.tsx):
+                // rotated neon light trails + radial blooms, then the dark
+                // vignette. IgnorePointer keeps taps for the form below.
+                Positioned.fill(
                   child: IgnorePointer(
-                    child: _GlowBlob(
-                      size: 300,
-                      colors: [
-                        Color(0x573B82F6),
-                        Color(0x003B82F6),
-                      ],
-                    ),
-                  ),
-                ),
-                const Positioned(
-                  top: 200,
-                  left: -80,
-                  child: IgnorePointer(
-                    child: _GlowBlob(
-                      size: 260,
-                      colors: [
-                        Color(0x4D6366F1),
-                        Color(0x006366F1),
-                      ],
-                    ),
-                  ),
-                ),
-                Positioned(
-                  bottom: -140 + shift,
-                  right: -120,
-                  child: const IgnorePointer(
-                    child: _GlowBlob(
-                      size: 320,
-                      colors: [
-                        Color(0x668B5CF6),
-                        Color(0x008B5CF6),
-                      ],
-                    ),
-                  ),
-                ),
-                const Positioned(
-                  bottom: -100,
-                  left: -100,
-                  child: IgnorePointer(
-                    child: _GlowBlob(
-                      size: 280,
-                      colors: [
-                        Color(0x4D3B82F6),
-                        Color(0x003B82F6),
+                    child: Stack(
+                      children: [
+                        // Large purple trail — top left (-18°)
+                        Positioned(
+                          top: -170 - shift,
+                          left: -230,
+                          width: 560,
+                          height: 280,
+                          child: Transform.rotate(
+                            angle: -0.31,
+                            child: const _LightTrail(
+                              colors: [
+                                Color(0x6B8B5CF6),
+                                Color(0x3D6366F1),
+                                Color(0x008B5CF6),
+                              ],
+                              glow: [Color(0x8C8B5CF6), Color(0x528B5CF6)],
+                            ),
+                          ),
+                        ),
+                        // Blue trail — top right (+12°)
+                        Positioned(
+                          top: -130,
+                          right: -240,
+                          width: 520,
+                          height: 260,
+                          child: Transform.rotate(
+                            angle: 0.21,
+                            child: _LightTrail(
+                              colors: [
+                                Color(0x6B3B82F6),
+                                Color(0x3D6366F1),
+                                Color(0x003B82F6),
+                              ],
+                              glow: [Color(0x8C3B82F6), Color(0x523B82F6)],
+                            ),
+                          ),
+                        ),
+                        // Indigo sweep — centre (-8°)
+                        Positioned(
+                          top: 70,
+                          left: -90,
+                          width: 600,
+                          height: 300,
+                          child: Transform.rotate(
+                            angle: -0.14,
+                            child: _LightTrail(
+                              colors: [
+                                Color(0x426366F1),
+                                Color(0x246366F1),
+                                Color(0x006366F1),
+                              ],
+                              glow: [Color(0x596366F1), Color(0x336366F1)],
+                            ),
+                          ),
+                        ),
+                        // Purple sweep — bottom right (-15°)
+                        Positioned(
+                          bottom: -190 + shift,
+                          right: -230,
+                          width: 560,
+                          height: 300,
+                          child: Transform.rotate(
+                            angle: -0.26,
+                            child: const _LightTrail(
+                              colors: [
+                                Color(0x708B5CF6),
+                                Color(0x3DA855F7),
+                                Color(0x008B5CF6),
+                              ],
+                              glow: [Color(0x998B5CF6), Color(0x598B5CF6)],
+                            ),
+                          ),
+                        ),
+                        // Blue sweep — bottom left (+12°)
+                        Positioned(
+                          bottom: -150,
+                          left: -240,
+                          width: 520,
+                          height: 280,
+                          child: Transform.rotate(
+                            angle: 0.21,
+                            child: _LightTrail(
+                              colors: [
+                                Color(0x6B3B82F6),
+                                Color(0x3D6366F1),
+                                Color(0x003B82F6),
+                              ],
+                              glow: [Color(0x8C3B82F6), Color(0x523B82F6)],
+                            ),
+                          ),
+                        ),
+                        // Soft radial blooms behind the trails
+                        const Positioned(
+                          top: -150,
+                          left: -140,
+                          child: _GlowBlob(
+                            size: 340,
+                            colors: [
+                              Color(0x578B5CF6),
+                              Color(0x1E7C3AED),
+                              Color(0x008B5CF6),
+                            ],
+                          ),
+                        ),
+                        const Positioned(
+                          top: 210,
+                          left: -90,
+                          child: _GlowBlob(
+                            size: 280,
+                            colors: [
+                              Color(0x4D6366F1),
+                              Color(0x146366F1),
+                              Color(0x006366F1),
+                            ],
+                          ),
+                        ),
+                        const Positioned(
+                          top: -120,
+                          right: -130,
+                          child: _GlowBlob(
+                            size: 320,
+                            colors: [
+                              Color(0x573B82F6),
+                              Color(0x1E3B82F6),
+                              Color(0x003B82F6),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -214,10 +285,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: RadialGradient(
-                        colors: [
-                          Color(0x00020514),
-                          Color(0x8C020514),
-                        ],
+                        colors: [Color(0x00020514), Color(0x8C020514)],
                         stops: [0.25, 1.0],
                       ),
                     ),
@@ -239,265 +307,339 @@ class _LoginPageState extends ConsumerState<LoginPage>
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const SizedBox(height: 48),
-                        Stack(
-                          clipBehavior: Clip.none,
-                          alignment: Alignment.topCenter,
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            // Glass card
-                            Container(
-                              margin: const EdgeInsets.only(top: 42),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(22),
-                                child: BackdropFilter(
-                                  filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-                                  child: Container(
-                                    padding: const EdgeInsets.fromLTRB(24, 54, 24, 24),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withValues(alpha: 0.07),
-                                      borderRadius: BorderRadius.circular(22),
-                                      border: Border.all(
-                                        color: Colors.white.withValues(alpha: 0.18),
-                                      ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withValues(alpha: 0.35),
-                                          blurRadius: 44,
-                                          offset: const Offset(0, 22),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                  StaggeredFadeIn(
-                                    index: 1,
-                                    child: ShaderMask(
-                                      blendMode: BlendMode.srcIn,
-                                      shaderCallback: (bounds) =>
-                                          const LinearGradient(
+                            // Logo — sits fully above the glass card.
+                            StaggeredFadeIn(
+                              index: 0,
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  Container(
+                                    width: 132,
+                                    height: 132,
+                                    decoration: const BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      gradient: RadialGradient(
                                         colors: [
-                                          CupertinoAppColors.purple,
-                                          CupertinoAppColors.primaryBlue,
+                                          Color(0x408B5CF6),
+                                          Color(0x1A7C3AED),
+                                          Color(0x008B5CF6),
                                         ],
-                                      ).createShader(bounds),
-                                      child: Text(
-                                        'FitTrack',
-                                        textAlign: TextAlign.center,
-                                        style: _clean(sfText(
-                                          fontSize: 28,
-                                          fontWeight: FontWeight.w800,
-                                          color: CupertinoAppColors.textPrimary,
-                                          letterSpacing: 0.4,
-                                        )),
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(height: 6),
-                                  StaggeredFadeIn(
-                                    index: 2,
-                                    child: Text(
-                                      'Your fitness journey starts here',
-                                      textAlign: TextAlign.center,
-                                      style: _clean(sfText(
-                                        fontSize: 13,
-                                        color: CupertinoAppColors.textTertiary,
-                                        letterSpacing: 0.1,
-                                      )),
-                                    ),
+                                  Image.asset(
+                                    'assets/logo.png',
+                                    width: 96,
+                                    height: 96,
+                                    fit: BoxFit.contain,
                                   ),
-                                  const SizedBox(height: 26),
-                                  StaggeredFadeIn(
-                                    index: 3,
-                                    child: Semantics(
-                                      label: 'code input',
-                                      child: _FloatingLabelInput(
-                                        controller: _codeController,
-                                        focusNode: _codeFocus,
-                                        label: 'Member Code',
-                                        textInputAction: TextInputAction.next,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 14),
-                                  StaggeredFadeIn(
-                                    index: 5,
-                                    child: Semantics(
-                                      label: 'password input',
-                                      child: _FloatingLabelInput(
-                                        controller: _passwordController,
-                                        focusNode: _passwordFocus,
-                                        label: 'Password',
-                                        obscureText: _obscurePassword,
-                                        textInputAction: TextInputAction.done,
-                                        onSubmitted: (_) => _login(),
-                                        suffix: Padding(
-                                          padding: const EdgeInsets.only(right: 2),
-                                          child: GestureDetector(
-                                            behavior: HitTestBehavior.opaque,
-                                            onTap: () => setState(
-                                              () => _obscurePassword =
-                                                  !_obscurePassword,
-                                            ),
-                                            child: Padding(
-                                              padding: const EdgeInsets.all(8),
-                                              child: Icon(
-                                                _obscurePassword
-                                                    ? CupertinoIcons.eye_slash
-                                                    : CupertinoIcons.eye,
-                                                color: CupertinoAppColors
-                                                    .textTertiary,
-                                                size: 18,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  if (_error != null) ...[
-                                    const SizedBox(height: 14),
-                                    AnimatedBuilder(
-                                      animation: _fadeAnim,
-                                      builder: (context, child) => Opacity(
-                                        opacity: _fadeAnim.value,
-                                        child: Transform.translate(
-                                          offset:
-                                              Offset(0, (1 - _fadeAnim.value) * -6),
-                                          child: child,
-                                        ),
-                                      ),
-                                      child: Container(
-                                        width: double.infinity,
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 10,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color:
-                                              CupertinoAppColors.red.withValues(alpha: 0.12),
-                                          borderRadius: BorderRadius.circular(12),
-                                          border: Border.all(
-                                            color: CupertinoAppColors.red
-                                                .withValues(alpha: 0.3),
-                                          ),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            const Icon(
-                                              CupertinoIcons.exclamationmark_circle,
-                                              color: CupertinoAppColors.red,
-                                              size: 16,
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Expanded(
-                                              child: Text(
-                                                _error!,
-                                                style: _clean(sfText(
-                                                  color: CupertinoAppColors.red,
-                                                  fontSize: 13,
-                                                )),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                  const SizedBox(height: 22),
-                                  StaggeredFadeIn(
-                                    index: 6,
-                                    child: SizedBox(
-                                      width: double.infinity,
-                                      height: 52,
-                                      child: CupertinoButton(
-                                        onPressed: _loading ? null : _login,
-                                        padding: EdgeInsets.zero,
-                                        borderRadius: BorderRadius.circular(16),
-                                        child: Container(
-                                          width: double.infinity,
-                                          height: 52,
-                                          alignment: Alignment.center,
-                                          decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.circular(16),
-                                            gradient: const LinearGradient(
-                                              begin: Alignment.centerLeft,
-                                              end: Alignment.centerRight,
-                                              colors: [
-                                                CupertinoAppColors.purple,
-                                                CupertinoAppColors.primaryBlue,
-                                              ],
-                                            ),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: CupertinoAppColors
-                                                    .primaryBlue
-                                                    .withValues(alpha: 0.35),
-                                                blurRadius: 18,
-                                                offset: const Offset(0, 10),
-                                              ),
-                                            ],
-                                          ),
-                                          child: _loading
-                                              ? const CupertinoActivityIndicator(
-                                                  color:
-                                                      CupertinoAppColors.textPrimary,
-                                                )
-                                              : Text(
-                                                  'Sign In',
-                                                  style: _clean(sfText(
-                                                    fontSize: 17,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: CupertinoAppColors
-                                                        .textPrimary,
-                                                    letterSpacing: 0.2,
-                                                  )),
-                                                ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 18),
-                                  Text(
-                                    'v1.0.0 · Powered by FitTrack',
-                                    textAlign: TextAlign.center,
-                                    style: _clean(sfText(
-                                      fontSize: 10,
-                                      color: CupertinoAppColors.textTertiary,
-                                    )),
-                                  ),
-                                  ],
-                                ),
+                                ],
                               ),
                             ),
-                          ),
-                        ),
-                            // Floating logo — overlaps the top edge of the
-                            // card, without the purple gradient disc.
-                            Positioned(
-                              top: 0,
-                              child: StaggeredFadeIn(
-                                index: 0,
+                            const SizedBox(height: 16),
+                            // Glass card
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(24),
+                              child: BackdropFilter(
+                                filter: ImageFilter.blur(
+                                  sigmaX: 26,
+                                  sigmaY: 26,
+                                ),
                                 child: Container(
-                                  width: 84,
-                                  height: 84,
+                                  padding: const EdgeInsets.fromLTRB(
+                                    24,
+                                    30,
+                                    24,
+                                    26,
+                                  ),
                                   decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Colors.transparent,
+                                    // Liquid glass: the admin .glass-card
+                                    // tint (rgba(25,30,65,0.52)) with a
+                                    // purple wash toward the bottom and a
+                                    // purple-tinted glass rim.
+                                    gradient: const LinearGradient(
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                      colors: [
+                                        Color(0x8C191E41),
+                                        Color(0x73191441),
+                                        Color(0x8C241A4D),
+                                      ],
+                                      stops: [0.0, 0.55, 1.0],
+                                    ),
+                                    borderRadius: BorderRadius.circular(24),
+                                    border: Border.all(
+                                      color: Color(0x33BF5AF2),
+                                    ),
                                     boxShadow: [
+                                      // Purple ambient glow, same idea as
+                                      // the admin login card's
+                                      // 0 0 60px rgba(124,58,237,0.28).
                                       BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.45),
-                                        blurRadius: 18,
-                                        offset: const Offset(0, 8),
+                                        color: Color(0x47BF5AF2),
+                                        blurRadius: 52,
+                                        spreadRadius: -8,
+                                        offset: const Offset(0, 18),
+                                      ),
+                                      BoxShadow(
+                                        color: Colors.black.withValues(
+                                          alpha: 0.35,
+                                        ),
+                                        blurRadius: 44,
+                                        offset: const Offset(0, 22),
                                       ),
                                     ],
                                   ),
-                                  child: ClipOval(
-                                    child: Image.asset(
-                                      'assets/logo.png',
-                                      width: 84,
-                                      height: 84,
-                                      fit: BoxFit.cover,
-                                    ),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      // Liquid-glass top highlight
+                                      // (admin: inset 0 1px 0 rgba(255,255,255,0.11))
+                                      Container(
+                                        height: 1,
+                                        decoration: const BoxDecoration(
+                                          gradient: LinearGradient(
+                                            colors: [
+                                              Color(0x40FFFFFF),
+                                              Color(0x00FFFFFF),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                      StaggeredFadeIn(
+                                        index: 1,
+                                        child: ShaderMask(
+                                          blendMode: BlendMode.srcIn,
+                                          shaderCallback: (bounds) =>
+                                              const LinearGradient(
+                                                colors: [
+                                                  CupertinoAppColors.purple,
+                                                  CupertinoAppColors
+                                                      .primaryBlue,
+                                                ],
+                                              ).createShader(bounds),
+                                          child: Text(
+                                            'FitTrack',
+                                            textAlign: TextAlign.center,
+                                            style: _clean(
+                                              sfText(
+                                                fontSize: 28,
+                                                fontWeight: FontWeight.w800,
+                                                color: CupertinoAppColors
+                                                    .textPrimary,
+                                                letterSpacing: 0.4,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      StaggeredFadeIn(
+                                        index: 2,
+                                        child: Text(
+                                          'Your fitness journey starts here',
+                                          textAlign: TextAlign.center,
+                                          style: _clean(
+                                            sfText(
+                                              fontSize: 13,
+                                              color: CupertinoAppColors
+                                                  .textTertiary,
+                                              letterSpacing: 0.1,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 26),
+                                      StaggeredFadeIn(
+                                        index: 3,
+                                        child: Semantics(
+                                          label: 'code input',
+                                          child: _FloatingLabelInput(
+                                            controller: _codeController,
+                                            focusNode: _codeFocus,
+                                            label: 'Member Code',
+                                            textInputAction:
+                                                TextInputAction.next,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 14),
+                                      StaggeredFadeIn(
+                                        index: 5,
+                                        child: Semantics(
+                                          label: 'password input',
+                                          child: _FloatingLabelInput(
+                                            controller: _passwordController,
+                                            focusNode: _passwordFocus,
+                                            label: 'Password',
+                                            obscureText: _obscurePassword,
+                                            textInputAction:
+                                                TextInputAction.done,
+                                            onSubmitted: (_) => _login(),
+                                            suffix: Padding(
+                                              padding: const EdgeInsets.only(
+                                                right: 2,
+                                              ),
+                                              child: GestureDetector(
+                                                behavior:
+                                                    HitTestBehavior.opaque,
+                                                onTap: () => setState(
+                                                  () => _obscurePassword =
+                                                      !_obscurePassword,
+                                                ),
+                                                child: Padding(
+                                                  padding: const EdgeInsets.all(
+                                                    8,
+                                                  ),
+                                                  child: Icon(
+                                                    _obscurePassword
+                                                        ? CupertinoIcons
+                                                              .eye_slash
+                                                        : CupertinoIcons.eye,
+                                                    color: CupertinoAppColors
+                                                        .textTertiary,
+                                                    size: 18,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      if (_error != null) ...[
+                                        const SizedBox(height: 14),
+                                        AnimatedBuilder(
+                                          animation: _fadeAnim,
+                                          builder: (context, child) => Opacity(
+                                            opacity: _fadeAnim.value,
+                                            child: Transform.translate(
+                                              offset: Offset(
+                                                0,
+                                                (1 - _fadeAnim.value) * -6,
+                                              ),
+                                              child: child,
+                                            ),
+                                          ),
+                                          child: Container(
+                                            width: double.infinity,
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 10,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: CupertinoAppColors.red
+                                                  .withValues(alpha: 0.12),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              border: Border.all(
+                                                color: CupertinoAppColors.red
+                                                    .withValues(alpha: 0.3),
+                                              ),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                const Icon(
+                                                  CupertinoIcons
+                                                      .exclamationmark_circle,
+                                                  color: CupertinoAppColors.red,
+                                                  size: 16,
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Expanded(
+                                                  child: Text(
+                                                    _error!,
+                                                    style: _clean(
+                                                      sfText(
+                                                        color:
+                                                            CupertinoAppColors
+                                                                .red,
+                                                        fontSize: 13,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                      const SizedBox(height: 22),
+                                      StaggeredFadeIn(
+                                        index: 6,
+                                        child: SizedBox(
+                                          width: double.infinity,
+                                          height: 52,
+                                          child: CupertinoButton(
+                                            onPressed: _loading ? null : _login,
+                                            padding: EdgeInsets.zero,
+                                            borderRadius: BorderRadius.circular(
+                                              16,
+                                            ),
+                                            child: Container(
+                                              width: double.infinity,
+                                              height: 52,
+                                              alignment: Alignment.center,
+                                              decoration: BoxDecoration(
+                                                borderRadius:
+                                                    BorderRadius.circular(16),
+                                                gradient: const LinearGradient(
+                                                  begin: Alignment.centerLeft,
+                                                  end: Alignment.centerRight,
+                                                  colors: [
+                                                    CupertinoAppColors.purple,
+                                                    CupertinoAppColors
+                                                        .primaryBlue,
+                                                  ],
+                                                ),
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: const Color(
+                                                      0xFFBF5AF2,
+                                                    ).withValues(alpha: 0.45),
+                                                    blurRadius: 18,
+                                                    offset: const Offset(0, 10),
+                                                  ),
+                                                ],
+                                              ),
+                                              child: _loading
+                                                  ? const CupertinoActivityIndicator(
+                                                      color: CupertinoAppColors
+                                                          .textPrimary,
+                                                    )
+                                                  : Text(
+                                                      'Sign In',
+                                                      style: _clean(
+                                                        sfText(
+                                                          fontSize: 17,
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                          color:
+                                                              CupertinoAppColors
+                                                                  .textPrimary,
+                                                          letterSpacing: 0.2,
+                                                        ),
+                                                      ),
+                                                    ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 18),
+                                      Text(
+                                        'v1.0.0 · Powered by FitTrack',
+                                        textAlign: TextAlign.center,
+                                        style: _clean(
+                                          sfText(
+                                            fontSize: 10,
+                                            color:
+                                                CupertinoAppColors.textTertiary,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
@@ -586,7 +728,8 @@ class _FloatingLabelInputState extends State<_FloatingLabelInput> {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: focused
-              ? CupertinoAppColors.primaryBlue.withValues(alpha: 0.6)
+              // Purple focus ring — the login card's accent colour.
+              ? const Color(0xFFBF5AF2).withValues(alpha: 0.75)
               : CupertinoAppColors.separator.withValues(alpha: 0.4),
           width: focused ? 1.4 : 1,
         ),
@@ -600,10 +743,9 @@ class _FloatingLabelInputState extends State<_FloatingLabelInput> {
             obscureText: widget.obscureText,
             textInputAction: widget.textInputAction,
             onSubmitted: widget.onSubmitted,
-            style: _clean(sfText(
-              fontSize: 15,
-              color: CupertinoAppColors.textPrimary,
-            )),
+            style: _clean(
+              sfText(fontSize: 15, color: CupertinoAppColors.textPrimary),
+            ),
             padding: const EdgeInsets.fromLTRB(16, 22, 16, 14),
             decoration: const BoxDecoration(),
             suffix: widget.suffix,
@@ -621,16 +763,46 @@ class _FloatingLabelInputState extends State<_FloatingLabelInput> {
               child: AnimatedDefaultTextStyle(
                 duration: const Duration(milliseconds: 200),
                 curve: Curves.easeInOut,
-                style: _clean(sfText(
-                  fontSize: floating ? 11 : 15,
-                color: focused
-                    ? Colors.white
-                    : CupertinoAppColors.textTertiary,
-                )),
+                style: _clean(
+                  sfText(
+                    fontSize: floating ? 11 : 15,
+                    color: focused
+                        ? Colors.white
+                        : CupertinoAppColors.textTertiary,
+                  ),
+                ),
                 child: Text(widget.label),
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One rotated neon "light trail" from the admin atmosphere
+/// (admin/src/components/AppBackground.tsx): a soft pill gradient with a
+/// two-layer coloured glow, the building block of the login background.
+class _LightTrail extends StatelessWidget {
+  final List<Color> colors;
+  final List<Color> glow;
+
+  const _LightTrail({required this.colors, required this.glow});
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(400),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: colors,
+        ),
+        boxShadow: [
+          BoxShadow(color: glow[0], blurRadius: 70, spreadRadius: 8),
+          BoxShadow(color: glow[1], blurRadius: 150, spreadRadius: 24),
         ],
       ),
     );

@@ -15,9 +15,7 @@ else:
     _origins = [o.strip() for o in _raw_origins.split(",") if o.strip()]
 
 
-from routers.food import router as food_router
 from routers.predictions import router as predictions_router
-from routers.identify_food import router as identify_food_router
 from routers.met import router as met_router
 
 app = FastAPI(title="FIT Sight AI Service")
@@ -30,9 +28,7 @@ app.add_middleware(
     allow_headers=["Content-Type"],
 )
 
-app.include_router(food_router, prefix="/api/ai")
 app.include_router(predictions_router, prefix="/api/ai")
-app.include_router(identify_food_router, prefix="/api/ai")
 app.include_router(met_router, prefix="/api/ai")
 
 @app.get("/api/health")

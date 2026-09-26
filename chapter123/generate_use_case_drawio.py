@@ -4,12 +4,12 @@
 Section 3.8 USE CASE is split into three per-actor figures (no overall
 diagram), one for each role defined in Chapter 1 - Member, Trainer, Admin -
 keeping the reference document's caption convention ("Use Case of the ...").
-Shared AI use cases produced by the ai-service (identify food photo,
-food recommendation, nutrient breakdown, MET, prediction, goal suggestion)
-are drawn as include/extend targets and may repeat across figures, in the
-same way the profiles hub entity is repeated in the ERD figures. The
-Gemini API appears as a secondary actor in Figure 26 only, where the AI
-dependency is a direct external call.
+Shared use cases computed by the system (nutrient breakdown, MET
+expenditure, retention risk, progress prediction) are drawn as
+include/extend targets and may repeat across figures, in the same way the
+profiles hub entity is repeated in the ERD figures. The removed AI food
+features (photo identification, food recommendation) and the AI goal
+suggestion are intentionally absent: no screen in the system produces them.
 
 Style follows the DFD/Activity/ERD diagram family: Times New Roman, white
 fill / black stroke, caption text cell above the figure, legend cell,
@@ -24,7 +24,7 @@ import os
 from xml.sax.saxutils import escape
 import xml.etree.ElementTree as ET
 
-OUT_DIR = r"c:\capstsh"
+OUT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 CAP = ("text;html=1;align=center;verticalAlign=middle;fontFamily=Times New Roman;"
        "fontSize=13;fontStyle=1;strokeColor=none;fillColor=none;")
@@ -50,10 +50,11 @@ LEGEND = ("Actor = system role   oval = use case   solid line = association   "
 # actor (ordered top to bottom; an extend extension sits directly below its
 # base); columns.inc = shared use cases reached only through dashed
 # dependencies; includes = (base, target); extends = (extension, base);
-# secondary = [(actor, use case)] extra associations (Gemini API).
+# secondary = [(actor, use case)] extra associations (none today: the
+# former Gemini API actor was dropped with the AI food features).
 FIGS = [
     dict(fig=26, slug="Member", actor="Member", module="Member Module",
-         secondary=["Gemini API"],
+         secondary=[],
          columns=dict(
              assoc=["Register and Login",
                     "Log Workout",
@@ -69,17 +70,11 @@ FIGS = [
                     "View Trainer Feedback and Rate Trainer",
                     "Receive Notifications",
                     "Manage Profile and Settings"],
-             inc=["Estimate MET Energy Expenditure",
-                  "Identify Food Photo",
-                  "Generate Food Recommendation",
+             inc=["Estimate MET Energy Expenditure (MET Catalog)",
                   "Compute Nutrient Breakdown",
-                  "Generate Goal Suggestion",
                   "Generate Progress Prediction"]),
-         includes=[("Log Workout", "Estimate MET Energy Expenditure"),
-                   ("Log Meal", "Identify Food Photo"),
-                   ("Log Meal", "Generate Food Recommendation"),
+         includes=[("Log Workout", "Estimate MET Energy Expenditure (MET Catalog)"),
                    ("Log Meal", "Compute Nutrient Breakdown"),
-                   ("Set Fitness Goal", "Generate Goal Suggestion"),
                    ("View Progress Prediction", "Generate Progress Prediction")],
          extends=[("Record Exercise Proof Video", "Log Workout")]),
     dict(fig=27, slug="Trainer", actor="Trainer", module="Trainer Module",
@@ -96,12 +91,9 @@ FIGS = [
                     "Receive Notifications",
                     "Manage Profile"],
              inc=["Assess Retention Risk",
-                  "Generate Goal Suggestion",
                   "Search MET Exercise Catalog"]),
          includes=[("View Trainer Dashboard with Retention Risk",
                     "Assess Retention Risk"),
-                   ("Create 7-Day Food and Exercise Plan",
-                    "Generate Goal Suggestion"),
                    ("Create 7-Day Food and Exercise Plan",
                     "Search MET Exercise Catalog")],
          extends=[]),
@@ -191,9 +183,7 @@ def build(part):
     cells = ['<mxCell id="0" />', '<mxCell id="1" parent="0" />']
     caption = "Figure %d: Use Case of the %s" % (part["fig"], part["module"])
 
-    sec_links = []
-    if part["fig"] == 26:
-        sec_links = [("Gemini API", "Identify Food Photo")]
+    sec_links = []  # no secondary actors remain
     page_w = (BOUND_X + boundary_w + PAGE_MARGIN
               + ((SEC_GAP + ACTOR_W + PAGE_W_EXTRA) if sec_links else 0))
     cells.append(vtx("cap", caption, (page_w - CAP_W) // 2, 10, CAP_W, 30, CAP))

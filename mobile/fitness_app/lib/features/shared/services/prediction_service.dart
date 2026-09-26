@@ -24,7 +24,8 @@ class PredictionResult {
     required this.confidence,
   });
 
-  factory PredictionResult.fromJson(Map<String, dynamic> json) => PredictionResult(
+  factory PredictionResult.fromJson(Map<String, dynamic> json) =>
+      PredictionResult(
         predictionType: json['prediction_type'] as String? ?? '',
         currentValue: (json['current_value'] as num?)?.toDouble() ?? 0,
         predictedValue: (json['predicted_value'] as num?)?.toDouble() ?? 0,
@@ -73,39 +74,77 @@ class MemberForecast {
 }
 
 class PredictionService {
-  Future<MemberForecast> getForecast(String memberId, {int daysAhead = 30}) async {
-    try {
-      final resp = await http
-          .post(
-            Uri.parse('${aiApiBaseUrl()}/api/ai/predictions'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'member_id': memberId, 'days_ahead': daysAhead}),
-          )
-          .timeout(const Duration(seconds: 20));
+  /// Base URLs tried in order. `API_BASE_URL` comes from assets/.env and is
+  /// the primary one; the extras keep one dev build working from every target
+  /// (physical phone on the same Wi-Fi -> PC LAN IP, Android emulator ->
+  /// 10.0.2.2, web/desktop on the PC -> localhost).
+  static const _fallbackHosts = ['192.168.100.181', '10.0.2.2', 'localhost'];
 
-      if (resp.statusCode == 200) {
-        final list = (jsonDecode(resp.body) as List)
-            .map((e) => PredictionResult.fromJson(e as Map<String, dynamic>))
-            .toList();
-        return MemberForecast(results: list);
-      }
-      if (resp.statusCode == 404) {
-        String? detail;
-        try {
-          detail = (jsonDecode(resp.body) as Map<String, dynamic>)['detail'] as String?;
-        } catch (_) {}
-        return MemberForecast(results: const [], notEnoughData: true, error: detail);
-      }
-      return MemberForecast(
-        results: const [],
-        error: 'Prediction service error (${resp.statusCode})',
-      );
-    } catch (e) {
-      debugPrint('PREDICTION SERVICE unreachable: $e');
-      return MemberForecast(
-        results: const [],
-        error: 'Could not reach the prediction service',
-      );
+  List<String> _candidateUrls() {
+    final configured = aiApiBaseUrl();
+    final parsed = Uri.tryParse(configured);
+    if (parsed == null || !parsed.hasAuthority) return [configured];
+    final candidates = <String>[configured];
+    for (final host in _fallbackHosts) {
+      final url = parsed.replace(host: host).toString();
+      if (!candidates.contains(url)) candidates.add(url);
     }
+    return candidates;
+  }
+
+  Future<MemberForecast> getForecast(
+    String memberId, {
+    int daysAhead = 30,
+  }) async {
+    final candidates = _candidateUrls();
+
+    for (var i = 0; i < candidates.length; i++) {
+      try {
+        final resp = await http
+            .post(
+              Uri.parse('${candidates[i]}/api/ai/predictions'),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode({
+                'member_id': memberId,
+                'days_ahead': daysAhead,
+              }),
+            )
+            // Keep the first (configured) attempt generous; the fallback
+            // addresses are only reached when that one is unreachable, so a
+            // short timeout is enough to skip past them.
+            .timeout(Duration(seconds: i == 0 ? 20 : 6));
+
+        if (resp.statusCode == 200) {
+          final list = (jsonDecode(resp.body) as List)
+              .map((e) => PredictionResult.fromJson(e as Map<String, dynamic>))
+              .toList();
+          return MemberForecast(results: list);
+        }
+        if (resp.statusCode == 404) {
+          String? detail;
+          try {
+            detail =
+                (jsonDecode(resp.body) as Map<String, dynamic>)['detail']
+                    as String?;
+          } catch (_) {}
+          return MemberForecast(
+            results: const [],
+            notEnoughData: true,
+            error: detail,
+          );
+        }
+        return MemberForecast(
+          results: const [],
+          error: 'Prediction service error (${resp.statusCode})',
+        );
+      } catch (e) {
+        debugPrint('PREDICTION SERVICE unreachable (${candidates[i]}): $e');
+      }
+    }
+
+    return MemberForecast(
+      results: const [],
+      error: 'Could not reach the prediction service',
+    );
   }
 }

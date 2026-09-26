@@ -250,40 +250,12 @@ The Meal Records table logs a member's self-reported meals with aggregated macro
 | protein_g | Decimal protein amount in grams. | decimal | 6,2 |  |
 | carbs_g | Decimal carbohydrate amount in grams. | decimal | 6,2 |  |
 | fat_g | Decimal fat amount in grams. | decimal | 6,2 |  |
-| photo_url | URL of the photo used to recognize the meal. | text | -- |  |
+| photo_url | URL of the optional photo attached to the meal record. | text | -- |  |
 | meal_time | Timestamp when the meal was consumed. | timestamptz | -- |  |
 
-The Meal Logs table logs an individual recognized meal entry with food name, macronutrients, optional photo, and meal timestamp.
+The Meal Logs table logs an individual meal entry with food name, macronutrients, optional photo, and meal timestamp.
 
-## Table 18: Food Recommendations
-
-| Field Name | Description | Field Type | Field Size | Type of Key |
-|------------|-------------|------------|------------|-------------|
-| id | Primary key uniquely identifying each row in the Food Recommendations table. | uuid | -- | PK |
-| member_id | Foreign key referencing the member receiving the recommendation. | uuid | -- | FK |
-| meal_type | Text categorizing the recommended meal type. | text | -- |  |
-| food_name | Text name of the recommended food. | text | -- |  |
-| portion_size | Text describing the recommended portion size. | text | -- |  |
-| reason | Text explaining why the food was recommended. | text | -- |  |
-| created_at | Timestamp recording when the record was created in the Food Recommendations table. | timestamptz | -- |  |
-
-The Food Recommendations table stores AI-generated food suggestions delivered to a member, including meal type, portion, and reasoning.
-
-## Table 19: Food Identification Logs
-
-| Field Name | Description | Field Type | Field Size | Type of Key |
-|------------|-------------|------------|------------|-------------|
-| id | Primary key uniquely identifying each row in the Food Identification Logs table. | uuid | -- | PK |
-| member_id | Foreign key referencing the member who submitted the photo. | uuid | -- | FK |
-| photo_url | URL of the uploaded food photo. | text | -- |  |
-| ai_candidates | JSON array of AI-generated food candidate objects. | jsonb | -- |  |
-| selected_food | Text name of the food ultimately selected. | text | -- |  |
-| member_edited | Boolean indicating whether the member edited the AI suggestion. | boolean | -- |  |
-| created_at | Timestamp recording when the record was created in the Food Identification Logs table. | timestamptz | -- |  |
-
-The Food Identification Logs table records each AI food-recognition attempt from a member's photo, including candidate list, selected food, and whether the member edited the result.
-
-## Table 20: Nutrition Foods
+## Table 18: Nutrition Foods
 
 | Field Name | Description | Field Type | Field Size | Type of Key |
 |------------|-------------|------------|------------|-------------|
@@ -302,7 +274,7 @@ The Food Identification Logs table records each AI food-recognition attempt from
 
 The Nutrition Foods table is a reference catalog of foods with serving size, caloric and macronutrient values, category, aliases, and sourcing metadata.
 
-## Table 21: MET Exercises
+## Table 19: MET Exercises
 
 | Field Name | Description | Field Type | Field Size | Type of Key |
 |------------|-------------|------------|------------|-------------|
@@ -319,7 +291,7 @@ The Nutrition Foods table is a reference catalog of foods with serving size, cal
 
 The MET Exercises table is a reference catalog of exercises with their metabolic equivalent (MET) value, verification state, confidence, and verifier.
 
-## Table 22: Chat Rooms
+## Table 20: Chat Rooms
 
 | Field Name | Description | Field Type | Field Size | Type of Key |
 |------------|-------------|------------|------------|-------------|
@@ -330,7 +302,7 @@ The MET Exercises table is a reference catalog of exercises with their metabolic
 
 The Chat Rooms table represents a one-to-one conversation between two profiles, identified by the two participants and creation timestamp.
 
-## Table 23: Chat Messages
+## Table 21: Chat Messages
 
 | Field Name | Description | Field Type | Field Size | Type of Key |
 |------------|-------------|------------|------------|-------------|
@@ -342,7 +314,7 @@ The Chat Rooms table represents a one-to-one conversation between two profiles, 
 
 The Chat Messages table stores individual messages within a chat room, including sender, content, and creation timestamp.
 
-## Table 24: Notifications
+## Table 22: Notifications
 
 | Field Name | Description | Field Type | Field Size | Type of Key |
 |------------|-------------|------------|------------|-------------|
@@ -355,7 +327,7 @@ The Chat Messages table stores individual messages within a chat room, including
 
 The Notifications table stores push or in-app notifications delivered to a user, including title, body, read state, and creation timestamp.
 
-## Table 25: Predictions
+## Table 23: Predictions
 
 | Field Name | Description | Field Type | Field Size | Type of Key |
 |------------|-------------|------------|------------|-------------|
@@ -369,7 +341,7 @@ The Notifications table stores push or in-app notifications delivered to a user,
 
 The Predictions table stores predictive analytics outputs for a member, including the metric, predicted value, prediction date, and model confidence.
 
-## Table 26: Admin Logs
+## Table 24: Admin Logs
 
 | Field Name | Description | Field Type | Field Size | Type of Key |
 |------------|-------------|------------|------------|-------------|

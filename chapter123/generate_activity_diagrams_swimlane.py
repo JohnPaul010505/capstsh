@@ -20,7 +20,7 @@ import xml.etree.ElementTree as ET
 from xml.sax.saxutils import escape
 
 POOL_Y, MARGIN, HEADER_H = 20, 30, 40
-OUT_DIR = r"c:\capstsh"
+OUT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 ACT   = ("rounded=1;whiteSpace=wrap;html=1;arcSize=40;fillColor=#FFFFFF;"
          "strokeColor=#000000;fontFamily=Times New Roman;fontSize=12;fontStyle=1;")
@@ -311,24 +311,25 @@ spec("Activity-Fig17-QR-CheckIn-CheckOut.drawio", "act-fig17",
      L2, FIG17_NODES, FIG17_EDGES)
 
 # ------------------------------------------------------------------ Figure 18
-FIG18_LBL = "Figure 18: Activity Diagram (Meal Logging and AI Food Analysis)"
+FIG18_LBL = "Figure 18: Activity Diagram (Meal Logging and Nutrient Computation)"
 FIG18_NODES = [
     dict(id="ini", kind="initial", lane=0, label="", y=80),
     dict(id="s0", kind="start", lane=0, label="Start", y=124, h=40),
     dict(id="a1", kind="action", lane=0, label="Open Meal Logging Page", y=194),
     dict(id="a2", kind="action", lane=0,
-         label="Enter Meal Details (Food Name, Meal Type, and Calories)", y=274, h=60),
-    dict(id="d1", kind="decision", lane=("div", 0), label="Upload Food Photograph?", y=364, w=150, h=80),
-    dict(id="a2a", kind="action", lane=0, label="Capture or Upload Food Photograph", y=444),
+         label="Enter Meal Details (Food Name and Meal Type)", y=274, h=60),
+    dict(id="d1", kind="decision", lane=("div", 0), label="Attach Food Photograph?", y=364, w=150, h=80),
+    dict(id="a2a", kind="action", lane=0,
+         label="Capture or Upload Food Photograph (stored as a record)", y=444, h=60),
     dict(id="s1", kind="action", lane=1,
-         label="Send Food Image and Nutrition Query to Google Gemini API", y=524, h=60),
-    dict(id="s2", kind="action", lane=1, label="Receive Recognized Food Item from Gemini API", y=624, h=60),
-    dict(id="s3", kind="action", lane=1, label="Compute Nutrient Breakdown from Nutrition Foods", y=714, h=60),
-    dict(id="s4", kind="action", lane=1, label="Generate Food Recommendation", y=804),
+         label="Search Food in the Nutrition Foods Database (PhilFCT)", y=544, h=60),
+    dict(id="s2", kind="action", lane=1,
+         label="Select Food Item and Enter Portion in Grams", y=634, h=60),
+    dict(id="s3", kind="action", lane=1, label="Compute Nutrient Breakdown from Nutrition Foods", y=724, h=60),
     dict(id="s5", kind="action", lane=1,
-         label="Display Nutrient Breakdown and Food Recommendation", y=884, h=60),
-    dict(id="s6", kind="action", lane=1, label="Save Meal Record to Meal Logs", y=974),
-    dict(id="end", kind="end", lane=1, label="", y=1044),
+         label="Display Nutrient Breakdown for Review", y=814, h=60),
+    dict(id="s6", kind="action", lane=1, label="Save Meal Record to Meal Logs", y=904),
+    dict(id="end", kind="end", lane=1, label="", y=974),
 ]
 FIG18_EDGES = [
     dict(s="ini", d="s0"),
@@ -337,16 +338,15 @@ FIG18_EDGES = [
     dict(s="a2", d="d1"),
     dict(s="d1", d="a2a", label="Yes", ex=0, ey=0.5, nx=0.5, ny=0),
     dict(s="d1", d="s1", label="No", ex=1, ey=0.5, nx=0.5, ny=0),
-    dict(s="a2a", d="s1", ex=1, ey=0.5, nx=0, ny=0.5, wp=[(380, 469), (380, 554)]),
+    dict(s="a2a", d="s1", ex=1, ey=0.5, nx=0, ny=0.5, wp=[(380, 489), (380, 574)]),
     dict(s="s1", d="s2"),
     dict(s="s2", d="s3"),
-    dict(s="s3", d="s4"),
-    dict(s="s4", d="s5"),
+    dict(s="s3", d="s5"),
     dict(s="s5", d="s6"),
     dict(s="s6", d="end"),
 ]
-spec("Activity-Fig18-Meal-Logging-AI-Analysis.drawio", "act-fig18",
-     "FIG 18 - ACTIVITY DIAGRAM MEAL LOGGING AI ANALYSIS", FIG18_LBL,
+spec("Activity-Fig18-Meal-Logging-Nutrient-Computation.drawio", "act-fig18",
+     "FIG 18 - ACTIVITY DIAGRAM MEAL LOGGING NUTRIENT COMPUTATION", FIG18_LBL,
      L2, FIG18_NODES, FIG18_EDGES)
 
 # ------------------------------------------------------------------ Figure 19
@@ -433,7 +433,7 @@ FIG21_NODES = [
          label="Analyze Progress Trend from Workout, Measurement, and Nutrition Histories", y=194, h=70, w=250),
     dict(id="s2", kind="action", lane=2, label="Generate Predicted Fitness Progress", y=304, h=60),
     dict(id="s3", kind="action", lane=2, label="Assess Retention Risk and Notify Trainer", y=404, h=60),
-    dict(id="s4", kind="action", lane=2, label="Display Adjusted Goal Suggestion to Member", y=504, h=60),
+    dict(id="s4", kind="action", lane=2, label="Display Predicted Progress to Member", y=504, h=60),
     dict(id="a5", kind="action", lane=0, label="Set or Refine Fitness Goal", y=604),
     dict(id="s6", kind="action", lane=2, label="Save Goal to Goal Plans", y=684),
     dict(id="t7", kind="action", lane=1, label="Review Goal and Create Food and Exercise Plan", y=764, h=60),

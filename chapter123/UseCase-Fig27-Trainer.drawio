@@ -1,6 +1,6 @@
 <mxfile host="app.diagrams.net" agent="Cline">
   <diagram id="uc27" name="FIG 27 - USE CASE Trainer Module">
-    <mxGraphModel dx="880" dy="646" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="810" pageHeight="1174" math="0" shadow="0">
+    <mxGraphModel dx="1654" dy="918" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="810" pageHeight="1174" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -40,11 +40,8 @@
         <mxCell id="uc_Assess Retention Risk" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=11;" value="Assess Retention Risk" vertex="1">
           <mxGeometry height="56" width="210" x="520" y="174" as="geometry" />
         </mxCell>
-        <mxCell id="uc_Generate Goal Suggestion" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=11;" value="Generate Goal Suggestion" vertex="1">
-          <mxGeometry height="56" width="210" x="520" y="264" as="geometry" />
-        </mxCell>
         <mxCell id="uc_Search MET Exercise Catalog" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=11;" value="Search MET Exercise Catalog" vertex="1">
-          <mxGeometry height="56" width="210" x="520" y="354" as="geometry" />
+          <mxGeometry height="56" width="210" x="520" y="264" as="geometry" />
         </mxCell>
         <mxCell id="act_Trainer" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontFamily=Times New Roman;fontSize=12;fontStyle=1;" value="Trainer" vertex="1">
           <mxGeometry height="60" width="40" x="70" y="577" as="geometry" />
@@ -82,10 +79,7 @@
         <mxCell id="inc0" edge="1" parent="1" source="uc_View Trainer Dashboard with Retention Risk" style="endArrow=open;endFill=0;dashed=1;html=1;strokeColor=#000000;fontFamily=Times New Roman;fontSize=10;fontStyle=1;labelBackgroundColor=#FFFFFF;exitX=1.000;exitY=0.500;exitDx=0;exitDy=0;entryX=0.000;entryY=0.500;entryDx=0;entryDy=0;" target="uc_Assess Retention Risk" value="">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="inc1" edge="1" parent="1" source="uc_Create 7-Day Food and Exercise Plan" style="endArrow=open;endFill=0;dashed=1;html=1;strokeColor=#000000;fontFamily=Times New Roman;fontSize=10;fontStyle=1;labelBackgroundColor=#FFFFFF;exitX=1.000;exitY=0.333;exitDx=0;exitDy=0;entryX=0.000;entryY=0.500;entryDx=0;entryDy=0;" target="uc_Generate Goal Suggestion" value="">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="inc2" edge="1" parent="1" source="uc_Create 7-Day Food and Exercise Plan" style="endArrow=open;endFill=0;dashed=1;html=1;strokeColor=#000000;fontFamily=Times New Roman;fontSize=10;fontStyle=1;labelBackgroundColor=#FFFFFF;exitX=1.000;exitY=0.667;exitDx=0;exitDy=0;entryX=0.000;entryY=0.500;entryDx=0;entryDy=0;" target="uc_Search MET Exercise Catalog" value="">
+        <mxCell id="inc1" edge="1" parent="1" source="uc_Create 7-Day Food and Exercise Plan" style="endArrow=open;endFill=0;dashed=1;html=1;strokeColor=#000000;fontFamily=Times New Roman;fontSize=10;fontStyle=1;labelBackgroundColor=#FFFFFF;exitX=1.000;exitY=0.500;exitDx=0;exitDy=0;entryX=0.000;entryY=0.500;entryDx=0;entryDy=0;" target="uc_Search MET Exercise Catalog" value="">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
       </root>
