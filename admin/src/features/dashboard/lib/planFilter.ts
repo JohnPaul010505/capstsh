@@ -41,3 +41,12 @@ export function resolvePlan(memberships: MembershipLite[] | undefined, memberId:
 
 export const planMatches = (plan: PlanFilter, planName: string | null): boolean =>
   plan === 'all' || planName === plan
+
+/**
+ * Membership-type filter at MEMBER level: includes the member when the filter
+ * is "all" or when ANY of their memberships is of that type. Used by the
+ * Member Overview / Member Growth tabs where there is no single instant to
+ * resolve a plan against the way an attendance row has.
+ */
+export const memberPlanMatches = (plan: PlanFilter, memberships: MembershipLite[] | undefined, memberId: string): boolean =>
+  plan === 'all' || (memberships ?? []).some(m => m.member_id === memberId && m.plan_name === plan)

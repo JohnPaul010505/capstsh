@@ -1,21 +1,28 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabase'
-import { Activity } from 'lucide-react'
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  AreaChart, Area,
-  PieChart, Pie, Cell,
-} from 'recharts'
+import { ClipboardList, LineChart as TrendIcon, UserPlus, Users, Wallet } from 'lucide-react'
 import StatsCard from '@/components/StatsCard'
-import { useChartTheme } from '@/hooks/useChartTheme'
+import { supabase } from '@/lib/supabase'
+import DashboardTabs, { type TabDef } from '@/features/dashboard/components/DashboardTabs'
+import CheckinsTab from '@/features/dashboard/panels/CheckinsTab'
+import RevenueTab from '@/features/dashboard/panels/RevenueTab'
+import GrowthTab from '@/features/dashboard/panels/GrowthTab'
+import MemberOverviewTab from '@/features/dashboard/panels/MemberOverviewTab'
+import ActivityTab from '@/features/dashboard/panels/ActivityTab'
+import { autoGrain, lastNDays, parseDay, type Grain, type Range } from '@/features/dashboard/lib/dateRange'
+import type { PlanFilter } from '@/features/dashboard/lib/planFilter'
+import type { ActivityType } from '@/features/dashboard/lib/activityFeed'
+import { useCheckinsTab } from '@/features/dashboard/hooks/useCheckinsTab'
 
-const COLORS = ['#7C3AED', '#22C55E', '#F59E0B', '#EF4444', '#3B82F6', '#C084FC']
-const GENDER_COLORS: Record<string, string> = { Male: '#3B82F6', Female: '#DB2777', Other: '#C084FC' }
-const STATUS_COLORS: Record<string, string> = { Active: '#22C55E', Inactive: '#FF3B3B' }
-const DAY = 86_400_000
+const TABS: TabDef[] = [
+  { id: 'checkins', label: 'Daily Check-ins', icon: ClipboardList },
+  { id: 'revenue', label: 'Revenue Overview', icon: Wallet },
+  { id: 'growth', label: 'Member Growth', icon: UserPlus },
+  { id: 'members', label: 'Member Overview', icon: Users },
+  { id: 'activity', label: 'Recent Activity', icon: TrendIcon },
+]
 
-
+/** All-time totals behind the summary row (not range filtered by design). */
 function useDashboardBaseStats() {
   return useQuery({
     queryKey: ['dashboard-base-stats'],
@@ -26,142 +33,7 @@ function useDashboardBaseStats() {
         supabase.from('memberships').select('price').eq('status', 'active'),
       ])
       const totalRevenue = (revenue.data ?? []).reduce((sum, m) => sum + (Number(m.price) || 0), 0)
-      return {
-        totalMembers: members.count ?? 0,
-        totalTrainers: trainers.count ?? 0,
-        totalRevenue,
-      }
-    },
-  })
-}
-
-function useDashboardStats(yearMonth?: string) {
-  const now = new Date()
-  let startDate = now.toISOString().split('T')[0]
-  let endDate = startDate
-  let prevStartDate = startDate
-  let prevEndDate = endDate
-  if (yearMonth) {
-    const [year, month] = yearMonth.split('-').map(Number)
-    const monthStart = new Date(year, month - 1, 1)
-    const monthEnd = new Date(year, month, 0)
-    startDate = monthStart.toISOString().split('T')[0]
-    endDate = monthEnd.toISOString().split('T')[0]
-    const prevMonthEnd = new Date(year, month - 1, 0)
-    const prevMonthStart = new Date(year, month - 2, 1)
-    prevStartDate = prevMonthStart.toISOString().split('T')[0]
-    prevEndDate = prevMonthEnd.toISOString().split('T')[0]
-  }
-
-  return useQuery({
-    queryKey: ['dashboard-stats', yearMonth ?? 'default'],
-    queryFn: async () => {
-      const [attendanceRes, prevAttendanceRes] = await Promise.all([
-        supabase.from('attendance').select('id, member_id, profiles!attendance_member_id_fkey(role)').gte('check_in_date', startDate).lte('check_in_date', endDate),
-        supabase.from('attendance').select('id', { count: 'exact', head: true }).gte('check_in_date', prevStartDate).lte('check_in_date', prevEndDate),
-      ])
-      const rows = attendanceRes.data ?? []
-      const trainerAttendance = rows.filter(a => (a.profiles as any)?.role === 'trainer').length
-      const memberAttendance = rows.filter(a => (a.profiles as any)?.role === 'member').length
-      const currentAttendance = rows.length
-      const previousAttendance = prevAttendanceRes.count ?? 0
-      let attendanceTrend: number | undefined
-      let attendanceTrendLabel = 'from last month'
-      if (previousAttendance > 0) {
-        attendanceTrend = Math.round(((currentAttendance - previousAttendance) / previousAttendance) * 100)
-      } else if (currentAttendance > 0) {
-        attendanceTrend = 100
-      }
-      return {
-        attendance: currentAttendance,
-        trainerAttendance,
-        memberAttendance,
-        attendanceTrend,
-        attendanceTrendLabel,
-      }
-    },
-  })
-}
-
-const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-const WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-const dayKeyOf = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-
-function getMonthOptions() {
-  const options: { value: string; label: string }[] = []
-  const now = new Date()
-  for (let y = 2026; y <= now.getFullYear(); y++) {
-    const maxM = y === now.getFullYear() ? now.getMonth() : 11
-    for (let m = 0; m <= maxM; m++) {
-      const d = new Date(y, m, 1)
-      const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-      options.push({ value, label: `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}` })
-    }
-  }
-  return options
-}
-
-function useRevenueChart(range: 'week' | 'month' | 'year') {
-  return useQuery({
-    queryKey: ['revenue-chart-v3', range],
-    queryFn: async () => {
-      const now = new Date()
-
-      const { data } = await supabase
-        .from('memberships')
-        .select('start_date, created_at, price')
-        .eq('status', 'active')
-
-      // Revenue per calendar day, bucketed by membership start date.
-      const daily: Record<string, number> = {}
-      ;(data ?? []).forEach(m => {
-        const rawDate = m.start_date || m.created_at
-        if (!rawDate) return
-        const key = dayKeyOf(new Date(rawDate))
-        daily[key] = (daily[key] || 0) + (Number(m.price) || 0)
-      })
-
-      if (range === 'year') {
-        const start = new Date(now.getTime() - 365 * DAY)
-        const monthly: Record<string, number> = {}
-        let hasInRange = false
-        ;(data ?? []).forEach(m => {
-          const rawDate = m.start_date || m.created_at
-          if (!rawDate) return
-          const d = new Date(rawDate)
-          if (d >= start) hasInRange = true
-          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-          monthly[key] = (monthly[key] || 0) + (Number(m.price) || 0)
-        })
-
-        const entries = Object.entries(monthly)
-          .map(([date, revenue]) => ({ date, revenue: Math.round(revenue) }))
-          .sort((a, b) => a.date.localeCompare(b.date))
-
-        if (hasInRange) {
-          return entries.filter(e => new Date(e.date) >= start)
-        }
-        if (entries.length > 12) {
-          return entries.slice(-12)
-        }
-        return entries
-      }
-
-      // Dense per-day buckets so the X axis shows every label:
-      // Mon..Sun for the current week, 1..daysInMonth for the current month.
-      const days: string[] = []
-      if (range === 'week') {
-        const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7))
-        for (let i = 0; i < 7; i++) {
-          days.push(dayKeyOf(new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i)))
-        }
-      } else {
-        const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
-        for (let i = 1; i <= daysInMonth; i++) {
-          days.push(dayKeyOf(new Date(now.getFullYear(), now.getMonth(), i)))
-        }
-      }
-      return days.map(date => ({ date, revenue: Math.round(daily[date] || 0) }))
+      return { totalMembers: members.count ?? 0, totalTrainers: trainers.count ?? 0, totalRevenue }
     },
   })
 }
@@ -172,17 +44,14 @@ function useRevenueMonthlySummary() {
     queryKey: ['revenue-monthly-summary'],
     queryFn: async () => {
       const now = new Date()
-
-      const { data } = await supabase
-        .from('memberships')
-        .select('start_date, created_at, price')
-        .eq('status', 'active')
+      const { data } = await supabase.from('memberships').select('start_date, created_at, price').eq('status', 'active')
 
       const monthly: Record<string, number> = {}
       ;(data ?? []).forEach(m => {
         const rawDate = m.start_date || m.created_at
         if (!rawDate) return
-        const d = new Date(rawDate)
+        // Local parse — 'YYYY-MM-DD' via new Date() is UTC and shifts the month in PH.
+        const d = parseDay(rawDate.slice(0, 10))
         const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
         monthly[monthKey] = (monthly[monthKey] || 0) + (Number(m.price) || 0)
       })
@@ -199,419 +68,109 @@ function useRevenueMonthlySummary() {
   })
 }
 
-function useAttendanceChart(yearMonth: string) {
-  return useQuery({
-    queryKey: ['attendance-chart', yearMonth],
-    queryFn: async () => {
-      const [year, month] = yearMonth.split('-').map(Number)
-      const monthStart = new Date(year, month - 1, 1)
-      const monthEnd = new Date(year, month, 0)
-      const daysInMonth = monthEnd.getDate()
-
-      const { data } = await supabase
-        .from('attendance')
-        .select('check_in_date')
-        .gte('check_in_date', monthStart.toISOString().split('T')[0])
-        .lte('check_in_date', monthEnd.toISOString().split('T')[0])
-
-      const counts: Record<string, number> = {}
-      if (data) {
-        data.forEach(a => {
-          counts[a.check_in_date] = (counts[a.check_in_date] || 0) + 1
-        })
-      }
-      const days = []
-      for (let i = 1; i <= daysInMonth; i++) {
-        const key = `${year}-${String(month).padStart(2, '0')}-${String(i).padStart(2, '0')}`
-        days.push({ date: key, count: counts[key] || 0 })
-      }
-      return days
-    },
-  })
-}
-
+/** Member/trainer counts by join month — sparklines for the summary row. */
 function useGrowthData() {
   return useQuery({
     queryKey: ['dashboard-growth'],
     queryFn: async () => {
       const { data } = await supabase
         .from('profiles')
-        .select('created_at')
-        .eq('role', 'member')
+        .select('created_at, role')
+        .in('role', ['member', 'trainer'])
         .order('created_at', { ascending: true })
 
-      const monthly: Record<string, number> = {}
-      data?.forEach(p => {
-        const key = p.created_at?.slice(0, 7)
-        if (key) monthly[key] = (monthly[key] || 0) + 1
+      const memberMonthly: Record<string, number> = {}
+      const trainerMonthly: Record<string, number> = {}
+      ;(data ?? []).forEach(p => {
+        if (!p.created_at) return
+        const d = parseDay(p.created_at.slice(0, 10))
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+        const bucket = p.role === 'trainer' ? trainerMonthly : memberMonthly
+        bucket[key] = (bucket[key] || 0) + 1
       })
-      let cumulative = 0
-      return Object.entries(monthly).map(([month, count]) => {
-        cumulative += count
-        return { month, newMembers: count, totalMembers: cumulative }
-      })
+
+      let memberTotal = 0
+      let trainerTotal = 0
+      const now = new Date()
+      const months: { key: string; memberTotal: number; trainerTotal: number }[] = []
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+        memberTotal += memberMonthly[key] || 0
+        trainerTotal += trainerMonthly[key] || 0
+        months.push({ key, memberTotal, trainerTotal })
+      }
+      return months
     },
   })
 }
 
-function useGenderAndActivityData() {
-  return useQuery({
-    queryKey: ['dashboard-gender-activity'],
-    queryFn: async () => {
-      const sevenDaysAgo = new Date(Date.now() - 7 * DAY).toISOString().split('T')[0]
-      const { data: profiles } = await supabase.from('profiles').select('id, gender').eq('role', 'member')
-
-      const memberIds = (profiles ?? []).map(p => p.id)
-      let recentAttendance: string[] = []
-      if (memberIds.length > 0) {
-        const { data } = await supabase
-          .from('attendance')
-          .select('member_id')
-          .in('member_id', memberIds)
-          .gte('check_in_date', sevenDaysAgo)
-        recentAttendance = [...new Set((data ?? []).map(a => a.member_id))]
-      }
-
-      const activeIds = new Set(recentAttendance)
-      const m = (profiles ?? []).filter(p => p.gender === 'male').length
-      const f = (profiles ?? []).filter(p => p.gender === 'female').length
-      const o = (profiles ?? []).filter(p => p.gender && !['male', 'female'].includes(p.gender)).length
-      const active = (profiles ?? []).filter(p => activeIds.has(p.id)).length
-      const inactive = (profiles ?? []).length - active
-
-      return [
-        { name: 'Male', value: m, type: 'gender' },
-        { name: 'Female', value: f, type: 'gender' },
-        { name: 'Other', value: o, type: 'gender' },
-        { name: 'Active', value: active, type: 'status' },
-        { name: 'Inactive', value: inactive, type: 'status' },
-      ].filter(d => d.value > 0 || d.type === 'status')
-    },
-  })
-}
-
-function useRecentActivity() {
-  return useQuery({
-    queryKey: ['recent-activity'],
-    queryFn: async () => {
-      const [attendanceRes, assignmentRes, expiringRes, feedbackRes, dailyMembersRes, enrollmentsRes, newMembershipsRes] = await Promise.all([
-        supabase.from('attendance').select('id, member_id, check_in_time, check_out_time, profiles!attendance_member_id_fkey(full_name, code)').order('check_in_time', { ascending: false }).limit(10),
-        supabase.from('trainer_assignments').select('id, trainer_id, member_id, assigned_at').order('assigned_at', { ascending: false }).limit(10),
-        supabase.from('memberships').select('id, member_id, plan_name, end_date, profiles!memberships_member_id_fkey(full_name, code)').eq('status', 'active').not('end_date', 'is', null).lte('end_date', new Date(Date.now() + 7 * DAY).toISOString().split('T')[0]).order('end_date', { ascending: true }).limit(10),
-        supabase.from('trainer_feedback').select('id, member_id, content, created_at, profiles!trainer_feedback_member_id_fkey(full_name)').order('created_at', { ascending: false }).limit(10),
-        supabase.from('memberships').select('member_id').eq('plan_name', 'Daily').eq('status', 'active'),
-        supabase.from('enrollments').select('id, full_name, email, status, confirmed_at, created_at').order('created_at', { ascending: false }).limit(10),
-        supabase.from('memberships').select('id, member_id, plan_name, price, created_at, profiles!memberships_member_id_fkey(full_name, code)').order('created_at', { ascending: false }).limit(10),
-      ])
-
-      const profileIds = new Set<string>()
-      ;(assignmentRes.data ?? []).forEach(a => {
-        profileIds.add(a.trainer_id)
-        profileIds.add(a.member_id)
-      })
-      ;(newMembershipsRes.data ?? []).forEach(m => {
-        if (m.member_id) profileIds.add(m.member_id)
-      })
-      const profileMap: Record<string, { full_name: string; code: string | null }> = {}
-      if (profileIds.size > 0) {
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, full_name, code')
-          .in('id', Array.from(profileIds))
-        profiles?.forEach(p => { profileMap[p.id] = p })
-      }
-
-      const enrollmentProfileEmails = new Set<string>()
-      ;(enrollmentsRes.data ?? []).forEach(e => {
-        if (e.email) enrollmentProfileEmails.add(e.email)
-      })
-      const enrollmentProfileMap: Record<string, { full_name: string }> = {}
-      if (enrollmentProfileEmails.size > 0) {
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('email, full_name')
-          .in('email', Array.from(enrollmentProfileEmails))
-        profiles?.forEach(p => { enrollmentProfileMap[p.email] = p })
-      }
-
-      const dailyMemberIds = new Set((dailyMembersRes.data ?? []).map(m => m.member_id))
-      let inactiveMembers: { member_id: string; full_name: string; code: string | null; daysInactive: number }[] = []
-
-      if (dailyMemberIds.size > 0) {
-        const { data: attendanceData } = await supabase
-          .from('attendance')
-          .select('member_id, check_in_date')
-          .in('member_id', Array.from(dailyMemberIds))
-          .order('check_in_date', { ascending: false })
-
-        const lastCheckIn: Record<string, string> = {}
-        attendanceData?.forEach(a => {
-          if (!lastCheckIn[a.member_id] || a.check_in_date > lastCheckIn[a.member_id]) {
-            lastCheckIn[a.member_id] = a.check_in_date
-          }
-        })
-
-        const now = new Date()
-        now.setHours(0, 0, 0, 0)
-        const memberIds = Array.from(dailyMemberIds)
-        let profileMap: Record<string, { full_name: string; code: string }> = {}
-        if (memberIds.length > 0) {
-          const { data: profiles } = await supabase
-            .from('profiles')
-            .select('id, full_name, code')
-            .in('id', memberIds)
-          profiles?.forEach(p => { profileMap[p.id] = p })
-        }
-
-        inactiveMembers = (dailyMembersRes.data ?? [])
-          .map(m => {
-            const last = lastCheckIn[m.member_id]
-            const daysInactive = last ? Math.floor((now.getTime() - new Date(last).getTime()) / DAY) : 999
-            return {
-              member_id: m.member_id,
-              full_name: profileMap[m.member_id]?.full_name ?? 'Unknown',
-              code: profileMap[m.member_id]?.code,
-              daysInactive,
-            }
-          })
-          .filter(r => r.daysInactive >= 7)
-          .sort((a, b) => b.daysInactive - a.daysInactive)
-          .slice(0, 10)
-      }
-
-      const activities: { id: string; type: string; message: string; timestamp: string; userName: string; userCode?: string | null }[] = []
-
-      ;(attendanceRes.data ?? []).forEach(a => {
-        const profile = Array.isArray(a.profiles) ? a.profiles[0] : a.profiles
-        activities.push({
-          id: `checkin-${a.id}`,
-          type: 'checkin',
-          message: 'Checked in',
-          timestamp: a.check_in_time,
-          userName: profile?.full_name ?? 'Unknown',
-          userCode: profile?.code,
-        })
-        if (a.check_out_time) {
-          activities.push({
-            id: `checkout-${a.id}`,
-            type: 'checkout',
-            message: 'Checked out',
-            timestamp: a.check_out_time,
-            userName: profile?.full_name ?? 'Unknown',
-            userCode: profile?.code,
-          })
-        }
-      })
-
-      ;(assignmentRes.data ?? []).forEach(a => {
-        const trainer = profileMap[a.trainer_id]
-        const member = profileMap[a.member_id] ?? null
-        activities.push({
-          id: `assign-${a.id}`,
-          type: 'trainer',
-          message: `Assigned to ${trainer?.full_name ?? 'trainer'}`,
-          timestamp: a.assigned_at,
-          userName: member?.full_name ?? 'Unknown',
-          userCode: member?.code,
-        })
-      })
-
-      ;(expiringRes.data ?? []).forEach(m => {
-        const profile = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles
-        const daysLeft = Math.ceil((new Date(m.end_date).getTime() - Date.now()) / DAY)
-        activities.push({
-          id: `expire-${m.id}`,
-          type: 'expiring',
-          message: `Membership expires in ${daysLeft} days`,
-          timestamp: m.end_date,
-          userName: profile?.full_name ?? 'Unknown',
-          userCode: profile?.code,
-        })
-      })
-
-      ;(feedbackRes.data ?? []).forEach(f => {
-        const profile = Array.isArray(f.profiles) ? f.profiles[0] : f.profiles
-        activities.push({
-          id: `feedback-${f.id}`,
-          type: 'feedback',
-          message: `New feedback: "${f.content.slice(0, 50)}${f.content.length > 50 ? '...' : ''}"`,
-          timestamp: f.created_at,
-          userName: profile?.full_name ?? 'Unknown',
-        })
-      })
-
-      inactiveMembers.forEach(m => {
-        activities.push({
-          id: `inactive-${m.member_id}`,
-          type: 'inactive',
-          message: `Inactive for ${m.daysInactive} days`,
-          timestamp: new Date(Date.now() - m.daysInactive * DAY).toISOString(),
-          userName: m.full_name,
-          userCode: m.code,
-        })
-      })
-
-      ;(enrollmentsRes.data ?? []).forEach(e => {
-        const matched = enrollmentProfileMap[e.email]
-        activities.push({
-          id: `enrollment-${e.id}`,
-          type: 'enrollment',
-          message: e.status === 'confirmed' ? `Enrollment confirmed: ${matched?.full_name ?? e.full_name}` : `New enrollment: ${e.full_name} (${e.email})`,
-          timestamp: e.status === 'confirmed' && e.confirmed_at ? e.confirmed_at : e.created_at,
-          userName: matched?.full_name ?? e.full_name,
-        })
-      })
-
-      ;(newMembershipsRes.data ?? []).forEach(m => {
-        const profile = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles
-        activities.push({
-          id: `membership-${m.id}`,
-          type: 'membership',
-          message: `New membership: ${profile?.full_name ?? 'Unknown'} — ${m.plan_name} (₱${Number(m.price).toLocaleString()})`,
-          timestamp: m.created_at,
-          userName: profile?.full_name ?? 'Unknown',
-          userCode: profile?.code,
-        })
-      })
-
-      return activities
-        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-        .slice(0, 20)
-    },
-  })
-}
-
-const ACTIVITY_STYLES: Record<string, { bg: string; label: string }> = {
-  checkin: { bg: 'bg-emerald-500/15 border border-emerald-400/20 text-accent-green', label: 'Check-in' },
-  checkout: { bg: 'bg-amber-500/15 border border-amber-400/20 text-accent-amber', label: 'Check-out' },
-  trainer: { bg: 'bg-indigo-500/15 border border-indigo-400/20 text-accent-blue', label: 'Trainer' },
-  expiring: { bg: 'bg-amber-500/15 border border-amber-400/20 text-accent-amber', label: 'Expiring' },
-  inactive: { bg: 'bg-red-500/15 border border-red-400/20 text-accent-red', label: 'Inactive' },
-  feedback: { bg: 'bg-purple-500/15 border border-purple-400/20 text-accent-purple', label: 'Feedback' },
-  enrollment: { bg: 'bg-purple-500/15 border border-purple-400/20 text-accent-purple', label: 'Enrollment' },
-  membership: { bg: 'bg-blue-500/15 border border-blue-400/20 text-accent-blue', label: 'Membership' },
-}
-
-const MEMBER_ITEM_COLORS: Record<string, { dot: string; text: string }> = {
-  Male: { dot: '#3B82F6', text: '#3B82F6' },
-  Female: { dot: '#DB2777', text: '#DB2777' },
-  Active: { dot: '#22C55E', text: '#22C55E' },
-  Inactive: { dot: '#FF3B3B', text: '#FF3B3B' },
-  Other: { dot: '#C084FC', text: '#C084FC' },
-}
-
-function getPieColor(name: string) {
-  if (STATUS_COLORS[name]) return STATUS_COLORS[name]
-  if (GENDER_COLORS[name]) return GENDER_COLORS[name]
-  return COLORS[0]
-}
-
-function CustomBarTooltip({ active, payload, label }: any) {
-  if (!active || !payload?.length) return null
-  const value = payload[0].value
-  return (
-    <div className="rounded-lg border border-line bg-elevated/90 px-3 py-2 text-xs shadow-xl backdrop-blur-md">
-      <p className="text-[11px] text-fg">Day {label}</p>
-      <p className="text-xs font-semibold" style={{ color: '#A855F7' }}>{value} Check-ins</p>
-    </div>
-  )
-}
-
-function CustomPieTooltip({ active, payload, coordinate }: any) {
-  if (!active || !payload?.length) return null
-  const entry = payload[0]
-  const color = getPieColor(entry.name)
-  if (!coordinate) return null
-  const isLeft = entry.name === 'Female' || entry.name === 'Active'
-  const x = isLeft ? coordinate.x - 90 : coordinate.x + 12
-  const y = coordinate.y - 12
-  return (
-    <div className="absolute rounded-lg border border-line bg-elevated/90 px-3 py-2 text-xs shadow-xl backdrop-blur-md pointer-events-none" style={{ left: x, top: y }}>
-      <p className="text-xs font-medium" style={{ color }}>{entry.name}</p>
-      <p className="text-xs font-semibold" style={{ color }}>{entry.value}</p>
-    </div>
-  )
-}
-
+/**
+ * Admin dashboard root: one screen, five tabbed sub-pages.
+ *
+ * Filter state (range / membership type / chart granularity / activity type)
+ * lives HERE so it survives tab switches; each active panel refetches through
+ * query keys built from it. Only the active panel mounts — the others' queries
+ * stay cached by React Query, so switching back is instant.
+ */
 export default function DashboardPage() {
-  const now = new Date()
-  const defaultMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-  const [selectedMonth, setSelectedMonth] = useState(defaultMonth)
-  const [revenueRange, setRevenueRange] = useState<'week' | 'month' | 'year'>('year')
-  const monthOptions = useMemo(() => getMonthOptions(), [])
-  const chart = useChartTheme()
+  const [range, setRange] = useState<Range>(() => lastNDays(90))
+  const [plan, setPlan] = useState<PlanFilter>('all')
+  const [grainOverride, setGrainOverride] = useState<Grain | undefined>(undefined)
+  const [activityType, setActivityType] = useState<ActivityType | 'all'>('all')
+  const [tab, setTab] = useState<string>(TABS[0].id)
+
+  // A new span gets fresh automatic granularity; the override only applies to
+  // the range it was chosen for.
+  const grain: Grain = grainOverride ?? autoGrain(range)
+  const onRangeChange = (r: Range) => {
+    setRange(r)
+    setGrainOverride(undefined)
+  }
 
   const { data: baseStats } = useDashboardBaseStats()
-  const { data: attendanceStats } = useDashboardStats(selectedMonth)
-  const { data: chartData } = useAttendanceChart(selectedMonth)
-  const { data: growthData } = useGrowthData()
-  const { data: genderActivityData } = useGenderAndActivityData()
-  const { data: recentActivity } = useRecentActivity()
-  const { data: revenueData } = useRevenueChart(revenueRange)
   const { data: revenueSummary } = useRevenueMonthlySummary()
+  const { data: growthMonths } = useGrowthData()
 
-  const memberTrend = useMemo(() => {
-    if (!baseStats?.totalMembers || !growthData || growthData.length < 2) return undefined
-    const current = growthData[growthData.length - 1].totalMembers
-    const previous = growthData[growthData.length - 2].totalMembers
-    if (previous === 0) return undefined
-    return Math.round(((current - previous) / previous) * 100)
-  }, [baseStats, growthData])
-
-  const trainerTrend = useMemo(() => {
-    if (!baseStats?.totalTrainers || !growthData || growthData.length < 2) return undefined
-    const current = growthData[growthData.length - 1].newMembers
-    const previous = growthData[growthData.length - 2].newMembers
-    if (previous === 0) return undefined
-    return Math.round(((current - previous) / previous) * 100)
-  }, [baseStats, growthData])
-
-  const genderTotal = useMemo(() => (genderActivityData ?? []).filter(d => d.type === 'gender').reduce((sum, d) => sum + d.value, 0), [genderActivityData])
-  const activeCount = useMemo(() => (genderActivityData ?? []).find(d => d.name === 'Active')?.value ?? 0, [genderActivityData])
-  const inactiveCount = useMemo(() => (genderActivityData ?? []).find(d => d.name === 'Inactive')?.value ?? 0, [genderActivityData])
-  const memberTotal = useMemo(() => baseStats?.totalMembers ?? (genderTotal + activeCount + inactiveCount), [baseStats?.totalMembers, genderTotal, activeCount, inactiveCount])
-
-  const revenueChartData = useMemo(() => {
-    if (!revenueData) return []
-    if (revenueRange === 'year') {
-      const monthMap: Record<string, { date: string; revenue: number }> = {}
-      revenueData.forEach(d => {
-        const monthKey = d.date.slice(0, 7)
-        if (!monthMap[monthKey]) monthMap[monthKey] = { date: monthKey, revenue: 0 }
-        monthMap[monthKey].revenue += d.revenue
-      })
-      return Object.values(monthMap).sort((a, b) => a.date.localeCompare(b.date))
-    }
-    return revenueData
-  }, [revenueData, revenueRange])
-
-  const revenueXFormatter = (v: string) => {
-    if (revenueRange === 'year') {
-      const [, m] = v.split('-')
-      return MONTH_NAMES[Number(m) - 1] || v
-    }
-    const d = new Date(`${v}T00:00:00`)
-    return revenueRange === 'week' ? WEEKDAY_NAMES[d.getDay()] : String(d.getDate())
-  }
+  // Shared with the Daily Check-ins panel (same query key → single fetch);
+  // powers the summary row's Total Attendance card, which is range + type
+  // filtered and deliberately shows NO percentage.
+  const attendance = useCheckinsTab(range, plan, grain)
 
   const revenueTrend = useMemo(() => {
     if (!revenueSummary) return undefined
     const { thisMonthRevenue, lastMonthRevenue } = revenueSummary
     if (lastMonthRevenue === 0 && thisMonthRevenue === 0) return undefined
-    if (lastMonthRevenue === 0) return 100
-
+    if (lastMonthRevenue === 0) return undefined
     return Math.round(((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100)
   }, [revenueSummary])
 
-  if (false) return <div className="text-center py-8 text-fg-muted">Loading...</div>
+  const memberTrend = useMemo(() => {
+    if (!growthMonths || growthMonths.length < 2) return undefined
+    const cur = growthMonths[growthMonths.length - 1].memberTotal
+    const prev = growthMonths[growthMonths.length - 2].memberTotal
+    if (prev === 0) return undefined
+    return Math.round(((cur - prev) / prev) * 100)
+  }, [growthMonths])
+
+  const trainerTrend = useMemo(() => {
+    if (!growthMonths || growthMonths.length < 2) return undefined
+    const cur = growthMonths[growthMonths.length - 1].trainerTotal
+    const prev = growthMonths[growthMonths.length - 2].trainerTotal
+    if (prev === 0) return undefined
+    return Math.round(((cur - prev) / prev) * 100)
+  }, [growthMonths])
+
+  const panelProps = { range, onRangeChange, plan, onPlanChange: setPlan, grain, onGrainChange: setGrainOverride }
+  const attendanceSpark = attendance.points.slice(-10).map(p => ({ value: p.count }))
 
   return (
-    <div className="h-full flex flex-col gap-2.5">
-      <div className="grid grid-cols-4 gap-3">
+    <div className="h-full flex flex-col gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
         <StatsCard
           title="Total Revenue"
           value={baseStats?.totalRevenue ?? 0}
-          trend={revenueTrend ? { value: revenueTrend, label: 'from last month' } : undefined}
+          trend={revenueTrend !== undefined ? { value: revenueTrend, label: 'from last month' } : undefined}
           sparkData={revenueSummary?.series.slice(-10)}
           iconVariant="purple"
           sparkColor="#10B981"
@@ -619,246 +178,48 @@ export default function DashboardPage() {
         <StatsCard
           title="Total Members"
           value={baseStats?.totalMembers ?? 0}
-          trend={memberTrend ? { value: memberTrend, label: 'from last month' } : undefined}
-          sparkData={growthData?.slice(-10).map(d => ({ value: d.totalMembers }))}
+          trend={memberTrend !== undefined ? { value: memberTrend, label: 'from last month' } : undefined}
+          sparkData={growthMonths?.map(m => ({ value: m.memberTotal }))}
           iconVariant="purple"
           sparkColor="#7C3AED"
         />
         <StatsCard
           title="Total Trainers"
           value={baseStats?.totalTrainers ?? 0}
-          trend={trainerTrend ? { value: trainerTrend, label: 'from last month' } : undefined}
-          sparkData={growthData?.slice(-10).map(d => ({ value: d.newMembers }))}
+          trend={trainerTrend !== undefined ? { value: trainerTrend, label: 'from last month' } : undefined}
+          sparkData={growthMonths?.map(m => ({ value: m.trainerTotal }))}
           iconVariant="blue"
           sparkColor="#3B82F6"
         />
         <StatsCard
           title="Total Attendance"
-          value={attendanceStats?.attendance ?? 0}
-          trend={attendanceStats?.attendanceTrend !== undefined ? { value: attendanceStats.attendanceTrend, label: attendanceStats.attendanceTrendLabel ?? 'from last month' } : undefined}
-          sparkData={chartData?.slice(-10).map(d => ({ value: d.count }))}
+          value={attendance.total}
+          sparkData={attendanceSpark.length > 1 ? attendanceSpark : undefined}
           iconVariant="green"
           sparkColor="#22C55E"
         />
       </div>
 
-      <div className="grid grid-cols-12 gap-3 min-h-0">
-        <div className="col-span-7 flex flex-col gap-3">
-          <div className="glass-panel rounded-2xl flex flex-col min-h-0 flex-1">
-            <div className="flex items-center justify-between px-4 pt-3 pb-2">
-              <div className="flex items-center gap-2">
-                <h2 className="text-[13px] font-semibold text-fg-strong">Daily Check-ins</h2>
-                <span className="text-[11px] text-accent-blue">Trainer {attendanceStats?.trainerAttendance ?? 0}</span>
-                <span className="text-[11px] text-accent-green">Member {attendanceStats?.memberAttendance ?? 0}</span>
-              </div>
-              <select
-                value={selectedMonth}
-                onChange={e => setSelectedMonth(e.target.value)}
-                className="px-2 py-1 text-xs rounded-md bg-[#7C3AED] border border-[#7C3AED] text-white focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50 cursor-pointer"
-              >
-                {monthOptions.map(m => (
-                  <option key={m.value} value={m.value} className="bg-elevated text-fg-strong">{m.label}</option>
-                ))}
-              </select>
-            </div>
-            <div className="px-2 pb-2 flex-1 min-h-0">
-              <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData ?? []}>
-                  <defs>
-                    <linearGradient id="checkinBarGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#7C3AED" />
-                      <stop offset="100%" stopColor="#A855F7" />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} vertical={false} />
-                  <XAxis
-                    dataKey="date"
-                    tick={chart.axisTick}
-                    tickCount={7}
-                    tickFormatter={v => `${new Date(v).getDate()}`}
-                    axisLine={{ stroke: chart.axisLine }}
-                    tickLine={false}
-                  />
-                  <YAxis tick={chart.axisTick} axisLine={false} tickLine={false} width={28} />
-                  <Tooltip
-                    content={<CustomBarTooltip />}
-                    cursor={{ fill: chart.cursor }}
-                  />
-                  <Bar dataKey="count" fill="url(#checkinBarGradient)" radius={[3, 3, 0, 0]} activeBar={{ fill: '#A855F7' }} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
+      <DashboardTabs tabs={TABS} value={tab} onChange={setTab} />
 
-          <div className="glass-panel rounded-2xl flex flex-col min-h-0 flex-1">
-            <div className="flex items-center justify-between px-4 pt-3 pb-2">
-              <h2 className="text-[13px] font-semibold text-fg-strong">Revenue Overview</h2>
-              <div className="flex items-center gap-1 rounded-lg bg-overlay-8 p-0.5">
-                {(['week', 'month', 'year'] as const).map(r => (
-                  <button
-                    key={r}
-                    onClick={() => setRevenueRange(r)}
-                    className={`px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors capitalize ${
-                      revenueRange === r
-                        ? 'bg-[#7C3AED] text-white shadow-[0_0_10px_rgba(124,58,237,0.35)]'
-                        : 'text-fg-faint hover:text-fg-strong'
-                    }`}
-                  >
-                    {r === 'week' ? 'This Week' : r === 'month' ? 'This Month' : 'This Year'}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="px-2 pb-2 flex-1 min-h-0">
-              <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={revenueChartData ?? []} margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
-                   <defs>
-                    <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#7C3AED" stopOpacity={0.3} />
-                      <stop offset="100%" stopColor="#7C3AED" stopOpacity={0} />
-                    </linearGradient>
-                    <filter id="revenueGlow" x="-20%" y="-20%" width="140%" height="140%">
-                      <feGaussianBlur stdDeviation="3" result="blur" />
-                      <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                    </filter>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} vertical={false} />
-                  <XAxis
-                    dataKey="date"
-                    tick={chart.axisTick}
-                    tickCount={7}
-                    tickFormatter={v => revenueXFormatter(v)}
-                    axisLine={{ stroke: chart.axisLine }}
-                    tickLine={false}
-                  />
-                  <YAxis tick={chart.axisTick} axisLine={false} tickLine={false} width={42} padding={{ bottom: 6 }} tickFormatter={v => `₱${v}`} />
-                  <Tooltip
-                    contentStyle={chart.tooltipStyle}
-                    labelStyle={{ color: chart.tooltipLabel }}
-                    labelFormatter={v => revenueRange === 'year' ? v : new Date(`${v}T00:00:00`).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
-                    formatter={(value: number) => [`₱${value.toLocaleString()}`, 'Revenue']}
-                  />
-                  <Area type="monotone" dataKey="revenue" stroke="#7C3AED" strokeWidth={2} fill="url(#revenueGradient)" dot={false} name="Revenue" filter="url(#revenueGlow)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          <div className="glass-panel rounded-2xl flex flex-col min-h-0 flex-1">
-            <div className="flex items-center justify-between px-4 pt-3 pb-2">
-              <h2 className="text-[13px] font-semibold text-fg-strong">Member Growth Over Time</h2>
-              <div className="flex items-center gap-3 text-[11px] text-fg-faint">
-                <span className="inline-flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[#7C3AED]" /> Total</span>
-                <span className="inline-flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[#22C55E]" /> New</span>
-              </div>
-            </div>
-            <div className="px-2 pb-2 flex-1 min-h-0">
-              <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={growthData ?? []} margin={{ top: 0, right: 8, left: -8, bottom: 0 }}>
-                   <defs>
-                    <linearGradient id="growthTotal" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#7C3AED" stopOpacity={0.3} />
-                      <stop offset="100%" stopColor="#7C3AED" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="growthNew" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#22C55E" stopOpacity={0.25} />
-                      <stop offset="100%" stopColor="#22C55E" stopOpacity={0} />
-                    </linearGradient>
-                    <filter id="growthGlow" x="-20%" y="-20%" width="140%" height="140%">
-                      <feGaussianBlur stdDeviation="2.5" result="blur" />
-                      <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                    </filter>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} vertical={false} />
-                  <XAxis dataKey="month" tick={chart.axisTick} interval={0} tickFormatter={v => MONTH_NAMES[Number(v.split('-')[1]) - 1]} axisLine={{ stroke: chart.axisLine }} tickLine={false} />
-                  <YAxis tick={chart.axisTick} axisLine={false} tickLine={false} width={28} />
-                  <Tooltip contentStyle={chart.tooltipStyle} labelStyle={{ color: chart.tooltipLabel }} />
-                  <Area type="monotone" dataKey="totalMembers" stroke="#7C3AED" strokeWidth={2} fill="url(#growthTotal)" dot={false} name="Total Members" filter="url(#growthGlow)" />
-                  <Area type="monotone" dataKey="newMembers" stroke="#22C55E" strokeWidth={2} fill="url(#growthNew)" dot={false} name="New Members" filter="url(#growthGlow)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
+      <div
+        role="tabpanel"
+        id={`dash-panel-${tab}`}
+        aria-labelledby={`dash-tab-${tab}`}
+        tabIndex={0}
+        className="flex-1 min-h-0 overflow-y-auto pr-1 focus:outline-none"
+      >
+        <div className="flex flex-col gap-4 pb-2">
+          {tab === 'checkins' && <CheckinsTab {...panelProps} />}
+          {tab === 'revenue' && <RevenueTab {...panelProps} />}
+          {tab === 'growth' && <GrowthTab {...panelProps} />}
+          {tab === 'members' && <MemberOverviewTab {...panelProps} />}
+          {tab === 'activity' && (
+            <ActivityTab {...panelProps} activityType={activityType} onActivityTypeChange={setActivityType} />
+          )}
         </div>
-
-        <div className="col-span-5 flex flex-col gap-3 min-h-0">
-          <div className="glass-panel rounded-2xl flex flex-col min-h-0">
-            <h2 className="text-[13px] font-semibold text-fg-strong px-4 pt-3 pb-2">Member Overview</h2>
-            <div className="flex items-center gap-4 p-3">
-              <div className="relative w-[110px] h-[110px] shrink-0">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                     <Pie data={genderActivityData ?? []} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius="92%" innerRadius="55%" paddingAngle={3}>
-                      {(genderActivityData ?? []).map(d => (
-                        <Cell key={d.name} fill={d.type === 'status' ? (STATUS_COLORS[d.name] || COLORS[0]) : (GENDER_COLORS[d.name] || COLORS[0])} />
-                      ))}
-                    </Pie>
-                     <Tooltip content={<CustomPieTooltip />} />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-base font-bold text-fg-strong display">{baseStats?.totalMembers ?? 0}</span>
-                  <span className="text-[10px] text-fg-faint">Members</span>
-                </div>
-              </div>
-              <div className="flex flex-col gap-2 flex-1">
-                {(genderActivityData ?? []).map(d => {
-                  const pct = memberTotal ? Math.round((d.value / memberTotal) * 100) : 0
-                  return (
-                    <div key={d.name} className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: d.type === 'status' ? (STATUS_COLORS[d.name] || COLORS[0]) : (GENDER_COLORS[d.name] || COLORS[0]) }} />
-                      <span className="text-xs font-medium w-14 text-fg-strong">{d.name}</span>
-                      <span className="text-xs font-semibold" style={{ color: MEMBER_ITEM_COLORS[d.name]?.text || chart.tooltipFg }}>{d.value}</span>
-                      <div className="flex-1 h-1.5 rounded-full bg-overlay-8">
-                        <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: d.type === 'status' ? (STATUS_COLORS[d.name] || COLORS[0]) : (GENDER_COLORS[d.name] || COLORS[0]) }} />
-                      </div>
-                      <span className="text-[11px] text-fg-muted w-8 text-right">{pct}%</span>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          </div>
-
-          <div className="glass-panel rounded-2xl flex flex-col min-h-0 flex-1">
-            <div className="flex items-center justify-between px-4 pt-3 pb-2">
-              <h2 className="text-[13px] font-semibold text-fg-strong">Recent Activity</h2>
-              <span className="text-[11px] text-white bg-[#7C3AED] px-2 py-0.5 rounded-full">{(recentActivity ?? []).length}</span>
-            </div>
-            <div className="overflow-y-auto flex-1 min-h-0 pl-1">
-              {(recentActivity ?? []).length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center gap-1.5 px-4 py-6 text-center">
-                  <Activity className="w-4 h-4 text-fg-faint" strokeWidth={1.75} />
-                  <p className="text-[13px] text-fg-faint">No recent activity</p>
-                </div>
-              ) : (
-                 <div className="flex flex-col gap-1">
-                   {(recentActivity ?? []).map(a => {
-                     const style = ACTIVITY_STYLES[a.type] || ACTIVITY_STYLES.checkin
-                     const time = new Date(a.timestamp)
-                     const timeStr = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                     const dateStr = time.toLocaleDateString([], { month: 'short', day: 'numeric' })
-                     return (
-                        <div key={a.id} className="glass-card rounded-lg p-2">
-                        <div className="flex items-center gap-3">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${style.bg}`}>
-                            {style.label}
-                          </span>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs text-fg-strong truncate">{a.userName} {a.userCode && <span className="text-fg-muted ml-1">{a.userCode}</span>}</p>
-                            <p className="text-[11px] text-fg-muted truncate">{a.message}</p>
-                          </div>
-                          <span className="text-[10px] text-fg-muted whitespace-nowrap">{dateStr} {timeStr}</span>
-                        </div>
-                      </div>
-                     )
-                   })}
-                 </div>
-              )}
-               </div>
-             </div>
-         </div>
-       </div>
+      </div>
     </div>
   )
 }
+

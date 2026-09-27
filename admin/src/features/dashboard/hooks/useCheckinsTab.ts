@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { autoGrain, bucketize, daysBetween, prevWindow, type Grain, type Range } from '@/features/dashboard/lib/dateRange'
+import { autoGrain, bucketize, daysBetween, type Grain, type Range } from '@/features/dashboard/lib/dateRange'
 import { fetchAttendance, fetchMemberships } from '@/features/dashboard/lib/attendance'
 import { planMatches, resolvePlan, type AttendanceRow, type PlanFilter } from '@/features/dashboard/lib/planFilter'
 
@@ -44,9 +44,7 @@ export function useCheckinsTab(range: Range, plan: PlanFilter, grain?: Grain) {
     const points: CheckinPoint[] = buckets.map(b => {
       let n = 0
       // Bucket covers whole days, so sum the day totals inside [start, end].
-      for (const day of Object.keys(counts)) {
-        if (day >= b.start && day <= b.end) n += counts[day]
-      }
+      for (const day of Object.keys(counts)) if (day >= b.start && day <= b.end) n += counts[day]
       return { key: b.key, label: b.label, full: b.full, count: n }
     })
 
@@ -58,23 +56,5 @@ export function useCheckinsTab(range: Range, plan: PlanFilter, grain?: Grain) {
     return { total, memberCount, trainerCount, avg, days, points, records, buckets }
   }, [q.data, range.start, range.end, effectiveGrain])
 
-  // Previous-window total for the "% vs previous N days" line (only member
-  // totals here — the Total Check-ins KPI intentionally shows no %).
-  const prev = useQuery({
-    queryKey: ['dash-checkins-prev', range.start, range.end, plan],
-    queryFn: async () => {
-      const w = prevWindow(range)
-      const [rows, memberships] = await Promise.all([fetchAttendance(w), fetchMemberships()])
-      return rows.filter(r => planMatches(plan, resolvePlan(memberships, r.member_id, r.check_in_date))).length
-    },
-  })
-
-  const trend = useMemo(() => {
-    if (prev.data === undefined) return undefined
-    const days = Math.max(1, daysBetween(range.start, range.end))
-    if (prev.data === 0) return derived.total > 0 ? { value: 100, label: `vs previous ${days} days` } : undefined
-    return { value: Math.round(((derived.total - prev.data) / prev.data) * 100), label: `vs previous ${days} days` }
-  }, [prev.data, derived.total, range.start, range.end])
-
-  return { ...derived, trend, isLoading: q.isLoading || prev.isLoading, error: q.error ?? prev.error }
+  return { ...derived, isLoading: q.isLoading, error: q.error }
 }

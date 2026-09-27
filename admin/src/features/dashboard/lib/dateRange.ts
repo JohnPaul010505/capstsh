@@ -74,7 +74,8 @@ export function normalizeRange(a: string, b: string): Range {
   return a <= b ? { start: a, end: b } : { start: b, end: a }
 }
 
-function fmtDay(s: string): string {
+/** 'Jan 15, 2026' — parsed as a local day. */
+export function fmtDay(s: string): string {
   const d = parseDay(s)
   return `${MONTH_SHORT[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`
 }
