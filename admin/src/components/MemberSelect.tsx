@@ -10,12 +10,14 @@ export type SelectOption = { id: string; label: string }
  * Reusable component extracted from MembershipsPage.tsx so both MembershipsPage
  * and PredictionsPage can render a themed dropdown without fighting native OS styling.
  */
-export function MemberSelect({ options, value, onChange, placeholder = 'Select...', className }: {
+export function MemberSelect({ options, value, onChange, placeholder = 'Select...', className, buttonClassName }: {
   options: SelectOption[] | undefined
   value: string
   onChange: (id: string) => void
   placeholder?: string
   className?: HTMLAttributes<HTMLDivElement>['className']
+  /** Extra classes merged onto the trigger button (e.g. larger dashboard-filter sizing). */
+  buttonClassName?: string
 }) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -42,7 +44,10 @@ export function MemberSelect({ options, value, onChange, placeholder = 'Select..
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between gap-2 px-3 py-2 bg-overlay-8 border border-line rounded-lg text-sm text-left cursor-pointer hover:border-[#7C3AED]/50 focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50 transition-colors"
+        className={cn(
+          'w-full flex items-center justify-between gap-2 px-3 py-2 bg-overlay-8 border border-line rounded-lg text-sm text-left cursor-pointer hover:border-[#7C3AED]/50 focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50 transition-colors',
+          buttonClassName,
+        )}
         title={selected ? selected.label : placeholder}
         aria-haspopup="listbox"
         aria-expanded={open}
@@ -61,7 +66,7 @@ export function MemberSelect({ options, value, onChange, placeholder = 'Select..
           >
             {placeholder}
           </button>
-          {options?.map(opt => (
+          {(options ?? []).map(opt => (
             <button
               key={opt.id}
               type="button"
