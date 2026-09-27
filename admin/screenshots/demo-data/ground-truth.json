@@ -1,0 +1,30 @@
+{
+  "timestamp": "2026-09-27T20:23:28.530Z",
+  "profiles": {
+    "total": 39,
+    "members": 30,
+    "trainers": 7,
+    "admins": 2
+  },
+  "attendance": {
+    "total": 3412,
+    "minDate": "2026-01-01",
+    "maxDate": "2026-09-26"
+  },
+  "memberships": {
+    "total": 27
+  },
+  "trainer_assignments": 29,
+  "trainer_feedback": 18,
+  "predictions": 8,
+  "notifications": 88,
+  "enrollments": {
+    "total": 5,
+    "pending": 0,
+    "confirmed": 5
+  },
+  "membership_renewal_requests": {
+    "total": 0,
+    "pending": 0
+  }
+}
