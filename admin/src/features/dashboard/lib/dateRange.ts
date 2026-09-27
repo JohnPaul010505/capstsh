@@ -118,6 +118,17 @@ export const RANGE_PRESETS: RangePreset[] = [
   { id: 'all', label: 'All time', apply: t => ({ start: '2020-01-01', end: toDay(t) }) },
 ]
 
+/**
+ * The equal-length window immediately before `r` — the honest comparison
+ * basis for the "vs previous N days" KPI lines.
+ */
+export function prevWindow(r: Range): Range {
+  const days = daysBetween(r.start, r.end)
+  const end = new Date(parseDay(r.start).getTime() - 86_400_000)
+  const start = new Date(end.getTime() - (days - 1) * 86_400_000)
+  return { start: toDay(start), end: toDay(end) }
+}
+
 /** Auto-pick a granularity that stays readable for the span. */
 export function autoGrain(r: Range): Grain {
   const n = daysBetween(r.start, r.end)

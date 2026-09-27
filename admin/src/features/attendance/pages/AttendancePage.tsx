@@ -4,6 +4,20 @@ import { supabase } from '@/lib/supabase'
 import { useAttendance } from '../hooks/useAttendance'
 import { Plus, LogOut, LogIn, X, Clock } from 'lucide-react'
 
+// PostgREST REJECTS unknown columns ('Could not find the ... column'), so
+// the manual check-in insert below retries without entry_method when
+// migration 0033 has not been applied yet.
+async function insertCheckin(payload: Record<string, unknown>) {
+  const first = await supabase.from('attendance').insert(payload)
+  if (!first.error) return first
+  if (/entry_method|column/i.test(first.error.message) && 'entry_method' in payload) {
+    const { entry_method: _dropped, ...rest } = payload
+    void _dropped
+    return supabase.from('attendance').insert(rest)
+  }
+  return first
+}
+
 export default function AttendancePage() {
   // check_in_date is written by the mobile app in the DEVICE-LOCAL day, so the
   // admin default must be local too — toISOString() is UTC (PH local and UTC
@@ -59,11 +73,15 @@ export default function AttendancePage() {
         .eq('check_in_date', today)
         .is('check_out_time', null)
       if (count !== null && count > 0) throw new Error('Already checked in')
-      const { error } = await supabase.from('attendance').insert({
+      const { error } = await insertCheckin({
         member_id: memberId,
         check_in_time: new Date().toISOString(),
         check_in_date: today,
         expires_at: new Date(Date.now() + 12 * 3600000).toISOString(),
+        // Labels the row as an admin manual check-in; migration 0033 adds
+        // this column (see supabase/migrations). insertCheckin drops it if
+        // 0033 has not been applied yet.
+        entry_method: 'manual',
       })
       if (error) throw error
     },

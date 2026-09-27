@@ -13,7 +13,7 @@
 const PAGE_SIZE = 1000
 const MAX_PAGES = 10
 
-type PageQuery<T> = { data: T[] | null; error: { message: string } | null }
+export type PageQuery<T> = { data: T[] | null; error: { message: string } | null }
 
 export async function fetchAllRows<T>(page: (from: number, to: number) => PromiseLike<PageQuery<T>>): Promise<T[]> {
   const out: T[] = []
