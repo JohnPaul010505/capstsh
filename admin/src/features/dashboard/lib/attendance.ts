@@ -64,14 +64,31 @@ export async function fetchAttendance(range: Range): Promise<AttendanceRow[]> {
   }
 }
 
-/** 27 rows today — small enough to fetch whole; drives the plan filter. */
+/**
+ * Every membership row, oldest start_date first; drives the plan filter.
+ *
+ * This used to be a single unbounded `.select()` on the strength of a comment
+ * claiming "27 rows today". The unified demo seed put 1,860 rows in the table,
+ * and PostgREST silently returns only the first 1,000 of an unpaged select — so
+ * the plan filter was resolving against a truncated history and members were
+ * being attributed to the wrong plan. It pages like every other reader here.
+ */
 export async function fetchMemberships(): Promise<MembershipLite[]> {
-  const { data, error } = await supabase
-    .from('memberships')
-    .select('member_id, plan_name, start_date, end_date, status, price, created_at')
-    .order('start_date', { ascending: true })
-  if (error) throw new Error(error.message)
-  return (data ?? []) as unknown as MembershipLite[]
+  return fetchAllRows<MembershipLite>(async (from, to) => {
+    const res = await supabase
+      .from('memberships')
+      .select('member_id, plan_name, start_date, end_date, status, price, created_at')
+      .order('start_date', { ascending: true })
+      // start_date is not unique, so a stable tiebreak is what makes the pages
+      // disjoint — without it a row can appear on two pages and another can be
+      // skipped entirely.
+      .order('id', { ascending: true })
+      .range(from, to)
+    return {
+      data: (res.data ?? []) as unknown as MembershipLite[],
+      error: res.error ? { message: res.error.message } : null,
+    }
+  })
 }
 
 /** Latest attendance day per member — 'YYYY-MM-DD', for the Member Overview tab. */

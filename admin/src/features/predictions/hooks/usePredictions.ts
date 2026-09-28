@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { fetchAllRows } from '@/features/dashboard/lib/fetchAll'
 
 export function usePredictions() {
   return useQuery({
@@ -62,12 +63,23 @@ export function useMembersSimple() {
   return useQuery({
     queryKey: ['members-simple'],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('profiles')
-        .select('id, full_name, email, code')
-        .eq('role', 'member')
-        .order('full_name')
-      return (data ?? []) as MemberOption[]
+      // Paged: this drives MemberSelect's option list. 987 members sits just
+      // under PostgREST's 1,000-row default, so the unpaged version worked by
+      // one member of luck and would have silently started dropping options as
+      // soon as the roster grew.
+      return fetchAllRows<MemberOption>(async (from, to) => {
+        const res = await supabase
+          .from('profiles')
+          .select('id, full_name, email, code')
+          .eq('role', 'member')
+          .order('full_name', { ascending: true })
+          .order('id', { ascending: true })
+          .range(from, to)
+        return {
+          data: (res.data ?? []) as MemberOption[],
+          error: res.error ? { message: res.error.message } : null,
+        }
+      })
     },
   })
 }

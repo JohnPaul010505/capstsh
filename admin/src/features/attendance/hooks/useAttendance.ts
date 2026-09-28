@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { fetchAllRows } from '@/features/dashboard/lib/fetchAll'
 
 export function useAttendance(date?: string, category?: 'member' | 'trainer') {
   return useQuery({
@@ -27,8 +28,20 @@ export function useAttendance(date?: string, category?: 'member' | 'trainer') {
         query = ids.length > 0 ? query.in('member_id', ids) : query.in('member_id', [''])
       }
 
-      const { data } = await query
-      return data ?? []
+      // This was an unpaged `.select()`, so PostgREST returned only the first
+      // 1,000 rows with no error — against 42k attendance rows the list simply
+      // stopped there. Paging makes it complete; Phase 2's server-side paging
+      // then replaces this so the page stops pulling the whole table.
+      return fetchAllRows<any>(async (from, to) => {
+        const res = await query
+          .order('check_in_time', { ascending: false })
+          .order('id', { ascending: false })
+          .range(from, to)
+        return {
+          data: (res.data ?? []) as any[],
+          error: res.error ? { message: res.error.message } : null,
+        }
+      })
     },
   })
 }
