@@ -53,6 +53,18 @@ const DAY = 86400000
 // How many members get a retention-risk forecast. The page reads the newest 50
 // rows, so this is sized to keep a broad spread in view while staying legible.
 export const RETENTION_TARGET = 320
+/**
+ * Window, in days back from asOf, over which risk reviews are stamped.
+ *
+ * Sized so the page's 50-row window is not a single metric. Risk rows
+ * outnumber weight rows 320:26, so at a 21-day window the newest 50 rows were
+ * ALL retention risk and no weight forecast was ever visible on the page. At
+ * 180 days the two interleave: roughly two risk reviews a day, so the newest
+ * 50 span ~4 weeks and reach the weight rows whose last weigh-in was recent.
+ * It is also the more realistic figure — an admin reviews retention weekly, so
+ * a panel spanning a few months is what a real desk would show.
+ */
+export const REVIEW_DAYS = 180
 
 const round2 = (n) => Math.round(n * 100) / 100
 const round3 = (n) => Math.round(n * 1000) / 1000
@@ -213,8 +225,6 @@ export function buildPredictions(weightsByMember, attendance, opts = {}) {
       clamped: f.clamped,
       method: f.method,
       note: `${f.data_points} weigh-ins over ${f.span_days} days — trend is ${f.trend} at ${f.daily_rate} kg/day.`,
-      // The forecast is "as of" the last measurement; the row is written when an
-      // admin reviews it, so created_at trails the history slightly.
       created_at: new Date(`${addDays(f.date_to, randInt(1, 10))}T10:00:00+08:00`).toISOString(),
       _basis: { r2: f.r2, trend: f.trend },
     })
@@ -268,7 +278,16 @@ export function buildPredictions(weightsByMember, attendance, opts = {}) {
       note:
         `60% check-in frequency + 20% falling trend + 20% recency ` +
         `(last visit ${r.days_since}d ago) - risk level ${r.risk}`,
-      created_at: new Date(`${asOf}T09:00:00+08:00`).toISOString(),
+      // Review timestamp, spread deterministically over the last REVIEW_DAYS so
+      // the two metrics interleave. Stamping every risk row with the same
+      // asOf 09:00 made all 320 of them newer than the 26 weight rows (whose
+      // created_at follows their last weigh-in, sometimes months back), and
+      // the page's `.order('created_at', desc).limit(50)` then showed 50
+      // retention rows and no weight forecast at all — the second metric the
+      // page is built to display was invisible.
+      created_at: new Date(
+        Date.parse(`${addDays(asOf, -randInt(0, REVIEW_DAYS - 1))}T${String(randInt(8, 19)).padStart(2, '0')}:${String(randInt(0, 59)).padStart(2, '0')}:00+08:00`),
+      ).toISOString(),
       _basis: { risk: r.risk, days_since: r.days_since },
     })
   }

@@ -372,6 +372,61 @@ async function verify(ctx) {
   console.log('VERIFY PASSED')
 }
 
+/**
+ * Move the trigger-created renewal notices back to when the request was made.
+ *
+ * Migration 0027's AFTER INSERT trigger stamps every notice with `now()`, so a
+ * batch insert of 210 historical renewals produced 210 notices all claiming to
+ * have arrived at this exact moment. The admin's "Recent Notifications" panel
+ * reads `.order('created_at', desc).limit(50)`, so those 210 were the 50 newest
+ * rows on the page — one title, no variety, and the other eight broadcast
+ * types were invisible no matter how they were seeded.
+ *
+ * Each notice is moved to the `requested_at` of the request it describes, which
+ * is the moment the notification would genuinely have fired had the requests
+ * arrived over time. The notice's own text is untouched; only the timestamp
+ * changes. Idempotent: re-running matches on the same requested_at.
+ */
+async function alignAutoRenewalNotices() {
+  const { data: requests, error: rErr } = await client
+    .from('membership_renewal_requests').select('id, requested_at')
+  if (rErr) throw new Error(`renewal requests for notification alignment: ${rErr.message}`)
+
+  const { data: notices, error: nErr } = await client
+    .from('notifications')
+    .select('id, title')
+    .eq('title', 'Membership Renewal Request')
+  if (nErr) throw new Error(`renewal notices for alignment: ${nErr.message}`)
+  if (!notices?.length) return
+
+  // The trigger stores no reference to the request that caused it, so an exact
+  // pairing is not recoverable after the fact. Spread the notices evenly across
+  // the real request timestamps instead: deterministic, keeps the panel varied,
+  // and never invents a moment outside the period the requests actually cover.
+  const stamps = (requests ?? []).map(r => r.requested_at).filter(Boolean).sort()
+  if (!stamps.length) return
+
+  // Order by id, not by the (all-identical) created_at, so the mapping is stable
+  // across runs and the operation is idempotent.
+  const ordered = [...notices].sort((a, b) => (a.id < b.id ? -1 : 1))
+  // A request can be stamped later on the same day than the moment the seed
+  // runs, so a copied `requested_at` can land in the future. Clamp to now:
+  // nothing in the panel should claim to have arrived after the moment we are
+  // looking at it.
+  const now = Date.now()
+  let moved = 0
+  for (let i = 0; i < ordered.length; i++) {
+    const raw = stamps[Math.floor((i / ordered.length) * stamps.length)]
+    if (!raw) continue
+    const target = new Date(Math.min(Date.parse(raw), now)).toISOString()
+    const { error } = await client
+      .from('notifications').update({ created_at: target }).eq('id', ordered[i].id)
+    if (error) throw new Error(`align notice ${ordered[i].id}: ${error.message}`)
+    moved++
+  }
+  console.log(`  aligned ${moved} auto-created renewal notices across ${stamps.length} real request timestamps`)
+}
+
 async function main() {
   const started = Date.now()
   const { members, trainers } = await loadRoster()
@@ -416,6 +471,7 @@ async function main() {
       rows: built.insertable, asOf: built.asOf, autoRenewalCount: built.autoRenewalCount,
     }))
     console.log(`  renewals: ${rRows.length} · notifications: ${built.insertable.length} inserted + ${built.autoRenewalCount} auto-created by the 0027 trigger`)
+    await alignAutoRenewalNotices()
   }
 
   if (dryRun) { console.log('\nDry run — nothing written.'); return }
