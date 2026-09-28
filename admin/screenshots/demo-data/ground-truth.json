@@ -1,27 +1,27 @@
 {
-  "timestamp": "2026-09-27T20:23:28.530Z",
+  "timestamp": "2026-09-28T06:08:05.068Z",
   "profiles": {
-    "total": 39,
-    "members": 30,
-    "trainers": 7,
-    "admins": 2
+    "total": 1077,
+    "members": 987,
+    "trainers": 89,
+    "admins": 1
   },
   "attendance": {
-    "total": 3412,
-    "minDate": "2026-01-01",
-    "maxDate": "2026-09-26"
+    "total": 22064,
+    "minDate": "2020-01-04",
+    "maxDate": "2026-09-28"
   },
   "memberships": {
-    "total": 27
+    "total": 1860
   },
-  "trainer_assignments": 29,
-  "trainer_feedback": 18,
-  "predictions": 8,
-  "notifications": 88,
+  "trainer_assignments": 0,
+  "trainer_feedback": 0,
+  "predictions": 0,
+  "notifications": 0,
   "enrollments": {
-    "total": 5,
+    "total": 0,
     "pending": 0,
-    "confirmed": 5
+    "confirmed": 0
   },
   "membership_renewal_requests": {
     "total": 0,

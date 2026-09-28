@@ -10,14 +10,14 @@
 ## Plan Checklist
 
 ### Phase 0: Baseline Ground Truth & Screenshots
-- [ ] Task 1: Create `admin/scripts/verify-demo-data.mjs` and capture baseline DB counts + before screenshots.
+- [x] Task 1: Create `admin/scripts/verify-demo-data.mjs` and capture baseline DB counts + before screenshots.
 
 ### Phase 1: Unified Seed Engine & DB Scaled Dataset
-- [ ] Task 2: Core seed engine + bulk auth creator (`admin/scripts/seed-demo-scale.mjs`, resumable, concurrency 4, deterministic UUIDs/mulberry32).
-- [ ] Task 3: Attendance generator (Jan 1 2020 -> today, ramp 3->24/day, 96% member / 4% trainer, covering memberships).
-- [ ] Task 4: Memberships generator (Daily 60 / Monthly 1,800, active/expired/trial).
+- [x] Task 2: Core seed engine + bulk auth creator (`admin/scripts/seed/seed-users.mjs` + `lib/`, resumable, concurrency 4). DONE 2026-09-28: 987 members / 89 trainers, 0 dupe emails/codes, VERIFY PASSED.
+- [x] Task 3: Attendance generator (Jan 1 2020 -> today, ramp 3->24/day, 96% member / 4% trainer, covering memberships). DONE 2026-09-28: 22,064 rows (2020-01-04 → today), 987 members / 89 trainers incl. the 30+7 pre-existing, 3.9% trainer share, Sundays closed, 3–4 open sessions today clamped to the past, VERIFY PASSED. Manifest stores real UTC instants + per-member windows (coverage map for Task 4).
+- [x] Task 4: Memberships generator (Daily 60 / Monthly 1,800, active/expired/trial). DONE 2026-09-28: 1,860 rows (588 active / 1,212 expired / 60 trial), 987/987 members covered, expiring supply ≤7d 136 / ≤30d 558, date coherence vs asOf clean, VERIFY PASSED + idempotent. `trial` status added by migration 0034 (pasted into SQL editor); seed script `admin/scripts/seed/seed-memberships.mjs` (resumable manifest, enum probe, trials inserted last).
 - [ ] Task 5: Trainer assignments, coach feedback, predictions (0030/0032 compliant), notifications, renewal requests.
-- [ ] Task 6: Enrollments (exactly 10 pending + 45 confirmed), migration 0034 scale indexes, reassign and delete extra admin A002.
+- [ ] Task 6: Enrollments (exactly 10 pending + 45 confirmed), migration 0035 scale indexes (0034 taken by the membership `trial` enum), reassign and delete extra admin A002.
 
 ### Phase 2: Data Fetching Layer (PostgREST 1,000-Row Cap & Scale Proofing)
 - [ ] Task 7: Update `fetchAll.ts` (MAX_PAGES 10 -> 40) and paginate `fetchMemberships`/`fetchLastCheckins`.
