@@ -1,15 +1,56 @@
 ﻿import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { useTrainers } from '../hooks/useTrainers'
-import { Trash2, X } from 'lucide-react'
+import PeopleTable, { peopleCells, type PeopleColumn } from '@/components/PeopleTable'
+import PaginationFooter from '@/components/PaginationFooter'
+import ListToolbar from '@/components/ListToolbar'
+import { useFitRows } from '@/hooks/useFitRows'
+import { useTrainersList } from '@/lib/listHooks'
+import { useResetPageOnChange } from '@/lib/pagedTable'
+import type { Profile } from '@/types'
+import { X } from 'lucide-react'
 
+const PAGE_SIZE = 25
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 export default function TrainersListPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { data: trainers, isLoading } = useTrainers()
+
+  const [page, setPage] = useState(1)
+  const [search, setSearch] = useState('')
+  const [from, setFrom] = useState<string | undefined>()
+  const [to, setTo] = useState<string | undefined>()
+
+  const { rows, total, pageCount, isLoading } = useTrainersList({ page, pageSize: PAGE_SIZE, search, from, to })
+  const [scrollRef, fitRows] = useFitRows<HTMLDivElement>()
+  useResetPageOnChange(setPage, search, from, to)
+
+  const columns: PeopleColumn<Profile>[] = [
+    {
+      key: 'name',
+      header: 'Name',
+      render: t => (
+        <span className="flex items-center gap-2.5">
+          <span className="w-7 h-7 rounded-full bg-gradient-to-br from-[#22C55E]/30 to-[#4ADE80]/30 flex items-center justify-center shrink-0">
+            <span className="text-[11px] font-bold text-accent-green">{t.full_name.charAt(0)}</span>
+          </span>
+          <span className="font-medium text-fg-strong">{t.full_name}</span>
+        </span>
+      ),
+    },
+    { key: 'code', header: 'Code', render: t => peopleCells.code(t.code) },
+    { key: 'email', header: 'Email', render: t => t.email },
+    { key: 'specialty', header: 'Specialty', render: t => t.specialty || '—' },
+    { key: 'joined', header: 'Hired', render: t => peopleCells.date(t.created_at) },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'right',
+      render: t => peopleCells.deleteButton('Delete trainer', () => setDeleteTarget(t)),
+    },
+  ]
+
   const [showModal, setShowModal] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -121,50 +162,44 @@ export default function TrainersListPage() {
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div />
+    <div className="h-full min-h-0 flex flex-col gap-3">
+      <ListToolbar
+        search={search}
+        onSearchChange={setSearch}
+        from={from}
+        to={to}
+        onDateRangeChange={(a, b) => { setFrom(a); setTo(b) }}
+        dateLabel="Hired"
+        placeholder="Search by name, code or email…"
+      >
         <button onClick={() => setShowModal(true)}
-          className="px-4 py-2 bg-[#7C3AED] text-white rounded-lg hover:bg-[#6D28D9] text-sm">
+          className="px-4 py-2 bg-[#7C3AED] text-white rounded-xl hover:bg-[#6D28D9] text-sm shrink-0 cursor-pointer">
           + Create Trainer
         </button>
-      </div>
+      </ListToolbar>
 
-      {isLoading ? (
-        <div className="text-center py-8 text-fg-muted">Loading...</div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {trainers?.map(trainer => (
-            <div
-              key={trainer.id}
-              className="glass-card p-4 rounded-xl hover:border-[#7C3AED]/30 cursor-pointer transition-all duration-200 relative group"
-              onClick={() => navigate(`/trainers/${trainer.id}`)}
-            >
-              <button
-                onClick={e => { e.stopPropagation(); setDeleteTarget(trainer) }}
-                className="absolute top-3 right-3 p-1.5 text-fg-muted hover:text-[#EF4444] opacity-0 group-hover:opacity-100 transition-opacity"
-                title="Delete"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#22C55E]/30 to-[#4ADE80]/30 flex items-center justify-center">
-                  <span className="text-base font-bold text-accent-green">{trainer.full_name.charAt(0)}</span>
-                </div>
-                  <div>
-                    <p className="font-semibold text-fg-strong">{trainer.full_name}</p>
-                    <p className="text-xs font-mono text-[#7C3AED] mt-0.5">{trainer.code}</p>
-                    <p className="text-sm text-fg mt-0.5">{trainer.email}</p>
-                    {trainer.specialty && <p className="text-xs text-[#22C55E] mt-1">{trainer.specialty}</p>}
-                  </div>
-              </div>
-            </div>
-          ))}
-          {trainers?.length === 0 && (
-            <p className="text-fg-muted col-span-full text-center py-8">No trainers found</p>
-          )}
-        </div>
-      )}
+      <PeopleTable
+        rows={rows}
+        columns={columns}
+        rowKey={t => t.id}
+        onRowClick={t => navigate(`/trainers/${t.id}`)}
+        isLoading={isLoading}
+        emptyMessage="No trainers match these filters"
+        scrollRef={scrollRef}
+        headerExtra={
+          <span className="text-[12px] text-fg-muted">
+            showing {Math.min(rows.length, fitRows)} per view · {total.toLocaleString()} total
+          </span>
+        }
+      />
+
+      <PaginationFooter
+        page={page}
+        pageCount={pageCount}
+        total={total}
+        pageSize={PAGE_SIZE}
+        onPageChange={setPage}
+      />
 
       {showModal && (
         <div className="fixed inset-0 bg-black/60 z-50" onClick={() => setShowModal(false)}>

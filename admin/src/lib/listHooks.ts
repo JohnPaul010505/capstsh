@@ -32,6 +32,10 @@ export function useMembersList({ page, pageSize, search, from, to }: PeopleListP
     page, pageSize, search,
     searchColumns: ['full_name', 'code', 'email'],
     dateColumn: 'created_at', from, to,
+    // Without this the query returns EVERY profile: 1,077 rows including the
+    // 89 trainers and the admin, and the members page lists them. The role
+    // predicate is part of what the list *is*, not an optional extra filter.
+    eq: { role: 'member' },
   })
 }
 
@@ -44,6 +48,7 @@ export function useTrainersList({ page, pageSize, search, from, to }: PeopleList
     page, pageSize, search,
     searchColumns: ['full_name', 'code', 'email'],
     dateColumn: 'created_at', from, to,
+    eq: { role: 'trainer' },
   })
 }
 
@@ -94,6 +99,9 @@ export function useMembershipSearchIds(search?: string) {
     pageSize: 1000,
     search,
     searchColumns: ['full_name', 'code', 'email'],
+    // Members only. These ids feed the memberships `in` filter, so a term that
+    // matched a trainer would list that trainer's (empty) membership history.
+    eq: { role: 'member' },
     enabled: !!search?.trim(),
   })
 }

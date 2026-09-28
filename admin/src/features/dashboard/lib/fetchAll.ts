@@ -23,6 +23,9 @@ const PAGE_SIZE = 1000
 // 60 pages = 60,000 rows. Raise alongside any dataset growth past that.
 const MAX_PAGES = 60
 
+/** Rows per PostgREST request. Exported so readers can build their own paging. */
+export const PAGE = PAGE_SIZE
+
 export type PageQuery<T> = { data: T[] | null; error: { message: string } | null }
 
 export async function fetchAllRows<T>(page: (from: number, to: number) => PromiseLike<PageQuery<T>>): Promise<T[]> {

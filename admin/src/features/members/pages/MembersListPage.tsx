@@ -1,15 +1,48 @@
 ﻿import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { useMembers } from '../hooks/useMembers'
-import MemberTable from '../components/MemberTable'
+import PeopleTable, { peopleCells, type PeopleColumn } from '@/components/PeopleTable'
+import PaginationFooter from '@/components/PaginationFooter'
+import ListToolbar from '@/components/ListToolbar'
+import { useFitRows } from '@/hooks/useFitRows'
+import { useMembersList } from '@/lib/listHooks'
+import { useResetPageOnChange } from '@/lib/pagedTable'
 import type { Profile } from '@/types'
 
+const PAGE_SIZE = 25
+
 export default function MembersListPage() {
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+
+  const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
+  const [from, setFrom] = useState<string | undefined>()
+  const [to, setTo] = useState<string | undefined>()
   const [deleteTarget, setDeleteTarget] = useState<Profile | null>(null)
   const [deleting, setDeleting] = useState(false)
-  const queryClient = useQueryClient()
-  const { data: members, isLoading } = useMembers(search)
+
+  // Any change to the filters resets to page 1; staying on page 6 of a result
+  // set that now has one page renders an empty table.
+  useResetPageOnChange(setPage, search, from, to)
+
+  const { rows, total, pageCount, isLoading } = useMembersList({ page, pageSize: PAGE_SIZE, search, from, to })
+  // The scroller is owned by PeopleTable, so that is what has to be measured.
+  const [scrollRef, fitRows] = useFitRows<HTMLDivElement>()
+
+  const columns: PeopleColumn<Profile>[] = [
+    { key: 'name', header: 'Name', render: m => <span className="font-medium text-fg-strong">{m.full_name}</span> },
+    { key: 'code', header: 'Code', render: m => peopleCells.code(m.code) },
+    { key: 'email', header: 'Email', render: m => m.email },
+    { key: 'phone', header: 'Phone', render: m => m.phone || '—' },
+    { key: 'joined', header: 'Joined', render: m => peopleCells.date(m.created_at) },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'right',
+      render: m => peopleCells.deleteButton('Delete member', () => setDeleteTarget(m)),
+    },
+  ]
 
   const handleDelete = async () => {
     if (!deleteTarget) return
@@ -25,7 +58,7 @@ export default function MembersListPage() {
         throw new Error(err.error || 'Failed to delete user')
       }
       setDeleteTarget(null)
-      queryClient.invalidateQueries({ queryKey: ['members'] })
+      queryClient.invalidateQueries({ queryKey: ['profiles'] })
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to delete')
     } finally {
@@ -34,23 +67,39 @@ export default function MembersListPage() {
   }
 
   return (
-    <div className="h-full flex flex-col">
-      <input
-        placeholder="Search members..."
-        value={search}
-        onChange={e => setSearch(e.target.value)}
-        className="w-full max-w-xs px-3 py-2 bg-overlay-8 border border-line rounded-lg text-sm text-fg-strong focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50 focus:border-[#7C3AED] placeholder:text-fg-muted"
+    <div className="h-full min-h-0 flex flex-col gap-3">
+      <ListToolbar
+        search={search}
+        onSearchChange={setSearch}
+        from={from}
+        to={to}
+        onDateRangeChange={(a, b) => { setFrom(a); setTo(b) }}
+        dateLabel="Joined"
+        placeholder="Search by name, code or email…"
       />
 
-      {isLoading ? (
-        <div className="text-center py-8 text-fg-muted">Loading...</div>
-      ) : (
-        <div className="glass-card rounded-xl overflow-hidden flex flex-col min-h-0 flex-1 mt-3">
-          <div className="overflow-x-auto overflow-y-auto flex-1 min-h-0">
-            <MemberTable members={members ?? []} onDelete={setDeleteTarget} />
-          </div>
-        </div>
-      )}
+      <PeopleTable
+        rows={rows}
+        columns={columns}
+        rowKey={m => m.id}
+        onRowClick={m => navigate(`/members/${m.id}`)}
+        isLoading={isLoading}
+        emptyMessage="No members match these filters"
+        scrollRef={scrollRef}
+        headerExtra={
+          <span className="text-[12px] text-fg-muted">
+            showing {Math.min(rows.length, fitRows)} per view · {total.toLocaleString()} total
+          </span>
+        }
+      />
+
+      <PaginationFooter
+        page={page}
+        pageCount={pageCount}
+        total={total}
+        pageSize={PAGE_SIZE}
+        onPageChange={setPage}
+      />
 
       {deleteTarget && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setDeleteTarget(null)}>
@@ -60,9 +109,9 @@ export default function MembersListPage() {
               This will permanently delete <strong className="text-fg-strong">{deleteTarget.full_name}</strong>'s account and all access. They will not be able to log in again.
             </p>
             <div className="flex justify-end gap-3">
-              <button onClick={() => setDeleteTarget(null)} className="px-4 py-2 text-sm border border-line rounded-lg text-fg hover:bg-overlay-8">Cancel</button>
+              <button onClick={() => setDeleteTarget(null)} className="px-4 py-2 text-sm border border-line rounded-lg text-fg hover:bg-overlay-8 cursor-pointer">Cancel</button>
               <button onClick={handleDelete} disabled={deleting}
-                className="px-4 py-2 text-sm bg-[#EF4444] text-white rounded-lg hover:bg-[#DC2626] disabled:opacity-50">
+                className="px-4 py-2 text-sm bg-[#EF4444] text-white rounded-lg hover:bg-[#DC2626] disabled:opacity-50 cursor-pointer">
                 {deleting ? 'Deleting...' : 'Delete'}
               </button>
             </div>
@@ -72,3 +121,4 @@ export default function MembersListPage() {
     </div>
   )
 }
+
