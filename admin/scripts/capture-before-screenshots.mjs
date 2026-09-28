@@ -17,6 +17,14 @@ function loadEnv() {
 }
 
 const env = loadEnv()
+// Verification scripts sign in as the real admin; the credentials live only in
+// the git-ignored admin/.env (ADMIN_EMAIL / ADMIN_PASSWORD), never in source —
+// a hardcoded password here previously overwrote the admin's actual login.
+const adminEmail = env.ADMIN_EMAIL || process.env.ADMIN_EMAIL
+const adminPassword = env.ADMIN_PASSWORD || process.env.ADMIN_PASSWORD
+if (!adminEmail || !adminPassword) {
+  throw new Error('ADMIN_EMAIL / ADMIN_PASSWORD missing from admin/.env')
+}
 const baseUrl = process.argv[2] || 'http://localhost:5173'
 const shotsDir = path.resolve(__dirname, '../screenshots/before')
 fs.mkdirSync(shotsDir, { recursive: true })
@@ -29,8 +37,8 @@ async function run() {
   try {
     // 1. Login
     await page.goto(`${baseUrl}/login`, { waitUntil: 'networkidle' })
-    await page.fill('input[type="email"]', 'admin@gmail.com')
-    await page.fill('input[type="password"]', 'MockPass123!')
+    await page.fill('input[type="email"]', adminEmail)
+    await page.fill('input[type="password"]', adminPassword)
     await page.click('button[type="submit"]')
     await page.waitForURL('**/dashboard', { timeout: 15000 })
     await page.waitForTimeout(2000)

@@ -23,3 +23,6 @@ Thumbs.db
 # Flutter
 .flutter-plugins-dependencies
 .dart_tool/
+
+# Generated seed manifests (regenerable via the seed scripts' --dry-run)
+admin/scripts/seed/data/
