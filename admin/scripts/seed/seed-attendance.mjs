@@ -100,13 +100,26 @@ async function main() {
     console.log(`ramp check: ${keys[0]} avg ~${avg(keys[0])}/open-day … ${keys[keys.length - 1]} avg ~${avg(keys[keys.length - 1])}/open-day`)
     const trainerRows = rows.filter((r) => trainers.some((t) => t.profileId === r.member_id)).length
     console.log(`trainer share: ${(100 * trainerRows / rows.length).toFixed(1)}% (target ~4%)`)
-    writeManifest(KEY, { generatedAt: new Date().toISOString(), total: rows.length, inserted: 0, rows, windows: out.windows })
+    console.log(`regular-attender overlay: ${out.overlayRows} rows (target bands low/medium/high)`)
+    writeManifest(KEY, { generatedAt: new Date().toISOString(), total: rows.length, inserted: 0, rows, windows: out.windows, droppedIds: out.droppedIds })
     manifest = readManifest(KEY)
   }
 
   if (dryRun) {
     console.log('Dry run — inserted nothing.')
     return
+  }
+
+  // Rows the generator removed (a churned member's post-window check-ins) may
+  // already be in the table from a previous run. Upsert alone would leave them
+  // behind and the member would keep a recent visit, so remove them explicitly.
+  const dropped = manifest.droppedIds ?? []
+  if (dropped.length) {
+    for (const c of chunk(dropped, 400)) {
+      const { error } = await client.from('attendance').delete().in('id', c)
+      if (error) throw new Error(`attendance delete dropped: ${error.message}`)
+    }
+    console.log(`Removed ${dropped.length} rows that the churned cohort no longer has`)
   }
 
   const inserted = manifest.inserted ?? 0

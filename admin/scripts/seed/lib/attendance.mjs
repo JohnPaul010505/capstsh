@@ -25,10 +25,54 @@ const dayIdxOfInstant = (ms) => Math.floor((ms + PH) / DAY) - Math.floor(Date.UT
 const dayStartUtc = (d) => (Math.floor(Date.UTC(2020, 0, 0) / DAY) + d) * DAY - PH
 // Weekday of day d: noon Manila (04:00Z) — same civil day in both zones.
 const dowOf = (d) => new Date(dayStartUtc(d) + 12 * 3600 * 1000).getUTCDay()
+// Asia/Manila civil date of day index d.
+const dateOfDay = (d) => localDate(new Date(dayStartUtc(d) + 12 * 3600 * 1000))
 
 export const ATT_ID_PREFIX = '3e01a003'
 
+// --- regular-attender overlay ---------------------------------------------
+// The main loop above picks each day's visitors at random, so over a multi-year
+// span it produces a member who visits about once a week. That is a fair
+// picture of a lapsed back-catalogue, but it is the WRONG input for the
+// retention model in ai-service/services/ml.py:
+//
+//   score = 1 - (0.6 * avg_weekly_rate + 0.2 * max(0, -trend) + 0.2 * recency)
+//
+// With rate 0.14 the frequency term alone gives 0.92, so every single member
+// reads "high risk" and the panel's high/medium/low filter has two dead
+// options. Reaching each band needs a different weekly rate:
+//
+//   3/wk -> rate 0.43 -> 0.74  high
+//   5/wk -> rate 0.71 -> 0.57  medium
+//   7/wk -> rate 1.00 -> 0.40  low    (the band test is `> 0.4`, so 0.40 is low)
+//
+// So we overlay a deterministic cohort of committed members on top of the
+// random history, at three training intensities, PLUS a churned-regular cohort
+// that trained hard in the past and then stopped. This is ADDITIVE: the main
+// loop is untouched, so the 22k existing rows keep their ids and no row is
+// duplicated or orphaned. A member simply attends more often recently, which
+// is what a real gym's committed core looks like.
+//
+// Why the churned cohort is necessary: the service buckets the last 30
+// check-ins by ISO week, so the FIRST bucket is always a partial week. That
+// caps a 7-sessions-per-week member's avg rate at ~0.85 -> score 0.52, i.e.
+// "medium". No currently-active member can reach "low" in a gym that is closed
+// on Sundays. A lapsed member can: a long absence drives the recency term to
+// its 0.2 maximum, so 1 - (0.6*0.857 + 0.2) = 0.29 -> "low". So the low band
+// is only populated by formerly-committed members who drifted away, which is
+// also exactly the population an admin's "we miss you" list is for.
+export const OVERLAY_WEEKS = 12
+export const REGULAR_TIERS = [
+  { visitsPerWeek: 7, members: 60, offsetWeeks: 0 },   // athletes   -> medium
+  { visitsPerWeek: 5, members: 90, offsetWeeks: 0 },   // committed  -> medium
+  { visitsPerWeek: 3, members: 110, offsetWeeks: 0 },  // regulars   -> high
+  { visitsPerWeek: 6, members: 70, offsetWeeks: 26 },  // churned    -> low
+]
+// Overlay members must have been members long enough to have a real history.
+const OVERLAY_MIN_TENURE_DAYS = 180
+
 const dayIdxOf = (iso) => dayIdxOfInstant(new Date(iso).getTime())
+
 
 export function buildAttendance(members, trainers, opts = {}) {
   const seed = opts.seed ?? 20260928
@@ -140,6 +184,142 @@ export function buildAttendance(members, trainers, opts = {}) {
     }
   }
 
+  // --- regular-attender overlay (additive; see REGULAR_TIERS above) ---------
+  // A SEPARATE PRNG so the main loop's random stream is bit-for-bit unchanged
+  // and the 22k pre-existing rows keep their ids.
+  const { rand: overlayRand, randInt: overlayRandInt } = makeRand((opts.seed ?? 20260928) + 977)
+  const overlayFrom = Math.max(0, todayIdx - OVERLAY_WEEKS * 7)
+  // Members with real tenure and no churn date (still training).
+  const candidates = eligibleMembers
+    .filter((m) => m.churn === Number.POSITIVE_INFINITY && todayIdx - m.joined >= OVERLAY_MIN_TENURE_DAYS)
+    .map((m) => m.id)
+  // Already-checked-in days per member, so the overlay never doubles a session
+  // that the random loop already created.
+  const seenDays = new Map()
+  for (const r of rows) {
+    if (r.check_in_date < dateOfDay(overlayFrom)) continue
+    const set = seenDays.get(r.member_id) ?? new Set()
+    set.add(r.check_in_date)
+    seenDays.set(r.member_id, set)
+  }
+
+  // One overlay session row. Every overlay session is CLOSED, including
+  // today's: the "3–4 open sessions today" rule is owned by the main loop above
+  // and must not be diluted by the overlay.
+  const attRow = (d, inMin, durWant, durMax, memberId, dateStr, idNum) => {
+    const checkIn = new Date(dayStartUtc(d) + inMin * 60000)
+    const dur = Math.min(durWant, durMax)
+    return {
+      id: uuid(ATT_ID_PREFIX, idNum),
+      member_id: memberId,
+      check_in_time: checkIn.toISOString(),
+      check_in_date: dateStr,
+      check_out_time: new Date(checkIn.getTime() + dur * 60000).toISOString(),
+      expires_at: new Date(checkIn.getTime() + 12 * 3600000).toISOString(),
+      entry_method: overlayRand() < 0.06 ? 'manual' : 'qr',
+    }
+  }
+
+  const pool = [...candidates]
+  const churnedCutoff = new Map() // memberId -> their last legitimate check-in date
+  const droppedIds = []
+  let overlayRows = 0
+  for (const tier of REGULAR_TIERS) {
+    for (let i = 0; i < tier.members && pool.length; i++) {
+      const pickAt = Math.floor(overlayRand() * pool.length)
+      const memberId = pool.splice(pickAt, 1)[0]
+      const seen = seenDays.get(memberId) ?? new Set()   // covered by the RANDOM loop
+      seenDays.set(memberId, seen)
+      // A positive offsetWeeks puts the cohort's training window in the PAST,
+      // producing members who were committed and then churned.
+      const tierFrom = Math.max(0, todayIdx - (tier.offsetWeeks + OVERLAY_WEEKS) * 7)
+      const tierTo = todayIdx - tier.offsetWeeks * 7
+      if (tierTo < tierFrom) continue
+      // Quota per CALENDAR WEEK, not per day. The gym is closed on Sundays, so
+      // there are only 6 open days: a 7-session week is only reachable with a
+      // double session.
+      for (let wStart = tierFrom; wStart <= tierTo; wStart += 7) {
+        const wEnd = Math.min(wStart + 6, todayIdx)
+        const openDays = []
+        for (let d = wStart; d <= wEnd; d++) if (dowOf(d) !== 0) openDays.push(d)
+        if (!openDays.length) continue
+        // Fisher–Yates on the open days so the weekly pattern is scattered,
+        // then take `visitsPerWeek` of them, wrapping to create a double day.
+        const week = [...openDays]
+        for (let k = week.length - 1; k > 0; k--) {
+          const j = Math.floor(overlayRand() * (k + 1))
+          const tmp = week[k]; week[k] = week[j]; week[j] = tmp
+        }
+        for (let v = 0; v < tier.visitsPerWeek; v++) {
+          const d = week[v % week.length]
+          const dateStr = dateOfDay(d)
+          // Skip only days the RANDOM loop already covered. Overlay-added days
+          // are deliberately NOT skipped, otherwise the wrap-around double
+          // session that carries the 7/wk tier to rate 1.00 never happens.
+          if (seen.has(dateStr)) continue
+          const isSecond = v >= week.length
+          const inMin = d === todayIdx
+            ? overlayRandInt(todayLo, Math.max(todayLo + 30, todayHi))
+            : isSecond
+              ? 17 * 60 + overlayRandInt(0, 59)   // evening half of a double day
+              : overlayRandInt(6, 16) * 60 + overlayRandInt(0, 59)
+          const maxDur = Math.max(10, nowMin - 5 - inMin)
+          rows.push(attRow(d, inMin, overlayRandInt(45, 180), maxDur, memberId, dateStr, idx++))
+          touch(memberId, dateStr)
+          overlayRows++
+        }
+      }
+      if (tier.offsetWeeks > 0) churnedCutoff.set(memberId, dateOfDay(tierTo))
+    }
+  }
+
+  // A churned member must have NO check-in after their window, or the random
+  // loop's stray recent visit resets the retention model's recency term and the
+  // member lands in "medium" instead of "low". Drop those rows and rebuild the
+  // coverage map for the affected members so `windows` still describes what is
+  // actually in the table.
+  if (churnedCutoff.size) {
+    const drop = new Set()
+    for (const r of rows) {
+      const cutoff = churnedCutoff.get(r.member_id)
+      if (cutoff && r.check_in_date > cutoff) drop.add(r)
+    }
+    // Ids of rows removed from the generated set. A previous run of this seed
+    // may already have written them, so the runner deletes them explicitly —
+    // otherwise a churned member keeps a recent check-in in the table and the
+    // retention model scores them "medium" instead of "low".
+    droppedIds.push(...[...drop].map((r) => r.id))
+    if (drop.size) {
+      for (const r of drop) {
+        const i = rows.indexOf(r)
+        if (i >= 0) rows.splice(i, 1)
+      }
+      for (const [id] of churnedCutoff) {
+        const mine = rows.filter((r) => r.member_id === id)
+        if (!mine.length) { delete windows[id]; continue }
+        let first = mine[0].check_in_date
+        let last = mine[0].check_in_date
+        for (const r of mine) {
+          if (r.check_in_date < first) first = r.check_in_date
+          if (r.check_in_date > last) last = r.check_in_date
+        }
+        windows[id] = { first, last, count: mine.length }
+      }
+    }
+  }
+
+  // Newest-first ids for the appended rows keeps the manifest's implied
+  // chronological ordering intact.
+  rows.sort((a, b) => (a.check_in_date < b.check_in_date ? -1 : 1))
+
   for (const r of rows) delete r._checkInUtc
-  return { rows, windows, minDate: rows[0]?.check_in_date ?? todayManila, maxDate: todayManila }
+  return {
+    rows,
+    windows,
+    minDate: rows[0]?.check_in_date ?? todayManila,
+    maxDate: todayManila,
+    overlayRows,
+    droppedIds,
+  }
 }
+
