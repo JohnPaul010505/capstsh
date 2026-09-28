@@ -43,7 +43,7 @@ export default function CheckinsTab(props: TabPanelProps) {
   const hasData = chartPoints.some(p => p.value > 0)
 
   return (
-    <div className="flex flex-col gap-3.5">
+    <div className="h-full min-h-0 flex flex-col gap-3.5">
       <TabHeader
         title="Daily Check-ins"
         subtitle="Every visit recorded in the selected window, split by member and trainer, with how the member got in."
@@ -57,7 +57,7 @@ export default function CheckinsTab(props: TabPanelProps) {
         }}
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard title="Total Check-ins" value={total.toLocaleString()} sub={formatRangeLabel(range)} icon={CalendarCheck} tone="purple" />
         <KpiCard title="Members" value={memberCount.toLocaleString()} sub={`${(memberCount / days).toFixed(1)} member visits / day`} icon={Users} tone="blue" />
         <KpiCard title="Trainers" value={trainerCount.toLocaleString()} sub={`${(trainerCount / days).toFixed(1)} trainer visits / day`} icon={Crown} tone="amber" />

@@ -43,7 +43,7 @@ export default function MemberOverviewTab(props: TabPanelProps) {
   const hasData = total > 0
 
   return (
-    <div className="flex flex-col gap-3.5">
+    <div className="h-full min-h-0 flex flex-col gap-3.5">
       <TabHeader
         title="Member Overview"
         subtitle="Everyone on the books, who actually visited the selected window, and whose membership they are on."
@@ -57,7 +57,7 @@ export default function MemberOverviewTab(props: TabPanelProps) {
         }}
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard title="Total Members" value={total.toLocaleString()} sub={formatRangeLabel(range)} icon={Users} tone="purple" />
         <KpiCard title="Active Members" value={active.toLocaleString()} sub="visited in the selected range" icon={UserCheck} tone="green" />
         <KpiCard title="Inactive Members" value={inactive.toLocaleString()} sub="no visit in this range" icon={UserMinus} tone="amber" />

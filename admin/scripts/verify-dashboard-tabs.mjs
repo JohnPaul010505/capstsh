@@ -4,8 +4,10 @@
  * Drives the admin dashboard end-to-end in Chromium:
  *   - signs in, sets the Jan 15 â†’ Mar 15 2026 range + Daily granularity
  *   - asserts the Daily Check-ins KPIs against service-role-computed values
- *   - asserts chart bar count, records ordering/paging, and the %-free
- *     Total Attendance summary card
+ *   - asserts chart bar count, records ordering/paging, and — for every tab at
+ *     seven viewport sizes from 1920x1080 down to 1024x768 — that the panel
+ *     neither scrolls the page nor clips its own content (Task 11's no-scroll
+ *     gate; the summary-row assertions were removed with the cards in Task 10)
  *   - visits all five tabs in dark + light + narrow viewports, screenshots
  *     each into admin/screenshots/dashboard-tabs/
  *   - fails on ANY console error / page error (the "no widget error" gate)
@@ -122,15 +124,28 @@ async function run() {
   const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } })
 
   const consoleErrors = []
+  // Failed responses are tracked separately because the console message text
+  // has no URL, and the console gate needs to know WHICH request failed.
+  const failedResponses = []
+  page.on('response', r => { if (r.status() >= 400) failedResponses.push({ status: r.status(), url: r.url() }) })
   page.on('console', msg => {
     if (msg.type() === 'error') consoleErrors.push(msg.text())
   })
   page.on('pageerror', err => consoleErrors.push(`pageerror: ${err.message}`))
 
   // ---- Sign in ----------------------------------------------------------
+  // Credentials come from the git-ignored .env (ADMIN_EMAIL / ADMIN_PASSWORD),
+  // never hardcoded. This script used to carry a literal admin@fitness.com /
+  // Admin123! pair that no longer existed, so every run failed at sign-in and
+  // looked like a product bug.
+  const email = process.env.ADMIN_EMAIL
+  const password = process.env.ADMIN_PASSWORD
+  if (!email || !password) {
+    throw new Error('ADMIN_EMAIL / ADMIN_PASSWORD missing from .env — cannot sign in')
+  }
   await page.goto(`${base}/login`, { waitUntil: 'networkidle' })
-  await page.locator('input[type=email]').fill('admin@fitness.com')
-  await page.locator('input[type=password]').fill('Admin123!')
+  await page.locator('input[type=email]').fill(email)
+  await page.locator('input[type=password]').fill(password)
   await page.locator('button[type=submit]').click()
   await page.waitForURL(u => !u.pathname.includes('/login'), { timeout: 25000 })
   await page.goto(`${base}/dashboard`, { waitUntil: 'networkidle' })
@@ -165,10 +180,25 @@ async function run() {
     check(`KPI "${title}" = ${want}`, ok, `got ${await num(cardValue(page, title, checkinsPanel)).catch(() => NaN)}`)
   }
 
-  const attendanceCard = cardText(page, 'Total Attendance')
-  const attendanceText = (await attendanceCard.innerText()).trim()
-  check('summary Total Attendance = range total', await num(cardValue(page, 'Total Attendance')) === expected.checkins, attendanceText.replace(/\n/g, ' | '))
-  check('summary Total Attendance has no % trend', !attendanceText.includes('%'), attendanceText.replace(/\n/g, ' | '))
+  // The all-time summary row (Total Revenue / Members / Trainers /
+  // Attendance) was removed in Task 10, so its two assertions are replaced by
+  // the property that actually matters now: the panel fits its box.
+  //
+  // Note the two-part assertion. `docOverflow` alone is NOT sufficient: the
+  // panel is `overflow-hidden`, so a too-tall panel reports no page scrollbar
+  // while silently clipping its own content. `panelClipped` catches that, which
+  // is the failure mode this check originally missed.
+  const fit = await page.evaluate(() => {
+    const visible = el => el && el.getBoundingClientRect().height > 0
+    const panel = [...document.querySelectorAll('[role=tabpanel]')].find(visible)
+    const se = document.scrollingElement
+    return {
+      docOverflow: se.scrollHeight - se.clientHeight,
+      panelClipped: panel ? panel.scrollHeight - panel.clientHeight : -1,
+    }
+  })
+  check('check-ins panel does not scroll the page', fit.docOverflow <= 0, `overflow=${fit.docOverflow}px`)
+  check('check-ins panel does not clip its own content', fit.panelClipped <= 0, `clipped=${fit.panelClipped}px`)
 
   // ---- Chart ------------------------------------------------------------
   let bars = await chart.locator('.recharts-bar-rectangle').count()
@@ -227,6 +257,51 @@ async function run() {
   await setGrain(page, chart, 'Daily')
 
   // ---- Remaining tabs, dark â†’ light â†’ narrow ----------------------------
+  // ---- No-scroll sweep: every tab x every viewport ------------------------
+  // Task 11's real gate. Three assertions per cell, because any one alone lies:
+  //   docOverflow  - the page must not scroll
+  //   panelClipped - the panel must not hide its own content to achieve that
+  //   rows > 0     - a collapsed panel passes both numbers while showing nothing
+  // `overflow-hidden` on the panel makes a too-tall panel report no page
+  // scrollbar while silently cutting off the bottom of itself, so the second
+  // number is the one that catches a regression the first one waves through.
+  const VIEWPORTS = [
+    { width: 1920, height: 1080 },
+    { width: 1600, height: 900 },
+    { width: 1440, height: 800 },
+    { width: 1366, height: 768 },
+    { width: 1280, height: 680 },
+    { width: 1152, height: 700 },
+    { width: 1024, height: 768 },
+  ]
+  for (const vp of VIEWPORTS) {
+    await page.setViewportSize(vp)
+    await page.waitForTimeout(500)
+    for (const tab of TABS) {
+      await page.getByRole('tab', { name: tab.label, exact: true }).click()
+      const panel = page.getByRole('tabpanel', { name: tab.label })
+      await panel.waitFor({ state: 'visible', timeout: 15000 })
+      await page.waitForTimeout(500)
+      const m = await page.evaluate(() => {
+        const visible = el => el && el.getBoundingClientRect().height > 0
+        const p = [...document.querySelectorAll('[role=tabpanel]')].find(visible)
+        const se = document.scrollingElement
+        return {
+          doc: se.scrollHeight - se.clientHeight,
+          clip: p ? p.scrollHeight - p.clientHeight : -1,
+          rows: p ? p.querySelectorAll('tbody tr').length : 0,
+        }
+      })
+      check(
+        `[${tab.label}] ${vp.width}x${vp.height} fits, no scrollbar, nothing clipped`,
+        m.doc <= 0 && m.clip <= 0 && m.rows > 0,
+        `pageOverflow=${m.doc}px clipped=${m.clip}px rows=${m.rows}`,
+      )
+    }
+  }
+  await page.setViewportSize({ width: 1920, height: 1080 })
+  await page.waitForTimeout(400)
+
   const dark = new Set(TABS.map(t => t.label))
   let shotIndex = 2
 
@@ -254,7 +329,14 @@ async function run() {
       activity: [['Check-ins', expected.checkins]],
     }[tab.id] ?? []
     for (const [title, value] of want) {
-      const ok = await waitForCardValue(page, title, value, { timeout: 10000, root: panel })
+      // 60s, not the 10s this used to allow. The Member Overview tab depends on
+      // fetchLastCheckins, which pages the whole 42k-row attendance table, so
+      // its KPIs stay 0 until that finishes — about 29s today. Once migration
+      // 0035's `idx_attendance_date_id_desc` is applied the deep offsets become
+      // index seeks and this collapses to a second or two; the generous window
+      // is what lets the check pass either way instead of masking a real
+      // regression behind a tight timeout.
+      const ok = await waitForCardValue(page, title, value, { timeout: 60000, root: panel })
       check(`[${tab.label}] "${title}" = ${value}`, ok, `want ${value}`)
     }
 
@@ -298,8 +380,29 @@ async function run() {
   await browser.close()
 
   // ---- Console gate -----------------------------------------------------
+  // One tolerated error: the 404 from `supabase.rpc('member_last_checkin')`
+  // before migration 0035 is applied. The browser logs every failed resource
+  // load itself, so this cannot be suppressed from application code — the RPC
+  // probe is deliberate and the client falls back to paging correctly.
+  //
+  // The console message text carries no URL, so the tolerance is anchored on
+  // the response log instead: only a 404 on the RPC endpoint is excused, and
+  // any other 404 still fails. Matching on the message text alone ("404")
+  // would wave through every unrelated missing asset on the page.
+  const RPC_PATH = '/rest/v1/rpc/member_last_checkin'
+  const rpcNotFound = failedResponses.filter(r => r.status === 404 && r.url.includes(RPC_PATH)).length
+  const otherFailures = failedResponses.filter(r => r.status >= 400 && r.url !== undefined && !r.url.includes(RPC_PATH))
+  if (rpcNotFound) {
+    console.log(`NOTE: ${rpcNotFound} 404(s) from the unapplied 0035 RPC (expected until that migration is run).`)
+  }
+
   const uniqueErrors = [...new Set(consoleErrors)]
-  check('zero console/page errors across the whole run', uniqueErrors.length === 0, uniqueErrors.slice(0, 5).join(' || '))
+  check(
+    'no unexpected console/page errors across the whole run',
+    uniqueErrors.length <= rpcNotFound && otherFailures.length === 0,
+    uniqueErrors.filter(e => !/status of 404/.test(e)).slice(0, 5).join(' || ')
+      || otherFailures.slice(0, 5).map(f => `${f.status} ${f.url}`).join(' || '),
+  )
 
   const failed = results.filter(r => r.ok === false)
   const skipped = results.filter(r => r.ok === null)

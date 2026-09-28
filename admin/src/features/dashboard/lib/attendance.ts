@@ -91,8 +91,30 @@ export async function fetchMemberships(): Promise<MembershipLite[]> {
   })
 }
 
-/** Latest attendance day per member — 'YYYY-MM-DD', for the Member Overview tab. */
+/**
+ * Latest attendance day per member — 'YYYY-MM-DD', for the Member Overview tab.
+ *
+ * Preferred path: migration 0035's `member_last_checkin()` RPC, which does the
+ * `GROUP BY member_id, max(check_in_date)` in the database and returns ~1,076
+ * rows in one request.
+ *
+ * Fallback: page the table client-side. Sequential, not concurrent — four
+ * parallel deep-offset pages reliably provoked HTTP 500s from PostgREST on the
+ * 42k-row table, and a single failed page rejects the whole `Promise.all`, so
+ * the tab renders 0. Slow (~29s) but reliable, which is the right trade while
+ * 0035 is unapplied.
+ */
 export async function fetchLastCheckins(): Promise<Record<string, string>> {
+  // Fast path: one aggregate, no pagination.
+  const { data, error } = await supabase.rpc('member_last_checkin')
+  if (!error && Array.isArray(data) && data.length) {
+    const out: Record<string, string> = {}
+    for (const r of data as { member_id: string; last_check_in: string }[]) {
+      if (r?.member_id && r.last_check_in) out[r.member_id] = r.last_check_in
+    }
+    return out
+  }
+
   const rows = await fetchAllRows<{ member_id: string; check_in_date: string }>(async (from, to) => {
     const res = await supabase
       .from('attendance')

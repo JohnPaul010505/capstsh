@@ -63,7 +63,7 @@ export default function ActivityTab({ activityType, onActivityTypeChange, ...pro
   const hasData = chartPoints.some(p => p.value > 0)
 
   return (
-    <div className="flex flex-col gap-3.5">
+    <div className="h-full min-h-0 flex flex-col gap-3.5">
       <TabHeader
         title="Recent Activity"
         subtitle="Everything that happened in the window — visits, sales, assignments, expiries and feedback — newest first."
@@ -77,7 +77,7 @@ export default function ActivityTab({ activityType, onActivityTypeChange, ...pro
         }}
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard title="Total Activities" value={total.toLocaleString()} sub={formatRangeLabel(range)} icon={CheckCircle2} tone="purple" />
         <KpiCard title="Check-ins" value={checkins.toLocaleString()} sub={`${(checkins / days).toFixed(1)} per day`} icon={LogIn} tone="green" />
         <KpiCard title="Check-outs" value={checkouts.toLocaleString()} sub={`${(checkouts / days).toFixed(1)} per day`} icon={LogOut} tone="amber" />

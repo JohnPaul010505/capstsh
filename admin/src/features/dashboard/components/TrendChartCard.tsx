@@ -19,29 +19,42 @@ interface TrendChartCardProps {
   isEmpty?: boolean
   emptyMessage?: string
   ariaLabel?: string
-  /** Fixed chart height; the box exists before data arrives so Recharts never measures 0×0. */
+  /**
+   * Fixed chart height. Omit it to let the chart fill and SHRINK with the
+   * available space (`flex-1 min-h-0`), which is what the no-scroll dashboard
+   * layout needs: a pinned 260px box makes the panel taller than the viewport,
+   * and `overflow-hidden` on the parent then silently clips the bottom of the
+   * page instead of fitting it.
+   *
+   * The `min-h` floor keeps real pixels in the box even if an ancestor collapses,
+   * which is what stops Recharts from ever measuring 0×0.
+   */
   height?: number
   children?: ReactNode
 }
 
 /**
- * Glass trend-chart card with a pinned title row and a FIXED chart box.
+ * Glass trend-chart card with a pinned title row and a chart box.
  *
- * The fixed box + `isEmpty` guard is the anti-"widget error" contract: a
+ * The chart box plus the `isEmpty` guard is the anti-"widget error" contract: a
  * ResponsiveContainer with 0 width/height (Recharts' classic rendering
  * exception) can only be mounted once the box has real pixels, so an empty or
  * still-loading range renders the empty state instead of the chart tree.
  */
 export default function TrendChartCard({
   title, grain, onGrainChange, isLoading, isEmpty, emptyMessage,
-  ariaLabel, height = 260, children,
+  ariaLabel, height, children,
 }: TrendChartCardProps) {
+  const fill = height === undefined
   return (
-    <section className="glass-panel rounded-2xl p-4" aria-label={ariaLabel ?? title}>
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+    <section
+      className={`glass-panel rounded-2xl p-4 ${fill ? 'flex flex-col flex-1 min-h-[9.5rem] min-w-0' : ''}`}
+      aria-label={ariaLabel ?? title}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3 shrink-0">
         <div className="flex items-center gap-2.5">
           <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-[#7C3AED]/15 text-accent-purple shrink-0">
-            <ChartIcon className="w-3.5 h-3.5" strokeWidth={2} />
+            <ChartIcon className="h-3.5 w-3.5" strokeWidth={2} />
           </span>
           <h2 className="text-[15px] font-semibold text-fg-strong">{title}</h2>
         </div>
@@ -56,7 +69,11 @@ export default function TrendChartCard({
         )}
       </div>
 
-      <div style={{ height }} className="w-full">
+      <div
+        style={fill ? undefined : { height }}
+        className={fill ? 'w-full flex-1 min-h-0' : 'w-full'}
+      >
+
         {isLoading ? (
           <div className="h-full w-full flex items-end gap-2 animate-pulse" aria-hidden="true">
             {[35, 62, 48, 80, 40, 70, 52, 90, 45, 58].map((h, i) => (

@@ -48,8 +48,12 @@ export default function RecordsTable<T>({
   const goto = (p: number) => setPage(Math.max(0, Math.min(pageCount - 1, p)))
 
   return (
-    <section className="glass-panel rounded-2xl" aria-label={title}>
-      <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-3.5 pb-3">
+    // `flex-1 min-h-0` lets the table absorb whatever height the header, KPIs
+    // and chart above it did not use, and scroll internally instead of pushing
+    // the page past the viewport. The 120px floor stops it collapsing to
+    // nothing on a short window, where the table would otherwise vanish.
+    <section className="glass-panel rounded-2xl flex flex-col flex-1 min-h-[7.5rem]" aria-label={title}>
+      <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-3.5 pb-3 shrink-0">
         <h3 className="text-[15px] font-semibold text-fg-strong">{title}</h3>
         <div className="relative w-full sm:w-80">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-fg-faint pointer-events-none" />
@@ -63,8 +67,8 @@ export default function RecordsTable<T>({
           />
         </div>
       </div>
-      <div className="px-4 pb-3">
-        <div className="rounded-xl border border-line-soft overflow-hidden">
+      <div className="px-4 pb-3 flex-1 min-h-0 flex flex-col gap-2.5">
+        <div className="rounded-xl border border-line-soft overflow-hidden flex-1 min-h-0 overflow-auto">
           <div className="overflow-x-auto">
             <table className="w-full min-w-max">
               <thead>
@@ -104,7 +108,7 @@ export default function RecordsTable<T>({
           </div>
         </div>
         {!isLoading && filtered.length > pageSize && (
-          <div className="mt-2.5 flex items-center justify-between text-[12px] text-fg-muted">
+          <div className="flex items-center justify-between text-[12px] text-fg-muted shrink-0">
             <span>
               Showing {safePage * pageSize + 1}–{Math.min(filtered.length, safePage * pageSize + pageSize)} of {filtered.length.toLocaleString()} records
             </span>

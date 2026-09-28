@@ -37,7 +37,7 @@ export default function GrowthTab(props: TabPanelProps) {
   const hasData = chartPoints.some(p => p.value > 0 || p.total > 0)
 
   return (
-    <div className="flex flex-col gap-3.5">
+    <div className="h-full min-h-0 flex flex-col gap-3.5">
       <TabHeader
         title="Member Growth"
         subtitle="New members who joined inside the selected window, with the running membership total underneath."
@@ -51,7 +51,7 @@ export default function GrowthTab(props: TabPanelProps) {
         }}
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard title="Total New Members" value={totalNew.toLocaleString()} sub={formatRangeLabel(range)} icon={UserPlus} tone="purple" />
         <KpiCard title="Daily Average" value={avg.toFixed(1)} sub={`${days} day${days === 1 ? '' : 's'} in range`} icon={ActivityIcon} tone="blue" />
         <KpiCard

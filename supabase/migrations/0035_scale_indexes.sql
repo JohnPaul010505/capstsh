@@ -32,9 +32,19 @@
 -- the member detail page's calendar.
 create index if not exists idx_attendance_member_time
   on attendance (member_id, check_in_time desc);
--- NOTE: 00001 already created idx_attendance_date on attendance(check_in_date).
--- A btree can be scanned backwards, so the date-range filter and the
--- newest-first ordering are both served by it. Not recreated here.
+-- fetchLastCheckins pages the whole table with
+-- `order by check_in_date desc, id desc` + OFFSET. 00001 indexes
+-- check_in_date alone, which still leaves Postgres sorting the id tiebreak and
+-- discarding every skipped row, so the deep offsets are a full scan each time:
+-- 43 pages took ~29s to render the Member Overview tab. Covering the exact
+-- ORDER BY turns each page into an index seek.
+--
+-- This is the same index the 42k-row overlay made expensive, so it is called
+-- out rather than buried in a list of "nice to have" scale indexes.
+create index if not exists idx_attendance_date_id_desc
+  on attendance (check_in_date desc, id desc);
+-- NOTE: 00001 already created idx_attendance_date on attendance(check_in_date),
+-- superseded by the composite above.
 
 -- --- memberships -----------------------------------------------------------
 -- The list pages filter by plan and sort/filter by the end date (the expiring
@@ -75,7 +85,35 @@ create index if not exists idx_enrollments_status_created
 create index if not exists idx_predictions_member_metric
   on predictions (member_id, metric_name, created_at desc);
 
--- --- people search ---------------------------------------------------------
+-- --- member_last_checkin(): the Member Overview tab's aggregate ------------
+-- The dashboard's "days since last visit" column is `group by member_id,
+-- max(check_in_date)`, which PostgREST cannot express. Without this the client
+-- downloads all 42k attendance rows across 43 offset pages to compute a
+-- ~1,076-row result: ~29s on every Member Overview visit, and under any
+-- concurrent load PostgREST starts returning 500s on the deep offsets, which
+-- blanked the whole tab.
+--
+-- One aggregate in the database replaces 43 round trips with 1.
+--
+-- security definer + a search_path pin: the function is read-only and is
+-- reachable through PostgREST by any authenticated role, so it must not be
+-- able to reach into the caller's search_path.
+create or replace function public.member_last_checkin()
+returns table (member_id uuid, last_check_in date)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select a.member_id, max(a.check_in_date)::date
+  from attendance a
+  group by a.member_id;
+$$;
+
+revoke execute on function public.member_last_checkin() from public;
+grant execute on function public.member_last_checkin() to authenticated, service_role;
+
+-- People search ---------------------------------------------------------
 -- The plan adds search by member code to both list pages. 00009 already
 -- created the unique index on profiles(code), so code search is covered.
 --

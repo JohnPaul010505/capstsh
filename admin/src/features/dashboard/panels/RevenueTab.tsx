@@ -35,7 +35,7 @@ export default function RevenueTab(props: TabPanelProps) {
   const hasData = chartPoints.some(p => p.value > 0)
 
   return (
-    <div className="flex flex-col gap-3.5">
+    <div className="h-full min-h-0 flex flex-col gap-3.5">
       <TabHeader
         title="Revenue Overview"
         subtitle="Membership sales recorded inside the selected window, using each plan's start day as the transaction date."
@@ -49,7 +49,7 @@ export default function RevenueTab(props: TabPanelProps) {
         }}
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard title="Total Revenue" value={peso(total)} sub={formatRangeLabel(range)} icon={Banknote} tone="green" />
         <KpiCard title="Daily Revenue" value={peso(Math.round(avg))} sub={`${days} day${days === 1 ? '' : 's'} in range`} icon={TrendingUp} tone="blue" />
         <KpiCard title="Total Transactions" value={transactions.toLocaleString()} sub="Memberships started in range" icon={Receipt} tone="purple" />
