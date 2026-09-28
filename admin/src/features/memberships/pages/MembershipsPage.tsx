@@ -1,62 +1,30 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { useMemberships, useCreateMembership, useDeleteMembership, useAttendanceLast7Days, useRenewalRequests } from '../hooks/useMemberships'
+import { useCreateMembership, useDeleteMembership, useAttendanceLast7Days, useRenewalRequests } from '../hooks/useMemberships'
+import { useMembershipsList, useMembershipSearchIds } from '@/lib/listHooks'
+import { useResetPageOnChange } from '@/lib/pagedTable'
+import ListToolbar from '@/components/ListToolbar'
+import PaginationFooter from '@/components/PaginationFooter'
 import StatusBadge from '@/components/StatusBadge'
 import type { Membership, MembershipRenewalRequest } from '@/types'
 import { Plus, X, Trash2, ChevronDown, CheckCircle, XCircle } from 'lucide-react'
+
+const MEMBERSHIP_PAGE_SIZE = 25
 
 const PLANS = {
   daily: { label: 'Daily', price: 60, days: 1 },
   monthly: { label: 'Monthly', price: 1800, days: 30 },
 } as const
 
-/** Demo pending renewals — shown when the database has none, so the panel is not empty. */
-const MOCK_PENDING_RENEWALS: MembershipRenewalRequest[] = [
-  {
-    id: 'mock-renewal-1',
-    member_id: 'mock-member-1',
-    membership_id: null,
-    plan_name: 'Monthly',
-    months: 1,
-    status: 'pending',
-    note: 'Continuing my plan, please!',
-    requested_at: new Date(Date.now() - 2 * 3600_000).toISOString(),
-    decided_at: null,
-    decided_by: null,
-    profiles: { full_name: 'Maria Santos', code: 'M005', email: 'member2@mock.fit' },
-  },
-  {
-    id: 'mock-renewal-2',
-    member_id: 'mock-member-2',
-    membership_id: null,
-    plan_name: 'Daily',
-    months: 1,
-    status: 'pending',
-    note: null,
-    requested_at: new Date(Date.now() - 24 * 60 * 60_000).toISOString(),
-    decided_at: null,
-    decided_by: null,
-    profiles: { full_name: 'Juan Dela Cruz', code: 'M004', email: 'member1@mock.fit' },
-  },
-  {
-    id: 'mock-renewal-3',
-    member_id: 'mock-member-3',
-    membership_id: null,
-    plan_name: 'Monthly',
-    months: 1,
-    status: 'pending',
-    note: 'Thank you!',
-    requested_at: new Date(Date.now() - 3 * 24 * 60 * 60_000).toISOString(),
-    decided_at: null,
-    decided_by: null,
-    profiles: { full_name: 'Ana Reyes', code: 'M007', email: 'member4@mock.fit' },
-  },
-]
-
-  const MOCK_RENEWAL_EMAILS: string[] = [...new Set(
-    MOCK_PENDING_RENEWALS.map(m => m.profiles?.email).filter((e): e is string => !!e)
-  )]
+/**
+ * NOTE: this page used to carry three hardcoded "demo" renewal requests
+ * (MOCK_PENDING_RENEWALS) plus a lookup that tried to match their @mock.fit
+ * emails to real profiles so the panel was never empty. The database is seeded
+ * with real pending requests now, so the mocks are gone: they made the panel
+ * look populated while the approve/decline buttons operated on rows that did
+ * not exist.
+ */
 function todayStr() {
   return new Date().toISOString().split('T')[0]
 }
@@ -164,8 +132,38 @@ export default function MembershipsPage() {
   const [saving, setSaving] = useState(false)
   const [planError, setPlanError] = useState('')
 
+  // List controls, shared by the Daily and Monthly tabs. The Renewal tab is a
+  // different query and has its own state below.
+  const [membershipPage, setMembershipPage] = useState(1)
+  const [membershipSearch, setMembershipSearch] = useState('')
+  const [membershipFrom, setMembershipFrom] = useState<string | undefined>()
+  const [membershipTo, setMembershipTo] = useState<string | undefined>()
+
+  // The member's name and code live on the JOINED profile, so they cannot take
+  // part in the same PostgREST `or()` as a column on the membership row. The
+  // term is therefore resolved to member ids first, and those ids go in as an
+  // `in` filter. Declared before the membership query because it feeds it.
+  const { rows: searchIdRows } = useMembershipSearchIds(membershipSearch)
+  const membershipSearchIds = useMemo(
+    () => (membershipSearch.trim() ? searchIdRows.map(r => r.id) : undefined),
+    [membershipSearch, searchIdRows],
+  )
+
   const planTab = activeTab === 'renewal' ? 'daily' : activeTab
-  const { data: memberships, isLoading } = useMemberships(PLANS[planTab].label)
+  // Paged + filtered server-side. The previous useMemberships(plan) fetched
+  // every row of the plan - 1,800 for Monthly - and rendered them in one block
+  // with a 420px cap, so most of the plan sat unreachable behind an inner
+  // scrollbar.
+  const { rows: memberships, isLoading, total: membershipTotal, pageCount: membershipPages } =
+    useMembershipsList({
+      page: membershipPage,
+      pageSize: MEMBERSHIP_PAGE_SIZE,
+      planName: PLANS[planTab].label,
+      from: membershipFrom,
+      to: membershipTo,
+      memberIds: membershipSearchIds,
+    })
+  useResetPageOnChange(setMembershipPage, membershipSearch, membershipFrom, membershipTo)
   const { data: recentAttendance } = useAttendanceLast7Days()
   const { data: members } = useQuery({
     queryKey: ['members-simple'],
@@ -273,24 +271,7 @@ export default function MembershipsPage() {
   const [renewRequestId, setRenewRequestId] = useState<string | null>(null)
   const [adminId, setAdminId] = useState<string>('')
   const { data: pendingData } = useRenewalRequests()
-  const [dismissedMocks, setDismissedMocks] = useState<string[]>([])
-  const visibleMocks = MOCK_PENDING_RENEWALS.filter(m => !dismissedMocks.includes(m.id))
-  const { data: mockProfiles } = useQuery({
-    queryKey: ['mock-renewal-profiles'],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('profiles').select('id, email, code').in('email', MOCK_RENEWAL_EMAILS)
-      return (data ?? [])
-    },
-  })
-  const pendingList = useMemo(() => {
-    const byEmail = new Map((mockProfiles ?? []).map(p => [p.email, p]))
-    return visibleMocks.map(m => {
-      const hit = m.profiles?.email ? byEmail.get(m.profiles.email) : undefined
-      if (!hit || !m.profiles) return m
-      return { ...m, member_id: hit.id, profiles: { ...m.profiles, code: hit.code ?? m.profiles.code } }
-    }).concat(pendingData ?? [])
-  }, [pendingData, dismissedMocks, mockProfiles])
+  const pendingList = useMemo(() => pendingData ?? [], [pendingData])
   const pendingByMember = useRef<Map<string, MembershipRenewalRequest>>(new Map())
   useEffect(() => {
     pendingByMember.current.clear()
@@ -332,7 +313,6 @@ export default function MembershipsPage() {
         await qc.invalidateQueries({ queryKey: ['memberships'] })
         setActiveTab(planKey === 'daily' ? 'daily' : 'monthly')
       }
-      setDismissedMocks(prev => prev.includes(request.id) ? prev : [...prev, request.id])
       return
     }
     setSavingRequest(request.id)
@@ -370,10 +350,6 @@ export default function MembershipsPage() {
   }
 
   const handleDecline = async (request: MembershipRenewalRequest) => {
-    if (request.id.startsWith('mock-')) {
-      setDismissedMocks(prev => prev.includes(request.id) ? prev : [...prev, request.id])
-      return
-    }
     setSavingRequest(request.id)
     try {
       await supabase
@@ -389,48 +365,43 @@ export default function MembershipsPage() {
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div />
-        <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2 bg-[#7C3AED] text-white rounded-lg text-sm hover:bg-[#6D28D9]">
+    <div className="h-full min-h-0 flex flex-col gap-3">
+      <div className="flex items-center justify-between shrink-0">
+        {/* Tabs */}
+        <div className="flex gap-1 glass-card rounded-xl p-1 w-fit" role="tablist" aria-label="Membership views">
+          {(['daily', 'monthly', 'renewal'] as const).map(tab => (
+            <button
+              key={tab}
+              role="tab"
+              aria-selected={activeTab === tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-5 py-2 text-sm rounded-lg font-medium transition-all cursor-pointer ${
+                activeTab === tab
+                  ? 'bg-[#7C3AED] text-white shadow-sm'
+                  : 'text-fg hover:text-fg-strong'
+              }`}
+            >
+              {tab === 'daily' ? 'Daily' : tab === 'monthly' ? 'Monthly' : 'Renewal'}
+            </button>
+          ))}
+        </div>
+
+        <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2 bg-[#7C3AED] text-white rounded-xl text-sm hover:bg-[#6D28D9] shrink-0 cursor-pointer">
           <Plus className="w-4 h-4" /> Add Membership
         </button>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 glass-card rounded-xl p-1 w-fit">
-        <button
-          onClick={() => setActiveTab('daily')}
-          className={`px-5 py-2 text-sm rounded-lg font-medium transition-all ${
-            activeTab === 'daily'
-              ? 'bg-[#7C3AED] text-white shadow-sm'
-              : 'text-fg hover:text-fg-strong'
-          }`}
-        >
-          Daily
-        </button>
-        <button
-          onClick={() => setActiveTab('monthly')}
-          className={`px-5 py-2 text-sm rounded-lg font-medium transition-all ${
-            activeTab === 'monthly'
-              ? 'bg-[#7C3AED] text-white shadow-sm'
-              : 'text-fg hover:text-fg-strong'
-          }`}
-        >
-          Monthly
-        </button>
-
-        <button
-          onClick={() => setActiveTab('renewal')}
-          className={`px-5 py-2 text-sm rounded-lg font-medium transition-all ${
-            activeTab === 'renewal'
-              ? 'bg-[#7C3AED] text-white shadow-sm'
-              : 'text-fg hover:text-fg-strong'
-          }`}
-        >
-          Renewal
-        </button>
-      </div>
+      {activeTab !== 'renewal' && (
+        <ListToolbar
+          search={membershipSearch}
+          onSearchChange={setMembershipSearch}
+          from={membershipFrom}
+          to={membershipTo}
+          onDateRangeChange={(a, b) => { setMembershipFrom(a); setMembershipTo(b) }}
+          dateLabel="Start date"
+          placeholder="Search by member name or code…"
+        />
+      )}
 
       {activeTab === 'renewal' ? (
         pendingList.length > 0 ? (
@@ -505,8 +476,8 @@ export default function MembershipsPage() {
       ) : isLoading ? (
         <div className="text-center py-8 text-fg-muted">Loading...</div>
       ) : (
-        <div className="glass-card rounded-xl overflow-hidden flex flex-col min-h-0">
-          <div className="overflow-x-auto flex-1 max-h-[420px]">
+        <div className="glass-card rounded-xl overflow-hidden flex flex-col flex-1 min-h-0">
+          <div className="overflow-x-auto flex-1 min-h-0 overflow-y-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-line bg-overlay-5">
@@ -561,12 +532,22 @@ export default function MembershipsPage() {
                   )
                 })}
                 {memberships?.length === 0 && (
-                  <tr><td colSpan={7} className="px-3 py-6 text-center text-fg-muted">No memberships</td></tr>
+                  <tr><td colSpan={7} className="px-3 py-6 text-center text-fg-muted">No memberships match these filters</td></tr>
                 )}
               </tbody>
             </table>
           </div>
         </div>
+      )}
+
+      {activeTab !== 'renewal' && (
+        <PaginationFooter
+          page={membershipPage}
+          pageCount={membershipPages}
+          total={membershipTotal}
+          pageSize={MEMBERSHIP_PAGE_SIZE}
+          onPageChange={setMembershipPage}
+        />
       )}
 
       {showModal && (
