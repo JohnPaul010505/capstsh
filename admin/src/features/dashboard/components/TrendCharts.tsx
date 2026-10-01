@@ -1,6 +1,6 @@
 import {
-  Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart,
-  ResponsiveContainer, Tooltip, XAxis, YAxis,
+  Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart,
+  ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
 import { useChartTheme } from '@/hooks/useChartTheme'
 
@@ -9,8 +9,6 @@ export interface TrendPoint {
   label: string
   full: string
   value: number
-  /** Optional second series (Member Growth's cumulative line). */
-  total?: number
 }
 
 interface TrendProps {
@@ -75,19 +73,48 @@ export function BarTrend({ points, ariaLabel, valueName, gradientId = 'trendBarG
 }
 
 /**
- * Member Growth's dual-line chart: additions per bucket + running total.
- * Two different scales in one chart is misleading, so both lines share the
- * axis and the cumulative line is deliberately the light one.
+ * Member Growth's chart: a filled area for new signups over time, with a
+ * dashed benchmark line showing the average per bucket.
+ *
+ * This replaced a dual-line chart that plotted daily signups and the running
+ * membership total on ONE shared axis. The two series differ by orders of
+ * magnitude (tens of signups against a roster in the hundreds), so the daily
+ * line was flattened against the axis and the cumulative line dominated the
+ * whole panel - the chart was technically correct and practically unreadable.
+ *
+ * The area makes the SHAPE of growth legible (a spike, a steady ramp, a lull),
+ * which is the actual question this tab answers, and the benchmark line answers
+ * "was this bucket better or worse than typical" without adding a second scale.
  */
-export function DualLineTrend({ points, ariaLabel }: { points: TrendPoint[]; ariaLabel: string }) {
+export function GrowthAreaTrend({ points, average, ariaLabel, gradientId = 'growthGrad' }: {
+  points: TrendPoint[]
+  ariaLabel: string
+  /**
+   * Mean signups PER BUCKET, drawn as the benchmark. Omitted when <= 0.
+   *
+   * The unit has to match the axis: this is drawn on the same scale as
+   * `points[].value`, so it must be the per-bucket mean. All time is 987
+   * members over 1,369 days but 45 monthly buckets, and passing the daily mean
+   * (0.7) instead of the monthly one (21.9) put the "Avg 0.7" label on the
+   * floor of a 0..23 axis - a chart that looks broken rather than mis-argued.
+   */
+  average?: number
+  gradientId?: string
+}) {
   const t = useChartTheme()
   const interval = Math.max(0, Math.ceil(points.length / 12))
-  const max = niceMax(points.map(p => Math.max(p.value, p.total ?? 0)))
+  const max = niceMax(points.map(p => p.value))
 
   return (
     <div role="img" aria-label={ariaLabel} className="h-full w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={points} margin={{ top: 6, right: 8, bottom: 0, left: -14 }}>
+        <AreaChart data={points} margin={{ top: 6, right: 8, bottom: 0, left: -14 }}>
+          <defs>
+            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#7C3AED" stopOpacity={0.55} />
+              <stop offset="100%" stopColor="#7C3AED" stopOpacity={0.04} />
+            </linearGradient>
+          </defs>
           <CartesianGrid strokeDasharray="3 3" stroke={t.grid} vertical={false} />
           <XAxis dataKey="label" tick={t.axisTick} interval={interval} axisLine={{ stroke: t.axisLine }} tickLine={false} />
           <YAxis tick={t.axisTick} axisLine={false} tickLine={false} width={44} allowDecimals={false} domain={[0, max]} />
@@ -95,31 +122,64 @@ export function DualLineTrend({ points, ariaLabel }: { points: TrendPoint[]; ari
             cursor={{ stroke: t.axisLine }}
             contentStyle={t.tooltipStyle}
             labelStyle={{ color: t.tooltipLabel }}
+            formatter={(v: number | string) => [Number(v) || 0, 'New members']}
             labelFormatter={(_, payload) => (payload?.[0]?.payload as TrendPoint | undefined)?.full ?? ''}
           />
-          <Line
+          {/* The benchmark sits UNDER the area: it is context, not the subject. */}
+          {average && average > 0 && (
+            <ReferenceLine
+              y={average}
+              stroke="#A855F7"
+              strokeDasharray="6 4"
+              strokeWidth={1.5}
+              label={{ value: `Avg ${average.toFixed(1)}`, position: 'insideTopRight', fill: t.tooltipLabel, fontSize: 11 }}
+            />
+          )}
+          <Area
             type="monotone" dataKey="value" name="New members"
-            stroke="#7C3AED" strokeWidth={2.5} dot={points.length <= 40 ? { r: 2.5 } : false}
+            stroke="#7C3AED" strokeWidth={2.5}
+            fill={`url(#${gradientId})`}
+            dot={points.length <= 40 ? { r: 2.5 } : false}
             activeDot={{ r: 4 }} isAnimationActive={false}
           />
-          <Line
-            type="monotone" dataKey="total" name="Cumulative total"
-            stroke="#22C55E" strokeWidth={2} strokeDasharray="5 4" dot={false}
-            activeDot={{ r: 4 }} isAnimationActive={false}
-          />
-        </LineChart>
+        </AreaChart>
       </ResponsiveContainer>
     </div>
   )
 }
 
+/**
+ * One palette per dimension, not one hue per label.
+ *
+ * These were six unrelated colours picked label by label, and the result read as
+ * a rainbow with no hierarchy: nothing in the card said which pairs belonged to
+ * the same dimension, the status pair (green/red) shouted louder than the rest,
+ * and "Unspecified" - an empty value, not a group - was given a full slice and a
+ * legend row so that 3 members out of 987 read as a category.
+ *
+ * Status is now a complementary green/rose pair, so the nested inner ring reads
+ * as two distinct states at the size it is actually drawn rather than as one
+ * warm band. It still speaks the same language as the two KPI cards above it -
+ * green for the members who visited - even though the "did not visit" hue has
+ * moved off amber to the complement of the green beside it.
+ *
+ * Gender is a
+ * single violet ramp, the two real categories at either end, which makes the
+ * dimension legible as a family instead of as two unrelated dots.
+ */
 export const SLICE_COLORS: Record<string, string> = {
   Active: '#22C55E',
-  Inactive: '#EF4444',
-  Male: '#3B82F6',
-  Female: '#DB2777',
-  Other: '#C084FC',
-  Unspecified: '#94A3B8',
+  // Green's complement, not amber. Green and amber sit about 40 degrees apart
+  // on the wheel, so they are the same warm blur at the size this arc actually
+  // renders - the inner ring is a ~13px band at the layout's smallest - and
+  // 771 inactive against 216 active read as one orange lump rather than as two
+  // facts. Rose is the opposite hue of the green beside it, so the two arcs
+  // separate at any size, and the legend dots and the proportional bar under
+  // "Activity Status" - which read the same constant - follow it.
+  Inactive: '#F43F5E',
+  Male: '#7C3AED',
+  Female: '#C084FC',
+  Other: '#8B5CF6',
 }
 
 /**
@@ -182,6 +242,155 @@ export function StatusDonut({ slices, ariaLabel, emptyMessage }: {
           )
         })}
       </ul>
+    </div>
+  )
+}
+
+export interface BreakdownSlice {
+  name: string
+  value: number
+}
+
+/**
+ * BOTH dimensions on the circle: gender on the outer ring, activity status on
+ * a ring nested inside it, with the headline activity rate in the hole.
+ *
+ * Two rings rather than one, because the two dimensions are independent 100%s
+ * and a single ring can only honestly carry one of them: a 50/50 gender split
+ * and a 22/78 activity split drawn on one circle would be read as comparable
+ * shares of a whole, which they are not. Nesting them says "two separate
+ * wholes" without spending a second circle of horizontal space, which this
+ * half-width card does not have.
+ *
+ * The outer ring is gender because it is the wider of the two bands and reads
+ * first; the inner ring is activity because the KPI cards directly above this
+ * chart are already about activity and the ring's centre repeats that rate, so
+ * the eye arrives there next. The radii leave a hole large enough for the
+ * centre label at the SMALLEST box this card ever takes (128px, so a 64px
+ * radius and a ~27px hole) rather than only at 1080p.
+ *
+ * Both rings live in ONE <PieChart> on purpose: two charts would render two
+ * `.recharts-wrapper`s, and the release gate asserts the ring is square and
+ * sized against its box by measuring the first wrapper - so a second chart
+ * would quietly halve what that assertion actually covers.
+ *
+ * The centre keeps the active rate. It is the one number in this card that is
+ * not about gender, and it ties the ring to the KPIs above it - but it is HTML
+ * rather than a Recharts <Label> so it inherits the theme tokens, stays legible
+ * when the ring shrinks, and is pointer-events-none so it never swallows the
+ * hover the sectors need.
+ *
+ * Radii are percentages, so the rings scale with the card instead of sitting at
+ * a fixed size inside a box several times wider than it is tall - which is what
+ * left the old donut marooned in the middle of half the card with a legend
+ * beside it repeating the same five numbers.
+ */
+export function MemberDistributionDonut({ genderSlices, statusSlices, total, active, ariaLabel, emptyMessage }: {
+  genderSlices: BreakdownSlice[]
+  /** Active / Inactive, as the nested inner ring. */
+  statusSlices: BreakdownSlice[]
+  /** Everyone on the books under the current filters; the rate's denominator. */
+  total: number
+  /** Members who checked in inside the selected range; drives the centre label. */
+  active: number
+  ariaLabel: string
+  emptyMessage?: string
+}) {
+  const t = useChartTheme()
+  // Divided by the FULL roster, not by the gender subtotal: 222 active of 987
+  // members is 22%, and 222 of the 984 whose gender is recorded would claim a
+  // share of the circle the centre number does not describe.
+  const rate = total > 0 ? Math.round((active / total) * 100) : 0
+
+  if (total === 0) {
+    return (
+      <div className="h-full w-full flex items-center justify-center px-3 text-center">
+        <p className="text-[13px] text-fg-muted">{emptyMessage ?? 'No members in this range'}</p>
+      </div>
+    )
+  }
+
+  // Every gender is missing is not an empty state, it is the one case where the
+  // ring would silently imply "nobody" where the truth is "not recorded". The
+  // counts beside it carry the same fact as "N not recorded"; say so here too.
+  if (genderSlices.length === 0) {
+    return (
+      <div className="h-full w-full flex items-center justify-center px-3 text-center">
+        <p className="text-[13px] text-fg-muted">No gender recorded</p>
+      </div>
+    )
+  }
+
+  return (
+    <div role="img" aria-label={ariaLabel} className="relative h-full w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          {/* One full circle, one dimension: every arc is exactly the share of
+              the roster whose gender says it is. `Other` only appears when a
+              member actually recorded one, and the hook drops zero-count
+              categories so an empty segment never paints a stray pixel. */}
+          {/* The OUTER ring: gender. 70-100% leaves a 30% band - at the
+              smallest box (64px radius) that is ~19px, thin but a legible arc -
+              and a 70% inner edge that clears the activity ring below. */}
+          <Pie
+            data={genderSlices}
+            dataKey="value"
+            nameKey="name"
+            startAngle={90}
+            endAngle={-270}
+            innerRadius="70%"
+            outerRadius="100%"
+            paddingAngle={2}
+            cornerRadius={6}
+            stroke="none"
+            isAnimationActive={false}
+          >
+            {genderSlices.map(s => (
+              <Cell key={s.name} fill={SLICE_COLORS[s.name] ?? '#7C3AED'} />
+            ))}
+          </Pie>
+          {/* The INNER ring: activity status, nested rather than placed beside
+              the first. 42-62% is a narrower band so the two do not read as one
+              thick ring with a seam, and its 42% inner edge is the hole the
+              centre label sits in. The corner radius is smaller than the outer
+              ring's for the same reason: at 128px this band is only ~13px, and
+              a 6px radius on a 13px band rounds the arc into a lozenge.
+
+              `cornerRadius`/`paddingAngle` are read off the SECTORS, so both
+              rings still paint two `.recharts-sector`s each whatever these are
+              set to - which is what the release gate counts. */}
+          <Pie
+            data={statusSlices}
+            dataKey="value"
+            nameKey="name"
+            startAngle={90}
+            endAngle={-270}
+            innerRadius="42%"
+            outerRadius="62%"
+            paddingAngle={2}
+            cornerRadius={4}
+            stroke="none"
+            isAnimationActive={false}
+          >
+            {statusSlices.map(s => (
+              <Cell key={s.name} fill={SLICE_COLORS[s.name] ?? '#7C3AED'} />
+            ))}
+          </Pie>
+          <Tooltip
+            contentStyle={t.tooltipStyle}
+            labelStyle={{ color: t.tooltipLabel }}
+            formatter={(v: number | string, name: string) => [Number(v) || 0, name]}
+          />
+        </PieChart>
+      </ResponsiveContainer>
+      {/* The one number worth reading without hovering. It is HTML rather than
+          a Recharts <Label> so it inherits the theme tokens and stays legible
+          when the ring shrinks, and pointer-events-none so it never swallows
+          the hover the sectors need. */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+        <span className="text-[20px] font-semibold leading-none text-fg-strong tabular-nums">{rate}%</span>
+        <span className="mt-1 text-[10px] uppercase tracking-wide text-fg-faint">active</span>
+      </div>
     </div>
   )
 }

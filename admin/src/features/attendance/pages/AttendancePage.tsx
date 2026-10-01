@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAttendance } from '../hooks/useAttendance'
 import { Plus, LogOut, LogIn, X, Clock } from 'lucide-react'
+import RecordsTable, { type RecordsColumn } from '@/components/RecordsTable'
 
 // PostgREST REJECTS unknown columns ('Could not find the ... column'), so
 // the manual check-in insert below retries without entry_method when
@@ -33,6 +34,12 @@ export default function AttendancePage() {
   const [showModal, setShowModal] = useState(false)
   const [drawerCategory, setDrawerCategory] = useState<'member' | 'trainer'>('member')
   const [search, setSearch] = useState('')
+  // A SECOND term for the table below, deliberately not shared with the drawer
+  // search above. The drawer is a one-off picker that filters people in memory;
+  // the table filters the day's check-ins. One variable for both would clear
+  // the picker's box the moment someone typed in the table, and filter the
+  // table by whatever was last typed into a modal.
+  const [tableSearch, setTableSearch] = useState('')
 
   useEffect(() => {
     if (!showModal) return
@@ -42,8 +49,27 @@ export default function AttendancePage() {
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [showModal])
-  const { data: sessions, isLoading } = useAttendance(date, category)
+  const { data: sessions, isLoading, isFetching, isError, error, refetch } = useAttendance(date, category)
   const queryClient = useQueryClient()
+
+  // The table used to render "No attendance records" for BOTH an empty day and a
+  // FAILED request, because the query's error was never read: on any error
+  // `sessions` stayed undefined, `isLoading` went false, and the empty row was
+  // the only thing on screen. A 500 or an expired session was indistinguishable
+  // from a gym that nobody visited, which is how a whole broken day reader went
+  // unnoticed. The count and the closed-on-Sundays note below make the remaining
+  // "genuinely nothing here" case say so out loud.
+  const rowCount = sessions?.length ?? 0
+  // The dataset models a Mon-Sat gym (see scripts/seed/lib/attendance.mjs), so a
+  // Sunday is legitimately empty and a weekday with no rows is worth flagging.
+  const isSunday = new Date(`${date}T00:00:00`).getDay() === 0
+  const longDate = new Date(`${date}T00:00:00`).toLocaleDateString(undefined, {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  })
+  const roleLabel = category === 'trainer' ? 'Trainers' : 'Members'
 
   const { data: people, isLoading: peopleLoading } = useQuery({
     queryKey: ['attendance-people', drawerCategory],
@@ -107,19 +133,101 @@ export default function AttendancePage() {
     },
   })
 
+  const rows = sessions ?? []
+
+  // `leading-5` (20px) on every cell is what keeps a row at the 44px
+  // `RecordsTable` budgets. The Check Out button is the tight one: at `py-1` it
+  // renders 24px of content and every row becomes 48px, so the measured page
+  // size is wrong by 4px a row and the body scrolls with nothing to explain it.
+  const columns: RecordsColumn<any>[] = [
+    {
+      key: 'name',
+      header: 'Name',
+      render: s => (
+        <span className="font-medium text-fg-strong leading-5">
+          {s.profiles?.full_name}
+          <span className="ml-2 text-xs font-mono text-[#7C3AED]">{s.profiles?.code}</span>
+        </span>
+      ),
+    },
+    {
+      key: 'role',
+      header: 'Role',
+      render: s => <span className="text-fg capitalize leading-5">{s.profiles?.role || 'member'}</span>,
+    },
+    {
+      key: 'checkin',
+      header: 'Check-in',
+      render: s => (
+        <span className="inline-flex items-center gap-1 text-accent-green leading-5">
+          <LogIn className="w-3 h-3" />
+          {new Date(s.check_in_time).toLocaleTimeString()}
+        </span>
+      ),
+    },
+    {
+      key: 'checkout',
+      header: 'Check-out',
+      render: s => (s.check_out_time ? (
+        <span className="inline-flex items-center gap-1 text-fg leading-5">
+          <LogOut className="w-3 h-3" />
+          {new Date(s.check_out_time).toLocaleTimeString()}
+        </span>
+      ) : (
+        <span className="inline-flex items-center gap-1 text-accent-amber text-xs font-medium leading-5">
+          <Clock className="w-3 h-3" />
+          Until {new Date(s.expires_at).toLocaleTimeString()}
+        </span>
+      )),
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'right',
+      render: s => (!s.check_out_time ? (
+        <button
+          onClick={() => checkoutMutation.mutate(s.member_id)}
+          disabled={checkoutMutation.isPending}
+          className="px-3 py-0.5 text-xs leading-4 bg-[#F59E0B]/15 text-accent-amber rounded-lg hover:bg-[#F59E0B]/25 disabled:opacity-50 whitespace-nowrap"
+        >
+          Check Out
+        </button>
+      ) : null),
+    },
+  ]
+
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div />
+    /* `h-full min-h-0 flex flex-col` is the shell the Reports and QR pages
+       use, and for the same reason: `main` is `flex-1 overflow-hidden`, so this
+       page used to be an auto-height `space-y-3` stack that simply ran off the
+       bottom of the viewport with no scrollbar to say so. The day's check-ins
+       were therefore reachable only as far as the window happened to be. */
+    <div className="h-full min-h-0 flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-3 shrink-0">
+        {/* This slot was an empty <div />, which is why the page could not say
+            how much it had actually found. */}
+        <div className="min-w-0">
+          <p className="text-sm text-fg-strong truncate">
+            {isLoading ? 'Loading…' : `${rowCount} ${rowCount === 1 ? 'check-in' : 'check-ins'}`}
+            <span className="text-fg-muted font-normal"> · {roleLabel} · {longDate}</span>
+          </p>
+          {!isLoading && !isError && rowCount === 0 && (
+            <p className="text-xs text-fg-muted truncate">
+              {isSunday
+                ? 'The gym is closed on Sundays, so no check-ins are expected.'
+                : 'No one checked in on this day.'}
+            </p>
+          )}
+        </div>
         <input
           type="date"
           value={date}
           onChange={e => setDate(e.target.value)}
-          className="px-3 py-2 bg-overlay-8 border border-line rounded-lg text-sm text-fg-strong focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50"
+          className="shrink-0 px-3 py-2 bg-overlay-8 border border-line rounded-lg text-sm text-fg-strong focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50"
         />
       </div>
 
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between shrink-0">
         <div className="flex gap-2">
           <button
             onClick={() => setCategory('member')}
@@ -150,68 +258,42 @@ export default function AttendancePage() {
         </button>
       </div>
 
-      {isLoading ? (
-        <div className="text-center py-8 text-fg-muted">Loading...</div>
-      ) : (
-        <div className="glass-card rounded-xl overflow-hidden flex flex-col min-h-0">
-          <div className="overflow-x-auto flex-1">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-line bg-overlay-5">
-                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Name</th>
-                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Role</th>
-                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Check-in</th>
-                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Check-out</th>
-                  <th className="text-center px-3 py-2 text-sm font-medium text-fg-muted">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sessions?.map(s => (
-                  <tr key={s.id} className="border-b border-line-soft last:border-0 hover:bg-[#7C3AED]/5">
-                    <td className="px-3 py-2 text-sm font-medium text-fg-strong">
-                      {s.profiles?.full_name}
-                      <span className="ml-2 text-xs font-mono text-[#7C3AED]">{s.profiles?.code}</span>
-                    </td>
-                    <td className="px-3 py-2 text-sm text-fg capitalize">{s.profiles?.role || 'member'}</td>
-                    <td className="px-3 py-2 text-sm">
-                      <span className="inline-flex items-center gap-1 text-accent-green">
-                        <LogIn className="w-3 h-3" />
-                        {new Date(s.check_in_time).toLocaleTimeString()}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-sm">
-                      {s.check_out_time ? (
-                        <span className="inline-flex items-center gap-1 text-fg">
-                          <LogOut className="w-3 h-3" />
-                          {new Date(s.check_out_time).toLocaleTimeString()}
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-accent-amber text-xs font-medium">
-                          <Clock className="w-3 h-3" />
-                          Until {new Date(s.expires_at).toLocaleTimeString()}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      {!s.check_out_time && (
-                        <button
-                          onClick={() => checkoutMutation.mutate(s.member_id)}
-                          disabled={checkoutMutation.isPending}
-                          className="px-3 py-1 text-xs bg-[#F59E0B]/15 text-accent-amber rounded-lg hover:bg-[#F59E0B]/25 disabled:opacity-50"
-                        >
-                          Check Out
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-                {sessions?.length === 0 && (
-                  <tr><td colSpan={5} className="px-3 py-6 text-center text-fg-muted">No attendance records</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+      {isError ? (
+        /* A failure must never wear the empty state. The old table reported
+           "No attendance records" for a dead request, so a 500 looked exactly
+           like a quiet day. This says what broke and offers the one action that
+           can help. */
+        <div className="glass-card rounded-xl px-5 py-10 text-center">
+          <p className="text-sm font-medium text-fg-strong">Could not load attendance for this day</p>
+          <p className="text-xs text-fg-muted mt-1 break-words">
+            {error instanceof Error ? error.message : 'Unknown error'}
+          </p>
+          <button
+            onClick={() => { void refetch() }}
+            disabled={isFetching}
+            className="mt-4 px-4 py-2 text-sm bg-[#7C3AED] text-white rounded-lg hover:bg-[#6D28D9] disabled:opacity-50"
+          >
+            {isFetching ? 'Retrying…' : 'Retry'}
+          </button>
         </div>
+      ) : (
+        <RecordsTable
+          key={category}
+          title={roleLabel}
+          columns={columns}
+          rows={rows}
+          rowKey={s => s.id}
+          searchFields={s => [s.profiles?.full_name, s.profiles?.code, s.profiles?.role]}
+          searchPlaceholder="Search by name or ID…"
+          searchValue={tableSearch}
+          onSearchChange={setTableSearch}
+          isLoading={isLoading}
+          emptyMessage={rows.length === 0
+            ? (isSunday
+              ? 'Gym closed on Sundays - no check-ins recorded'
+              : `No ${category === 'trainer' ? 'trainer' : 'member'} check-ins on this day`)
+            : 'No check-ins match this search'}
+        />
       )}
 
       {showModal && (

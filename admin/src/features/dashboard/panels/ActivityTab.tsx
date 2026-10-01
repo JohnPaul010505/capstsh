@@ -4,7 +4,7 @@ import KpiCard from '@/components/KpiCard'
 import RecordsTable, { type RecordsColumn } from '@/components/RecordsTable'
 import Badge, { type BadgeTone } from '@/components/Badge'
 import TabHeader, { type TabPanelProps } from '@/features/dashboard/components/TabHeader'
-import TrendChartCard from '@/features/dashboard/components/TrendChartCard'
+import TrendChartCard, { TREND_CHART_HEIGHT } from '@/features/dashboard/components/TrendChartCard'
 import { BarTrend } from '@/features/dashboard/components/TrendCharts'
 import { fmtDay, formatRangeLabel } from '@/features/dashboard/lib/dateRange'
 import { ACTIVITY_TYPE_OPTIONS, type ActivityType } from '@/features/dashboard/lib/activityFeed'
@@ -33,21 +33,26 @@ const timeOf = (iso: string) => {
 }
 
 export default function ActivityTab({ activityType, onActivityTypeChange, ...props }: ActivityTabProps) {
-  const { range, onRangeChange, plan, grain, onGrainChange } = props
+  const { range, onRangeChange, plan, grain, onGrainChange, grainOptions } = props
   const { total, checkins, checkouts, people, days, points, records, isLoading } =
     useActivityTab(range, plan, activityType, grain)
   const [search, setSearch] = useState('')
 
   const columns: RecordsColumn<(typeof records)[number]>[] = [
+    /* Date and time are two columns rather than one "Date & Time" cell: two
+       lines in one cell would make the row ~60px against `RecordsTable`'s flat
+       44px budget, which clips the bottom of the pinned 10-row table instead
+       of scrolling it. `whitespace-nowrap` is what keeps each column on one
+       line - without it a narrow date column wraps and the row grows anyway. */
     {
-      key: 'when',
-      header: 'Date & Time',
-      render: r => (
-        <div className="leading-tight">
-          <span className="text-fg-strong">{fmtDay(r.day)}</span>
-          <span className="ml-2 text-[12px] text-fg-muted">{timeOf(r.ts)}</span>
-        </div>
-      ),
+      key: 'date',
+      header: 'Date',
+      render: r => <span className="text-fg-strong whitespace-nowrap">{fmtDay(r.day)}</span>,
+    },
+    {
+      key: 'time',
+      header: 'Time',
+      render: r => <span className="text-fg-muted text-[12px] whitespace-nowrap">{timeOf(r.ts)}</span>,
     },
     { key: 'name', header: 'Member Name', render: r => <span className="font-medium text-fg-strong">{r.memberName}</span> },
     { key: 'code', header: 'Member ID', render: r => <span className="font-mono text-[12px] text-fg-muted">{r.memberCode ?? '—'}</span> },
@@ -78,15 +83,17 @@ export default function ActivityTab({ activityType, onActivityTypeChange, ...pro
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KpiCard title="Total Activities" value={total.toLocaleString()} sub={formatRangeLabel(range)} icon={CheckCircle2} tone="purple" />
-        <KpiCard title="Check-ins" value={checkins.toLocaleString()} sub={`${(checkins / days).toFixed(1)} per day`} icon={LogIn} tone="green" />
-        <KpiCard title="Check-outs" value={checkouts.toLocaleString()} sub={`${(checkouts / days).toFixed(1)} per day`} icon={LogOut} tone="amber" />
-        <KpiCard title="Unique Members" value={people.toLocaleString()} sub="people appearing in this feed" icon={UserRound} tone="blue" />
+        <KpiCard isLoading={isLoading} title="Total Activities" value={total.toLocaleString()} sub={formatRangeLabel(range)} icon={CheckCircle2} tone="purple" />
+        <KpiCard isLoading={isLoading} title="Check-ins" value={checkins.toLocaleString()} sub={`${(checkins / days).toFixed(1)} per day`} icon={LogIn} tone="green" />
+        <KpiCard isLoading={isLoading} title="Check-outs" value={checkouts.toLocaleString()} sub={`${(checkouts / days).toFixed(1)} per day`} icon={LogOut} tone="amber" />
+        <KpiCard isLoading={isLoading} title="Unique Members" value={people.toLocaleString()} sub="people appearing in this feed" icon={UserRound} tone="blue" />
       </div>
 
       <TrendChartCard
+        heightClass={TREND_CHART_HEIGHT}
         title="Activity Trend"
         grain={grain}
+        grainOptions={grainOptions}
         onGrainChange={onGrainChange}
         isLoading={isLoading}
         isEmpty={!isLoading && !hasData}
@@ -107,7 +114,7 @@ export default function ActivityTab({ activityType, onActivityTypeChange, ...pro
         onSearchChange={setSearch}
         isLoading={isLoading}
         emptyMessage="No activity matches these filters"
-        pageSize={12}
+        pageSize={10}
       />
     </div>
   )

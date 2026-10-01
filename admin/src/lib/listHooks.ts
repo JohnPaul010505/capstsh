@@ -1,6 +1,24 @@
 import { usePagedTable } from '@/lib/pagedTable'
 import type { Profile } from '@/types'
 
+/**
+ * Rows per page for every admin list page: members, trainers, memberships and
+ * the renewal queue.
+ *
+ * PINNED at 15, not measured. The page size is a promise to the reader - "15
+ * members, the rest overleaf" - so it must not change when the window is
+ * resized. What the window gets to decide is the ROW HEIGHT: the pages measure
+ * it with `useFitRowHeight({ count: LIST_PAGE_SIZE })`, so fifteen rows always
+ * fill the card exactly.
+ *
+ * The previous setup had this the other way round, which is the whole reason the
+ * page scrolled: a hardcoded 25-row page inside a body that fits 14 rows. The
+ * footer promised "1-25 of 987" above a list that visibly stopped at 14, the
+ * header said "showing 14 per view" next to "25 on this page", and the extra
+ * rows were reachable only through a scrollbar.
+ */
+export const LIST_PAGE_SIZE = 15
+
 export interface PeopleListParams {
   /** 1-based. */
   page: number

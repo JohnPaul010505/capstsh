@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Calendar, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { RANGE_PRESETS, formatRangeLabel, normalizeRange, toDay, type Range } from '@/features/dashboard/lib/dateRange'
+import { DATA_START, RANGE_PRESETS, formatRangeLabel, normalizeRange, toDay, type Range } from '@/features/dashboard/lib/dateRange'
 
 interface DateRangePickerProps {
   value: Range
@@ -61,6 +61,12 @@ export default function DateRangePicker({ value, onChange, className }: DateRang
       setError('Dates cannot be in the future.')
       return
     }
+    // The dataset only starts at DATA_START, so a window that begins earlier
+    // would silently show an empty first section rather than an error.
+    if (draftStart < DATA_START) {
+      setError(`Data starts on ${DATA_START}.`)
+      return
+    }
     onChange(normalizeRange(draftStart, draftEnd))
     setOpen(false)
   }
@@ -87,6 +93,7 @@ export default function DateRangePicker({ value, onChange, className }: DateRang
               <input
                 type="date"
                 value={draftStart}
+                min={DATA_START}
                 max={today}
                 onChange={e => setDraftStart(e.target.value)}
                 className="mt-1 w-full px-2.5 py-2 glass-input rounded-lg text-sm text-fg-strong focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50"

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type HTMLAttributes } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-export type SelectOption = { id: string; label: string }
+export type SelectOption = { id: string; label: string; disabled?: boolean }
 
 /**
  * Glass-styled custom dropdown (native <select> popups render white and can't be themed).
@@ -70,8 +70,18 @@ export function MemberSelect({ options, value, onChange, placeholder = 'Select..
             <button
               key={opt.id}
               type="button"
-              onClick={() => { onChange(opt.id); setOpen(false) }}
-              className={`w-full text-left px-3 py-2 text-sm cursor-pointer transition-colors whitespace-nowrap ${opt.id === value ? 'bg-[#7C3AED]/15 text-accent-purple' : 'text-fg hover:bg-[#7C3AED]/10 hover:text-fg-strong'}`}
+              // A disabled option stays VISIBLE (dimmed, with the reason in its
+              // title) rather than being dropped from the list: silently
+              // removing "Daily" would leave a reader wondering where it went,
+              // and it is still the truth that the range cannot show it.
+              disabled={opt.disabled}
+              title={opt.disabled ? 'Not available for this date range' : opt.label}
+              onClick={() => { if (opt.disabled) return; onChange(opt.id); setOpen(false) }}
+              className={`w-full text-left px-3 py-2 text-sm transition-colors whitespace-nowrap ${
+                opt.disabled
+                  ? 'text-fg-faint cursor-not-allowed'
+                  : `cursor-pointer ${opt.id === value ? 'bg-[#7C3AED]/15 text-accent-purple' : 'text-fg hover:bg-[#7C3AED]/10 hover:text-fg-strong'}`
+              }`}
             >
               {opt.label}
             </button>

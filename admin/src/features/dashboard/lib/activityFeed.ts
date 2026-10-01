@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase'
-import { fetchAllRows } from './fetchAll'
+import { cachedDataset, fetchAllRows } from './fetchAll'
 import { daysBetween, parseDay, toDay, type Range } from './dateRange'
-import { planMatches, resolvePlan, type MembershipLite, type PlanFilter } from './planFilter'
+import { planIndexFor, planMatches, resolvePlanIndexed, type MembershipLite, type PlanFilter } from './planFilter'
 import { fetchMembershipsInRange, type MembershipRow } from './attendance'
 
 /**
@@ -83,9 +83,20 @@ async function paged<T>(run: (from: number, to: number) => PromiseLike<{ data: u
   })
 }
 
+/**
+ * A range-independent read, memoised across every activity rebuild.
+ *
+ * The feed re-derives on each date/plan change and each rebuild re-read all six
+ * source tables. None of them depend on the range, so the second rebuild was
+ * paying for six full table fetches to get the identical rows back.
+ */
+function pagedOnce<T>(key: string, run: (from: number, to: number) => PromiseLike<{ data: unknown[] | null; error: { message: string } | null }>): Promise<T[]> {
+  return cachedDataset(key, () => paged<T>(run))
+}
+
 /** Every profile (all roles) — names/codes for activity messages. */
-export async function fetchBriefProfiles(): Promise<BriefProfile[]> {
-  return paged<BriefProfile>(from =>
+export function fetchBriefProfiles(): Promise<BriefProfile[]> {
+  return pagedOnce<BriefProfile>('activity:brief-profiles', from =>
     supabase.from('profiles')
       .select('id, full_name, code, role, email')
       .order('created_at', { ascending: false })
@@ -94,8 +105,8 @@ export async function fetchBriefProfiles(): Promise<BriefProfile[]> {
   )
 }
 
-async function fetchEnrollments(): Promise<Enrollment[]> {
-  return paged<Enrollment>(from =>
+function fetchEnrollments(): Promise<Enrollment[]> {
+  return pagedOnce<Enrollment>('activity:enrollments', from =>
     supabase.from('enrollments')
       .select('id, full_name, email, status, created_at, confirmed_at')
       .order('created_at', { ascending: false })
@@ -104,8 +115,8 @@ async function fetchEnrollments(): Promise<Enrollment[]> {
   )
 }
 
-async function fetchFeedback(): Promise<Feedback[]> {
-  return paged<Feedback>(from =>
+function fetchFeedback(): Promise<Feedback[]> {
+  return pagedOnce<Feedback>('activity:feedback', from =>
     supabase.from('trainer_feedback')
       .select('id, member_id, content, created_at')
       .order('created_at', { ascending: false })
@@ -114,8 +125,8 @@ async function fetchFeedback(): Promise<Feedback[]> {
   )
 }
 
-async function fetchAssignments(): Promise<Assignment[]> {
-  return paged<Assignment>(from =>
+function fetchAssignments(): Promise<Assignment[]> {
+  return pagedOnce<Assignment>('activity:assignments', from =>
     supabase.from('trainer_assignments')
       .select('id, trainer_id, member_id, assigned_at')
       .order('assigned_at', { ascending: false })
@@ -155,7 +166,11 @@ export async function buildActivityFeed(src: ActivitySource): Promise<ActivityIt
   const profileByEmail = new Map(profiles.filter(p => p.email).map(p => [p.email as string, p]))
 
   const inRange = (day: string) => day >= range.start && day <= range.end
-  const planOk = (memberId: string, day: string) => planMatches(plan, resolvePlan(src.memberships, memberId, day))
+  // The feed calls planOk once per candidate event across six sources, so this
+  // ran the full membership scan thousands of times per build. One shared index
+  // turns each of those into a map lookup.
+  const planIndex = planIndexFor(src.memberships)
+  const planOk = (memberId: string, day: string) => planMatches(plan, resolvePlanIndexed(planIndex, memberId, day))
 
   const items: ActivityItem[] = []
   const nameOf = (id: string | null | undefined) => {

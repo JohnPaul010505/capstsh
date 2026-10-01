@@ -20,7 +20,7 @@ import RevenueTab from '@/features/dashboard/panels/RevenueTab'
 import GrowthTab from '@/features/dashboard/panels/GrowthTab'
 import MemberOverviewTab from '@/features/dashboard/panels/MemberOverviewTab'
 import ActivityTab from '@/features/dashboard/panels/ActivityTab'
-import { autoGrain, lastNDays, type Grain, type Range } from '@/features/dashboard/lib/dateRange'
+import { autoGrain, grainsForRange, lastNDays, type Grain, type Range } from '@/features/dashboard/lib/dateRange'
 import type { PlanFilter } from '@/features/dashboard/lib/planFilter'
 import type { ActivityType } from '@/features/dashboard/lib/activityFeed'
 
@@ -43,8 +43,22 @@ export default function DashboardPage() {
 
   // Default the grain to whatever the chosen range implies, until the user
   // picks one explicitly.
-  const grain = grainOverride ?? autoGrain(range)
-  const panelProps = { range, onRangeChange: setRange, plan, onPlanChange: setPlan, grain, onGrainChange: setGrainOverride }
+  //
+  // A hand-picked grain used to survive a range change untouched, which is how
+  // All time ended up drawing 1,369 daily bars (one pixel each, on a 0..1
+  // axis) after Daily had been chosen on a 30-day range. Changing the range
+  // now drops the override so the chart returns to the honest default, and a
+  // stale override is ignored even if it somehow survives.
+  const grainOptions = grainsForRange(range)
+  const grain = grainOverride && grainOptions.includes(grainOverride) ? grainOverride : autoGrain(range)
+  const handleRangeChange = (r: Range) => {
+    setRange(r)
+    setGrainOverride(null)
+  }
+  const panelProps = {
+    range, onRangeChange: handleRangeChange, plan, onPlanChange: setPlan,
+    grain, onGrainChange: setGrainOverride, grainOptions,
+  }
 
   return (
     <div className="h-full min-h-0 flex flex-col gap-3">

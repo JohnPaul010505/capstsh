@@ -1,12 +1,19 @@
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react'
+﻿import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 /**
- * Numbered pagination footer: « ‹ 1 2 3 … 66 › »
+ * This WAS a numbered pager: « ‹ 1 2 3 … 66 › »
  *
- * The window is centred on the current page and always includes the first and
- * last page, so the total is legible without scrolling a long strip. With 66
- * pages of members, rendering every button is 66 focus stops before the reader
- * gets past the middle of the list.
+ * It also carried a matching "Page 1 / 66" label on the far right, and that
+ * strip was the last thing still making the members, trainers and memberships
+ * pages read as a different app from the QR queue and every dashboard tab, all
+ * of which end on `RecordsTable`'s compact footer. This now renders that same
+ * row: `Showing 1-15 of 987 records` on the left, `1 / 66` between two arrows
+ * on the right (en dash on the range, exactly as `RecordsTable` writes it).
+ *
+ * The numbered window was not lost so much as it was redundant. The labels
+ * either side of it already said where the reader was, and 66 focus stops
+ * before the middle of a list is a lot to ask of someone who only wants the
+ * next twenty rows.
  */
 export interface PaginationFooterProps {
   page: number
@@ -14,32 +21,25 @@ export interface PaginationFooterProps {
   total?: number
   pageSize?: number
   onPageChange: (page: number) => void
-  /** Labels the record range, e.g. "1–20 of 987". */
+  /** Labels the record range, e.g. "Showing 1-20 of 987 records". */
   showRange?: boolean
   disabled?: boolean
-}
-
-/** Pages to show around the current one, before the ellipsis logic trims them. */
-const WINDOW = 2
-
-function buildPages(page: number, pageCount: number): (number | 'gap')[] {
-  if (pageCount <= 7) return Array.from({ length: pageCount }, (_, i) => i + 1)
-  const out: (number | 'gap')[] = [1]
-  const start = Math.max(2, page - WINDOW)
-  const end = Math.min(pageCount - 1, page + WINDOW)
-  if (start > 2) out.push('gap')
-  for (let p = start; p <= end; p++) out.push(p)
-  if (end < pageCount - 1) out.push('gap')
-  out.push(pageCount)
-  return out
 }
 
 export default function PaginationFooter({
   page, pageCount, total, pageSize, onPageChange, showRange = true, disabled = false,
 }: PaginationFooterProps) {
-  const pages = buildPages(page, pageCount)
+  // The range and the arrows describe the SAME page, so they are computed from
+  // the same three numbers. `total` is optional because the renewal queue
+  // renders it from an in-memory slice rather than a server count.
+  const range =
+    total === undefined
+      ? `Page ${page} of ${pageCount}`
+      : total === 0
+        ? 'No records'
+        : `Showing ${((page - 1) * (pageSize ?? total) + 1).toLocaleString()}–${Math.min(total, page * (pageSize ?? total)).toLocaleString()} of ${total.toLocaleString()} records`
 
-  const btn = (label: string, target: number, icon?: React.ReactNode, ariaLabel?: string) => {
+  const navBtn = (target: number, icon: React.ReactNode, ariaLabel: string) => {
     const off = disabled || target < 1 || target > pageCount
     return (
       <button
@@ -47,61 +47,27 @@ export default function PaginationFooter({
         onClick={() => onPageChange(target)}
         disabled={off}
         aria-label={ariaLabel}
-        aria-current={target === page ? 'page' : undefined}
-        className={`p-1.5 rounded-lg glass-chip transition-colors ${
-          off ? 'opacity-40 cursor-not-allowed' : 'hover:border-[#7C3AED]/50 cursor-pointer'
-        }`}
+        className={`p-1.5 rounded-lg bg-[#7C3AED] text-white cursor-pointer transition-colors hover:bg-[#6D28D9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/60 disabled:bg-[var(--overlay-8)] disabled:text-fg-faint disabled:opacity-100 disabled:cursor-not-allowed`}
       >
-        {icon ?? label}
+        {icon}
       </button>
     )
   }
 
   return (
-    <div className="flex items-center justify-between gap-3 px-4 py-2.5 shrink-0 border-t border-line-soft">
-      {showRange ? (
-        <span className="text-[12px] text-fg-muted tabular-nums">
-          {total === undefined
-            ? `Page ${page} of ${pageCount}`
-            : total === 0
-              ? 'No records'
-              : pageSize
-                ? `${(page - 1) * pageSize + 1}–${Math.min(total, page * pageSize)} of ${total.toLocaleString()}`
-                : `Page ${page} of ${pageCount}`}
-        </span>
-      ) : <span />}
-
-      <nav className="flex items-center gap-1" aria-label="Pagination">
-        {btn('', 1, <ChevronsLeft className="w-4 h-4" />, 'First page')}
-        {btn('', page - 1, <ChevronLeft className="w-4 h-4" />, 'Previous page')}
-        {pages.map((p, i) =>
-          p === 'gap' ? (
-            <span key={`gap-${i}`} className="px-1.5 text-[12px] text-fg-faint select-none">…</span>
-          ) : (
-            <button
-              key={p}
-              type="button"
-              onClick={() => onPageChange(p)}
-              disabled={disabled}
-              aria-current={p === page ? 'page' : undefined}
-              aria-label={`Page ${p}`}
-              className={`min-w-[2rem] h-8 px-2 rounded-lg text-[13px] tabular-nums transition-colors cursor-pointer ${
-                p === page
-                  ? 'bg-[#7C3AED] text-white'
-                  : 'glass-chip text-fg hover:border-[#7C3AED]/50'
-              }`}
-            >
-              {p}
-            </button>
-          ),
-        )}
-        {btn('', page + 1, <ChevronRight className="w-4 h-4" />, 'Next page')}
-        {btn('', pageCount, <ChevronsRight className="w-4 h-4" />, 'Last page')}
-      </nav>
-
-      <span className="text-[12px] text-fg-muted tabular-nums w-[7rem] text-right">
-        Page {page} / {pageCount}
-      </span>
+    // The same footer row `RecordsTable` renders - range left, arrows and
+    // "n / m" right - so a reader who has learned one list has learned all of
+    // them. The only case it does not have is the loading one: these lists get
+    // their rows from PostgREST with the previous page still on screen, and
+    // swapping the range for "Loading records..." would make the footer jump
+    // on every keystroke of the search box.
+    <div className="flex items-center justify-between gap-3 text-[12px] text-fg-muted shrink-0">
+      {showRange ? <span className="tabular-nums">{range}</span> : <span />}
+      <div className="flex items-center gap-1">
+        {navBtn(page - 1, <ChevronLeft className="w-4 h-4" />, 'Previous page')}
+        <span className="px-2 tabular-nums">{page} / {pageCount}</span>
+        {navBtn(page + 1, <ChevronRight className="w-4 h-4" />, 'Next page')}
+      </div>
     </div>
   )
 }

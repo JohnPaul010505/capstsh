@@ -21,6 +21,22 @@ export const client = createClient(supabaseUrl, serviceRoleKey, {
 
 export const SEED_DIR = resolve(__dirname, '..', 'data')
 
+/**
+ * Inclusive first day of the demo dataset, as an Asia/Manila civil date.
+ *
+ * Every generator in this directory derives its date span from here, so the
+ * window is declared once. The admin app keeps its own copy of the same literal
+ * in `src/features/dashboard/lib/dateRange.ts` - it cannot import this module,
+ * because this file calls `dotenv.config()` and builds a service-role Supabase
+ * client, neither of which may reach a browser bundle. `scripts/verify-dataset-spread.mjs`
+ * reads BOTH files and fails the run if they drift, so the two copies cannot
+ * silently disagree.
+ */
+export const DATA_START = '2023-01-01'
+
+/** DATA_START as UTC ms at Manila midnight. */
+export const DATA_START_MS = Date.parse(`${DATA_START}T00:00:00+08:00`)
+
 // ---- Deterministic PRNG ----
 export function mulberry32(seed) {
   return function () {

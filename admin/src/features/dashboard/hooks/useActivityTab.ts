@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { autoGrain, bucketize, daysBetween, type Grain, type Range } from '@/features/dashboard/lib/dateRange'
 import { fetchAttendance, fetchLastCheckins, fetchMemberships } from '@/features/dashboard/lib/attendance'
 import { buildActivityFeed, type ActivityItem, type ActivityType } from '@/features/dashboard/lib/activityFeed'
@@ -22,6 +22,10 @@ export function useActivityTab(range: Range, plan: PlanFilter, type: ActivityTyp
 
   const q = useQuery({
     queryKey: ['dash-activity', range.start, range.end, plan],
+    // Keep the previous range on screen while the next one loads. Every KPI here
+    // comes from a whole-table fetch, so without this a range change
+    // blanks the tab and the cards briefly show zeros for the NEW range.
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       const [attendance, memberships, lastCheckins] = await Promise.all([
         fetchAttendance(range),

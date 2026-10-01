@@ -1,8 +1,8 @@
 import { useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { daysBetween, toDay, type Range } from '@/features/dashboard/lib/dateRange'
 import { fetchAttendance, fetchLastCheckins, fetchMemberProfiles, fetchMemberships } from '@/features/dashboard/lib/attendance'
-import { memberPlanMatches, planMatches, resolvePlan, type PlanFilter } from '@/features/dashboard/lib/planFilter'
+import { memberPlanMatchesIndexed, planIndexFor, planMatches, resolvePlanIndexed, type PlanFilter } from '@/features/dashboard/lib/planFilter'
 
 export interface MemberOverviewRecord {
   id: string
@@ -32,6 +32,10 @@ export interface Slice {
 export function useMemberOverviewTab(range: Range, plan: PlanFilter) {
   const q = useQuery({
     queryKey: ['dash-members', range.start, range.end, plan],
+    // Keep the previous range on screen while the next one loads. Every KPI here
+    // comes from a whole-table fetch, so without this a range change
+    // blanks the tab and the cards briefly show zeros for the NEW range.
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       const [profiles, memberships, attendance, lastCheckins] = await Promise.all([
         fetchMemberProfiles(),
@@ -50,12 +54,16 @@ export function useMemberOverviewTab(range: Range, plan: PlanFilter) {
     const lastCheckins = q.data?.lastCheckins ?? {}
     const days = Math.max(1, daysBetween(range.start, range.end))
 
-    const visible = profiles.filter(p => memberPlanMatches(plan, memberships, p.id))
+    // One index reused by the visibility filter, the active-set scan below and
+    // the record mapping — the old code re-scanned all memberships each time.
+    const planIndex = planIndexFor(memberships)
+
+    const visible = profiles.filter(p => memberPlanMatchesIndexed(plan, planIndex, p.id))
 
     const activeIds = new Set<string>()
     attendance.forEach(r => {
       if (r.profiles?.role === 'trainer') return
-      if (!planMatches(plan, resolvePlan(memberships, r.member_id, r.check_in_date))) return
+      if (!planMatches(plan, resolvePlanIndexed(planIndex, r.member_id, r.check_in_date))) return
       activeIds.add(r.member_id)
     })
 
@@ -69,14 +77,33 @@ export function useMemberOverviewTab(range: Range, plan: PlanFilter) {
     const genderLabel = (g: string | null) =>
       g === 'male' ? 'Male' : g === 'female' ? 'Female' : g ? 'Other' : 'Unspecified'
 
-    const genderSlices: Slice[] = (() => {
-      const counts: Record<string, number> = {}
-      visible.forEach(p => {
-        const label = genderLabel(p.gender)
-        counts[label] = (counts[label] || 0) + 1
-      })
-      return Object.entries(counts).map(([name, value]) => ({ name, value }))
-    })()
+    // Gender is counted into a fixed Female/Male/Other order rather than
+    // first-seen order, so the bar segments do not reshuffle between ranges
+    // just because a different member happened to be listed first.
+    //
+    // An unrecorded gender is deliberately NOT a slice. It is an empty value,
+    // not a fourth group: giving it an arc and a legend row made 3 members out
+    // of 987 look like a category worth tracking, and on a card this small it
+    // cost a whole row to say "nothing". It is returned as a count instead and
+    // the chart shows it as a quiet note, so the information survives without
+    // being promoted to a category.
+    const genderCounts: Record<string, number> = { Female: 0, Male: 0, Other: 0 }
+    let unrecordedGender = 0
+    visible.forEach(p => {
+      const label = genderLabel(p.gender)
+      if (label === 'Unspecified') {
+        unrecordedGender += 1
+        return
+      }
+      genderCounts[label] = (genderCounts[label] ?? 0) + 1
+    })
+
+    // Zero-count categories are dropped rather than drawn as a 0% sliver: a
+    // "Male 0" row is noise when every member is female, and an empty segment
+    // still renders as a coloured pixel in the bar.
+    const genderSlices: Slice[] = Object.entries(genderCounts)
+      .filter(([, value]) => value > 0)
+      .map(([name, value]) => ({ name, value }))
 
     const statusSlices: Slice[] = [
       { name: 'Active', value: active },
@@ -91,7 +118,7 @@ export function useMemberOverviewTab(range: Range, plan: PlanFilter) {
         id: p.id,
         memberName: p.full_name,
         memberCode: p.code,
-        planName: resolvePlan(memberships, p.id, range.start) ?? '—',
+        planName: resolvePlanIndexed(planIndex, p.id, range.start) ?? '—',
         lastCheckIn: last,
         daysSince,
         genderLabel: genderLabel(p.gender),
@@ -103,7 +130,7 @@ export function useMemberOverviewTab(range: Range, plan: PlanFilter) {
       return a.memberName.localeCompare(b.memberName)
     })
 
-    return { total: visible.length, active, inactive, newInRange, days, genderSlices, statusSlices, records }
+    return { total: visible.length, active, inactive, newInRange, days, genderSlices, unrecordedGender, statusSlices, records }
   }, [q.data, range.start, range.end, plan])
 
   return { ...derived, isLoading: q.isLoading, error: q.error }

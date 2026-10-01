@@ -1,7 +1,7 @@
 import { readFileSync, existsSync } from 'node:fs'
 import { resolve, dirname } from 'path'
 import { fileURLToPath } from 'url'
-import { client, makeRand, sleep } from './common.mjs'
+import { client, makeRand, sleep, DATA_START } from './common.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -35,7 +35,33 @@ export const TRAINER_LAST = [
   'Ocampo', 'Lim', 'Torres',
 ]
 
-const START_MS = new Date('2020-01-01T00:00:00+08:00').getTime()
+const START_MS = Date.parse(`${DATA_START}T00:00:00+08:00`)
+
+const DAY = 86400000
+
+/**
+ * Evenly spaces a roster across [DATA_START, today] by CODE order.
+ *
+ * `buildPeople` picks joinedAt uniformly at random, which is close enough to
+ * even but can leave a thin month - and a month with no joins at all is a hole
+ * in the dashboard's "All time" charts. Assigning by index instead guarantees
+ * every month in the window receives a predictable number of joins.
+ *
+ * Ordering by CODE is what keeps the existing invariant true: the auto_uid
+ * trigger hands out M001, M002, ... in insert order, and `ensureProfiles` feeds
+ * it a joinedAt-ascending list, so code order and seniority must stay in step.
+ * Callers must therefore pass the roster already sorted by code.
+ */
+export function planJoinedAt(count, endMs = Date.now()) {
+  if (count <= 0) return []
+  const span = Math.max(endMs - START_MS, DAY)
+  return Array.from({ length: count }, (_, i) => {
+    // Offset into the middle of slot i, so consecutive joins are not all
+    // stamped at exactly midnight and tie-breaks stay stable.
+    const t = (i + 0.5) / count
+    return new Date(START_MS + Math.floor(span * t)).toISOString()
+  })
+}
 
 const slug = (s) =>
   s.toLowerCase().replace(/[^a-z]+/g, '.').replace(/^\.|\.$/g, '')

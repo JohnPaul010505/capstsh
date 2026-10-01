@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { autoGrain, bucketize, daysBetween, type Grain, type Range } from '@/features/dashboard/lib/dateRange'
 import { fetchMembershipsInRange } from '@/features/dashboard/lib/attendance'
 import type { PlanFilter } from '@/features/dashboard/lib/planFilter'
@@ -35,6 +35,10 @@ export function useRevenueTab(range: Range, plan: PlanFilter, grain?: Grain) {
 
   const q = useQuery({
     queryKey: ['dash-revenue', range.start, range.end, plan],
+    // Keep the previous range on screen while the next one loads. Every KPI here
+    // comes from a whole-table fetch, so without this a range change
+    // blanks the tab and the cards briefly show zeros for the NEW range.
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       const rows = await fetchMembershipsInRange(range)
       return plan === 'all' ? rows : rows.filter(r => r.plan_name === plan)

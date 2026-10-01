@@ -1,14 +1,18 @@
-import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { cn } from '@/lib/utils'
-import { useAuth } from '@/features/auth/hooks/useAuth'
-import ConfirmDialog from '@/components/ConfirmDialog'
 import {
   LayoutDashboard, Users, Dumbbell, CreditCard,
-  CalendarCheck, BarChart3, QrCode, Settings, LogOut, MessageSquare, Bell,
+  CalendarCheck, BarChart3, QrCode, MessageSquare, Bell,
   TrendingUp,
 } from 'lucide-react'
 
+// Settings and Sign Out are NOT here. Both live in the menu behind the admin's
+// name in the header: the sidebar is navigation between sections of the app, and
+// "edit your own display name" and "log out" are neither. A settings entry in a
+// list of ten destinations also implied a settings page worth a destination of
+// its own, which it is not - it is one card.
+//
+// The `/settings` route is still registered in App.tsx, so the URL keeps working.
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/members', label: 'Members', icon: Users },
@@ -20,16 +24,12 @@ const navItems = [
   { to: '/reports/feedback', label: 'Feedback', icon: MessageSquare },
   { to: '/predictions', label: 'Predictions', icon: TrendingUp },
   { to: '/notifications', label: 'Notifications', icon: Bell },
-  { to: '/settings', label: 'Settings', icon: Settings },
 ]
 
 // Sidebar shell: transparent-edge liquid glass, so no white border line shows.
 const chromeBg = 'glass-chrome'
 
 export default function Sidebar() {
-  const { signOut } = useAuth()
-  const [showLogout, setShowLogout] = useState(false)
-
   return (
     <aside
       className={cn(
@@ -63,25 +63,6 @@ export default function Sidebar() {
           </NavLink>
         ))}
       </nav>
-
-      {/* Bottom section */}
-      <div className="px-3 pb-3 pt-5">
-        <button onClick={() => setShowLogout(true)} className={cn(
-          "flex items-center gap-3 rounded-2xl transition-all duration-200 w-full bg-[#EF4444] text-white hover:bg-[#DC2626]",
-          "px-3 py-2"
-        )}>
-          <LogOut className="w-[18px] h-[18px] shrink-0" strokeWidth={2} />
-          <span className="text-[13px] whitespace-nowrap">Sign Out</span>
-        </button>
-      </div>
-
-      <ConfirmDialog
-        open={showLogout}
-        title="Sign Out"
-        message="Are you sure you want to sign out?"
-        onConfirm={() => { setShowLogout(false); signOut() }}
-        onCancel={() => setShowLogout(false)}
-      />
     </aside>
   )
 }

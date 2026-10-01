@@ -10,6 +10,10 @@
     "seed:dev": "node scripts/seed-dev.mjs",
     "seed:m002": "node scripts/seed-m002.mjs",
     "reset:m002": "node scripts/reset-m002.mjs",
+    "seed:reset": "node scripts/seed/reset-demo-data.mjs --dry-run",
+    "seed:reanchor": "node scripts/seed/reanchor-profiles.mjs --dry-run",
+    "verify:data": "node scripts/verify-demo-data.mjs",
+    "verify:spread": "node scripts/verify-dataset-spread.mjs",
     "build": "tsc && vite build",
     "preview": "vite preview"
   },

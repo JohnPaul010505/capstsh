@@ -22,6 +22,10 @@ const adminClient = createClient(supabaseUrl, serviceRoleKey, {
   auth: { autoRefreshToken: false, persistSession: false },
 })
 
+// Base URL of the Python predictions service. Keep in sync with PORT in
+// ai-service/.env (default 8001 - port 3001 belongs to this Express server).
+const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8001'
+
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', routes: ['enroll', 'users', 'delete-user', 'assign-trainer', 'unassign-trainer', 'backfill-auth', 'backfill-codes', 'ai/predictions', 'plans/check-daily-completions', 'plans/check-weekly-completions'] })
 })
@@ -457,7 +461,7 @@ app.post('/api/ai/predictions', async (req, res) => {
   if (!member_id) return res.status(400).json({ error: 'Missing member_id' })
 
   try {
-    const response = await fetch(`http://localhost:8001/api/ai/predictions`, {
+    const response = await fetch(`${AI_SERVICE_URL}/api/ai/predictions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(req.body),
@@ -567,49 +571,6 @@ app.post('/api/ai/predictions', async (req, res) => {
   }
 
   res.json(results)
-})
-
-app.get('/api/ai/search-met', async (req, res) => {
-  const { q } = req.query
-  if (!q || typeof q !== 'string' || q.length < 2) {
-    return res.json({ matches: [] })
-  }
-  try {
-    const response = await fetch(`http://localhost:8001/api/ai/search-met?q=${encodeURIComponent(q)}`, {
-      signal: AbortSignal.timeout(8000),
-    })
-    if (response.ok) {
-      const data = await response.json()
-      return res.json(data)
-    }
-    const err = await response.json().catch(() => ({ error: 'AI service error' }))
-    return res.status(response.status).json(err)
-  } catch (e) {
-    return res.status(502).json({ error: `AI service unreachable: ${e.message}` })
-  }
-})
-
-app.post('/api/ai/estimate-met', async (req, res) => {
-  const { exercise_name } = req.body
-  if (!exercise_name || typeof exercise_name !== 'string') {
-    return res.status(400).json({ error: 'exercise_name is required' })
-  }
-  try {
-    const response = await fetch(`http://localhost:8001/api/ai/estimate-met`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ exercise_name }),
-      signal: AbortSignal.timeout(30000),
-    })
-    if (response.ok) {
-      const data = await response.json()
-      return res.json(data)
-    }
-    const err = await response.json().catch(() => ({ error: 'AI service error' }))
-    return res.status(response.status).json(err)
-  } catch (e) {
-    return res.status(502).json({ error: `AI service unreachable: ${e.message}` })
-  }
 })
 
 // --- Forecast math (mirrors ai-service/services/ml.py) ----------------------

@@ -1,0 +1,6 @@
+VITE_SUPABASE_URL | raw=40 | quoted=true | parsed=38 | head=ttps:/
+VITE_SUPABASE_ANON_KEY | raw=46 | quoted=true | parsed=44 | head=b_publ
+SUPABASE_SERVICE_ROLE_KEY | raw=219 | quoted=true | parsed=217 | head=yJhbGc
+VITE_PUBLIC_URL | raw=27 | quoted=true | parsed=25 | head=ttp://
+ADMIN_EMAIL | raw=15 | quoted=true | parsed=13 | head=dmin@g
+ADMIN_PASSWORD | raw=9 | quoted=true | parsed=7 | head=234567

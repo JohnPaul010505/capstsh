@@ -4,7 +4,7 @@ import KpiCard from '@/components/KpiCard'
 import RecordsTable, { type RecordsColumn } from '@/components/RecordsTable'
 import Badge from '@/components/Badge'
 import TabHeader, { PLAN_FILTER_OPTIONS, type TabPanelProps } from '@/features/dashboard/components/TabHeader'
-import TrendChartCard from '@/features/dashboard/components/TrendChartCard'
+import TrendChartCard, { TREND_CHART_HEIGHT } from '@/features/dashboard/components/TrendChartCard'
 import { BarTrend } from '@/features/dashboard/components/TrendCharts'
 import { fmtDay, formatRangeLabel } from '@/features/dashboard/lib/dateRange'
 import type { PlanFilter } from '@/features/dashboard/lib/planFilter'
@@ -17,21 +17,33 @@ const entryBadge = (method: string | null) => {
 }
 
 export default function CheckinsTab(props: TabPanelProps) {
-  const { range, onRangeChange, plan, onPlanChange, grain, onGrainChange } = props
+  const { range, onRangeChange, plan, onPlanChange, grain, onGrainChange, grainOptions } = props
   const { total, memberCount, trainerCount, avg, days, points, records, isLoading } =
     useCheckinsTab(range, plan, grain)
   const [search, setSearch] = useState('')
 
   const columns: RecordsColumn<CheckinRecord>[] = [
+    /* Date and time are two columns, not one "Date & Time" cell with the time
+       tacked on beside it. They were never one fact - "Sep 30, 2026  1:39 AM"
+       puts a date and a clock time in the same reading run with a 8px gap and
+       nothing else to say which is which.
+
+       Two COLUMNS rather than one column with the time on a second line: a
+       two-line cell is ~60px tall, and `RecordsTable` budgets rows at a flat
+       44px (that budget is what picks the page size, and the dashboard pins it
+       at 10, so a taller row silently clips the bottom of the table instead of
+       scrolling). Splitting the column keeps every row one line. The `nowrap`
+       on both is what guarantees it: without it a narrow column wraps the date
+       and quietly reintroduces the taller row. */
     {
-      key: 'when',
-      header: 'Date & Time',
-      render: r => (
-        <div className="leading-tight">
-          <span className="text-fg-strong">{fmtDay(r.check_in_date)}</span>
-          <span className="ml-2 text-fg-muted text-[12px]">{timeOf(r.check_in_time)}</span>
-        </div>
-      ),
+      key: 'date',
+      header: 'Date',
+      render: r => <span className="text-fg-strong whitespace-nowrap">{fmtDay(r.check_in_date)}</span>,
+    },
+    {
+      key: 'time',
+      header: 'Time',
+      render: r => <span className="text-fg-muted text-[12px] whitespace-nowrap">{timeOf(r.check_in_time)}</span>,
     },
     { key: 'name', header: 'Member Name', render: r => <span className="font-medium text-fg-strong">{r.profiles?.full_name ?? 'Unknown'}</span> },
     { key: 'code', header: 'Member ID', render: r => <span className="font-mono text-[12px] text-fg-muted">{r.profiles?.code ?? r.member_id.slice(0, 8)}</span> },
@@ -58,15 +70,17 @@ export default function CheckinsTab(props: TabPanelProps) {
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KpiCard title="Total Check-ins" value={total.toLocaleString()} sub={formatRangeLabel(range)} icon={CalendarCheck} tone="purple" />
-        <KpiCard title="Members" value={memberCount.toLocaleString()} sub={`${(memberCount / days).toFixed(1)} member visits / day`} icon={Users} tone="blue" />
-        <KpiCard title="Trainers" value={trainerCount.toLocaleString()} sub={`${(trainerCount / days).toFixed(1)} trainer visits / day`} icon={Crown} tone="amber" />
-        <KpiCard title="Average per Day" value={avg.toFixed(1)} sub={`${days} day${days === 1 ? '' : 's'} in range`} icon={UsersRound} tone="green" />
+        <KpiCard isLoading={isLoading} title="Total Check-ins" value={total.toLocaleString()} sub={formatRangeLabel(range)} icon={CalendarCheck} tone="purple" />
+        <KpiCard isLoading={isLoading} title="Members" value={memberCount.toLocaleString()} sub={`${(memberCount / days).toFixed(1)} member visits / day`} icon={Users} tone="blue" />
+        <KpiCard isLoading={isLoading} title="Trainers" value={trainerCount.toLocaleString()} sub={`${(trainerCount / days).toFixed(1)} trainer visits / day`} icon={Crown} tone="amber" />
+        <KpiCard isLoading={isLoading} title="Average per Day" value={avg.toFixed(1)} sub={`${days} day${days === 1 ? '' : 's'} in range`} icon={UsersRound} tone="green" />
       </div>
 
       <TrendChartCard
+        heightClass={TREND_CHART_HEIGHT}
         title="Check-ins Trend"
         grain={grain}
+        grainOptions={grainOptions}
         onGrainChange={onGrainChange}
         isLoading={isLoading}
         isEmpty={!isLoading && !hasData}
@@ -87,6 +101,7 @@ export default function CheckinsTab(props: TabPanelProps) {
         onSearchChange={setSearch}
         isLoading={isLoading}
         emptyMessage="No check-ins match these filters"
+        pageSize={10}
       />
     </div>
   )

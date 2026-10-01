@@ -33,7 +33,18 @@ function loadPeople(file, role) {
 }
 
 async function verify(expectedTotal) {
-  const { count, error } = await client.from('attendance').select('id', { count: 'exact', head: true })
+  // Count ONLY the seeded rows. `reset-demo-data.mjs` deliberately keeps the
+  // hand-written showcase rows, which carry other id prefixes, so the table
+  // total is always `generated + 1` and comparing it to `expectedTotal` fails on
+  // a correct seed. The same id-range predicate that script uses is the honest
+  // way to ask "did the generator insert what it said it would".
+  const [lo, hi] = [
+    `${ATT_ID_PREFIX}-0000-4000-8000-000000000000`,
+    `${ATT_ID_PREFIX}-0000-4000-8000-ffffffffffff`,
+  ]
+  const seedQuery = client.from('attendance').select('id', { count: 'exact', head: true })
+    .filter('id::text', 'gte', lo).filter('id::text', 'lte', hi)
+  const { count, error } = await seedQuery
   if (error) throw new Error(`verify count: ${error.message}`)
   const { data: first } = await client.from('attendance').select('check_in_date').order('check_in_date', { ascending: true }).limit(1)
   const { data: last } = await client.from('attendance').select('check_in_date').order('check_in_date', { ascending: false }).limit(1)
@@ -42,7 +53,7 @@ async function verify(expectedTotal) {
     .eq('check_in_date', localDate(new Date()))
     .is('check_out_time', null)
   console.log('--- verification ---')
-  console.log(`attendance rows: ${count} (generated ${expectedTotal})`)
+  console.log(`seeded attendance rows: ${count} (generated ${expectedTotal})`)
   console.log(`range: ${first?.[0]?.check_in_date} → ${last?.[0]?.check_in_date}`)
   console.log(`open sessions today: ${openToday}`)
   const ok = count === expectedTotal && (openToday ?? 0) >= 3

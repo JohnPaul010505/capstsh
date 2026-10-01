@@ -2,15 +2,15 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useCreateMembership, useDeleteMembership, useAttendanceLast7Days, useRenewalRequests } from '../hooks/useMemberships'
-import { useMembershipsList, useMembershipSearchIds } from '@/lib/listHooks'
+import { useMembershipsList, useMembershipSearchIds, LIST_PAGE_SIZE } from '@/lib/listHooks'
 import { useResetPageOnChange } from '@/lib/pagedTable'
+import { useFitRowHeight } from '@/hooks/useFitRows'
+import PeopleTable, { peopleCells, type PeopleColumn } from '@/components/PeopleTable'
 import ListToolbar from '@/components/ListToolbar'
 import PaginationFooter from '@/components/PaginationFooter'
 import StatusBadge from '@/components/StatusBadge'
 import type { Membership, MembershipRenewalRequest } from '@/types'
-import { Plus, X, Trash2, ChevronDown, CheckCircle, XCircle } from 'lucide-react'
-
-const MEMBERSHIP_PAGE_SIZE = 25
+import { Plus, X, ChevronDown, CheckCircle, XCircle } from 'lucide-react'
 
 const PLANS = {
   daily: { label: 'Daily', price: 60, days: 1 },
@@ -132,12 +132,17 @@ export default function MembershipsPage() {
   const [saving, setSaving] = useState(false)
   const [planError, setPlanError] = useState('')
 
-  // List controls, shared by the Daily and Monthly tabs. The Renewal tab is a
-  // different query and has its own state below.
+  // List controls. The search box is shared by all three tabs and sits above
+  // them, so the term is one piece of state: Daily/Monthly resolve it to member
+  // ids server-side, the Renewal queue filters its pending rows in memory.
+  //
+  // There is no start-date filter on this page. It was a second, redundant way
+  // to ask a question the tabs already answer, and it cost a row of chrome
+  // above a table that has to fit fifteen rows without a scrollbar. The list
+  // hook still accepts `from`/`to`; nothing here uses them.
   const [membershipPage, setMembershipPage] = useState(1)
+  const [renewPage, setRenewPage] = useState(1)
   const [membershipSearch, setMembershipSearch] = useState('')
-  const [membershipFrom, setMembershipFrom] = useState<string | undefined>()
-  const [membershipTo, setMembershipTo] = useState<string | undefined>()
 
   // The member's name and code live on the JOINED profile, so they cannot take
   // part in the same PostgREST `or()` as a column on the membership row. The
@@ -157,13 +162,11 @@ export default function MembershipsPage() {
   const { rows: memberships, isLoading, total: membershipTotal, pageCount: membershipPages } =
     useMembershipsList({
       page: membershipPage,
-      pageSize: MEMBERSHIP_PAGE_SIZE,
+      pageSize: LIST_PAGE_SIZE,
       planName: PLANS[planTab].label,
-      from: membershipFrom,
-      to: membershipTo,
       memberIds: membershipSearchIds,
     })
-  useResetPageOnChange(setMembershipPage, membershipSearch, membershipFrom, membershipTo)
+  useResetPageOnChange(setMembershipPage, membershipSearch)
   const { data: recentAttendance } = useAttendanceLast7Days()
   const { data: members } = useQuery({
     queryKey: ['members-simple'],
@@ -281,6 +284,89 @@ export default function MembershipsPage() {
     supabase.auth.getUser().then(u => setAdminId(u.data?.user?.id ?? '')).catch(() => {})
   }, [])
 
+  // The queue is small (24 seeded requests) and `useRenewalRequests` already
+  // fetches all of it, so the shared search box filters it in memory. It cannot
+  // reuse the member-id path the Daily/Monthly tabs use, because that path
+  // filters the `memberships` table - these rows are requests, not memberships.
+  const renewalMatches = useMemo(() => {
+    const q = membershipSearch.trim().toLowerCase()
+    if (!q) return pendingList
+    return pendingList.filter(r =>
+      [r.profiles?.full_name, r.profiles?.code, r.profiles?.email]
+        .some(v => (v ?? '').toLowerCase().includes(q)),
+    )
+  }, [pendingList, membershipSearch])
+
+  useResetPageOnChange(setRenewPage, membershipSearch)
+  const renewPageCount = Math.max(1, Math.ceil(renewalMatches.length / LIST_PAGE_SIZE))
+  // Clamp rather than reset: a search that shrinks the queue must not be able to
+  // park the reader on a page past the end.
+  const safeRenewPage = Math.min(renewPage, renewPageCount)
+  const renewalRows = renewalMatches.slice(
+    (safeRenewPage - 1) * LIST_PAGE_SIZE,
+    safeRenewPage * LIST_PAGE_SIZE,
+  )
+
+  // Fifteen rows is the contract on every tab; the height of one of them is what
+  // gives. One measurement serves both tables - they are never on screen at once.
+  const [scrollRef, rowHeight] = useFitRowHeight<HTMLDivElement>({ count: LIST_PAGE_SIZE })
+
+  /**
+   * The member's code gets its own column here, as it already has on the Members
+   * and Trainers pages. It used to be printed inside the name cell, which meant
+   * name and code had to share one line, they ran together for anyone scanning a
+   * column of names, and the code could not be picked out the way a whole column
+   * of them can.
+   */
+  const membershipColumns: PeopleColumn<Membership>[] = [
+    { key: 'member', header: 'Member', render: m => <span className="font-medium text-fg-strong">{m.profiles?.full_name ?? '—'}</span> },
+    { key: 'code', header: 'Code', render: m => peopleCells.code(m.profiles?.code) },
+    { key: 'plan', header: 'Plan', render: m => m.plan_name },
+    { key: 'price', header: 'Price', render: m => `₱${m.price}` },
+    { key: 'start', header: 'Start', render: m => peopleCells.date(m.start_date) },
+    { key: 'end', header: 'End', render: m => peopleCells.date(m.end_date) },
+    {
+      key: 'status',
+      header: 'Status',
+      render: m => {
+        const status = computeStatus(m, recentMemberIds)
+        const pendingRequest = pendingByMember.current.get(m.member_id)
+        return (
+          <div className="flex items-center gap-2">
+            <StatusBadge status={status} />
+            {pendingRequest && (
+              <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                RENEWAL REQUESTED
+              </span>
+            )}
+          </div>
+        )
+      },
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'right',
+      render: m => {
+        const pendingRequest = pendingByMember.current.get(m.member_id)
+        return (
+          <div className="flex items-center justify-end gap-2">
+            {pendingRequest && (
+              <button
+                onClick={() => handleRenewClick(m.member_id)}
+                className="text-xs font-medium text-white bg-[#7C3AED] px-2.5 py-1 rounded-lg hover:bg-[#6D28D9] transition-colors cursor-pointer"
+              >
+                Renew
+              </button>
+            )}
+            {peopleCells.deleteButton('Delete membership', () => handleDelete(m.id))}
+          </div>
+        )
+      },
+    },
+  ]
+
   const handleRenewClick = (memberId: string) => {
     const r = pendingByMember.current.get(memberId)
     if (!r) return
@@ -364,189 +450,164 @@ export default function MembershipsPage() {
     }
   }
 
+  /**
+   * A queue row is deliberately one line: the member's email rides along as the
+   * name's tooltip and their note as the plan cell's, because a variable-height
+   * row cannot be part of a fixed fifteen-row page. Both are still one click
+   * away - the row itself opens the full request panel.
+   */
+  const renewalColumns: PeopleColumn<MembershipRenewalRequest>[] = [
+    {
+      key: 'member',
+      header: 'Member',
+      render: r => (
+        <span className="font-medium text-fg-strong" title={r.profiles?.email ?? undefined}>
+          {r.profiles?.full_name ?? '—'}
+        </span>
+      ),
+    },
+    { key: 'code', header: 'Code', render: r => peopleCells.code(r.profiles?.code) },
+    {
+      key: 'plan',
+      header: 'Plan',
+      render: r => (
+        <div className="flex items-center gap-1.5" title={r.note ?? undefined}>
+          <span className="bg-[#7C3AED]/10 text-accent-purple px-2 py-0.5 rounded-full text-xs font-medium">{r.plan_name}</span>
+          <span className="text-xs text-fg-muted">
+            {r.plan_name.toLowerCase() === 'daily' ? '1 day' : `${r.months} month${r.months === 1 ? '' : 's'}`}
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: 'requested',
+      header: 'Requested',
+      render: r => (
+        <span className="text-xs text-fg-muted whitespace-nowrap">
+          {new Date(r.requested_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          {' at '}
+          {new Date(r.requested_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'right',
+      render: r => (
+        <div className="flex items-center justify-end gap-2">
+          {/* `py-1`, not `py-1.5`: at 15 fixed rows the button is the tallest
+              thing in the row, so every pixel it is taller is a pixel the row
+              cannot give back - and at 1366x768 the queue needs those pixels. */}
+          <button
+            onClick={e => { e.stopPropagation(); void handleApprove(r) }}
+            disabled={savingRequest === r.id}
+            className="flex items-center gap-1 px-2.5 py-1 text-xs bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 cursor-pointer"
+          >
+            <CheckCircle className="w-3.5 h-3.5" />
+            {savingRequest === r.id ? 'Saving...' : 'Approve'}
+          </button>
+          <button
+            onClick={e => { e.stopPropagation(); void handleDecline(r) }}
+            disabled={savingRequest === r.id}
+            className="flex items-center gap-1 px-2.5 py-1 text-xs bg-rose-600 text-white rounded-lg hover:bg-rose-700 disabled:opacity-50 cursor-pointer"
+          >
+            <XCircle className="w-3.5 h-3.5" />
+            {savingRequest === r.id ? 'Saving...' : 'Decline'}
+          </button>
+        </div>
+      ),
+    },
+  ]
+
   return (
     <div className="h-full min-h-0 flex flex-col gap-3">
-      <div className="flex items-center justify-between shrink-0">
-        {/* Tabs */}
-        <div className="flex gap-1 glass-card rounded-xl p-1 w-fit" role="tablist" aria-label="Membership views">
-          {(['daily', 'monthly', 'renewal'] as const).map(tab => (
-            <button
-              key={tab}
-              role="tab"
-              aria-selected={activeTab === tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-5 py-2 text-sm rounded-lg font-medium transition-all cursor-pointer ${
-                activeTab === tab
-                  ? 'bg-[#7C3AED] text-white shadow-sm'
-                  : 'text-fg hover:text-fg-strong'
-              }`}
-            >
-              {tab === 'daily' ? 'Daily' : tab === 'monthly' ? 'Monthly' : 'Renewal'}
-            </button>
-          ))}
-        </div>
-
+      {/*
+        The page's one action button sits above the card, in the toolbar strip.
+        The SEARCH used to sit beside it, above the tab strip and shared by all
+        three tabs; it now lives in each table's own card header, beside the tab's
+        title - the same place the QR queue keeps it. The tab filter is still
+        what selects the queue, so the "Start date" button that once duplicated
+        it stays gone.
+      */}
+      <ListToolbar>
         <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2 bg-[#7C3AED] text-white rounded-xl text-sm hover:bg-[#6D28D9] shrink-0 cursor-pointer">
           <Plus className="w-4 h-4" /> Add Membership
         </button>
-      </div>
+      </ListToolbar>
 
-      {activeTab !== 'renewal' && (
-        <ListToolbar
-          search={membershipSearch}
-          onSearchChange={setMembershipSearch}
-          from={membershipFrom}
-          to={membershipTo}
-          onDateRangeChange={(a, b) => { setMembershipFrom(a); setMembershipTo(b) }}
-          dateLabel="Start date"
-          placeholder="Search by member name or code…"
-        />
-      )}
+      {/* Tabs */}
+      <div className="flex gap-1 glass-card rounded-xl p-1 w-fit shrink-0 self-start" role="tablist" aria-label="Membership views">
+        {(['daily', 'monthly', 'renewal'] as const).map(tab => (
+          <button
+            key={tab}
+            role="tab"
+            aria-selected={activeTab === tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-5 py-2 text-sm rounded-lg font-medium transition-all cursor-pointer ${
+              activeTab === tab
+                ? 'bg-[#7C3AED] text-white shadow-sm'
+                : 'text-fg hover:text-fg-strong'
+            }`}
+          >
+            {tab === 'daily' ? 'Daily' : tab === 'monthly' ? 'Monthly' : 'Renewal'}
+          </button>
+        ))}
+      </div>
 
       {activeTab === 'renewal' ? (
         pendingList.length > 0 ? (
-          <div className="glass-card rounded-xl overflow-hidden">
-            <div className="px-4 py-3 border-b border-line flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-fg-strong">Pending Renewals</h2>
-              <span className="text-xs text-fg-muted">{pendingList.length} request{pendingList.length === 1 ? '' : 's'}</span>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-line bg-overlay-5">
-                    <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Member</th>
-                    <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Plan</th>
-                    <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Requested</th>
-                    <th className="text-right px-3 py-2 text-sm font-medium text-fg-muted">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pendingList.map(request => (
-                    <tr key={request.id} className="border-b border-line-soft last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
-                      <td className="px-3 py-2 align-top">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-fg-strong">{request.profiles?.full_name ?? '—'}</span>
-                          {request.profiles?.code != null && <span className="text-xs font-mono text-accent-purple">{request.profiles.code}</span>}
-                        </div>
-                        {request.profiles?.email != null && <p className="text-xs text-fg-muted mt-0.5">{request.profiles.email}</p>}
-                      </td>
-                      <td className="px-3 py-2 align-top">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="bg-[#7C3AED]/10 text-accent-purple px-2 py-0.5 rounded-full text-xs font-medium">{request.plan_name}</span>
-                          <span className="text-xs text-fg-muted">{request.plan_name.toLowerCase() === 'daily' ? '1 day' : `${request.months} month${request.months === 1 ? '' : 's'}`}</span>
-                        </div>
-                        {request.note != null && request.note.trim() !== '' && <p className="text-xs text-fg mt-1">"{request.note}"</p>}
-                      </td>
-                      <td className="px-3 py-2 align-top text-xs text-fg-muted whitespace-nowrap">
-                        {new Date(request.requested_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                        {' at '}
-                        {new Date(request.requested_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                      </td>
-                      <td className="px-3 py-2 align-top text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => handleApprove(request)}
-                            disabled={savingRequest === request.id}
-                            className="flex items-center gap-1 px-3 py-1.5 text-xs bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50"
-                          >
-                            <CheckCircle className="w-3.5 h-3.5" />
-                            {savingRequest === request.id ? 'Saving...' : 'Approve'}
-                          </button>
-                          <button
-                            onClick={() => handleDecline(request)}
-                            disabled={savingRequest === request.id}
-                            className="flex items-center gap-1 px-3 py-1.5 text-xs bg-rose-600 text-white rounded-lg hover:bg-rose-700 disabled:opacity-50"
-                          >
-                            <XCircle className="w-3.5 h-3.5" />
-                            {savingRequest === request.id ? 'Saving...' : 'Decline'}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <PeopleTable
+            title="Renewal Requests"
+            rows={renewalRows}
+            columns={renewalColumns}
+            rowKey={r => r.id}
+            onRowClick={r => setRenewRequestId(r.id)}
+            emptyMessage={`No renewal requests match "${membershipSearch}"`}
+            scrollRef={scrollRef}
+            rowHeight={rowHeight}
+            search={{ value: membershipSearch, onChange: setMembershipSearch, placeholder: 'Search by member name or code…' }}
+            startIndex={(safeRenewPage - 1) * LIST_PAGE_SIZE + 1}
+            footer={
+              <PaginationFooter
+                page={safeRenewPage}
+                pageCount={renewPageCount}
+                total={renewalMatches.length}
+                pageSize={LIST_PAGE_SIZE}
+                onPageChange={setRenewPage}
+              />
+            }
+          />
         ) : (
           <div className="glass-card rounded-xl p-8 text-center text-sm text-fg-muted">
             No pending renewal requests.
           </div>
         )
-      ) : isLoading ? (
-        <div className="text-center py-8 text-fg-muted">Loading...</div>
       ) : (
-        <div className="glass-card rounded-xl overflow-hidden flex flex-col flex-1 min-h-0">
-          <div className="overflow-x-auto flex-1 min-h-0 overflow-y-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-line bg-overlay-5">
-                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Member</th>
-                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Plan</th>
-                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Price</th>
-                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Start</th>
-                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">End</th>
-                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Status</th>
-                  <th className="text-right px-3 py-2 text-sm font-medium text-fg-muted">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {memberships?.map((m: Membership) => {
-                  const status = computeStatus(m, recentMemberIds)
-                  const pendingRequest = pendingByMember.current.get(m.member_id)
-                  return (
-                    <tr key={m.id} className="border-b border-line-soft last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
-                      <td className="px-3 py-2 text-sm font-medium text-fg-strong">
-                          {m.profiles?.full_name ?? '—'}
-                        <span className="ml-2 text-xs font-mono text-[#7C3AED]">{m.profiles?.code}</span>
-                      </td>
-                      <td className="px-3 py-2 text-sm text-fg">{m.plan_name}</td>
-                      <td className="px-3 py-2 text-sm text-fg">                        ₱{m.price}</td>
-                      <td className="px-3 py-2 text-sm text-fg">{new Date(m.start_date).toLocaleDateString()}</td>
-                      <td className="px-3 py-2 text-sm text-fg">{new Date(m.end_date).toLocaleDateString()}</td>
-                      <td className="px-3 py-2">
-                        <div className="flex items-center gap-2">
-                          <StatusBadge status={status} />
-                          {pendingRequest && (
-                            <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                              RENEWAL REQUESTED
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-3 py-2 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          {pendingRequest && (
-                            <button
-                              onClick={() => handleRenewClick(m.member_id)}
-                              className="text-xs font-medium text-white bg-[#7C3AED] px-2.5 py-1 rounded-lg hover:bg-[#6D28D9] transition-colors"
-                            >
-                              Renew
-                            </button>
-                          )}
-                          <button onClick={() => handleDelete(m.id)} className="text-fg-muted hover:text-[#EF4444]"><Trash2 className="w-4 h-4 inline" /></button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-                {memberships?.length === 0 && (
-                  <tr><td colSpan={7} className="px-3 py-6 text-center text-fg-muted">No memberships match these filters</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {activeTab !== 'renewal' && (
-        <PaginationFooter
-          page={membershipPage}
-          pageCount={membershipPages}
-          total={membershipTotal}
-          pageSize={MEMBERSHIP_PAGE_SIZE}
-          onPageChange={setMembershipPage}
+        <PeopleTable
+          title={`${PLANS[planTab].label} Memberships`}
+          rows={memberships}
+          columns={membershipColumns}
+          rowKey={m => m.id}
+          isLoading={isLoading}
+          emptyMessage={
+            membershipSearch
+              ? `No memberships match "${membershipSearch}"`
+              : `No ${PLANS[planTab].label} memberships found`
+          }
+          scrollRef={scrollRef}
+          rowHeight={rowHeight}
+          search={{ value: membershipSearch, onChange: setMembershipSearch, placeholder: 'Search by member name or code…' }}
+          startIndex={(membershipPage - 1) * LIST_PAGE_SIZE + 1}
+          footer={
+            <PaginationFooter
+              page={membershipPage}
+              pageCount={membershipPages}
+              total={membershipTotal}
+              pageSize={LIST_PAGE_SIZE}
+              onPageChange={setMembershipPage}
+            />
+          }
         />
       )}
 
@@ -728,10 +789,11 @@ export default function MembershipsPage() {
               <div className="px-6 py-4 space-y-4 flex-1 overflow-y-auto">
                 <div>
                   <label className="block text-xs font-medium text-fg-muted uppercase tracking-wide mb-1">Member</label>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-fg-strong">{request.profiles?.full_name ?? '—'}</span>
-                    {request.profiles?.code != null && <span className="text-xs font-mono text-accent-purple">{request.profiles.code}</span>}
-                  </div>
+                  {/* Name, code and email stack instead of sharing one line: the
+                      code belongs beside the other members' codes, not wedged
+                      into the middle of this one name. */}
+                  <p className="text-sm font-medium text-fg-strong">{request.profiles?.full_name ?? '—'}</p>
+                  {request.profiles?.code != null && <p className="text-xs font-mono text-accent-purple mt-0.5">{request.profiles.code}</p>}
                   {request.profiles?.email != null && <p className="text-xs text-fg-muted mt-0.5">{request.profiles.email}</p>}
                 </div>
                 <div>

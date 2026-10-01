@@ -82,7 +82,18 @@ async function computeExpected() {
   const days = Math.round((new Date(RANGE.end) - new Date(RANGE.start)) / DAY) + 1
 
   // Membership-type filter ground truth: same resolve-on-the-day rule the app uses.
-  const allMemberships = await paged('memberships', 'member_id, plan_name, start_date, end_date')
+  // Ordered exactly like the app's fetchMemberships(). resolvePlan() falls back
+  // to "the last row of this member's rows", so the expected number is only
+  // correct if the rows arrive in the same order the app sees them. This fetch
+  // used to be unordered, which made the expectation arbitrary: it happened to
+  // agree while every member's memberships were contiguous, and started
+  // disagreeing once the seed gave members spaced re-join history, where most
+  // check-ins fall through to that "latest membership" branch.
+  const allMemberships = await paged(
+    'memberships',
+    'member_id, plan_name, start_date, end_date',
+    q => q.order('start_date', { ascending: true }).order('id', { ascending: true }),
+  )
   const resolvePlan = (memberId, day) => {
     const mine = allMemberships.filter(m => m.member_id === memberId)
     if (mine.length === 0) return null
@@ -90,6 +101,18 @@ async function computeExpected() {
     return covering ? covering.plan_name : mine[mine.length - 1].plan_name
   }
   const planCount = name => attendance.filter(a => resolvePlan(a.member_id, a.check_in_date) === name).length
+
+  // All-time growth ground truth. The trend's benchmark line has to be the mean
+  // PER BUCKET over All time's calendar months, which is a completely different
+  // number from the per-DAY mean the "Daily Average" KPI reports (987 joins over
+  // 1,369 days is 0.7 a day; over 45 months it is ~21.9 a month). The bug this
+  // data exists for was the daily figure being drawn on the monthly axis.
+  const joins = members.map(p => localDay(p.created_at)).sort()
+  const firstJoin = joins[0]
+  const today = new Date()
+  const monthIndex = d => d.getFullYear() * 12 + d.getMonth()
+  const allBuckets = monthIndex(today) - monthIndex(new Date(`${firstJoin}T00:00:00`)) + 1
+  const allDays = Math.round((new Date(`${localDay(today.toISOString())}T00:00:00`) - new Date(`${firstJoin}T00:00:00`)) / DAY) + 1
 
   return {
     checkins: attendance.length,
@@ -104,6 +127,11 @@ async function computeExpected() {
     totalMembers: members.length,
     newMembers: newMembers.length,
     activeMembers: members.filter(m => activeMemberIds.has(m.id)).length,
+    allNewMembers: joins.length,
+    allDays,
+    allBuckets,
+    allAvgPerBucket: joins.length / allBuckets,
+    allDailyAvg: joins.length / allDays,
   }
 }
 
@@ -257,6 +285,108 @@ async function run() {
   await setGrain(page, chart, 'Daily')
 
   // ---- Remaining tabs, dark â†’ light â†’ narrow ----------------------------
+  // ---- Member Growth over All time --------------------------------------
+  // Two defects this section exists to pin down, both of which made the All-time
+  // view look broken while every number in it was correct:
+  //   1. the benchmark line was the per-DAY mean drawn on a per-BUCKET axis
+  //      ("Avg 0.7" pinned to the floor of a 0..23 monthly chart);
+  //   2. a hand-picked Daily grain survived the switch to All time and drew
+  //      1,369 buckets, about a pixel each.
+  // The demo roster is spread evenly by design (~21 new members in every month),
+  // so a flat plateau here is the dataset, not a bug - what is asserted is that
+  // the chart says so honestly: monthly buckets, a per-bucket mean, and ticks
+  // that carry the year across a four-year axis.
+  await page.getByRole('tab', { name: 'Member Growth' }).click()
+  await page.waitForTimeout(700)
+  await page.getByRole('button', { name: /Date range:/ }).first().click()
+  const rangeDialog = page.getByRole('dialog', { name: 'Choose a date range' })
+  await rangeDialog.waitFor({ state: 'visible' })
+  await rangeDialog.getByRole('button', { name: 'All time' }).click()
+  await page.waitForTimeout(2500)
+
+  const growthChart = page.locator('section[aria-label="New members per period for the selected range"]')
+  const grainTrigger = growthChart.getByRole('button', { name: /^(Daily|Weekly|Monthly)$/ })
+  const openingGrain = (await grainTrigger.innerText()).trim()
+  check('All time opens on Monthly', openingGrain === 'Monthly', `got "${openingGrain}"`)
+
+  // Daily and Weekly are still listed, but disabled: 1,369 and 196 buckets are
+  // not charts. A silent clamp would leave the dropdown reading "Daily" over a
+  // monthly series, which is a different lie.
+  await grainTrigger.click()
+  await page.waitForTimeout(400)
+  const grainOptions = await growthChart
+    .locator('div.glass-card.absolute button')
+    .evaluateAll(btns => btns.map(b => ({ label: b.innerText.trim(), disabled: b.disabled })))
+  await page.keyboard.press('Escape')
+  const byLabel = Object.fromEntries(grainOptions.map(o => [o.label, o.disabled]))
+  check('All time disables Daily and Weekly',
+    byLabel.Daily === true && byLabel.Weekly === true && byLabel.Monthly === false,
+    JSON.stringify(grainOptions))
+
+  // Recharts renders ticks and the reference label as SVG <text>, where
+  // innerText is null - textContent is the only way to read them.
+  const avgLabel = (await growthChart.locator('text').filter({ hasText: /^Avg / }).allTextContents())[0] ?? ''
+  const avgShown = Number(avgLabel.replace(/[^0-9.]/g, ''))
+  check('the benchmark is the mean per bucket, not per day',
+    Number.isFinite(avgShown) && Math.abs(avgShown - expected.allAvgPerBucket) <= 0.5,
+    `label="${avgLabel}" want≈${expected.allAvgPerBucket.toFixed(1)} (daily mean is ${expected.allDailyAvg.toFixed(1)})`)
+  check('the benchmark is not the daily mean',
+    Math.abs(avgShown - expected.allDailyAvg) > 1,
+    `shown=${avgShown} dailyMean=${expected.allDailyAvg.toFixed(1)}`)
+
+  // The KPI card keeps the per-DAY figure; the two averages must not have been
+  // merged into one number.
+  const growthPanel = page.getByRole('tabpanel', { name: 'Member Growth' })
+  const dailyAvgShown = await num(cardValue(page, 'Daily Average', growthPanel)).catch(() => NaN)
+  check('the Daily Average KPI still reports the per-day mean',
+    Math.abs(dailyAvgShown - expected.allDailyAvg) <= 0.1,
+    `shown=${dailyAvgShown} want≈${expected.allDailyAvg.toFixed(1)}`)
+
+  const growthTicks = await growthChart.locator('.recharts-xAxis .recharts-cartesian-axis-tick-value')
+    .allTextContents()
+  const labelled = growthTicks.map(t => t.trim()).filter(Boolean)
+  // A four-year axis labelled "Jan | Jun | Nov" repeats itself: the reader
+  // cannot tell the first January from the last, which is what the year suffix
+  // ("Jan '23") is for. A single tick is still enough to catch a regression.
+  check('multi-year month ticks carry the year',
+    labelled.length > 0 && labelled.every(t => /^[A-Z][a-z]{2} '\d{2}$/.test(t)),
+    labelled.join(' | '))
+
+  const growthFit = await page.evaluate(() => {
+    const panel = [...document.querySelectorAll('[role=tabpanel]')].find(el => el.getBoundingClientRect().height > 0)
+    const se = document.scrollingElement
+    return {
+      docOverflow: se.scrollHeight - se.clientHeight,
+      panelClipped: panel ? panel.scrollHeight - panel.clientHeight : -1,
+    }
+  })
+  check('the All-time growth panel neither scrolls nor clips',
+    growthFit.docOverflow <= 0 && growthFit.panelClipped <= 0, JSON.stringify(growthFit))
+  await page.screenshot({ path: `${shots}/07-growth-all-time.png` })
+
+  // Put the window back for the sweep below, from a RELOADED dashboard. Setting
+  // the date inputs a second time in the same session left the picker's draft
+  // state out of step with its committed value after the All-time preset, so
+  // "Apply range" re-applied All time and the reset silently did nothing. A
+  // reload is the honest way to get back to the state this script started from
+  // - default 30-day window - and the label is asserted rather than assumed.
+  await page.goto(`${base}/dashboard`, { waitUntil: 'networkidle' })
+  await page.waitForTimeout(1500)
+  await setRange(page, RANGE.start, RANGE.end)
+  await page.waitForTimeout(1200)
+  const rangeAfter = await page.getByRole('button', { name: /Date range:/ }).first().getAttribute('aria-label')
+  check('the window is restored for the tab sweep', /Jan 15, 2026/.test(rangeAfter ?? ''), rangeAfter ?? 'no label')
+  await page.getByRole('tab', { name: 'Member Growth' }).click()
+  await page.waitForTimeout(800)
+  const restored = page.locator('section[aria-label="New members per period for the selected range"]')
+  const resetGrain = (await restored.getByRole('button', { name: /^(Daily|Weekly|Monthly)$/ })
+    .innerText().catch(() => '')).trim()
+  // 60 days is past the 45-day Daily threshold, so the default is Weekly - which
+  // also proves Daily became selectable again, the same guard as All time
+  // having disabled it.
+  check('a shorter window re-enables the finer grains', resetGrain === 'Weekly', `got "${resetGrain}"`)
+  await setGrain(page, restored, 'Daily')
+
   // ---- No-scroll sweep: every tab x every viewport ------------------------
   // Task 11's real gate. Three assertions per cell, because any one alone lies:
   //   docOverflow  - the page must not scroll
@@ -345,6 +475,149 @@ async function run() {
     }
     shotIndex += 1
   }
+
+  // ---- Member Distribution card ------------------------------------------
+  // The card used to hold a five-slice rainbow donut, a legend listing those
+  // same five values, and a stacked breakdown restating them a third time. The
+  // legend beside a 253px stack in a 84-200px box is what painted over the
+  // card's own bottom edge, so these assertions are about GEOMETRY as much as
+  // content: a card that fits its box cannot regress back into overflowing it
+  // without failing here.
+  await page.getByRole('tab', { name: 'Member Overview', exact: true }).click()
+  const membersPanel = page.getByRole('tabpanel', { name: 'Member Overview' })
+  await membersPanel.waitFor({ state: 'visible', timeout: 15000 })
+  await waitForCardValue(page, 'Total Members', expected.totalMembers, { timeout: 60000, root: membersPanel })
+
+  const dist = membersPanel.locator('section[aria-label="Nested rings: member gender outside, activity status inside"]')
+  // Recharts paints the ring's <path> elements only after its
+  // ResponsiveContainer has measured the box, which is a tick or more after the
+  // card itself exists. Without this wait the wrapper is present but still
+  // empty and the sector assertions below read zero - a race, not a regression.
+  await dist.locator('.recharts-sector').first().waitFor({ state: 'attached', timeout: 15000 })
+  const distMetrics = await dist.evaluate(section => {
+    const box = [...section.children].pop()
+    const b = box.getBoundingClientRect()
+    const s = section.getBoundingClientRect()
+    // Every painted descendant, so a clipped row or bar cannot hide below the
+    // box's own bounds without moving one of these.
+    const painted = [...box.querySelectorAll('*')].filter(el => {
+      if (el.closest('.recharts-tooltip-wrapper')) return false
+      const q = el.getBoundingClientRect()
+      return q.width > 0 && q.height > 0
+    })
+    const rects = painted.map(el => el.getBoundingClientRect())
+    // The card is wrapped in a centring box, so its half-width is a property of
+    // the WRAPPER against the tabpanel, not of the card against its own content.
+    const wrapper = section.parentElement
+    const panel = section.closest('[role=tabpanel]')
+    const wr = wrapper?.getBoundingClientRect()
+    const pr = panel?.getBoundingClientRect()
+    return {
+      boxH: Math.round(b.height),
+      overflowTop: Math.round(s.top - Math.min(...rects.map(q => q.top))),
+      overflowBottom: Math.round(Math.max(...rects.map(q => q.bottom)) - s.bottom),
+      overflowRight: Math.round(Math.max(...rects.map(q => q.right)) - s.right),
+      sectors: section.querySelectorAll('.recharts-sector').length,
+      fills: [...section.querySelectorAll('.recharts-sector')].map(p => p.getAttribute('fill')),
+      legendItems: section.querySelectorAll('li').length,
+      text: section.innerText,
+      viewportW: window.innerWidth,
+      panelW: pr ? Math.round(pr.width) : 0,
+      cardW: wr ? Math.round(wr.width) : 0,
+      widthRatio: pr?.width && wr ? wr.width / pr.width : 0,
+      // Auto margins centre the card, so the two gaps must match.
+      marginSkew: wr && pr ? Math.round(Math.abs((wr.left - pr.left) - (pr.right - wr.right))) : -1,
+    }
+  })
+
+  check('[Member Distribution] content fits its box', distMetrics.overflowTop <= 0 && distMetrics.overflowBottom <= 0 && distMetrics.overflowRight <= 0,
+    `top=${distMetrics.overflowTop} bottom=${distMetrics.overflowBottom} right=${distMetrics.overflowRight} boxH=${distMetrics.boxH}`)
+
+  // The ring now carries BOTH dimensions, as two concentric rings: gender on
+  // the outer band, activity on the inner one. It used to carry gender alone,
+  // which meant Active and Inactive existed only as a text bar while the two
+  // KPIs directly above the card were about nothing else. Four sectors and all
+  // four fills is the assertion - a regression to a single ring, or a ring that
+  // drew one dimension twice, both fail it.
+  //
+  // One `<PieChart>` holds both `<Pie>`s on purpose, so the `.recharts-wrapper`
+  // measured by the ring-scaling assertion further down is still the single
+  // square that assertion was written against.
+  //
+  // The activity pair is asserted by VALUE, not by name: Active is the green
+  // `#22C55E` and Inactive is now its complement `#F43F5E`, which is what makes
+  // the two arcs separate at the ~13px the inner band actually renders at. It
+  // was amber `#F59E0B`, and amber against green is about 40 degrees apart - the
+  // two read as one warm lump, which is the whole reason the colour changed.
+  // Spelling the hexes out here is deliberate: it is what pins the pairing, so a
+  // later "let's make inactive blue again" has to come back and change the
+  // assertion with it.
+  check('[Member Distribution] the donut carries both dimensions as two concentric rings',
+    distMetrics.sectors === 4
+    && distMetrics.fills.includes('#C084FC') && distMetrics.fills.includes('#7C3AED')
+    && distMetrics.fills.includes('#22C55E') && distMetrics.fills.includes('#F43F5E'),
+    `sectors=${distMetrics.sectors} fills=${distMetrics.fills.join(',')}`)
+
+  // The breakdown is STACKED, gender above activity status, matching the order
+  // the eye travels the rings (outer first). `innerText` is in DOM order, so the
+  // two heading positions are the assertion. This used to be a `grid-cols-2`
+  // reading left-to-right, which does not express the same relationship.
+  //
+  // Case-INSENSITIVE, and that is not belt-and-braces: both headings carry
+  // Tailwind's `uppercase`, and `innerText` returns RENDERED text, so the DOM
+  // strings are "Gender" / "Activity Status" on the page as "GENDER" /
+  // "ACTIVITY STATUS". Matching the source casing here reports both at index -1
+  // and fails against a layout that is in fact correct.
+  const flat = distMetrics.text.replace(/\s+/g, ' ')
+  const genderAt = flat.search(/gender/i)
+  const activityAt = flat.search(/activity\s+status/i)
+  check('[Member Distribution] the breakdown is stacked, Gender above Activity Status',
+    genderAt >= 0 && activityAt > genderAt,
+    `gender@${genderAt} activity@${activityAt} text="${flat.slice(0, 90)}"`)
+
+  // The hole still carries the active rate - it is the one number in this card
+  // that ties the ring to the KPIs above it - and it is checked against the
+  // ground truth rather than merely against a regex, so a ring that quietly
+  // changed denominator (active of GENDER TOTAL instead of of everyone) fails.
+  const centre = /(\d+)%\s*active/i.exec(distMetrics.text.replace(/\s+/g, ' '))
+  const wantRate = Math.round((expected.activeMembers / expected.totalMembers) * 100)
+  check('[Member Distribution] the ring centre is the active rate of the whole roster',
+    !!centre && Number(centre[1]) === wantRate,
+    `got=${centre ? centre[0] : 'no centre label'} want=${wantRate}% (${expected.activeMembers}/${expected.totalMembers})`)
+
+  // Half width and centred. The complaint that produced this was a card stretched
+  // across the full 1,690px panel; `lg:w-1/2 lg:max-w-[52rem]` is the answer, and
+  // this is what stops a `w-full` regression from looking fine in a screenshot.
+  check('[Member Distribution] the card is half the panel width and centred',
+    distMetrics.viewportW >= 1024
+    && distMetrics.widthRatio > 0.45 && distMetrics.widthRatio < 0.55
+    && distMetrics.marginSkew <= 2,
+    `card=${distMetrics.cardW}px panel=${distMetrics.panelW}px ratio=${distMetrics.widthRatio.toFixed(3)} skew=${distMetrics.marginSkew}px @${distMetrics.viewportW}px`)
+
+  check('[Member Distribution] the donut legend is gone (the breakdown replaced it)', distMetrics.legendItems === 0, `li=${distMetrics.legendItems}`)
+  check('[Member Distribution] "Unspecified" is not presented as a category', !/Unspecified/.test(distMetrics.text))
+  check('[Member Distribution] both dimensions are still written out',
+    /Female/.test(distMetrics.text) && /Male/.test(distMetrics.text)
+    && /Active/.test(distMetrics.text) && /Inactive/.test(distMetrics.text))
+
+  // The ring must scale with the card instead of sitting at a fixed size in a
+  // much wider box, which is what left it marooned in the middle of the card.
+  const ring = await dist.evaluate(section => {
+    const w = section.querySelector('.recharts-wrapper')
+    if (!w) return null
+    const r = w.getBoundingClientRect()
+    return { w: Math.round(r.width), h: Math.round(r.height) }
+  })
+  check('[Member Distribution] the ring scales with the card (square, near the box height)',
+    !!ring && Math.abs(ring.w - ring.h) <= 2 && ring.w >= distMetrics.boxH * 0.8,
+    ring ? `${ring.w}x${ring.h} vs box ${distMetrics.boxH}` : 'no ring')
+
+  // An unrecorded gender is missing data, not a category: it must still be
+  // reported, as a count, and never as a slice.
+  const unrecorded = /(\d[\d,]*) not recorded/.exec(distMetrics.text)
+  check('[Member Distribution] unrecorded gender is reported as a count', !!unrecorded, unrecorded ? unrecorded[0] : 'not shown')
+
+  await page.screenshot({ path: `${shots}/member-distribution.png` })
 
   // Light mode pass over every tab.
   await page.getByRole('switch', { name: 'Dark mode' }).click()

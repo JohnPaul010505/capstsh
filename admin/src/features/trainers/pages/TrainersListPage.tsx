@@ -4,13 +4,12 @@ import { useQueryClient } from '@tanstack/react-query'
 import PeopleTable, { peopleCells, type PeopleColumn } from '@/components/PeopleTable'
 import PaginationFooter from '@/components/PaginationFooter'
 import ListToolbar from '@/components/ListToolbar'
-import { useFitRows } from '@/hooks/useFitRows'
-import { useTrainersList } from '@/lib/listHooks'
+import { useFitRowHeight } from '@/hooks/useFitRows'
+import { useTrainersList, LIST_PAGE_SIZE } from '@/lib/listHooks'
 import { useResetPageOnChange } from '@/lib/pagedTable'
 import type { Profile } from '@/types'
 import { X } from 'lucide-react'
 
-const PAGE_SIZE = 25
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 export default function TrainersListPage() {
@@ -22,8 +21,9 @@ export default function TrainersListPage() {
   const [from, setFrom] = useState<string | undefined>()
   const [to, setTo] = useState<string | undefined>()
 
-  const { rows, total, pageCount, isLoading } = useTrainersList({ page, pageSize: PAGE_SIZE, search, from, to })
-  const [scrollRef, fitRows] = useFitRows<HTMLDivElement>()
+  const { rows, total, pageCount, isLoading } = useTrainersList({ page, pageSize: LIST_PAGE_SIZE, search, from, to })
+  // Fifteen rows is the contract; the height of one of them is what gives.
+  const [scrollRef, rowHeight] = useFitRowHeight<HTMLDivElement>({ count: LIST_PAGE_SIZE })
   useResetPageOnChange(setPage, search, from, to)
 
   const columns: PeopleColumn<Profile>[] = [
@@ -164,13 +164,10 @@ export default function TrainersListPage() {
   return (
     <div className="h-full min-h-0 flex flex-col gap-3">
       <ListToolbar
-        search={search}
-        onSearchChange={setSearch}
         from={from}
         to={to}
         onDateRangeChange={(a, b) => { setFrom(a); setTo(b) }}
         dateLabel="Hired"
-        placeholder="Search by name, code or email…"
       >
         <button onClick={() => setShowModal(true)}
           className="px-4 py-2 bg-[#7C3AED] text-white rounded-xl hover:bg-[#6D28D9] text-sm shrink-0 cursor-pointer">
@@ -179,6 +176,7 @@ export default function TrainersListPage() {
       </ListToolbar>
 
       <PeopleTable
+        title="Trainers"
         rows={rows}
         columns={columns}
         rowKey={t => t.id}
@@ -186,19 +184,18 @@ export default function TrainersListPage() {
         isLoading={isLoading}
         emptyMessage="No trainers match these filters"
         scrollRef={scrollRef}
-        headerExtra={
-          <span className="text-[12px] text-fg-muted">
-            showing {Math.min(rows.length, fitRows)} per view · {total.toLocaleString()} total
-          </span>
+        rowHeight={rowHeight}
+        search={{ value: search, onChange: setSearch, placeholder: 'Search by name, code or email…' }}
+        startIndex={(page - 1) * LIST_PAGE_SIZE + 1}
+        footer={
+          <PaginationFooter
+            page={page}
+            pageCount={pageCount}
+            total={total}
+            pageSize={LIST_PAGE_SIZE}
+            onPageChange={setPage}
+          />
         }
-      />
-
-      <PaginationFooter
-        page={page}
-        pageCount={pageCount}
-        total={total}
-        pageSize={PAGE_SIZE}
-        onPageChange={setPage}
       />
 
       {showModal && (

@@ -4,12 +4,10 @@ import { useQueryClient } from '@tanstack/react-query'
 import PeopleTable, { peopleCells, type PeopleColumn } from '@/components/PeopleTable'
 import PaginationFooter from '@/components/PaginationFooter'
 import ListToolbar from '@/components/ListToolbar'
-import { useFitRows } from '@/hooks/useFitRows'
-import { useMembersList } from '@/lib/listHooks'
+import { useFitRowHeight } from '@/hooks/useFitRows'
+import { useMembersList, LIST_PAGE_SIZE } from '@/lib/listHooks'
 import { useResetPageOnChange } from '@/lib/pagedTable'
 import type { Profile } from '@/types'
-
-const PAGE_SIZE = 25
 
 export default function MembersListPage() {
   const navigate = useNavigate()
@@ -26,9 +24,10 @@ export default function MembersListPage() {
   // set that now has one page renders an empty table.
   useResetPageOnChange(setPage, search, from, to)
 
-  const { rows, total, pageCount, isLoading } = useMembersList({ page, pageSize: PAGE_SIZE, search, from, to })
-  // The scroller is owned by PeopleTable, so that is what has to be measured.
-  const [scrollRef, fitRows] = useFitRows<HTMLDivElement>()
+  const { rows, total, pageCount, isLoading } = useMembersList({ page, pageSize: LIST_PAGE_SIZE, search, from, to })
+  // Fifteen rows is the contract; the height of one of them is what gives. The
+  // scroller is owned by PeopleTable, so that is what has to be measured.
+  const [scrollRef, rowHeight] = useFitRowHeight<HTMLDivElement>({ count: LIST_PAGE_SIZE })
 
   const columns: PeopleColumn<Profile>[] = [
     { key: 'name', header: 'Name', render: m => <span className="font-medium text-fg-strong">{m.full_name}</span> },
@@ -68,17 +67,18 @@ export default function MembersListPage() {
 
   return (
     <div className="h-full min-h-0 flex flex-col gap-3">
+      {/* Only the date filter lives out here now. The search moved into the
+          card header, beside the title, which is where the QR queue and every
+          dashboard tab keep theirs. */}
       <ListToolbar
-        search={search}
-        onSearchChange={setSearch}
         from={from}
         to={to}
         onDateRangeChange={(a, b) => { setFrom(a); setTo(b) }}
         dateLabel="Joined"
-        placeholder="Search by name, code or email…"
       />
 
       <PeopleTable
+        title="Members"
         rows={rows}
         columns={columns}
         rowKey={m => m.id}
@@ -86,19 +86,18 @@ export default function MembersListPage() {
         isLoading={isLoading}
         emptyMessage="No members match these filters"
         scrollRef={scrollRef}
-        headerExtra={
-          <span className="text-[12px] text-fg-muted">
-            showing {Math.min(rows.length, fitRows)} per view · {total.toLocaleString()} total
-          </span>
+        rowHeight={rowHeight}
+        search={{ value: search, onChange: setSearch, placeholder: 'Search by name, code or email…' }}
+        startIndex={(page - 1) * LIST_PAGE_SIZE + 1}
+        footer={
+          <PaginationFooter
+            page={page}
+            pageCount={pageCount}
+            total={total}
+            pageSize={LIST_PAGE_SIZE}
+            onPageChange={setPage}
+          />
         }
-      />
-
-      <PaginationFooter
-        page={page}
-        pageCount={pageCount}
-        total={total}
-        pageSize={PAGE_SIZE}
-        onPageChange={setPage}
       />
 
       {deleteTarget && (

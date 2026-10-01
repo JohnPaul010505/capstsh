@@ -61,7 +61,16 @@ export default function DashboardTabs({ tabs, value, onChange }: DashboardTabsPr
                 : 'text-fg-muted hover:text-fg-strong hover:bg-[#7C3AED]/10',
             )}
           >
-            <t.icon className="w-4 h-4 shrink-0" strokeWidth={2} />
+            {/* The icon paints its OWN colour rather than inheriting the button's,
+                because the two states ask for different ones: purple while the
+                tab is unselected, white once it is (the active pill is a purple
+                gradient, so white is the only glyph colour that reads on it).
+                No tile, no background - this is a recolour of the glyph, and
+                the label keeps `text-fg-muted` / `hover:text-fg-strong` as it
+                was. Setting the colour here also stops the button's
+                `hover:text-fg-strong` from bleeding into the glyph, so the icon
+                stays purple for as long as the tab is unselected. */}
+            <t.icon className={cn('w-4 h-4 shrink-0', active ? 'text-white' : 'text-[#7C3AED]')} strokeWidth={2} />
             {t.label}
           </button>
         )

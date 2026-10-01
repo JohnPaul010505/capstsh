@@ -1,0 +1,31 @@
+-- Drop the zero-argument member_last_checkin() from migration 0035.
+--
+-- 0035 created `member_last_checkin()`. 0036 then ran
+--
+--   create or replace function public.member_last_checkin(
+--     p_limit integer default null, p_offset integer default 0)
+--
+-- against a DIFFERENT signature than 0035's, so Postgres treated it as a NEW
+-- function rather than a replacement. The database now holds two overloads of
+-- the same name. Both of 0036's parameters are DEFAULTED, which means a
+-- zero-argument call matches BOTH candidates and PostgREST refuses to guess:
+--
+--   POST /rest/v1/rpc/member_last_checkin
+--   -> Could not choose the best candidate function between:
+--      public.member_last_checkin(),
+--      public.member_last_checkin(p_limit => integer, p_offset => integer)
+--
+-- The dashboard called the zero-argument form, so once 0036 was applied that
+-- error fired on every load and pushed the Member Overview tab onto the
+-- client-side date-window scan of the whole attendance table (~100 requests to
+-- fill one column).
+--
+-- Dropping the zero-argument overload leaves the two-argument function as the
+-- only member_last_checkin, so the call can never be ambiguous again - not even
+-- for a caller that forgets the parameters. Callers should pass p_limit and
+-- p_offset explicitly and page against member_last_checkin_count(); the NULL
+-- default still returns everything, which is not useful past 1,000 rows because
+-- PostgREST applies db-max-rows to RPC responses and ignores the Range header.
+--
+-- member_last_checkin_count() from 0036 is deliberately left in place.
+drop function if exists public.member_last_checkin();

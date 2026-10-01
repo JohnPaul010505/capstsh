@@ -2,19 +2,30 @@ import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
-import { Bell } from 'lucide-react'
+import { Bell, ChevronDown, LogOut } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import ThemeToggle from '@/components/ThemeToggle'
+import AdminProfileCard from '@/features/settings/components/AdminProfileCard'
+import ConfirmDialog from '@/components/ConfirmDialog'
 
 interface HeaderProps {
   title: string
 }
 
 export default function Header({ title }: HeaderProps) {
-  const { profile } = useAuth()
+  const { profile, signOut } = useAuth()
   const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
+  // The admin's own name is the account menu: it opens the settings card that
+  // used to be its own sidebar destination, with Sign Out underneath it. Both
+  // moved out of the sidebar together, so an admin has exactly one place that
+  // answers "who am I and how do I leave".
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
+  const [showLogout, setShowLogout] = useState(false)
+  const profileBtnRef = useRef<HTMLButtonElement>(null)
+  const profileMenuRef = useRef<HTMLDivElement>(null)
+  const [profileMenuStyle, setProfileMenuStyle] = useState({})
   const [notifications, setNotifications] = useState<Array<{
     id: string
     title: string
@@ -25,18 +36,40 @@ export default function Header({ title }: HeaderProps) {
   }>>([])
   const [dropdownStyle, setDropdownStyle] = useState({})
 
+  // One handler for both menus. Each closes on a mousedown that is outside its
+  // own panel AND outside its own trigger, so clicking the name does not also
+  // register as an outside click that closes what it just opened.
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        const target = event.target as HTMLElement
-        if (buttonRef.current?.contains(target)) return
-        setNotificationDropdownOpen(false)
+      const target = event.target as HTMLElement
+      if (notificationDropdownOpen) {
+        const inPanel = dropdownRef.current?.contains(target)
+        const onTrigger = buttonRef.current?.contains(target)
+        if (!inPanel && !onTrigger) setNotificationDropdownOpen(false)
+      }
+      if (profileMenuOpen) {
+        const inPanel = profileMenuRef.current?.contains(target)
+        const onTrigger = profileBtnRef.current?.contains(target)
+        if (!inPanel && !onTrigger) setProfileMenuOpen(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+  }, [notificationDropdownOpen, profileMenuOpen])
 
+  // Escape closes whichever menu is open, without disturbing the other.
+  useEffect(() => {
+    if (!notificationDropdownOpen && !profileMenuOpen) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      setNotificationDropdownOpen(false)
+      setProfileMenuOpen(false)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [notificationDropdownOpen, profileMenuOpen])
+
+  // Anchor the notification panel under its bell...
   useEffect(() => {
     if (notificationDropdownOpen && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect()
@@ -47,6 +80,19 @@ export default function Header({ title }: HeaderProps) {
       })
     }
   }, [notificationDropdownOpen])
+
+  // ...and the account panel under the name. Both are portalled and fixed, so
+  // `header` being a flex row with `overflow` on an ancestor cannot clip them.
+  useEffect(() => {
+    if (profileMenuOpen && profileBtnRef.current) {
+      const rect = profileBtnRef.current.getBoundingClientRect()
+      setProfileMenuStyle({
+        position: 'fixed',
+        top: `${rect.bottom + 8}px`,
+        right: `${window.innerWidth - rect.right}px`,
+      })
+    }
+  }, [profileMenuOpen])
 
   const fetchNotifications = async () => {
     const { data } = await supabase
@@ -93,7 +139,13 @@ export default function Header({ title }: HeaderProps) {
         <div className="relative">
           <button
             ref={buttonRef}
-            onClick={() => setNotificationDropdownOpen(!notificationDropdownOpen)}
+            onClick={() => {
+              setNotificationDropdownOpen(open => !open)
+              // The outside-mousedown handler already closes the account menu
+              // when the bell is clicked, but a keyboard activation of the bell
+              // fires no mousedown at all, so the two menus would overlap.
+              setProfileMenuOpen(false)
+            }}
             className="p-2 rounded-lg transition-colors cursor-pointer"
             aria-label="Notifications"
           >
@@ -103,7 +155,28 @@ export default function Header({ title }: HeaderProps) {
             />
           </button>
         </div>
-        <span className="text-sm text-fg">{profile?.full_name || 'System Admin'}</span>
+        {/* The account trigger. It was an inert <span>, so nothing about it said
+            it did anything - hence the ring, the caret and `aria-expanded`. */}
+        <button
+          ref={profileBtnRef}
+          type="button"
+          onClick={() => {
+            setProfileMenuOpen(open => !open)
+            setNotificationDropdownOpen(false)
+          }}
+          aria-haspopup="menu"
+          aria-expanded={profileMenuOpen}
+          aria-label="Account menu"
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer ${
+            profileMenuOpen ? 'bg-overlay-10 text-fg-strong' : 'text-fg hover:bg-overlay-6'
+          }`}
+        >
+          <span className="text-sm">{profile?.full_name || 'System Admin'}</span>
+          <ChevronDown
+            className={`w-4 h-4 transition-transform duration-200 ${profileMenuOpen ? 'rotate-180' : ''}`}
+            strokeWidth={2}
+          />
+        </button>
       </div>
       {notificationDropdownOpen && createPortal(
         <div
@@ -155,6 +228,45 @@ export default function Header({ title }: HeaderProps) {
         </div>,
         document.body
       )}
+
+      {/* The account menu: the settings card the sidebar used to link to, with
+          Sign Out underneath it. `role="menu"`/`role="menuitem"` are on the
+          container and the one item, and the panel is `w-[22rem]` so the card -
+          which is `max-w-lg` on the settings page - fills it instead of
+          overflowing the panel. */}
+      {profileMenuOpen && createPortal(
+        <div
+          ref={profileMenuRef}
+          role="menu"
+          aria-label="Account"
+          className="w-[22rem] glass-card rounded-xl z-50 overflow-hidden"
+          style={profileMenuStyle}
+        >
+          <AdminProfileCard bare />
+          <div className="px-3 pb-3">
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => { setProfileMenuOpen(false); setShowLogout(true) }}
+              className="flex items-center gap-2 w-full px-3 py-2 text-sm font-medium rounded-lg bg-[#EF4444] text-white hover:bg-[#DC2626]"
+            >
+              <LogOut className="w-4 h-4 shrink-0" strokeWidth={2} />
+              Sign Out
+            </button>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* The confirmation moved here with the button. It is a portal at z-[70],
+          above the menu it was opened from. */}
+      <ConfirmDialog
+        open={showLogout}
+        title="Sign Out"
+        message="Are you sure you want to sign out?"
+        onConfirm={() => { setShowLogout(false); signOut() }}
+        onCancel={() => setShowLogout(false)}
+      />
     </header>
   )
 }

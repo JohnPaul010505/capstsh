@@ -16,7 +16,6 @@ else:
 
 
 from routers.predictions import router as predictions_router
-from routers.met import router as met_router
 
 app = FastAPI(title="FIT Sight AI Service")
 
@@ -29,13 +28,12 @@ app.add_middleware(
 )
 
 app.include_router(predictions_router, prefix="/api/ai")
-app.include_router(met_router, prefix="/api/ai")
 
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
 
 if __name__ == "__main__":
-    # Default 3001 keeps the admin Vite proxy ('/api' -> localhost:3001) and the mobile
-    # API_BASE_URL fallback in agreement without extra config.
-    uvicorn.run("main:app", host="0.0.0.0", port=int(os.getenv("PORT", "3001")), reload=True)
+    # Default 8001 matches AI_SERVICE_URL in admin/server/index.js. Port 3001 is
+    # owned by the Express server, so the two must not share a port.
+    uvicorn.run("main:app", host="0.0.0.0", port=int(os.getenv("PORT", "8001")), reload=True)

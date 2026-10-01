@@ -103,6 +103,25 @@ export function thisYear(today: Date = new Date()): Range {
   return { start: `${today.getFullYear()}-01-01`, end: toDay(today) }
 }
 
+/**
+ * Inclusive first day of the demo dataset, as an Asia/Manila civil date.
+ *
+ * The seed declares the same literal in `scripts/seed/lib/common.mjs`. The app
+ * cannot import that module - it calls `dotenv.config()` and constructs a
+ * service-role Supabase client, neither of which may enter a browser bundle - so
+ * the value is declared on both sides and `scripts/verify-dataset-spread.mjs`
+ * reads both files and fails the run if they drift.
+ *
+ * This bounds the `All time` preset and the picker's minimum, so no range can be
+ * requested that the data does not cover.
+ */
+export const DATA_START = '2023-01-01'
+
+/** The whole dataset, `DATA_START` through today. */
+export function allTime(today: Date = new Date()): Range {
+  return { start: DATA_START, end: toDay(today) }
+}
+
 export interface RangePreset {
   id: string
   label: string
@@ -116,7 +135,7 @@ export const RANGE_PRESETS: RangePreset[] = [
   { id: '30d', label: 'Last 30 days', apply: t => lastNDays(30, t) },
   { id: '90d', label: 'Last 90 days', apply: t => lastNDays(90, t) },
   { id: 'year', label: 'This year', apply: t => thisYear(t) },
-  { id: 'all', label: 'All time', apply: t => ({ start: '2020-01-01', end: toDay(t) }) },
+  { id: 'all', label: 'All time', apply: allTime },
 ]
 
 /**
@@ -130,13 +149,55 @@ export function prevWindow(r: Range): Range {
   return { start: toDay(start), end: toDay(end) }
 }
 
-/** Auto-pick a granularity that stays readable for the span. */
+/** A bucket-count budget, NOT a day budget. */
+const MAX_BUCKETS = 120
+
+/**
+ * Which grains can honestly be DRAWN for this span.
+ *
+ * All time is 1,369 days over the demo roster, so Daily is 1,369 buckets and
+ * Weekly is 196: at ~1,700px of chart width that is roughly one pixel per bar
+ * and a y-axis of 0..1, which is a solid block rather than a trend. The range
+ * is still answered, just at Monthly, where a bucket is a calendar month.
+ *
+ * This is a cap, not a redefinition of the default: `autoGrain` still opens
+ * 30 days on Daily and 90 days on Weekly, so nothing about the short ranges
+ * moves. The list is ordered finest-first, which is what makes it the input to
+ * `autoGrain` rather than a second, competing rule.
+ */
+export function grainsForRange(r: Range): Grain[] {
+  const n = daysBetween(r.start, r.end)
+  const out: Grain[] = []
+  if (n <= MAX_BUCKETS) out.push('daily')
+  if (Math.ceil(n / 7) <= MAX_BUCKETS) out.push('weekly')
+  out.push('monthly')
+  return out
+}
+
+/**
+ * Auto-pick a granularity that stays readable for the span.
+ *
+ * The thresholds are the long-standing 45/200-day ones, but the result is
+ * intersected with `grainsForRange` so the automatic grain is ALWAYS one the
+ * span can render. A grain picked by hand survived a range change in
+ * DashboardPage - choose Daily on 30 days, switch to All time, and you got the
+ * 1,369-bucket wall - so the guard has to live here, not only in the caller.
+ */
 export function autoGrain(r: Range): Grain {
   const n = daysBetween(r.start, r.end)
-  if (n <= 45) return 'daily'
-  if (n <= 200) return 'weekly'
+  const allowed = grainsForRange(r)
+  if (n <= 45 && allowed.includes('daily')) return 'daily'
+  if (n <= 200 && allowed.includes('weekly')) return 'weekly'
   return 'monthly'
 }
+
+/** True when the range touches more than one calendar year. */
+function spansYears(r: Range): boolean {
+  return parseDay(r.start).getFullYear() !== parseDay(r.end).getFullYear()
+}
+
+/** "'23" — the two-digit year suffix for axis labels that cross a year boundary. */
+const yearTag = (d: Date) => `'${String(d.getFullYear()).slice(2)}`
 
 /**
  * Split a range into chart buckets.
@@ -144,8 +205,16 @@ export function autoGrain(r: Range): Grain {
  *           single month, else 'Jan 15' style so month-crossing stays clear).
  * weekly  → calendar weeks Mon..Sun clipped to the range.
  * monthly → calendar months touched by the range.
+ *
+ * Every grain that CAN span a year boundary carries the year in its short
+ * label ("Jan '23"), because on All time the un-suffixed labels repeat: two
+ * ticks reading "Jan" were indistinguishable, and a reader could not tell the
+ * first January from the last. Single-year ranges keep the bare short labels,
+ * so the common short-range charts read exactly as they always have.
  */
 export function bucketize(range: Range, grain: Grain): Bucket[] {
+  const multiYear = spansYears(range)
+
   if (grain === 'monthly') {
     const out: Bucket[] = []
     const cursor = parseDay(range.start)
@@ -159,7 +228,9 @@ export function bucketize(range: Range, grain: Grain): Bucket[] {
       const bucketStart = monthStart < range.start ? range.start : monthStart
       out.push({
         key,
-        label: MONTH_SHORT[cursor.getMonth()],
+        label: multiYear
+          ? `${MONTH_SHORT[cursor.getMonth()]} ${yearTag(cursor)}`
+          : MONTH_SHORT[cursor.getMonth()],
         full: `${MONTH_SHORT[cursor.getMonth()]} ${cursor.getFullYear()}`,
         start: bucketStart,
         end: bucketEnd,
@@ -184,7 +255,9 @@ export function bucketize(range: Range, grain: Grain): Bucket[] {
       const d = parseDay(bucketStart)
       out.push({
         key,
-        label: `${MONTH_SHORT[d.getMonth()]} ${d.getDate()}`,
+        label: multiYear
+          ? `${MONTH_SHORT[d.getMonth()]} ${d.getDate()} ${yearTag(d)}`
+          : `${MONTH_SHORT[d.getMonth()]} ${d.getDate()}`,
         full: `${fmtDay(bucketStart)} – ${fmtDay(bucketEnd)}`,
         start: bucketStart,
         end: bucketEnd,
@@ -201,7 +274,13 @@ export function bucketize(range: Range, grain: Grain): Bucket[] {
     const d = parseDay(day)
     return {
       key: day,
-      label: sameMonth ? String(d.getDate()) : `${MONTH_SHORT[d.getMonth()]} ${d.getDate()}`,
+      label: sameMonth
+        ? String(d.getDate())
+        // A day number alone is enough inside one month; past a year boundary
+        // the month is needed to place it, and the year to place THAT.
+        : multiYear
+          ? `${MONTH_SHORT[d.getMonth()]} ${d.getDate()} ${yearTag(d)}`
+          : `${MONTH_SHORT[d.getMonth()]} ${d.getDate()}`,
       full: fmtDay(day),
       start: day,
       end: day,

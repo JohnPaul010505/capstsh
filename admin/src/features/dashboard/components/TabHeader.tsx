@@ -14,6 +14,12 @@ export interface TabPanelProps {
   onPlanChange: (p: PlanFilter) => void
   grain: Grain
   onGrainChange: (g: Grain) => void
+  /**
+   * The grains this range can render. Owned by DashboardPage because the range
+   * is: the same span is illegal on one tab and fine on another only by
+   * accident, and the rule has to hold for all five tabs at once.
+   */
+  grainOptions: Grain[]
 }
 
 export const PLAN_FILTER_OPTIONS: SelectOption[] = [

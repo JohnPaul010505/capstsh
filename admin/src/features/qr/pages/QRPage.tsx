@@ -2,14 +2,39 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { QRCodeSVG } from 'qrcode.react'
 import { supabase } from '@/lib/supabase'
+import RecordsTable, { type RecordsColumn } from '@/components/RecordsTable'
 import EnrollmentForm, { emptyForm, type EnrollmentFormData } from '../components/EnrollmentForm'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useTheme } from '@/contexts/ThemeContext'
+import { useFitSquare } from '@/hooks/useFitRows'
 import { Eye, Check, X, Plus } from 'lucide-react'
 import AppBackground from '@/components/AppBackground'
 
 const ORIGIN = import.meta.env.VITE_PUBLIC_URL || window.location.origin
 const PAGE_URL = `${ORIGIN}/qr`
+
+/**
+ * The page is three views, not one long page.
+ *
+ * It used to be the two QR codes followed by a Pending table and a Confirmed
+ * table, both rendered in full, inside a plain `space-y-3` block. `main` is
+ * `flex-1 overflow-hidden`, so an auto-height child simply ran off the bottom
+ * of the viewport: with 10 pending and 45 confirmed rows, most of the page was
+ * unreachable and no scrollbar said so. Splitting the lists into their own
+ * views also makes them addressable by a click, and each one gets a real pager.
+ *
+ * These are tabs rather than routes on purpose: App.tsx renders the public
+ * enrolment form for a signed-out visitor at exactly `/qr`, so a `/qr/pending`
+ * sub-route would fall through to the login gate for the people most likely to
+ * be holding the phone.
+ */
+const QR_VIEWS = [
+  { id: 'codes', label: 'QR Codes' },
+  { id: 'pending', label: 'Pending' },
+  { id: 'confirmed', label: 'Confirmed' },
+] as const
+
+type QrView = (typeof QR_VIEWS)[number]['id']
 
 export default function QRPage() {
   const { profile } = useAuth()
@@ -20,6 +45,16 @@ export default function QRPage() {
   const queryClient = useQueryClient()
   const [selected, setSelected] = useState<any>(null)
   const [showModal, setShowModal] = useState(false)
+  // The QR pair is the landing view: the lists are one click away rather than
+  // pushing it down the page.
+  const [view, setView] = useState<QrView>('codes')
+  // One search term per list. Sharing one would make a name typed into Pending
+  // silently pre-filter Confirmed when the tab changed.
+  const [pendingSearch, setPendingSearch] = useState('')
+  const [confirmedSearch, setConfirmedSearch] = useState('')
+
+  const [enrollRef, enrollSize] = useFitSquare<HTMLDivElement>()
+  const [checkinRef, checkinSize] = useFitSquare<HTMLDivElement>()
 
   useEffect(() => {
     if (!showModal) return
@@ -154,6 +189,71 @@ export default function QRPage() {
   const pending = enrollments?.filter(e => e.status === 'pending') ?? []
   const confirmed = enrollments?.filter(e => e.status === 'confirmed') ?? []
 
+  // Date on one line, time beside it in the muted tone the dashboard tables use.
+  const stamp = (iso: string | null) => {
+    if (!iso) return <span className="text-fg-faint">—</span>
+    const d = new Date(iso)
+    return (
+      <div className="leading-tight">
+        <span className="text-fg-strong">{d.toLocaleDateString()}</span>
+        <span className="ml-2 text-[12px] text-fg-muted">
+          {d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+        </span>
+      </div>
+    )
+  }
+
+  // The three row actions keep the exact tint/border treatment they had in the
+  // old inline table — verify-membership-qr-ux.mjs asserts those class names
+  // once it has opened this view.
+  const actionsFor = (e: any) => (
+    <div className="flex items-center justify-end gap-1.5">
+      <button
+        onClick={() => openView(e)}
+        title="View"
+        aria-label="View enrollment"
+        className="p-1.5 rounded-lg border border-[#7C3AED]/40 bg-[#7C3AED]/15 text-accent-purple hover:bg-[#7C3AED] hover:text-white hover:border-[#7C3AED] transition-colors"
+      >
+        <Eye className="w-4 h-4" />
+      </button>
+      <button
+        onClick={() => handleConfirm(e)}
+        title="Confirm"
+        aria-label="Confirm enrollment"
+        className="p-1.5 rounded-lg border border-[#22C55E]/50 bg-[#22C55E]/15 text-accent-green hover:bg-[#22C55E] hover:text-white hover:border-[#22C55E] transition-colors"
+      >
+        <Check className="w-4 h-4" />
+      </button>
+      <button
+        onClick={() => handleReject(e.id)}
+        title="Reject"
+        aria-label="Reject enrollment"
+        className="p-1.5 rounded-lg border border-[#EF4444]/50 bg-[#EF4444]/15 text-[#EF4444] hover:bg-[#EF4444] hover:text-white hover:border-[#EF4444] transition-colors"
+      >
+        <X className="w-4 h-4" />
+      </button>
+    </div>
+  )
+
+  const identityColumns: RecordsColumn<any>[] = [
+    { key: 'name', header: 'Name', render: e => <span className="font-medium text-fg-strong">{e.full_name}</span> },
+    { key: 'email', header: 'Email', render: e => <span className="text-fg">{e.email}</span> },
+    { key: 'phone', header: 'Phone', render: e => <span className="text-fg">{e.phone || <span className="text-fg-faint">—</span>}</span> },
+  ]
+
+  const pendingColumns: RecordsColumn<any>[] = [
+    { key: 'when', header: 'Submitted', render: e => stamp(e.created_at) },
+    ...identityColumns,
+    { key: 'actions', header: 'Actions', align: 'right', render: e => actionsFor(e) },
+  ]
+
+  const confirmedColumns: RecordsColumn<any>[] = [
+    { key: 'when', header: 'Confirmed', render: e => stamp(e.confirmed_at) },
+    ...identityColumns,
+  ]
+
+  const identityFields = (e: any) => [e.full_name, e.email, e.phone]
+
   if (!isAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center py-8 relative overflow-hidden">
@@ -189,117 +289,108 @@ export default function QRPage() {
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div />
+    <div className="h-full min-h-0 flex flex-col gap-3">
+      {/* View switch + the one page-level action. The counts live in the tab
+          labels, which is also what verify-admin-ui.mjs reads to confirm the
+          pending queue is intact. */}
+      <div className="flex flex-wrap items-center justify-between gap-2 shrink-0">
+        <div role="tablist" aria-label="QR sections" className="flex flex-wrap items-center gap-1.5">
+          {QR_VIEWS.map(v => {
+            const count = v.id === 'pending' ? pending.length : v.id === 'confirmed' ? confirmed.length : null
+            return (
+              <button
+                key={v.id}
+                type="button"
+                role="tab"
+                aria-selected={view === v.id}
+                onClick={() => setView(v.id)}
+                className={`px-3.5 py-2 rounded-xl text-sm transition-colors ${
+                  view === v.id
+                    ? 'bg-[#7C3AED] text-white'
+                    : 'bg-overlay-8 border border-line text-fg-muted hover:text-fg-strong hover:border-[#7C3AED]/40'
+                }`}
+              >
+                {v.label}{count === null ? '' : ` (${count})`}
+              </button>
+            )
+          })}
+        </div>
         <button onClick={openManual} className="flex items-center gap-2 px-4 py-2 bg-[#7C3AED] text-white rounded-lg text-sm hover:bg-[#6D28D9]">
           <Plus className="w-4 h-4" /> Add Manually
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="glass-card p-4 rounded-xl flex flex-col items-center justify-center">
-          <p className="text-sm font-semibold text-fg-strong mb-3">Enrollment Form</p>
-          <QRCodeSVG value={PAGE_URL} size={160} bgColor={qrBg} fgColor={qrFg} />
-        </div>
-        <div className="glass-card p-4 rounded-xl flex flex-col items-center justify-center border-[#22C55E]/30">
-          <p className="text-sm font-semibold text-fg-strong mb-3">Check-in / Check-out</p>
-          <QRCodeSVG value="FITGYM:ATTENDANCE" size={160} bgColor={qrBg} fgColor={qrFg} />
-          <p className="text-xs text-fg-muted mt-3 text-center">Scan in fitness app to check in or out</p>
-        </div>
-      </div>
+      <div role="tabpanel" aria-label="QR content" className="flex-1 min-h-0 min-w-0 flex">
+        {view === 'codes' && (
+          /* The pair now SPANS the content width - one card hard left, one hard
+             right - instead of sitting as a centred island in a wide empty
+             band. Each code is measured to fill its own card (useFitSquare), so
+             the two grow together instead of one size being right for a 1080p
+             monitor and wrong for a laptop.
 
-      {/* Pending enrollments */}
-      <div className="glass-card rounded-xl overflow-hidden flex flex-col min-h-0">
-        <div className="px-4 py-3 border-b border-line">
-          <h2 className="font-semibold text-fg-strong">Pending ({pending.length})</h2>
-        </div>
-        {isLoading ? (
-          <div className="text-center py-6 text-fg-muted">Loading...</div>
-        ) : pending.length === 0 ? (
-          <div className="text-center py-6 text-fg-muted">No pending enrollments</div>
-        ) : (
-          <div className="overflow-x-auto flex-1">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-line bg-overlay-5">
-                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Name</th>
-                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Email</th>
-                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Date</th>
-                  <th className="text-right px-3 py-2 text-sm font-medium text-fg-muted">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pending.map(e => (
-                  <tr key={e.id} className="border-b border-line-soft last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
-                    <td className="px-3 py-2 text-sm font-medium text-fg-strong">{e.full_name}</td>
-                    <td className="px-3 py-2 text-sm text-fg">{e.email}</td>
-                    <td className="px-3 py-2 text-sm text-fg">{new Date(e.created_at).toLocaleDateString()}</td>
-                    <td className="px-3 py-2 text-sm text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          onClick={() => openView(e)}
-                          title="View"
-                          aria-label="View enrollment"
-                          className="p-1.5 rounded-lg border border-[#7C3AED]/40 bg-[#7C3AED]/15 text-accent-purple hover:bg-[#7C3AED] hover:text-white hover:border-[#7C3AED] transition-colors"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleConfirm(e)}
-                          title="Confirm"
-                          aria-label="Confirm enrollment"
-                          className="p-1.5 rounded-lg border border-[#22C55E]/50 bg-[#22C55E]/15 text-accent-green hover:bg-[#22C55E] hover:text-white hover:border-[#22C55E] transition-colors"
-                        >
-                          <Check className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleReject(e.id)}
-                          title="Reject"
-                          aria-label="Reject enrollment"
-                          className="p-1.5 rounded-lg border border-[#EF4444]/50 bg-[#EF4444]/15 text-[#EF4444] hover:bg-[#EF4444] hover:text-white hover:border-[#EF4444] transition-colors"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+             `data-qr` sits on the CARD, not on the <svg>: the verification
+             scripts used to find the codes by `svg[height="160"]`, which
+             silently stops matching the moment the size is anything but 160.
+             A test hook that describes the element rather than its pixel size
+             survives the layout change that is the point of this edit. */
+          <div className="flex-1 min-h-0 min-w-0 grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div
+              data-qr="enrollment"
+              ref={enrollRef}
+              className="glass-card rounded-2xl w-full min-h-0 min-w-0 p-6 flex flex-col items-center justify-center"
+            >
+              <p className="text-base font-semibold text-fg-strong mb-4">Enrollment Form</p>
+              <QRCodeSVG value={PAGE_URL} size={enrollSize} bgColor={qrBg} fgColor={qrFg} />
+              <p className="text-sm text-fg-muted mt-5 text-center">Scan to open the sign-up form</p>
+            </div>
+            <div
+              data-qr="checkin"
+              ref={checkinRef}
+              className="glass-card rounded-2xl w-full min-h-0 min-w-0 p-6 flex flex-col items-center justify-center border-[#22C55E]/30"
+            >
+              <p className="text-base font-semibold text-fg-strong mb-4">Check-in / Check-out</p>
+              <QRCodeSVG value="FITGYM:ATTENDANCE" size={checkinSize} bgColor={qrBg} fgColor={qrFg} />
+              <p className="text-sm text-fg-muted mt-5 text-center">Scan in fitness app to check in or out</p>
+            </div>
           </div>
         )}
-      </div>
 
-      {/* Confirmed enrollments */}
-      <div className="glass-card rounded-xl overflow-hidden flex flex-col min-h-0">
-        <div className="px-4 py-3 border-b border-line">
-          <h2 className="font-semibold text-fg-strong">Confirmed ({confirmed.length})</h2>
-        </div>
-        {confirmed.length === 0 ? (
-          <div className="text-center py-6 text-fg-muted">No confirmed members</div>
-        ) : (
-          <div className="overflow-x-auto flex-1">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-line bg-overlay-5">
-                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Name</th>
-                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Email</th>
-                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Confirmed</th>
-                </tr>
-              </thead>
-              <tbody>
-                {confirmed.map(e => (
-                  <tr key={e.id} className="border-b border-line-soft last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
-                    <td className="px-3 py-2 text-sm font-medium text-fg-strong">{e.full_name}</td>
-                    <td className="px-3 py-2 text-sm text-fg">{e.email}</td>
-                    <td className="px-3 py-2 text-sm text-fg">{new Date(e.confirmed_at).toLocaleDateString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+      {/* The two lists are now views of their own, each a paged records table
+          instead of a full-height inline card with no pager. The page size is
+          left to RecordsTable to MEASURE, as every dashboard tab does: pinning
+          15 rows overflowed the body this page actually has by 15px (the tab
+          strip costs the table its last row), and a pinned size that scrolls is
+          the failure mode the list pages' measured row height was built to
+          avoid. */}
+      {view === 'pending' && (
+        <RecordsTable
+          title="Pending Enrollments"
+          columns={pendingColumns}
+          rows={pending}
+          rowKey={e => e.id}
+          searchFields={identityFields}
+          searchPlaceholder="Search by name, email or phone…"
+          searchValue={pendingSearch}
+          onSearchChange={setPendingSearch}
+          isLoading={isLoading}
+          emptyMessage="No pending enrollments match these filters"
+        />
+      )}
+
+      {view === 'confirmed' && (
+        <RecordsTable
+          title="Confirmed Members"
+          columns={confirmedColumns}
+          rows={confirmed}
+          rowKey={e => e.id}
+          searchFields={identityFields}
+          searchPlaceholder="Search by name, email or phone…"
+          searchValue={confirmedSearch}
+          onSearchChange={setConfirmedSearch}
+          isLoading={isLoading}
+          emptyMessage="No confirmed members match these filters"
+        />
+      )}
       </div>
 
       {/* Drawer */}

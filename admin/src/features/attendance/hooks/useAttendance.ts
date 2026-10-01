@@ -2,14 +2,15 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { fetchAllRows } from '@/features/dashboard/lib/fetchAll'
 
+// The two SELECT shapes this hook needs, so the role-filtered branch below and
+// the unfiltered one cannot drift apart.
+const BASE_SELECT = '*, profiles!attendance_member_id_fkey(full_name, email, role, code)'
+const INNER_SELECT = '*, profiles!attendance_member_id_fkey!inner(full_name, email, role, code)'
+
 export function useAttendance(date?: string, category?: 'member' | 'trainer') {
   return useQuery({
     queryKey: ['attendance', date, category],
     queryFn: async () => {
-      const query = supabase
-        .from('attendance')
-        .select('*, profiles!attendance_member_id_fkey(full_name, email, role, code)')
-
       // Role is a property of the JOINED profile, not of the attendance row, so
       // it cannot be a filter on this query. Resolving the ids and passing them
       // to `in()` used to send ~987 UUIDs in the query string - a ~40KB URL,
@@ -19,22 +20,35 @@ export function useAttendance(date?: string, category?: 'member' | 'trainer') {
       // Filtering the JOIN is the correct shape and sends no ids at all. If the
       // database later refuses an inner-join filter on an embedded resource,
       // the fallback is a `!inner` join plus a local filter, never the id list.
-      let q = query
-      if (category) {
-        q = query.select('*, profiles!attendance_member_id_fkey!inner(full_name, email, role, code)')
-          .eq('profiles.role', category)
-      }
-      if (date) q = q.eq('check_in_date', date)
+      //
+      // THIS MUST RETURN A FRESH BUILDER PER PAGE.
+      //
+      // A PostgrestFilterBuilder is MUTABLE and single-use: `.order()` appends
+      // another `order=` param to the shared URL and `.range()` overwrites its
+      // `offset`. This hook used to build the query once, outside the callback,
+      // and hand that ONE object to `fetchAllRows`, which calls the callback
+      // CONCURRENTLY (4 pages in flight). All four `.order()`/`.range()` pairs
+      // therefore ran against the same object before any fetch read its URL, so
+      // every request went out at the LAST page's offset with `order=` repeated
+      // four times:
+      //
+      //   ...&order=check_in_time.desc,id.desc x4&offset=3000&limit=1000
+      //
+      // Page 0's `offset=0` was never requested. The page is scoped to a single
+      // day, so `offset=3000` matched nothing and answered 200 with zero rows -
+      // and the page then rendered "No attendance records" for EVERY date, with
+      // no error anywhere, while the dashboard (whose `pageOf` builds a new
+      // builder per page) showed the same rows fine. Building inside the
+      // callback is the same discipline `fetchAttendance` already uses.
+      const pageOf = async (from: number, to: number) => {
+        let q = supabase.from('attendance').select(category ? INNER_SELECT : BASE_SELECT)
+        if (category) q = q.eq('profiles.role', category)
+        if (date) q = q.eq('check_in_date', date)
 
-      // This was an unpaged `.select()`, so PostgREST returned only the first
-      // 1,000 rows with no error — against 42k attendance rows the list simply
-      // stopped there. Paging makes it complete.
-      return fetchAllRows<any>(async (from, to) => {
+        // `check_in_time` then `id`: the unique tiebreak keeps pages disjoint
+        // when several check-ins share a timestamp, which PostgREST's OFFSET
+        // paging needs.
         const res = await q
-          // `check_in_time` then `id`: the unique tiebreak keeps pages disjoint
-          // when several check-ins share a timestamp. Declared ONCE - the earlier
-          // version also ordered by check_in_time in the builder above, which
-          // sent `order=check_in_time.desc,check_in_time.desc,id.desc`.
           .order('check_in_time', { ascending: false })
           .order('id', { ascending: false })
           .range(from, to)
@@ -42,7 +56,10 @@ export function useAttendance(date?: string, category?: 'member' | 'trainer') {
           data: (res.data ?? []) as any[],
           error: res.error ? { message: res.error.message } : null,
         }
-      })
+      }
+
+      // This pages the day, so the count is whatever that one day holds.
+      return fetchAllRows<any>(pageOf)
     },
   })
 }

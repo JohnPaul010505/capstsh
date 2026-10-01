@@ -12,11 +12,28 @@
  * Usage: node scripts/verify-membership-qr-ux.mjs [baseUrl]
  */
 import { chromium } from 'playwright'
-import { mkdirSync } from 'fs'
+import { mkdirSync, readFileSync } from 'fs'
 
 const base = (process.argv[2] ?? 'http://localhost:5173').replace(/\/$/, '')
 const shots = 'screenshots/membership-qr-ux'
 mkdirSync(shots, { recursive: true })
+
+// Admin credentials from the git-ignored .env, not a literal pair. This script
+// still carried admin@fitness.com / Admin123!, which is why it died at
+// waitForURL and never reached a single assertion - the same stale-credential
+// bug already fixed in verify-admin-ui.mjs and verify-dashboard-tabs.mjs.
+const env = {}
+for (const line of readFileSync(new URL('../.env', import.meta.url), 'utf8').split(/\r?\n/)) {
+  const m = line.match(/^\s*([A-Za-z0-9_]+)\s*=\s*(.*)\s*$/)
+  if (!m) continue
+  let v = m[2].trim()
+  if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) v = v.slice(1, -1)
+  env[m[1]] = v
+}
+if (!env.ADMIN_EMAIL || !env.ADMIN_PASSWORD) {
+  console.error('ADMIN_EMAIL / ADMIN_PASSWORD are not set in admin/.env - cannot sign in.')
+  process.exit(2)
+}
 
 const PURPLE = 'rgb(124, 58, 237)'
 const WHITE = 'rgb(255, 255, 255)'
@@ -42,14 +59,47 @@ const borderOf = locator => locator.first().evaluate(el => getComputedStyle(el).
  *  (old) colour and reports a false failure. */
 const SETTLE_MS = 300
 
+/**
+ * Wait until an element's computed background is the expected colour.
+ *
+ * A fixed `waitForTimeout(300)` after a click is a race between three things -
+ * the click, React's commit, and the CSS transition - and under load (a Vite dev
+ * server, a Playwright session, the dashboard's own polling) the transition is
+ * still running at 300ms, so the assertion reads a colour from the middle of the
+ * animation: `rgba(124, 58, 237, 0.973)` where the settled value is
+ * `rgb(124, 58, 237)`.
+ *
+ * "Wait until the colour stops changing" is NOT the fix, and this file proved it:
+ * that variant can stabilise on the value from BEFORE the click, because React
+ * has not committed the state change yet and the first two polls both see the
+ * old colour. The trace it printed was
+ * `["rgba(255,255,255,0.08)", "rgb(124,58,237)", "rgb(124,58,237)", ...]` - it
+ * returned during the gap.
+ *
+ * These assertions are about a specific colour, so the wait is for that colour.
+ * `not: true` waits for it to become anything else, which is how a deselected
+ * button is confirmed rather than assumed.
+ */
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
+
+async function waitForColour(locator, expected, { not = false, timeout = 5000 } = {}) {
+  const deadline = Date.now() + timeout
+  for (;;) {
+    const seen = await bgOf(locator)
+    if (not ? seen !== expected : seen === expected) return seen
+    if (Date.now() > deadline) return seen
+    await sleep(60)
+  }
+}
+
 async function run() {
   const browser = await chromium.launch()
   const page = await browser.newPage({ viewport: { width: 1920, height: 1000 } })
 
   // ---- Sign in ---------------------------------------------------------
   await page.goto(`${base}/login`, { waitUntil: 'networkidle' })
-  await page.locator('input[type=email]').fill('admin@fitness.com')
-  await page.locator('input[type=password]').fill('Admin123!')
+  await page.locator('input[type=email]').fill(env.ADMIN_EMAIL)
+  await page.locator('input[type=password]').fill(env.ADMIN_PASSWORD)
   await page.locator('button[type=submit]').click()
   await page.waitForURL(u => !u.pathname.includes('/login'), { timeout: 25000 })
   console.log(`signed in -> ${page.url()}`)
@@ -68,7 +118,7 @@ async function run() {
   check('plan button (Daily) selected = white text', (await fgOf(dailyBtn)) === WHITE, await fgOf(dailyBtn))
 
   await monthlyBtn.click()
-  await page.waitForTimeout(SETTLE_MS)
+  await waitForColour(monthlyBtn, PURPLE)
   check('plan button (Monthly) selected = solid purple', (await bgOf(monthlyBtn)) === PURPLE, await bgOf(monthlyBtn))
   check('plan button (Monthly) selected = white text', (await fgOf(monthlyBtn)) === WHITE, await fgOf(monthlyBtn))
 
@@ -82,7 +132,11 @@ async function run() {
 
   // Custom -> editable end date.
   await customBtn.click()
-  await page.waitForTimeout(SETTLE_MS)
+  // Two waits, not one: Custom being selected and duration 1 being released are
+  // two separate renders, and reading `oneAfter` between them catches the frame
+  // where Custom is purple and 1 has not been cleared yet.
+  await waitForColour(customBtn, PURPLE)
+  await waitForColour(oneBtn, PURPLE, { not: true })
   check('Custom selected = solid purple', (await bgOf(customBtn)) === PURPLE, await bgOf(customBtn))
   check('Custom selected = white text', (await fgOf(customBtn)) === WHITE, await fgOf(customBtn))
   const oneAfter = await bgOf(oneBtn)
@@ -109,7 +163,11 @@ async function run() {
   await drawer.getByRole('button', { name: 'Cancel', exact: true }).click()
 
   // ---- Memberships: table tabs ----------------------------------------
-  await page.getByRole('button', { name: 'Renewal', exact: true }).click()
+  // These are ARIA tabs, not buttons. They were plain buttons when this script
+  // was written, and the list-page rebuild made them role="tab" - so
+  // getByRole('button') silently matched nothing and the run died on a 30s
+  // wait instead of failing on an assertion.
+  await page.getByRole('tab', { name: 'Renewal', exact: true }).click()
   await page.waitForTimeout(600)
   const renewalHeaders = await page.locator('th').allInnerTexts()
   check('renewal table has an Actions column header', renewalHeaders.includes('Actions'), renewalHeaders.join(' | '))
@@ -128,12 +186,12 @@ async function run() {
   // Renew button style (rows carry it on the member's plan tab).
   let renewBtn = page.getByRole('button', { name: 'Renew', exact: true }).first()
   if ((await renewBtn.count()) === 0) {
-    await page.getByRole('button', { name: 'Daily', exact: true }).click()
+    await page.getByRole('tab', { name: 'Daily', exact: true }).click()
     await page.waitForTimeout(600)
     renewBtn = page.getByRole('button', { name: 'Renew', exact: true }).first()
   }
   if ((await renewBtn.count()) === 0) {
-    await page.getByRole('button', { name: 'Monthly', exact: true }).click()
+    await page.getByRole('tab', { name: 'Monthly', exact: true }).click()
     await page.waitForTimeout(600)
     renewBtn = page.getByRole('button', { name: 'Renew', exact: true }).first()
   }
@@ -145,8 +203,53 @@ async function run() {
     await page.screenshot({ path: `${shots}/05-renew-button.png` })
   }
 
-  // ---- QR: pending row actions ----------------------------------------
+  // ---- QR: the codes view, then the pending row actions ----------------
+  // The pending list is no longer on the landing view - /qr opens on the two QR
+  // codes and Pending is one click away - so this pass has to open the tab
+  // before the row actions exist in the DOM. Asserting the landing view first
+  // is also the regression guard for that split: codes and a table on one
+  // screen is exactly what the page used to do badly.
   await page.goto(`${base}/qr`, { waitUntil: 'networkidle' })
+  await page.waitForTimeout(800)
+  const landing = await page.evaluate(() => ({
+    // `[data-qr]` is the card, not the <svg>: the codes are now measured to fill
+    // their card, so the old `svg[height="160"]` probe would match nothing the
+    // moment the size moved off 160.
+    codes: document.querySelectorAll('main [data-qr]').length,
+    rows: document.querySelectorAll('main tbody tr').length,
+  }))
+  check('QR landing view shows both codes and no table', landing.codes === 2 && landing.rows === 0,
+    `codes=${landing.codes} rows=${landing.rows}`)
+
+  // The codes are measured to fill their card (`useFitSquare`), which sets a
+  // side length from the card's own box and then clamps it. That clamp is the
+  // guard that stops a code on a 1080p monitor from growing to the full width
+  // of its card and reading as a mistake rather than a poster, so it is worth
+  // asserting: a ceiling that silently stopped applying would let the QR run
+  // away with the layout, and one that was set too low would shrink a code
+  // meant to be scanned off a gym wall.
+  //
+  // 500 is the measured ceiling. The un-capped fit is 342px at 1024x768, 513px
+  // at 1366x768 and 892px at 1920x1080, so the cap decides the two larger
+  // viewports and 1024 is free to fill its card.
+  const QR_CEILING = 500
+  for (const [w, h] of [[1920, 1080], [1366, 768], [1024, 768]]) {
+    await page.setViewportSize({ width: w, height: h })
+    await page.waitForTimeout(500)
+    const codes = await page.evaluate(() => [...document.querySelectorAll('main [data-qr] svg[viewBox]')].map(svg => {
+      const r = svg.getBoundingClientRect()
+      const card = svg.closest('[data-qr]').getBoundingClientRect()
+      return { side: Math.round(r.width), square: Math.abs(r.width - r.height) <= 1, cardW: Math.round(card.width) }
+    }))
+    check(`[QR @ ${w}x${h}] both codes are square and within the ${QR_CEILING}px ceiling`,
+      codes.length === 2 && codes.every(c => c.square && c.side <= QR_CEILING),
+      codes.map(c => `${c.side}px/${c.cardW}px`).join(' '))
+  }
+  await page.setViewportSize({ width: 1920, height: 1000 })
+  await page.waitForTimeout(400)
+  await page.screenshot({ path: `${shots}/06-qr-codes.png` })
+
+  await page.getByRole('tab', { name: /Pending/ }).click()
   await page.waitForTimeout(800)
   const viewBtn = page.locator('button[title="View"]').first()
   const confirmBtn = page.locator('button[title="Confirm"]').first()
@@ -160,7 +263,7 @@ async function run() {
       check(`QR ${label} action has a tinted background`, colour !== TRANSPARENT, colour)
       check(`QR ${label} action has a border`, border !== '0px', border)
     }
-    await page.screenshot({ path: `${shots}/06-qr-pending-actions.png` })
+    await page.screenshot({ path: `${shots}/07-qr-pending-actions.png` })
   }
 
   await browser.close()

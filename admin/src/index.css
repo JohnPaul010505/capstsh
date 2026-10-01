@@ -28,8 +28,17 @@
 
   --fg-strong: #ececfc;
   --fg: #b4b4d0;
-  --fg-muted: #55557a;
-  --fg-faint: #8888b3;
+  /* Raised from #55557a / #8888b3.
+     `--fg-muted` sat at roughly 2.5:1 against the navy glass, which is why the
+     4 KPI card titles, their sub-lines, the table column headers, the `#` index
+     column and the `Showing 1-N of M records` footer were all effectively
+     unreadable in dark mode. These two clear WCAG AA (4.5:1) for small text
+     without touching `--fg-strong` / `--fg`, which were already above 8:1.
+
+     Only the :root block is edited, so light mode keeps its own (already AA)
+     slate values and stays pixel-identical. */
+  --fg-muted: #8b8bb5;
+  --fg-faint: #9a9ac4;
 
   /* RGB triplets — needed wherever an opacity modifier is used. */
   --page-rgb: 5 9 31;
@@ -86,6 +95,12 @@
     0 26px 64px -20px rgba(0, 0, 0, 0.66),
     0 10px 28px -8px rgba(0, 0, 0, 0.34);
   --glass-glow: 0 0 46px -6px rgba(124, 58, 237, 0.22);
+
+  /* Opaque colour for a STICKY table header. The glass surfaces are
+     translucent, so a sticky header painted with them lets the rows scrolling
+     underneath show straight through the column titles. This is the same hue
+     family as --glass-tint, but fully solid. */
+  --table-head-bg: #141935;
 }
 
 html.theme-light {
@@ -159,6 +174,8 @@ html.theme-light {
     0 26px 60px -22px rgba(15, 23, 42, 0.24),
     0 10px 26px -10px rgba(15, 23, 42, 0.1);
   --glass-glow: 0 0 40px -8px rgba(124, 58, 237, 0.16);
+
+  --table-head-bg: #eff3fa;
 }
 
 /* Vignette: identical to the previous inline gradient in dark mode. */

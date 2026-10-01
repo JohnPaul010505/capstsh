@@ -7,10 +7,10 @@
  *   2. Sign-in: the overlay holds while the dashboard fades in behind it, then
  *      the login wrapper is dropped -- never a frame where BOTH screens are
  *      invisible (the old black-flash regression).
- *   3. Sign-out: the sidebar "Sign Out" -> ConfirmDialog "Yes" path. The
- *      dashboard fades out while the login panels slide back in from the edges
- *      (.panel-enter-*), again with no invisible frame, and the form is
- *      editable straight afterwards.
+ *   3. Sign-out: the account menu (the admin's name in the header) -> "Sign Out"
+ *      -> ConfirmDialog "Yes" path. The dashboard fades out while the login
+ *      panels slide back in from the edges (.panel-enter-*), again with no
+ *      invisible frame, and the form is editable straight afterwards.
  *
  * Usage:  node scripts/verify-auth-animations.mjs [url]
  * Needs:  API on :3001, Vite on :5173.
@@ -23,8 +23,27 @@ const BASE = (process.argv[2] ?? 'http://localhost:5173').replace(/\/$/, '')
 const SHOTS = 'screenshots/handoff-reverse'
 mkdirSync(SHOTS, { recursive: true })
 
-const EMAIL = 'admin@fitness.com'
-const PASSWORD = 'Admin123!'
+// Admin credentials from the git-ignored .env, not a literal pair.
+//
+// This script carried admin@fitness.com / Admin123!, which no longer exist. The
+// sign-in silently failed, the dashboard wrapper stayed `hidden`, and the
+// sign-out pass then timed out on "element is not visible" against a button that
+// was in the DOM the whole time - the same stale-credential bug already fixed in
+// verify-admin-ui.mjs, verify-dashboard-tabs.mjs and verify-membership-qr-ux.mjs.
+const env = {}
+for (const line of readFileSync(new URL('../.env', import.meta.url), 'utf8').split(/\r?\n/)) {
+  const m = line.match(/^\s*([A-Za-z0-9_]+)\s*=\s*(.*)\s*$/)
+  if (!m) continue
+  let v = m[2].trim()
+  if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) v = v.slice(1, -1)
+  env[m[1]] = v
+}
+if (!env.ADMIN_EMAIL || !env.ADMIN_PASSWORD) {
+  console.error('ADMIN_EMAIL / ADMIN_PASSWORD are not set in admin/.env - cannot sign in.')
+  process.exit(2)
+}
+const EMAIL = env.ADMIN_EMAIL
+const PASSWORD = env.ADMIN_PASSWORD
 
 /** An element "shows the app" above this fractional opacity. */
 const VISIBLE_OPACITY = 0.05
@@ -283,7 +302,14 @@ async function run() {
 
   console.log('')
   console.log('=== 3) Sign-out handoff filmstrip ===')
-  await page.locator('aside button:has-text("Sign Out")').first().click()
+  // Sign Out used to be a button at the bottom of the sidebar. It now lives in
+  // the account menu behind the admin's name in the header, so this pass has to
+  // open that menu first. `aside button:has-text("Sign Out")` matches nothing
+  // now and would fail on the timeout, not on the assertion.
+  await page.locator('header button[aria-label="Account menu"]').click()
+  const accountMenuSignOut = page.locator('[role="menu"] button:has-text("Sign Out")')
+  await accountMenuSignOut.waitFor({ state: 'visible', timeout: 5000 })
+  await accountMenuSignOut.click()
   const confirmBtn = page.locator('button:has-text("Yes")').first()
   await confirmBtn.waitFor({ state: 'visible', timeout: 5000 })
   await page.screenshot({ path: SHOTS + '/3-confirm.png' })

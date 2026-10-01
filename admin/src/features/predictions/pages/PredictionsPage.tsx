@@ -3,6 +3,7 @@ import { usePredictions, useGeneratePredictions, useMembersSimple, type MemberOp
 import { TrendingUp, TrendingDown, RefreshCw, Sparkles, AlertCircle, Info, ChevronDown, ShieldCheck, Database, Cpu } from 'lucide-react'
 import StatusBadge from '@/components/StatusBadge'
 import { MemberSelect } from '@/components/MemberSelect'
+import RecordsTable, { type RecordsColumn } from '@/components/RecordsTable'
 
 /** One forecast line from POST /api/ai/predictions (ai-service/routers/predictions.py). */
 interface Forecast {
@@ -72,6 +73,34 @@ function basisText(f: Forecast): string {
   return `${points} weigh-in${points === 1 ? '' : 's'}, ${range}${span}`
 }
 
+/**
+ * A stored `predictions` row shaped as the `Forecast` the formatters above
+ * already speak.
+ *
+ * It used to be built inline inside the `<tbody>` map, which meant `basisText`
+ * had to be re-derived per row just to print one cell - and, more importantly,
+ * meant the search box had nothing to match against, because there was no row
+ * object outside the table to ask. Lifting it here gives both the column
+ * renderer and `searchFields` the same view of the row.
+ */
+function toForecast(p: any): Forecast {
+  return {
+    prediction_type: p.metric_name,
+    current_value: p.current_value ?? 0,
+    predicted_value: p.predicted_value ?? 0,
+    unit: p.unit ?? '',
+    days_ahead: 30,
+    confidence: p.confidence ?? 0,
+    data_points: p.data_points,
+    span_days: p.span_days,
+    date_from: p.date_from,
+    date_to: p.date_to,
+    daily_rate: p.daily_rate,
+    change: p.change,
+    clamped: p.clamped,
+  }
+}
+
 const signed = (n: number, digits = 1) => `${n > 0 ? '+' : ''}${n.toFixed(digits)}`
 
 export default function PredictionsPage() {
@@ -81,8 +110,10 @@ export default function PredictionsPage() {
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showMethod, setShowMethod] = useState(false)
+  // Owned here rather than inside RecordsTable, which is a controlled input.
+  const [search, setSearch] = useState('')
 
-  const { data: predictions } = usePredictions()
+  const { data: predictions, isLoading: predictionsLoading } = usePredictions()
   const { data: members } = useMembersSimple()
   const generateMutation = useGeneratePredictions()
 
@@ -111,10 +142,82 @@ export default function PredictionsPage() {
   }))
   const selectedMember = members?.find(m => m.id === selectedMemberId)
 
+  const predictionRows = predictions ?? []
+
+  // `leading-5` throughout: `RecordsTable` budgets 44px a row, and a row whose
+  // cell renders at its natural 46px makes the measured page size lie by
+  // exactly the difference - the body then scrolls a few pixels with no
+  // explanation, which is the failure this whole table is meant to end.
+  const predictionColumns: RecordsColumn<any>[] = [
+    {
+      key: 'member',
+      header: 'Member',
+      render: p => <span className="font-medium text-fg-strong leading-5">{p.profiles?.full_name}</span>,
+    },
+    {
+      key: 'metric',
+      header: 'Metric',
+      render: p => <span className="text-fg leading-5">{METRIC_LABELS[p.metric_name] ?? p.metric_name}</span>,
+    },
+    {
+      key: 'predicted',
+      header: 'Predicted',
+      render: p => (
+        <span className="text-fg whitespace-nowrap leading-5">
+          {p.predicted_value} {p.unit ?? ''}
+          {!isRisk(toForecast(p)) && p.current_value != null && (
+            <span className="text-fg-muted text-xs"> (from {p.current_value})</span>
+          )}
+        </span>
+      ),
+    },
+    {
+      key: 'basis',
+      header: 'Basis',
+      /* `leading-4`, not `leading-5`, and this is not cosmetic. A line box's
+         height is the MAXIMUM ascent plus the MAXIMUM descent of everything on
+         it - not the tallest total. So a 12px span carrying the same 20px
+         line-height as the 14px strut does not contribute 20px: its smaller
+         font puts its descent further below the baseline, and the line box
+         comes to 22px. That is 2px over the 44px row budget on every row,
+         which makes the measured page size too large and scrolls the body by
+         15px with nothing to explain it. `leading-4` keeps the 12px look and
+         puts the line box back at 16px, inside the strut. */
+      render: p => (
+        <span className="text-xs text-fg-muted leading-4">
+          {p.data_points ? basisText(toForecast(p)) : 'recorded before provenance tracking'}
+          {p.clamped && <span className="text-accent-amber"> · capped</span>}
+        </span>
+      ),
+    },
+    {
+      key: 'confidence',
+      header: 'Confidence',
+      render: p => (isRisk(toForecast(p)) ? (
+        /* No `leading-5` here, deliberately. `py-0.5` already makes the badge
+           20px (16px line + 4px), which is the row budget; adding a 20px line
+           box on top of 4px of padding makes it 24px, every row becomes 47px
+           against `RecordsTable`'s 44px, and the measured page size is wrong by
+           3px a row - which shows up as a body that scrolls with no visible
+           cause. `StatusBadge` on the other branch carries no leading either,
+           for the same reason. */
+        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${RISK_STYLES[riskLevel(p.predicted_value)]}`}>
+          {riskLevel(p.predicted_value)} risk
+        </span>
+      ) : (
+        <StatusBadge status={(p.confidence ?? 0) >= 0.7 ? 'high' : (p.confidence ?? 0) >= 0.4 ? 'medium' : 'low'} />
+      )),
+    },
+  ]
+
   return (
-    <div className="space-y-3">
+    <div className="h-full min-h-0 flex flex-col gap-3">
       {/* --- Methodology: what is predicted, from what, and how --------------- */}
-      <div className="glass-card rounded-xl overflow-hidden">
+      {/* `shrink-0` on every block above the table: the table is the only
+          `flex-1` child, so it gets whatever height these three leave. Without
+          it they grow to their content and the table is squeezed to its
+          6rem floor, which measures a two-row page. */}
+      <div className="glass-card rounded-xl overflow-hidden shrink-0">
         <button
           onClick={() => setShowMethod((v) => !v)}
           className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-[#7C3AED]/5 transition-colors"
@@ -169,7 +272,7 @@ export default function PredictionsPage() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 shrink-0">
         <div className="glass-card p-4 rounded-xl">
           <div className="flex items-center gap-2 text-sm text-fg-muted mb-1">
             <TrendingUp className="w-4 h-4 text-[#22C55E]" />
@@ -217,7 +320,7 @@ export default function PredictionsPage() {
       </div>
 
       {error && (
-        <div className="flex items-start gap-2 p-3 rounded-xl border border-[#F59E0B]/30 bg-[#F59E0B]/10 text-sm text-fg">
+        <div className="flex items-start gap-2 p-3 rounded-xl border border-[#F59E0B]/30 bg-[#F59E0B]/10 text-sm text-fg shrink-0">
           <AlertCircle className="w-4 h-4 text-accent-amber shrink-0 mt-0.5" />
           <div>
             <p className="font-medium text-fg-strong">No forecast produced</p>
@@ -230,8 +333,17 @@ export default function PredictionsPage() {
       )}
 
       {aiResults && aiResults.length > 0 && (
-        <div className="bg-gradient-to-r from-[#7C3AED]/10 to-[#3B82F6]/10 p-4 rounded-xl border border-[#7C3AED]/30 shadow-sm">
-          <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+        /* CAPPED, and it scrolls itself. A plain JS comment rather than a JSX
+           one, because this position is an EXPRESSION - the `&&` operand - not
+           JSX children, and a JSX comment there is a syntax error.
+           This panel only exists after a Generate, but it renders one card per
+           metric per member, and on a 768px window that is easily taller than
+           everything else on the page put together. Unbounded it pushed the
+           Recent Predictions table - the only `flex-1` child - into its 6rem
+           floor and off the bottom of the viewport, which is the exact failure
+           the `overflow-hidden` main was hiding before. */
+        <div className="bg-gradient-to-r from-[#7C3AED]/10 to-[#3B82F6]/10 p-4 rounded-xl border border-[#7C3AED]/30 shadow-sm shrink-0 max-h-[30vh] flex flex-col min-h-0">
+          <div className="flex items-center justify-between mb-3 gap-2 flex-wrap shrink-0">
             <h2 className="text-base font-semibold text-fg-strong">
               Last Generated Results — {selectedMember?.full_name ?? 'Member'}
             </h2>
@@ -242,7 +354,7 @@ export default function PredictionsPage() {
               </div>
             )}
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 overflow-y-auto min-h-0">
             {aiResults.map((r, i) => {
               const level = riskLevel(r.predicted_value)
               return (
@@ -294,78 +406,25 @@ export default function PredictionsPage() {
         </div>
       )}
 
-      <div className="glass-card rounded-xl overflow-hidden flex flex-col min-h-0">
-        <div className="px-4 py-3 border-b border-line">
-          <h2 className="font-semibold text-fg-strong">Recent Predictions</h2>
-          <p className="text-xs text-fg-muted mt-0.5">
-            Forecasts stored in the <span className="text-fg">predictions</span> table by the AI service. The
-            <span className="text-fg"> basis</span> column shows the readings each number came from; re-generating the same
-            member replaces that member's row for the same metric and target date instead of duplicating it.
-          </p>
-        </div>
-        {predictions?.length === 0 ? (
-          <div className="text-center py-6 text-fg-muted">No predictions yet. Select a member and click Generate.</div>
-        ) : (
-          <div className="overflow-x-auto flex-1">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-line bg-overlay-5">
-                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Member</th>
-                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Metric</th>
-                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Predicted</th>
-                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Basis</th>
-                  <th className="text-left px-3 py-2 text-sm font-medium text-fg-muted">Confidence</th>
-                </tr>
-              </thead>
-              <tbody>
-                {predictions?.map(p => {
-                  const isRiskRow = p.metric_name === 'retention_risk'
-                  const row = {
-                    prediction_type: p.metric_name,
-                    current_value: p.current_value ?? 0,
-                    predicted_value: p.predicted_value ?? 0,
-                    unit: p.unit ?? '',
-                    days_ahead: 30,
-                    confidence: p.confidence ?? 0,
-                    data_points: p.data_points,
-                    span_days: p.span_days,
-                    date_from: p.date_from,
-                    date_to: p.date_to,
-                    daily_rate: p.daily_rate,
-                    change: p.change,
-                    clamped: p.clamped,
-                  } as Forecast
-                  return (
-                    <tr key={p.id} className="border-b border-line-soft last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
-                      <td className="px-3 py-2 text-sm font-medium text-fg-strong">{p.profiles?.full_name}</td>
-                      <td className="px-3 py-2 text-sm text-fg">{METRIC_LABELS[p.metric_name] ?? p.metric_name}</td>
-                      <td className="px-3 py-2 text-sm text-fg">
-                        {p.predicted_value} {p.unit ?? ''}
-                        {!isRiskRow && p.current_value != null && (
-                          <span className="text-fg-muted text-xs"> (from {p.current_value})</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2 text-xs text-fg-muted">
-                        {p.data_points ? basisText(row) : 'recorded before provenance tracking'}
-                        {p.clamped && <span className="text-accent-amber"> · capped</span>}
-                      </td>
-                      <td className="px-3 py-2">
-                        {isRiskRow ? (
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${RISK_STYLES[riskLevel(p.predicted_value)]}`}>
-                            {riskLevel(p.predicted_value)} risk
-                          </span>
-                        ) : (
-                          <StatusBadge status={(p.confidence ?? 0) >= 0.7 ? 'high' : (p.confidence ?? 0) >= 0.4 ? 'medium' : 'low'} />
-                        )}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      <RecordsTable
+        title="Recent Predictions"
+        subtitle="Forecasts stored in the predictions table by the AI service. The basis column shows the readings each number came from; re-generating the same member replaces that member's row for the same metric and target date instead of duplicating it."
+        columns={predictionColumns}
+        rows={predictionRows}
+        rowKey={p => p.id}
+        searchFields={p => [
+          p.profiles?.full_name,
+          METRIC_LABELS[p.metric_name] ?? p.metric_name,
+          basisText(toForecast(p)),
+        ]}
+        searchPlaceholder="Search by member or metric…"
+        searchValue={search}
+        onSearchChange={setSearch}
+        isLoading={predictionsLoading}
+        emptyMessage={predictionRows.length === 0
+          ? 'No predictions yet. Select a member and click Generate.'
+          : 'No predictions match this search'}
+      />
     </div>
   )
 }

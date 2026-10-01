@@ -1,8 +1,8 @@
 import { useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { autoGrain, bucketize, daysBetween, type Grain, type Range } from '@/features/dashboard/lib/dateRange'
 import { fetchAttendance, fetchMemberships } from '@/features/dashboard/lib/attendance'
-import { planMatches, resolvePlan, type AttendanceRow, type PlanFilter } from '@/features/dashboard/lib/planFilter'
+import { planIndexFor, planMatches, resolvePlanIndexed, type AttendanceRow, type PlanFilter } from '@/features/dashboard/lib/planFilter'
 
 export interface CheckinPoint {
   key: string
@@ -20,10 +20,17 @@ export function useCheckinsTab(range: Range, plan: PlanFilter, grain?: Grain) {
 
   const q = useQuery({
     queryKey: ['dash-checkins', range.start, range.end, plan],
+    // Keep the previous range on screen while the next one loads. Every KPI here
+    // comes from a whole-table fetch, so without this a range change
+    // blanks the tab and the cards briefly show zeros for the NEW range.
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       const [rows, memberships] = await Promise.all([fetchAttendance(range), fetchMemberships()])
+      // Indexed plan lookup: this filter runs once per attendance row, and the
+      // unindexed version re-scanned all 1,860 memberships for each of them.
+      const planIndex = planIndexFor(memberships)
       const inPlan = rows.filter(r => {
-        const planName = resolvePlan(memberships, r.member_id, r.check_in_date)
+        const planName = resolvePlanIndexed(planIndex, r.member_id, r.check_in_date)
         return planMatches(plan, planName)
       })
       return { rows: inPlan, memberships }
@@ -48,9 +55,11 @@ export function useCheckinsTab(range: Range, plan: PlanFilter, grain?: Grain) {
       return { key: b.key, label: b.label, full: b.full, count: n }
     })
 
+    // Same index the filter above used — built once, memoised by array identity.
+    const planIndex = planIndexFor(q.data?.memberships)
     const records: CheckinRecord[] = rows.map(r => ({
       ...r,
-      planName: resolvePlan(q.data?.memberships, r.member_id, r.check_in_date),
+      planName: resolvePlanIndexed(planIndex, r.member_id, r.check_in_date),
     }))
 
     return { total, memberCount, trainerCount, avg, days, points, records, buckets }

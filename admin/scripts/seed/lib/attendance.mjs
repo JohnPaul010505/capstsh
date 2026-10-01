@@ -1,11 +1,15 @@
-// Pure generator for the unified attendance dataset (~22k rows).
+// Pure generator for the unified attendance dataset (~13k rows).
+//
+// Window: DATA_START (2023-01-01) through today, declared once in
+// lib/common.mjs and mirrored by the admin app's "All time" preset.
 //
 // Model: gym open Mon–Sat (closed Sundays, matching the business-day
 // convention). Members/trainers become eligible on their join date;
 // churned (is_active=false) members stop checking in after a deterministic
-// churn date. Daily volume follows 2 + 22*t^1.6 (t = elapsed fraction),
-// i.e. ~3/day in Jan 2020 ramping to ~24/day now — the ramp emerges from
-// real member-base growth, averaging ~10.5/day over ~2,110 open days.
+// churn date. Daily volume is FLAT at FLAT_DAILY_SESSIONS per open day, capped
+// by how many people have actually joined by that day. The flat profile is
+// deliberate: a growth ramp concentrated ~60% of every table into the final
+// year, which is what made wide dashboard ranges slow and the charts lopsided.
 //
 // 96% of rows belong to members, 4% to trainers. 92% of sessions are
 // closed (45–180 min); today keeps 3–4 open sessions. entry_method is
@@ -14,21 +18,34 @@
 // seed): check_in_time / check_out_time / expires_at are REAL UTC instants —
 // the UI renders them with toLocaleTimeString() — while check_in_date is the
 // Asia/Manila civil date of the check-in.
-import { makeRand, uuid, localDate } from './common.mjs'
+import { makeRand, uuid, localDate, DATA_START } from './common.mjs'
 
 const DAY = 86400000
 const PH = 8 * 3600 * 1000
 // Day index d of the Manila calendar date containing instant `ms`
-// (d=0 ⇔ 2020-01-01 Manila). Verified: 2026-09-26 → Sat, 2026-09-27 → Sun.
-const dayIdxOfInstant = (ms) => Math.floor((ms + PH) / DAY) - Math.floor(Date.UTC(2020, 0, 0) / DAY)
+// (d=0 ⇔ DATA_START at Manila midnight). Derived from DATA_START rather than a
+// literal so the seed and the admin app cannot disagree about where the dataset
+// begins; verify-dataset-spread.mjs asserts that they agree.
+const EPOCH_DAY = Math.floor(Date.parse(`${DATA_START}T00:00:00+08:00`) / DAY)
+const dayIdxOfInstant = (ms) => Math.floor((ms + PH) / DAY) - EPOCH_DAY
 // Midnight-Manila (UTC ms) starting day index d.
-const dayStartUtc = (d) => (Math.floor(Date.UTC(2020, 0, 0) / DAY) + d) * DAY - PH
+const dayStartUtc = (d) => (EPOCH_DAY + d) * DAY - PH
 // Weekday of day d: noon Manila (04:00Z) — same civil day in both zones.
 const dowOf = (d) => new Date(dayStartUtc(d) + 12 * 3600 * 1000).getUTCDay()
 // Asia/Manila civil date of day index d.
 const dateOfDay = (d) => localDate(new Date(dayStartUtc(d) + 12 * 3600 * 1000))
 
 export const ATT_ID_PREFIX = '3e01a003'
+
+/**
+ * Sessions per open day, flat across the whole window.
+ *
+ * 9 was picked because 1,174 open days x 9 ≈ 10.5k rows, which with the
+ * regular-attender overlay lands at roughly 13k - a third of the old 42k, and
+ * comfortably under the offset at which this PostgREST instance starts
+ * answering 500 for the app's key.
+ */
+export const FLAT_DAILY_SESSIONS = 9
 
 // --- regular-attender overlay ---------------------------------------------
 // The main loop above picks each day's visitors at random, so over a multi-year
@@ -62,11 +79,21 @@ export const ATT_ID_PREFIX = '3e01a003'
 // is only populated by formerly-committed members who drifted away, which is
 // also exactly the population an admin's "we miss you" list is for.
 export const OVERLAY_WEEKS = 12
+// Cohort sizes are deliberately small. The overlay exists to give
+// ai-service/services/ml.py a spread of weekly rates so the retention panel's
+// low/medium/high bands are all populated; it does NOT need to be the bulk of
+// the dataset. At the previous 330 members it produced ~19k rows inside the last
+// 12 weeks alone - two thirds of the whole table - so the monthly histogram read
+// 199/open-day in 2026-09 against 7/open-day in 2023-01. A flat base with a
+// three-month spike piled on top is not flat, and the spike is what makes the
+// "All time" charts unreadable. These sizes keep the overlay near 2.6k rows:
+// enough for the model to separate the bands, small enough that the flat
+// 9/open-day profile still dominates.
 export const REGULAR_TIERS = [
-  { visitsPerWeek: 7, members: 60, offsetWeeks: 0 },   // athletes   -> medium
-  { visitsPerWeek: 5, members: 90, offsetWeeks: 0 },   // committed  -> medium
-  { visitsPerWeek: 3, members: 110, offsetWeeks: 0 },  // regulars   -> high
-  { visitsPerWeek: 6, members: 70, offsetWeeks: 26 },  // churned    -> low
+  { visitsPerWeek: 7, members: 8, offsetWeeks: 0 },   // athletes   -> medium
+  { visitsPerWeek: 5, members: 12, offsetWeeks: 0 },  // committed  -> medium
+  { visitsPerWeek: 3, members: 15, offsetWeeks: 0 },  // regulars   -> high
+  { visitsPerWeek: 6, members: 9, offsetWeeks: 26 },  // churned    -> low
 ]
 // Overlay members must have been members long enough to have a real history.
 const OVERLAY_MIN_TENURE_DAYS = 180
@@ -92,8 +119,6 @@ export function buildAttendance(members, trainers, opts = {}) {
     todayLo = 0
     todayHi = Math.max(30, todayHi)
   }
-  const totalDays = todayIdx + 1
-
   const eligibleMembers = members
     .filter((p) => p.profileId)
     .map((p) => {
@@ -122,13 +147,19 @@ export function buildAttendance(members, trainers, opts = {}) {
     const dow = dowOf(d)
     if (dow === 0) continue // closed Sundays
     const dateStr = localDate(new Date(dayStartUtc(d) + 12 * 3600 * 1000))
-    const t = totalDays <= 1 ? 1 : d / (totalDays - 1)
-    const k = Math.round(2 + 22 * Math.pow(t, 1.6))
     const isToday = d === todayIdx
 
     const poolM = eligibleMembers.filter((m) => m.joined <= d && d <= m.churn)
     const poolT = eligibleTrainers.filter((m) => m.joined <= d)
     if (!poolM.length && !poolT.length) continue
+
+    // FLAT daily volume, capped by the number of people who have actually joined
+    // by day d. The previous `2 + 22*t^1.6` ramp modelled member-base growth, but
+    // on a multi-year window it packed ~60% of every table into the final year,
+    // which is precisely what made the "All time" preset slow (deep-offset 500s
+    // past ~36,000 rows) and the charts lopsided. The cap is what stops the
+    // first days of the window logging more visitors than have joined.
+    const k = Math.min(FLAT_DAILY_SESSIONS, poolM.length + poolT.length)
 
     const chosen = new Set()
     for (let s = 0; s < k; s++) {
@@ -250,7 +281,13 @@ export function buildAttendance(members, trainers, opts = {}) {
           const j = Math.floor(overlayRand() * (k + 1))
           const tmp = week[k]; week[k] = week[j]; week[j] = tmp
         }
-        for (let v = 0; v < tier.visitsPerWeek; v++) {
+        // Quota per CALENDAR WEEK, capped by the open days that week actually
+        // has. Without the cap, a boundary week that contains a single open day
+        // sends all 7 of the 7/wk tier's sessions to that one day - and on the
+        // last partial week that day is "today", which put ~177 stacked
+        // check-ins on the demo date.
+        const quota = Math.min(tier.visitsPerWeek, openDays.length)
+        for (let v = 0; v < quota; v++) {
           const d = week[v % week.length]
           const dateStr = dateOfDay(d)
           // Skip only days the RANDOM loop already covered. Overlay-added days

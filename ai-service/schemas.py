@@ -1,22 +1,9 @@
 from pydantic import BaseModel
 from typing import Optional
 
-class MemberIdentifier(BaseModel):
-    member_id: str
-    meal_type: Optional[str] = None
-
-class GoalAdjustRequest(BaseModel):
-    member_id: str
-
 class PredictionRequest(BaseModel):
     member_id: str
     days_ahead: int = 30
-
-class GoalSuggestion(BaseModel):
-    goal_type: str
-    current_value: float
-    suggested_value: float
-    reason: str
 
 class PredictionResult(BaseModel):
     prediction_type: str

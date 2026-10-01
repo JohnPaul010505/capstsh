@@ -4,7 +4,7 @@ import KpiCard from '@/components/KpiCard'
 import RecordsTable, { type RecordsColumn } from '@/components/RecordsTable'
 import Badge from '@/components/Badge'
 import TabHeader, { PLAN_FILTER_OPTIONS, type TabPanelProps } from '@/features/dashboard/components/TabHeader'
-import TrendChartCard from '@/features/dashboard/components/TrendChartCard'
+import TrendChartCard, { TREND_CHART_HEIGHT } from '@/features/dashboard/components/TrendChartCard'
 import { BarTrend } from '@/features/dashboard/components/TrendCharts'
 import { fmtDay, formatRangeLabel } from '@/features/dashboard/lib/dateRange'
 import type { PlanFilter } from '@/features/dashboard/lib/planFilter'
@@ -12,8 +12,18 @@ import { useRevenueTab, type RevenueRecord } from '@/features/dashboard/hooks/us
 
 const peso = (n: number) => `₱${n.toLocaleString()}`
 
+/**
+ * A `price` of 0 is a real membership: a free trial, not a missing value.
+ *
+ * The table used to print those as a bare PHP 0, which sat under a Total Revenue
+ * of over a million and read as a bug - the demo data has 11 free trials that all
+ * started on the seed date, so the newest page of the table was entirely zero-amount
+ * rows while the paid rows sat further down. Labelling them removes the contradiction
+ * without hiding a real transaction.
+ */
+
 export default function RevenueTab(props: TabPanelProps) {
-  const { range, onRangeChange, plan, onPlanChange, grain, onGrainChange } = props
+  const { range, onRangeChange, plan, onPlanChange, grain, onGrainChange, grainOptions } = props
   const { total, avg, days, transactions, peakDay, peakAmount, points, records, isLoading } =
     useRevenueTab(range, plan, grain)
   const [search, setSearch] = useState('')
@@ -23,12 +33,11 @@ export default function RevenueTab(props: TabPanelProps) {
     { key: 'name', header: 'Member Name', render: r => <span className="font-medium text-fg-strong">{r.memberName}</span> },
     { key: 'code', header: 'Member ID', render: r => <span className="font-mono text-[12px] text-fg-muted">{r.memberCode ?? '—'}</span> },
     { key: 'plan', header: 'Membership Type', render: r => <Badge tone="purple">{r.planName}</Badge> },
-    { key: 'amount', header: 'Amount', render: r => <span className="font-semibold text-fg-strong tabular-nums">{peso(r.price)}</span> },
-    {
-      key: 'status',
-      header: 'Status',
-      render: r => <Badge tone={r.status === 'active' ? 'green' : r.status === 'expired' ? 'red' : 'muted'}>{r.status}</Badge>,
-    },
+    // A zero-price membership is a free trial, not a failed transaction. Labelling it
+    // keeps the row honest and stops a column of PHP 0 contradicting the total above.
+    { key: 'amount', header: 'Amount', render: r => r.price > 0
+      ? <span className="font-semibold text-fg-strong tabular-nums">{peso(r.price)}</span>
+      : <Badge tone='muted'>Free Trial</Badge> },
   ]
 
   const chartPoints = points.map(p => ({ key: p.key, label: p.label, full: p.full, value: p.value }))
@@ -50,10 +59,10 @@ export default function RevenueTab(props: TabPanelProps) {
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KpiCard title="Total Revenue" value={peso(total)} sub={formatRangeLabel(range)} icon={Banknote} tone="green" />
-        <KpiCard title="Daily Revenue" value={peso(Math.round(avg))} sub={`${days} day${days === 1 ? '' : 's'} in range`} icon={TrendingUp} tone="blue" />
-        <KpiCard title="Total Transactions" value={transactions.toLocaleString()} sub="Memberships started in range" icon={Receipt} tone="purple" />
-        <KpiCard
+        <KpiCard isLoading={isLoading} title="Total Revenue" value={peso(total)} sub={formatRangeLabel(range)} icon={Banknote} tone="green" />
+        <KpiCard isLoading={isLoading} title="Daily Revenue" value={peso(Math.round(avg))} sub={`${days} day${days === 1 ? '' : 's'} in range`} icon={TrendingUp} tone="blue" />
+        <KpiCard isLoading={isLoading} title="Total Transactions" value={transactions.toLocaleString()} sub="Memberships started in range" icon={Receipt} tone="purple" />
+        <KpiCard isLoading={isLoading}
           title="Highest Revenue Day"
           value={peakDay ? peso(peakAmount) : peso(0)}
           sub={peakDay ? fmtDay(peakDay) : 'No sales in range'}
@@ -63,8 +72,10 @@ export default function RevenueTab(props: TabPanelProps) {
       </div>
 
       <TrendChartCard
+        heightClass={TREND_CHART_HEIGHT}
         title="Revenue Trend"
         grain={grain}
+        grainOptions={grainOptions}
         onGrainChange={onGrainChange}
         isLoading={isLoading}
         isEmpty={!isLoading && !hasData}
@@ -85,6 +96,7 @@ export default function RevenueTab(props: TabPanelProps) {
         onSearchChange={setSearch}
         isLoading={isLoading}
         emptyMessage="No transactions match these filters"
+        pageSize={10}
       />
     </div>
   )
