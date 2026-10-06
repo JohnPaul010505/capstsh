@@ -53,8 +53,16 @@ export default function QRPage() {
   const [pendingSearch, setPendingSearch] = useState('')
   const [confirmedSearch, setConfirmedSearch] = useState('')
 
-  const [enrollRef, enrollSize] = useFitSquare<HTMLDivElement>()
-  const [checkinRef, checkinSize] = useFitSquare<HTMLDivElement>()
+  /* A ceiling, and a much lower one than the hook's own default of 500. Both
+     codes are scanned off a phone, not read across a room: at 500 the code
+     filled 60%+ of its card on a 1080p monitor, which is when a visitor holding
+     their phone has to hunt for it. 240 is the old `fallback` - the size the
+     hook used before the fit-to-card behaviour was added - and it is the
+     smallest size a phone camera still locks onto without the admin leaning in.
+     The hook still shrinks it on a short window, so this is a ceiling on a
+     measurement rather than a fixed box. */
+  const [enrollRef, enrollSize] = useFitSquare<HTMLDivElement>({ max: 240 })
+  const [checkinRef, checkinSize] = useFitSquare<HTMLDivElement>({ max: 240 })
 
   useEffect(() => {
     if (!showModal) return
@@ -189,15 +197,37 @@ export default function QRPage() {
   const pending = enrollments?.filter(e => e.status === 'pending') ?? []
   const confirmed = enrollments?.filter(e => e.status === 'confirmed') ?? []
 
-  // Date on one line, time beside it in the muted tone the dashboard tables use.
-  const stamp = (iso: string | null) => {
+  /* Date and time are columns of their own now, in the same two-column shape
+     the dashboard's check-in and activity lists already use (`CheckinsTab`,
+     `ActivityTab`, `GrowthTab`): the day in the strong tone, the clock in the
+     muted 12px beside it. They used to be ONE combined cell led by a
+     "Submitted"/"Confirmed" column at the far left, which put the only
+     timestamp on a membership list ahead of the name, email and phone the list
+     is actually about - and on the Confirmed view headed a column with the word
+     "Confirmed" over a time that says nothing the tab does not already say.
+
+     The `leading-tight` wrapper on BOTH cells is there to keep the type tight,
+     exactly as the combined cell had it - it is not doing any work on the row
+     height. (Measured: the Confirmed list's rows are 45px either way, because
+     the cell's own `text-sm` strut sets the line box and a block child sits
+     inside it. `RecordsTable` budgets 44px, so the 45th pixel is the cell's, not
+     the column's - which is why the measured page size still comes out honest
+     and the body does not scroll.) */
+  const dateCell = (iso: string | null) => {
     if (!iso) return <span className="text-fg-faint">—</span>
-    const d = new Date(iso)
     return (
       <div className="leading-tight">
-        <span className="text-fg-strong">{d.toLocaleDateString()}</span>
-        <span className="ml-2 text-[12px] text-fg-muted">
-          {d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+        <span className="text-fg-strong whitespace-nowrap">{new Date(iso).toLocaleDateString()}</span>
+      </div>
+    )
+  }
+
+  const timeCell = (iso: string | null) => {
+    if (!iso) return <span className="text-fg-faint">—</span>
+    return (
+      <div className="leading-tight">
+        <span className="text-fg-muted text-[12px] whitespace-nowrap">
+          {new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
         </span>
       </div>
     )
@@ -241,15 +271,20 @@ export default function QRPage() {
     { key: 'phone', header: 'Phone', render: e => <span className="text-fg">{e.phone || <span className="text-fg-faint">—</span>}</span> },
   ]
 
+  // Identity first, then when. The leading timestamp column is gone: the
+  // visible order on both lists is now # | Name | Email | Phone | Date | Time,
+  // with Actions last on Pending.
   const pendingColumns: RecordsColumn<any>[] = [
-    { key: 'when', header: 'Submitted', render: e => stamp(e.created_at) },
     ...identityColumns,
+    { key: 'date', header: 'Date', render: e => dateCell(e.created_at) },
+    { key: 'time', header: 'Time', render: e => timeCell(e.created_at) },
     { key: 'actions', header: 'Actions', align: 'right', render: e => actionsFor(e) },
   ]
 
   const confirmedColumns: RecordsColumn<any>[] = [
-    { key: 'when', header: 'Confirmed', render: e => stamp(e.confirmed_at) },
     ...identityColumns,
+    { key: 'date', header: 'Date', render: e => dateCell(e.confirmed_at) },
+    { key: 'time', header: 'Time', render: e => timeCell(e.confirmed_at) },
   ]
 
   const identityFields = (e: any) => [e.full_name, e.email, e.phone]

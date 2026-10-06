@@ -9,10 +9,15 @@ class MembershipStatusCard extends StatelessWidget {
   final Membership? membership;
   final bool hasPendingRequest;
 
+  /// Today's open check-in row for a Daily member (null when not checked in).
+  /// Only Daily plans read this — Monthly plans stay dates-based.
+  final Map<String, dynamic>? openSession;
+
   const MembershipStatusCard({
     super.key,
     required this.membership,
     required this.hasPendingRequest,
+    this.openSession,
   });
 
   @override
@@ -30,11 +35,28 @@ class MembershipStatusCard extends StatelessWidget {
     }
 
     final expired = m.isExpired;
-    final active = m.status == 'active' && !expired;
     final days = m.daysRemaining;
+    final isDaily = m.planName.trim().toLowerCase() == 'daily';
+
+    // Daily passes are bought the day they are used: ACTIVE means checked in
+    // right now (a fresh open attendance session), INACTIVE otherwise — even
+    // when the membership dates are still valid. A trainer scanning on this
+    // device writes the trainer's own attendance row, so it can never flip a
+    // member's card. Monthly plans keep the dates-based status.
+    final sessionActive = openSession != null;
+    final datesActive = m.status == 'active' && !expired;
+    final active = isDaily ? sessionActive : datesActive;
 
     String subtitle;
-    if (expired) {
+    if (isDaily) {
+      if (sessionActive) {
+        subtitle = 'Checked in — enjoy your workout';
+      } else if (expired) {
+        subtitle = 'Expired on ${_fmt(m.endDate)}';
+      } else {
+        subtitle = 'Not checked in — scan the gym QR to check in';
+      }
+    } else if (expired) {
       subtitle = 'Expired on ${_fmt(m.endDate)}';
     } else if (days != null && days <= 7) {
       subtitle = days <= 0 ? 'Ends today' : 'Expires in $days day${days == 1 ? '' : 's'}';
@@ -42,14 +64,18 @@ class MembershipStatusCard extends StatelessWidget {
       subtitle = 'Valid until ${_fmt(m.endDate)}';
     }
 
+    final statusLabel = hasPendingRequest
+        ? 'PENDING APPROVAL'
+        : isDaily
+            ? (sessionActive ? 'ACTIVE' : 'INACTIVE')
+            : datesActive
+                ? 'ACTIVE'
+                : expired
+                    ? 'EXPIRED'
+                    : m.status.toUpperCase();
+
     return _card(
-      statusLabel: hasPendingRequest
-          ? 'PENDING APPROVAL'
-          : active
-              ? 'ACTIVE'
-              : expired
-                  ? 'EXPIRED'
-                  : m.status.toUpperCase(),
+      statusLabel: statusLabel,
       statusActive: active && !hasPendingRequest,
       title: m.planName,
       subtitle: subtitle,

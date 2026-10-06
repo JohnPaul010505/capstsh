@@ -55,7 +55,7 @@ class RecordScreen extends ConsumerWidget {
 
                         return GestureDetector(
                           onTap: () {
-                            context.push('/trainer/record/${plan['id']}');
+                            _showPlanDetails(context, record);
                           },
                           child: Container(
                             margin: const EdgeInsets.only(bottom: 12),
@@ -160,6 +160,126 @@ class RecordScreen extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+
+  void _showPlanDetails(BuildContext context, Map<String, dynamic> record) {
+    final plan = record['plan'] as Map<String, dynamic>;
+    final memberProfile = plan['profiles'] as Map<String, dynamic>? ?? {};
+    final memberName = memberProfile['full_name'] as String? ?? 'Unknown Member';
+    final completedDays = record['completed_days'] as int? ?? 0;
+    final totalDays = record['total_days'] as int? ?? 7;
+    final startDate = plan['start_date'] as String? ?? '';
+    final endDate = plan['end_date'] as String? ?? '';
+    final notes = plan['notes'] as String?;
+    final memberId = plan['member_id'] as String?;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: ClayTokens.clayDarkSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(40),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    memberName,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: completedDays >= totalDays
+                          ? const Color(0xFF30D158).withAlpha(25)
+                          : ClayTokens.clayPrimary.withAlpha(25),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '$completedDays/$totalDays days',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: completedDays >= totalDays
+                            ? const Color(0xFF30D158)
+                            : ClayTokens.clayPrimaryLight,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Schedule: $startDate — $endDate',
+                style: const TextStyle(fontSize: 13, color: Color(0xFF8E8E93)),
+              ),
+              if (notes != null && notes.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(10),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    notes,
+                    style: const TextStyle(fontSize: 13, color: Color(0xFFECECFC)),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 20),
+              if (memberId != null)
+                SizedBox(
+                  width: double.infinity,
+                  height: 46,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: ClayTokens.clayPrimary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      context.push('/trainer/members/$memberId');
+                    },
+                    child: const Text(
+                      'View Member Progress',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 

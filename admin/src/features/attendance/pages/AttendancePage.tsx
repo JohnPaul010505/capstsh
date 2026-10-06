@@ -4,6 +4,8 @@ import { supabase } from '@/lib/supabase'
 import { useAttendance } from '../hooks/useAttendance'
 import { Plus, LogOut, LogIn, X, Clock } from 'lucide-react'
 import RecordsTable, { type RecordsColumn } from '@/components/RecordsTable'
+import ListToolbar from '@/components/ListToolbar'
+import { formatRangeLabel, MONTH_PRESETS, todayRange, type Range } from '@/features/dashboard/lib/dateRange'
 
 // PostgREST REJECTS unknown columns ('Could not find the ... column'), so
 // the manual check-in insert below retries without entry_method when
@@ -29,7 +31,10 @@ export default function AttendancePage() {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
   }
   const today = localToday()
-  const [date, setDate] = useState(today)
+  // The window of check-ins being read. Opened on today, which is what this page
+  // has always opened on - a one-day range, and the picker's label collapses a
+  // single day to one date rather than printing it twice.
+  const [range, setRange] = useState<Range>(() => todayRange())
   const [category, setCategory] = useState<'member' | 'trainer'>('member')
   const [showModal, setShowModal] = useState(false)
   const [drawerCategory, setDrawerCategory] = useState<'member' | 'trainer'>('member')
@@ -49,7 +54,7 @@ export default function AttendancePage() {
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [showModal])
-  const { data: sessions, isLoading, isFetching, isError, error, refetch } = useAttendance(date, category)
+  const { data: sessions, isLoading, isFetching, isError, error, refetch } = useAttendance(range, category)
   const queryClient = useQueryClient()
 
   // The table used to render "No attendance records" for BOTH an empty day and a
@@ -62,13 +67,18 @@ export default function AttendancePage() {
   const rowCount = sessions?.length ?? 0
   // The dataset models a Mon-Sat gym (see scripts/seed/lib/attendance.mjs), so a
   // Sunday is legitimately empty and a weekday with no rows is worth flagging.
-  const isSunday = new Date(`${date}T00:00:00`).getDay() === 0
-  const longDate = new Date(`${date}T00:00:00`).toLocaleDateString(undefined, {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  })
+  // Both of those are claims about ONE day, though, so they only hold when the
+  // window is a single day: a month containing one Sunday is not "closed", and
+  // a range with no rows is a different statement from a day with no rows.
+  const isSingleDay = range.start === range.end
+  const isSunday = isSingleDay && new Date(`${range.start}T00:00:00`).getDay() === 0
+  // One day gets the long form ("Monday, October 5, 2026") because that is what
+  // the page always said; a window gets the picker's own label.
+  const longDate = isSingleDay
+    ? new Date(`${range.start}T00:00:00`).toLocaleDateString(undefined, {
+      weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+    })
+    : formatRangeLabel(range)
   const roleLabel = category === 'trainer' ? 'Trainers' : 'Members'
 
   const { data: people, isLoading: peopleLoading } = useQuery({
@@ -146,8 +156,23 @@ export default function AttendancePage() {
       render: s => (
         <span className="font-medium text-fg-strong leading-5">
           {s.profiles?.full_name}
-          <span className="ml-2 text-xs font-mono text-[#7C3AED]">{s.profiles?.code}</span>
         </span>
+      ),
+    },
+    {
+      /* The code used to ride inline after the name in purple, where it read
+         as part of the name rather than as an ID. It gets a column of its own
+         here, in the same neutral white as the name - so a column of IDs can
+         be scanned independently, and nothing in the row is purple text.
+
+         NO `leading-5` here, unlike the other cells: a 12px `text-xs` line box
+         under a 20px one makes the monospace font's ascent set the row height,
+         and the row grows to 47px against the 44px `RecordsTable` budgets. At
+         `text-xs`'s own 16px the shared line box stays at the cell's 20px. */
+      key: 'code',
+      header: 'Member ID',
+      render: s => (
+        <span className="text-xs font-mono text-fg-strong">{s.profiles?.code ?? '—'}</span>
       ),
     },
     {
@@ -215,48 +240,68 @@ export default function AttendancePage() {
             <p className="text-xs text-fg-muted truncate">
               {isSunday
                 ? 'The gym is closed on Sundays, so no check-ins are expected.'
-                : 'No one checked in on this day.'}
+                : isSingleDay
+                  ? 'No one checked in on this day.'
+                  : 'No one checked in on any day in this range.'}
             </p>
           )}
         </div>
-        <input
-          type="date"
-          value={date}
-          onChange={e => setDate(e.target.value)}
-          className="shrink-0 px-3 py-2 bg-overlay-8 border border-line rounded-lg text-sm text-fg-strong focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50"
-        />
       </div>
 
-      <div className="flex items-center justify-between shrink-0">
-        <div className="flex gap-2">
-          <button
-            onClick={() => setCategory('member')}
-            className={`px-4 py-1.5 text-sm rounded-lg font-medium transition-colors ${
-              category === 'member'
-                ? 'bg-[#7C3AED] text-white'
-                : 'bg-overlay-8 text-fg hover:bg-overlay-10'
-            }`}
-          >
-            Members
-          </button>
-          <button
-            onClick={() => setCategory('trainer')}
-            className={`px-4 py-1.5 text-sm rounded-lg font-medium transition-colors ${
-              category === 'trainer'
-                ? 'bg-[#7C3AED] text-white'
-                : 'bg-overlay-8 text-fg hover:bg-overlay-10'
-            }`}
-          >
-            Trainers
-          </button>
-        </div>
+      {/*
+        ONE ROW: who you are looking at (Members / Trainers) pinned left, and the
+        window plus the action collected on the right - which puts the calendar
+        immediately beside "+ Check In".
+
+        The picker used to be a `ListToolbar` row of its own ABOVE these tabs, so
+        the control that defines the window and the button that acts inside it
+        sat on different lines and read as two unrelated controls. `ListToolbar`
+        already owns both halves - a `left` slot and a right-aligned cluster
+        holding the date filter followed by the action button - so all three now
+        render through it and there is one row where there used to be two.
+
+        `MONTH_PRESETS` is the month-oriented set - Last month / This month /
+        Today / All time - because a rolling 7-day chip is the wrong shape of
+        question here. This picker replaces a bare `<input type=date>` that could
+        only ever name one day: an admin reading a gym sheet wants "last month",
+        not "pick Tuesday".
+      */}
+      <ListToolbar
+        left={
+          <div className="flex gap-2">
+            <button
+              onClick={() => setCategory('member')}
+              className={`px-4 py-1.5 text-sm rounded-lg font-medium transition-colors ${
+                category === 'member'
+                  ? 'bg-[#7C3AED] text-white'
+                  : 'bg-overlay-8 text-fg hover:bg-overlay-10'
+              }`}
+            >
+              Members
+            </button>
+            <button
+              onClick={() => setCategory('trainer')}
+              className={`px-4 py-1.5 text-sm rounded-lg font-medium transition-colors ${
+                category === 'trainer'
+                  ? 'bg-[#7C3AED] text-white'
+                  : 'bg-overlay-8 text-fg hover:bg-overlay-10'
+              }`}
+            >
+              Trainers
+            </button>
+          </div>
+        }
+        range={range}
+        onRangeChange={setRange}
+        presets={MONTH_PRESETS}
+      >
         <button
           onClick={() => { setDrawerCategory(category); setSearch(''); setShowModal(true) }}
           className="flex items-center gap-1 px-3 py-1.5 text-sm bg-[#7C3AED] text-white rounded-lg hover:bg-[#6D28D9]"
         >
           <Plus className="w-4 h-4" /> Check In
         </button>
-      </div>
+      </ListToolbar>
 
       {isError ? (
         /* A failure must never wear the empty state. The old table reported
@@ -291,7 +336,9 @@ export default function AttendancePage() {
           emptyMessage={rows.length === 0
             ? (isSunday
               ? 'Gym closed on Sundays - no check-ins recorded'
-              : `No ${category === 'trainer' ? 'trainer' : 'member'} check-ins on this day`)
+              : isSingleDay
+                ? `No ${category === 'trainer' ? 'trainer' : 'member'} check-ins on this day`
+                : `No ${category === 'trainer' ? 'trainer' : 'member'} check-ins in this range`)
             : 'No check-ins match this search'}
         />
       )}

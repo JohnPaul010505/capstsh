@@ -312,9 +312,10 @@ export default function PeopleTable<T>({
 export const peopleCells = {
   // `undefined` is accepted as well as `null`: these cells are fed straight from
   // a joined row (`m.profiles?.code`), where a missing member is `undefined`
-  // rather than `null`.
+  // rather than `null`. The colour is the name column's own `text-fg-strong`
+  // (it used to be purple, which made the ID shout louder than the person).
   code: (code: string | null | undefined) => (
-    <span className="font-mono font-medium text-[#7C3AED]">{code ?? '—'}</span>
+    <span className="font-mono font-medium text-fg-strong">{code ?? '—'}</span>
   ),
   date: (iso: string | null | undefined) => (
     <span>{iso ? new Date(iso).toLocaleDateString() : '—'}</span>

@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import PeopleTable, { peopleCells, type PeopleColumn } from '@/components/PeopleTable'
 import PaginationFooter from '@/components/PaginationFooter'
 import ListToolbar from '@/components/ListToolbar'
+import { allTime, isAllTime, type Range } from '@/features/dashboard/lib/dateRange'
 import { useFitRowHeight } from '@/hooks/useFitRows'
 import { useMembersList, LIST_PAGE_SIZE } from '@/lib/listHooks'
 import { useResetPageOnChange } from '@/lib/pagedTable'
@@ -15,16 +16,25 @@ export default function MembersListPage() {
 
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
-  const [from, setFrom] = useState<string | undefined>()
-  const [to, setTo] = useState<string | undefined>()
+  // The join-date window, opened on the whole dataset. It was `from`/`to` pairs
+  // before, undefined meaning "no filter"; a `Range` cannot express that, so
+  // `isAllTime` stands in for it and the hook is given no bounds at all on that
+  // range - which is what keeps this landing render identical to the one before
+  // the picker existed.
+  const [range, setRange] = useState<Range>(() => allTime())
   const [deleteTarget, setDeleteTarget] = useState<Profile | null>(null)
   const [deleting, setDeleting] = useState(false)
 
   // Any change to the filters resets to page 1; staying on page 6 of a result
   // set that now has one page renders an empty table.
-  useResetPageOnChange(setPage, search, from, to)
+  useResetPageOnChange(setPage, search, range.start, range.end)
 
-  const { rows, total, pageCount, isLoading } = useMembersList({ page, pageSize: LIST_PAGE_SIZE, search, from, to })
+  const all = isAllTime(range)
+  const { rows, total, pageCount, isLoading } = useMembersList({
+    page, pageSize: LIST_PAGE_SIZE, search,
+    from: all ? undefined : range.start,
+    to: all ? undefined : range.end,
+  })
   // Fifteen rows is the contract; the height of one of them is what gives. The
   // scroller is owned by PeopleTable, so that is what has to be measured.
   const [scrollRef, rowHeight] = useFitRowHeight<HTMLDivElement>({ count: LIST_PAGE_SIZE })
@@ -67,15 +77,10 @@ export default function MembersListPage() {
 
   return (
     <div className="h-full min-h-0 flex flex-col gap-3">
-      {/* Only the date filter lives out here now. The search moved into the
-          card header, beside the title, which is where the QR queue and every
-          dashboard tab keep theirs. */}
-      <ListToolbar
-        from={from}
-        to={to}
-        onDateRangeChange={(a, b) => { setFrom(a); setTo(b) }}
-        dateLabel="Joined"
-      />
+      {/* Only the date filter lives out here now, right-aligned. The search
+          moved into the card header, beside the title, which is where the QR
+          queue and every dashboard tab keep theirs. */}
+      <ListToolbar range={range} onRangeChange={setRange} />
 
       <PeopleTable
         title="Members"

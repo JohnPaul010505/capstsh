@@ -15,7 +15,8 @@ import '../../../shared/widgets/activity_status_badge.dart';
 
 final memberProgressDataProvider = FutureProvider.autoDispose.family<Map<String, dynamic>, String>((ref, memberId) async {
   final client = SupabaseClientService().client;
-  final today = DateTime.now();
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
   final weekStart = today.subtract(Duration(days: today.weekday - 1));
   final weekEnd = weekStart.add(const Duration(days: 7));
   final yearStart = DateTime(today.year, 1, 1);

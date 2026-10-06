@@ -121,6 +121,11 @@ class WorkoutSessionState {
   final bool showPreviousCards;
   final bool? lastPersistSuccess;
 
+  /// Local calendar day this state belongs to (`yyyy-MM-dd`). Compared on
+  /// restore/resume: a new day starts blank while `workout_logs` history
+  /// stays untouched in the database (calendar/month views still show it).
+  final String dayKey;
+
   const WorkoutSessionState({
     this.exercises = const [],
     this.isRunning = false,
@@ -137,8 +142,22 @@ class WorkoutSessionState {
     this.completedSessions = const [],
     this.showPreviousCards = false,
     this.lastPersistSuccess,
+    this.dayKey = '',
   // ignore: prefer_initializing_formals
   }) : _latestCalories = latestCalories;
+
+  /// Today's local day key (`yyyy-MM-dd`).
+  static String todayKey() {
+    final now = DateTime.now();
+    return '${now.year.toString().padLeft(4, '0')}-'
+        '${now.month.toString().padLeft(2, '0')}-'
+        '${now.day.toString().padLeft(2, '0')}';
+  }
+
+  /// A blank state stamped for today (used for fresh + new-day starts).
+  factory WorkoutSessionState.freshToday({double weightKg = 70}) {
+    return WorkoutSessionState(dayKey: todayKey(), weightKg: weightKg);
+  }
 
   /// Total active session time, minus idle windows (tracked by the notifier).
   int get activeSeconds => elapsedSeconds;
@@ -188,6 +207,7 @@ class WorkoutSessionState {
     'completedSessions': completedSessions.map((s) => s.toJson()).toList(),
     'showPreviousCards': showPreviousCards,
     'lastPersistSuccess': lastPersistSuccess,
+    'dayKey': dayKey,
   };
 
   factory WorkoutSessionState.fromJson(Map<String, dynamic> json) {
@@ -207,6 +227,9 @@ class WorkoutSessionState {
       completedSessions: (json['completedSessions'] as List?)?.map((s) => CompletedSession.fromJson(s as Map<String, dynamic>)).toList() ?? const [],
       showPreviousCards: json['showPreviousCards'] as bool? ?? false,
       lastPersistSuccess: json['lastPersistSuccess'] as bool?,
+      // Legacy payloads pre-dayKey restore with an empty key, so the next
+      // rollover check starts the day blank instead of showing stale input.
+      dayKey: (json['dayKey'] as String?) ?? '',
     );
   }
 }
@@ -232,7 +255,8 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
   /// Member's weight in kg, fetched from the latest body_measurement.
   double _weightKg = 70;
 
-  WorkoutSessionNotifier({double? weightKg}) : super(const WorkoutSessionState()) {
+  WorkoutSessionNotifier({double? weightKg})
+      : super(WorkoutSessionState.freshToday(weightKg: weightKg ?? 70)) {
     _weightKg = weightKg ?? 70;
     _initPrefs();
   }
@@ -260,11 +284,46 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
         return false;
       }
       state = restored;
+      // New calendar day: yesterday's in-progress input must not carry over.
+      // Completed DB history is untouched — the calendar/month views and
+      // _loadSessionHistory() still show it.
+      checkDayRollover();
       return true;
     } catch (e) {
       debugPrint('Failed to restore workout state: $e');
       return false;
     }
+  }
+
+  /// Starts the day blank when the persisted state belongs to a previous
+  /// local day. Called on restore and when the workout screen opens/resumes.
+  void checkDayRollover() {
+    if (state.dayKey == WorkoutSessionState.todayKey()) return;
+    _ticker?.cancel();
+    _ticker = null;
+    _idleGraceTimer?.cancel();
+    _idleGraceTimer = null;
+    _lastTick = null;
+    state = WorkoutSessionState.freshToday(weightKg: _weightKg);
+    _persist();
+  }
+
+  /// Wipes in-memory + persisted input when the signed-in account changes
+  /// (trainer -> member on the same device). DB history is untouched.
+  Future<void> clearOnAccountSwitch() async {
+    _ticker?.cancel();
+    _ticker = null;
+    _idleGraceTimer?.cancel();
+    _idleGraceTimer = null;
+    _lastTick = null;
+    state = WorkoutSessionState.freshToday(weightKg: _weightKg);
+    _prefs ??= await SharedPreferences.getInstance();
+    try {
+      await _prefs!.remove('workout_session_state');
+    } catch (e) {
+      debugPrint('Failed to clear workout state: $e');
+    }
+    await _persist();
   }
 
   Future<void> _persist() async {
@@ -430,6 +489,7 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
       completedSessionCount: state.completedSessionCount,
       completedSessions: state.completedSessions,
       showPreviousCards: state.showPreviousCards,
+      dayKey: state.dayKey,
     );
     _persist();
   }
@@ -448,6 +508,7 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
       completedSessionCount: state.completedSessionCount,
       completedSessions: state.completedSessions,
       showPreviousCards: state.showPreviousCards,
+      dayKey: state.dayKey,
     );
     _persist();
   }
@@ -469,6 +530,7 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
       completedSessionCount: state.completedSessionCount,
       completedSessions: state.completedSessions,
       showPreviousCards: state.showPreviousCards,
+      dayKey: state.dayKey,
     );
     _ticker?.cancel();
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
@@ -498,6 +560,7 @@ InteractionMonitor.instance.ensureStarted();
         completedSessions: state.completedSessions,
       showPreviousCards: false,
       lastPersistSuccess: null,
+      dayKey: state.dayKey,
     );
     _persist();
   }
@@ -572,6 +635,7 @@ InteractionMonitor.instance.ensureStarted();
       completedSessionCount: state.completedSessionCount + 1,
       completedSessions: [...state.completedSessions, completed],
       showPreviousCards: state.showPreviousCards,
+      dayKey: state.dayKey,
     );
     _persist();
     persistSession().then((ok) {
@@ -653,6 +717,7 @@ InteractionMonitor.instance.ensureStarted();
       completedSessionCount: state.completedSessionCount,
       completedSessions: state.completedSessions,
       showPreviousCards: state.showPreviousCards,
+      dayKey: state.dayKey,
     );
     _persist();
   }
@@ -671,6 +736,7 @@ InteractionMonitor.instance.ensureStarted();
     List<CompletedSession>? completedSessions,
     bool? showPreviousCards,
     bool? lastPersistSuccess,
+    String? dayKey,
   }) {
     return WorkoutSessionState(
       exercises: state.exercises,
@@ -688,6 +754,7 @@ InteractionMonitor.instance.ensureStarted();
       completedSessions: completedSessions ?? state.completedSessions,
       showPreviousCards: showPreviousCards ?? state.showPreviousCards,
       lastPersistSuccess: lastPersistSuccess ?? state.lastPersistSuccess,
+      dayKey: dayKey ?? state.dayKey,
     );
   }
 

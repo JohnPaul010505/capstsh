@@ -80,8 +80,16 @@ export function fmtDay(s: string): string {
   return `${MONTH_SHORT[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`
 }
 
-/** 'Jan 15, 2026 - Mar 15, 2026' — the picker button label. */
+/**
+ * The picker button label.
+ *
+ * A single-day range prints as one date rather than the date twice. The
+ * attendance page opens on "today", which is a one-day range by definition,
+ * and "Oct 5, 2026 - Oct 5, 2026" reads like a bug rather than like a day. A
+ * multi-day range is unchanged, so the dashboard's labels are byte-identical.
+ */
 export function formatRangeLabel(r: Range): string {
+  if (r.start === r.end) return fmtDay(r.start)
   return `${fmtDay(r.start)} - ${fmtDay(r.end)}`
 }
 
@@ -97,6 +105,22 @@ export function lastNDays(n: number, today: Date = new Date()): Range {
 export function thisMonth(today: Date = new Date()): Range {
   const first = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-01`
   return { start: first, end: toDay(new Date(today.getFullYear(), today.getMonth() + 1, 0)) }
+}
+
+/**
+ * The PREVIOUS calendar month, whole - not "the last 30 days".
+ *
+ * Attendance is the reason this exists: a gym reads its check-ins a month at a
+ * time, so its chip list wants "Last month" where every other list page wants
+ * "Last 7 days". Clamping the end to the last day of that month matters here,
+ * because `lastNDays(30)` on the 1st would straddle two months and the header
+ * would name a window the admin did not ask for.
+ */
+export function lastMonth(today: Date = new Date()): Range {
+  return {
+    start: toDay(new Date(today.getFullYear(), today.getMonth() - 1, 1)),
+    end: toDay(new Date(today.getFullYear(), today.getMonth(), 0)),
+  }
 }
 
 export function thisYear(today: Date = new Date()): Range {
@@ -122,6 +146,25 @@ export function allTime(today: Date = new Date()): Range {
   return { start: DATA_START, end: toDay(today) }
 }
 
+/**
+ * True when the range IS the `All time` preset - `DATA_START` through today.
+ *
+ * The list pages open on All time, and on that range they send NO date filter
+ * to PostgREST at all rather than sending `gte(col,'2023-01-01').lte(col,today)`.
+ * Two reasons, and the second is the one that bites:
+ *
+ *   1. The landing render is then byte-identical to the page before it had a
+ *      date control at all.
+ *   2. `created_at` is a `timestamptz`. A bare `'2023-01-01'` is cast by
+ *      Postgres in the session timezone (UTC), so the bound lands 8 hours
+ *      BEFORE local midnight on the dataset's first day - and the member who
+ *      joined that morning silently drops out of the list, taking the release
+ *      gate's "total is 987" assertion with it.
+ */
+export function isAllTime(r: Range, today: Date = new Date()): boolean {
+  return r.start === DATA_START && r.end === toDay(today)
+}
+
 export interface RangePreset {
   id: string
   label: string
@@ -136,6 +179,42 @@ export const RANGE_PRESETS: RangePreset[] = [
   { id: '90d', label: 'Last 90 days', apply: t => lastNDays(90, t) },
   { id: 'year', label: 'This year', apply: t => thisYear(t) },
   { id: 'all', label: 'All time', apply: allTime },
+]
+
+/** Look a preset up by id so the chip groups below cannot drift from the list. */
+const preset = (id: string) => {
+  const found = RANGE_PRESETS.find(p => p.id === id)
+  if (!found) throw new Error(`no RANGE_PRESETS entry with id "${id}"`)
+  return found
+}
+
+/**
+ * The chips the LIST pages show: Today, Last 7 days, This month, All time.
+ *
+ * `DateRangePicker` falls back to the full seven-preset list when it is given
+ * none, which is what the dashboard wants - it has charts to draw, so the longer
+ * windows are the point. A table of rows does not: it shows the newest 50, and
+ * a "Last 90 days" chip on top of that mostly narrows to nothing. These five
+ * pages want the four windows that actually return rows.
+ */
+export const LIST_PRESETS: RangePreset[] =
+  ['today', '7d', 'month', 'all'].map(preset)
+
+/**
+ * The chips ATTENDANCE shows: Last month, This month, Today, All time.
+ *
+ * "Last month" is not in `RANGE_PRESETS` and deliberately was not added there:
+ * a rolling 30-day window is a poor default read on a monthly sheet, and adding
+ * the chip to the dashboard would have changed a picker the dashboard's own
+ * release gate exercises. It is declared here instead, and the four other chips
+ * are still looked up by id so the two lists cannot disagree about what
+ * "All time" means.
+ */
+export const MONTH_PRESETS: RangePreset[] = [
+  { id: 'lastmonth', label: 'Last month', apply: lastMonth },
+  preset('month'),
+  preset('today'),
+  preset('all'),
 ]
 
 /**

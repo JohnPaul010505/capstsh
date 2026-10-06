@@ -8,7 +8,6 @@ import 'package:shared/services/supabase_client.dart';
 import 'package:shared/services/notification_service.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../shared/widgets/app_glow_background.dart';
-import '../data/plan_repository.dart';
 import '../../../shared/widgets/pressable.dart';
 import '../../../../features/member/workout/data/met_exercise_repository.dart';
 
@@ -61,21 +60,54 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
 
   Future<void> _loadMembers() async {
     final client = SupabaseClientService().client;
-    final response = await client
-        .from('profiles')
-        .select('id, full_name')
-        .eq('role', 'member')
-        .order('full_name', ascending: true);
-    if (!mounted) return;
-    final membersList = (response as List).cast<Map<String, dynamic>>();
+    final trainerId = client.auth.currentUser?.id;
+    if (trainerId == null) return;
 
+    // 1. Fetch active assignments for this trainer
+    final assignments = await client
+        .from('trainer_assignments')
+        .select('member_id')
+        .eq('trainer_id', trainerId)
+        .eq('status', 'active');
+
+    final memberIds = (assignments as List)
+        .map((a) => a['member_id'] as String)
+        .toSet()
+        .toList();
+
+    List<Map<String, dynamic>> membersList = [];
     final planChecks = <String, bool>{};
-    for (final member in membersList) {
-      final memberId = member['id'] as String? ?? '';
-      if (memberId.isEmpty) continue;
-      final hasPlan = await PlanRepository().memberHasActivePlan(memberId);
-      planChecks[memberId] = hasPlan;
+
+    if (memberIds.isNotEmpty) {
+      // 2. Fetch member names for assigned members
+      final profilesResp = await client
+          .from('profiles')
+          .select('id, full_name')
+          .inFilter('id', memberIds)
+          .order('full_name', ascending: true);
+
+      membersList = (profilesResp as List).cast<Map<String, dynamic>>();
+
+      // 3. Batch fetch active plans for these members in one query
+      final now = DateTime.now();
+      final todayStr = DateTime(now.year, now.month, now.day).toIso8601String().split('T').first;
+      final activePlansResp = await client
+          .from('member_goal_plans')
+          .select('member_id')
+          .inFilter('member_id', memberIds)
+          .gte('end_date', todayStr);
+
+      final activeMemberIds = (activePlansResp as List)
+          .map((p) => p['member_id'] as String)
+          .toSet();
+
+      for (final member in membersList) {
+        final id = member['id'] as String? ?? '';
+        planChecks[id] = activeMemberIds.contains(id);
+      }
     }
+
+    if (!mounted) return;
 
     setState(() {
       members = membersList;
@@ -124,16 +156,8 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
         'end_date': DateTime.now().add(const Duration(days: 6)).toIso8601String().split('T').first,
         'timeframe': '7_days',
         'updated_at': DateTime.now().toIso8601String(),
+        'trainer_id': client.auth.currentUser!.id,
       };
-
-      final trainerId = await client
-          .from('profiles')
-          .select('id')
-          .eq('role', 'trainer')
-          .single()
-          .then((value) => value['id'] as String);
-
-      planJson['trainer_id'] = trainerId;
 
       final existing = await client
           .from('member_goal_plans')

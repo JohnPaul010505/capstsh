@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-29T17:59:37.737Z",
+  "timestamp": "2026-10-02T15:43:00.376Z",
   "profiles": {
     "total": 1077,
     "members": 987,
@@ -7,17 +7,17 @@
     "admins": 1
   },
   "attendance": {
-    "total": 13004,
+    "total": 13027,
     "minDate": "2023-01-02",
-    "maxDate": "2026-09-30"
+    "maxDate": "2026-10-02"
   },
   "memberships": {
     "total": 1860
   },
   "trainer_assignments": 1126,
-  "trainer_feedback": 1054,
+  "trainer_feedback": 1061,
   "predictions": 298,
-  "notifications": 1051,
+  "notifications": 841,
   "enrollments": {
     "total": 55,
     "pending": 10,

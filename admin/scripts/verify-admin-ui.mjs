@@ -94,6 +94,15 @@ const browser = await chromium.launch()
 const context = await browser.newContext({ viewport: { width: 1920, height: 1080 } })
 const page = await context.newPage()
 
+// This sweep walks 12 heavy routes in ONE page, so by the later routes the app
+// has already pulled the full dataset several times over and the accumulated
+// PostgREST requests push the next navigation past Playwright's 30 s default.
+// That is a budget problem, not a page problem: /notifications reaches
+// networkidle in ~1.3 s when loaded on its own. Crashing the whole run at the
+// route that happened to tip over reported NOTHING about the routes after it,
+// so the budget is raised rather than the assertions touched.
+page.setDefaultNavigationTimeout(60000)
+
 // Collected across the whole run and reported per route.
 let consoleErrors = []
 let failedResponses = []
@@ -571,37 +580,70 @@ const rating = await page.evaluate(() => {
   const card = [...main.querySelectorAll('.glass-card')]
     .find(c => /Average Member Rating/.test(c.innerText))
   if (!card) return null
-  const wrapper = card.parentElement.getBoundingClientRect()
   const r = card.getBoundingClientRect()
+  // The date filter, and whether it shares the card's ROW. The card used to be
+  // centred on a row of its own with the picker stranded on the row below it,
+  // which is exactly what made it read as floating; the fix was to put the two
+  // on ONE line, so "shares a row" is the claim worth asserting and "centred"
+  // is now the claim that would be WRONG.
+  const picker = [...main.querySelectorAll('button[aria-haspopup="dialog"]')]
+    .find(b => /Date range/i.test(b.getAttribute('aria-label') ?? ''))
+  const pr = picker?.getBoundingClientRect()
   return {
     text: card.innerText.replace(/\s+/g, ' ').trim(),
     cardW: Math.round(r.width),
     panelW: Math.round(mr.width),
-    skew: Math.round(Math.abs((wrapper.left - mr.left) - (mr.right - wrapper.right))),
+    leftGap: Math.round(r.left - mr.left),
+    rightGap: Math.round(mr.right - r.right),
+    pickerFound: !!picker,
+    // Vertical overlap rather than a top-edge comparison: the two sit on one
+    // line without sharing a top, and a few px of padding should not decide it.
+    sameRow: !!pr && r.top < pr.bottom && pr.top < r.bottom,
     // `KpiCard` renders the star row as a single role="img" with an aria-label.
     starRows: card.querySelectorAll('[role=img]').length,
   }
 })
-check('[Coach Feedback] the rating is a half-width, centred KPI card with stars',
-  !!rating && rating.cardW <= 852 && rating.cardW > 380 && rating.skew <= 2
+check('[Coach Feedback] the rating card is half-width, left-anchored, and shares a line with the date filter',
+  !!rating && rating.cardW <= 852 && rating.cardW > 380
+  // Left-anchored, not centred: a centred card has equal gaps, so demanding a
+  // materially smaller left gap is what distinguishes the two.
+  && rating.leftGap + 20 < rating.rightGap
+  && rating.pickerFound && rating.sameRow
   && /\d\.\d/.test(rating.text) && rating.starRows === 1,
   JSON.stringify(rating))
 
 const feedbackNote = await page.evaluate(() =>
   document.querySelector('main tbody tr td:nth-child(4)')?.innerText?.trim() ?? null)
+const feedbackBefore = await readRecords()
+
 if (feedbackNote) {
   const box = page.getByRole('searchbox').first()
   await box.click()
   // The row truncates at 22rem, so the note on screen is a prefix of the full
-  // text. Search runs against the full value, so a prefix still matches exactly
-  // one row - which is also how this proves search reads the note rather than
-  // the truncated cell.
-  await box.fill(feedbackNote.slice(0, 24))
+  // text. Search runs against the full value, so a prefix matches every row
+  // that opens with it - and the notes come from a small pool, so that is
+  // several rows rather than one. Demanding a unique prefix was testing the
+  // seed's vocabulary, not the search box; what must hold is that every row
+  // that came back contains the typed text, which is what proves search reads
+  // the note column and not the truncated cell.
+  const term = feedbackNote.slice(0, 24)
+
+  await box.fill(term)
   await page.waitForTimeout(700)
   const narrowed = await readRecords()
+  // Every row that came back must really contain the typed text. That is a
+  // stronger claim than "exactly one row", not a weaker one: it holds however
+  // many rows share the prefix, and it is what actually pins the search to the
+  // note column instead of the truncated cell.
+  const matchedNotes = await page.evaluate(() =>
+    [...document.querySelectorAll('main tbody tr')]
+      .map(tr => tr.querySelector('td:nth-child(4)')?.innerText?.trim() ?? ''))
+  const allMatched = matchedNotes.length > 0
+    && matchedNotes.every(n => n.toLowerCase().includes(term.toLowerCase()))
+
   check('[Coach Feedback] search narrows the list',
-    narrowed.rows === 1 && narrowed.range === 'Showing 1–1 of 1 records',
-    `typed="${feedbackNote.slice(0, 24)}" range=${narrowed.range}`)
+    matchedNotes.length > 0 && matchedNotes.length < feedbackBefore.rows && allMatched,
+    `typed="${term}" rows ${feedbackBefore.rows} -> ${matchedNotes.length}, every row contains it=${allMatched}, range=${narrowed.range}`)
   await box.fill('')
   await page.waitForTimeout(500)
 }
@@ -617,8 +659,14 @@ console.log('\n--- attendance / predictions / notifications sweep ---')
 
 const RECORD_LISTS = [
   { path: '/attendance', label: 'Attendance' },
-  { path: '/predictions', label: 'Predictions' },
-  { path: '/notifications', label: 'Notifications' },
+  // Predictions and Notifications each open on a view that is NOT the table -
+  // "Prediction History" and "Announcements" respectively - so this sweep has to
+  // click into the list view first, the same way the /qr sweep below opens
+  // Pending before it can read row actions. Without the `tab` key these two
+  // would measure a landing render with no table on it and fail on a page that
+  // is behaving exactly as designed.
+  { path: '/predictions', label: 'Predictions', tab: 'Recent Predictions' },
+  { path: '/notifications', label: 'Notifications', tab: 'Recent Notifications' },
 ]
 
 /** Total out of a "Showing 1-N of T records" footer, or null. */
@@ -627,21 +675,95 @@ const totalOf = (range) => {
   return m ? Number(m[1].replace(/,/g, '')) : null
 }
 
+/**
+ * The most recent date that actually has check-ins, as a YYYY-MM-DD civil date.
+ *
+ * The gate needs a day with rows in it, and there is no safe way to guess one:
+ * the page defaults to TODAY, but the seeded window ends when it was seeded
+ * (`asOf`), so the wall clock eventually walks past the data entirely. This gate
+ * used to hardcode "seven days back", which was wrong twice over - seven days
+ * before a Sunday is a Sunday, and the dataset models a Mon-Sat gym so Sundays
+ * are legitimately empty - and it was ALSO wrong simply because the clock had
+ * since moved past the end of the window. It failed on 2026-10-04, the second
+ * day past the dataset's own `asOf`, and read that empty day as a broken table.
+ *
+ * Asking the database removes the guesswork: the answer stays correct however
+ * long ago the demo data was seeded, and it skips Sundays for free because a
+ * closed day has no rows to return. Falls back to "yesterday" if the query
+ * fails, so a network blip degrades the check rather than killing the run.
+ */
+async function latestAttendanceDay() {
+  try {
+    const { createClient } = await import('@supabase/supabase-js')
+    const supabase = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    })
+    const { data, error } = await supabase
+      .from('attendance')
+      .select('check_in_date')
+      .order('check_in_date', { ascending: false })
+      .limit(1)
+    if (error || !data?.length) throw new Error(error?.message ?? 'no rows')
+    return data[0].check_in_date
+  } catch (err) {
+    console.warn(`  warn  could not read the latest attendance day (${err.message}); falling back to yesterday`)
+    const d = new Date(Date.now() - 86400000)
+    return d.toISOString().slice(0, 10)
+  }
+}
+
+/**
+ * Set the page's date-range chip to an exact window and apply it.
+ *
+ * The chip is a POPOVER: its start/end inputs only exist in the DOM once the
+ * pill is open, so there is no bare `input[type=date]` sitting on the page to
+ * `fill()` the way there was before the calendar was wrapped in a chip. Every
+ * caller that needs a specific day has to open the thing first, and forgetting
+ * that is how a sweep ends up asserting against today's (legitimately empty)
+ * window and calling a working page broken.
+ */
+async function setRangeTo(page, start, end) {
+  const chip = page.locator('main button[aria-haspopup="dialog"]').first()
+  if (!(await chip.count())) return false
+  await chip.click()
+  const dialog = page.locator('main [role="dialog"][aria-label="Choose a date range"]')
+  if (!(await dialog.count())) return false
+  const inputs = dialog.locator('input[type=date]')
+  await inputs.nth(0).fill(start)
+  await inputs.nth(1).fill(end)
+  await dialog.getByRole('button', { name: 'Apply range' }).click()
+  await page.waitForTimeout(400)
+  return true
+}
+
+const OPEN_DAY = await latestAttendanceDay()
+
 for (const list of RECORD_LISTS) {
   await page.goto(`${BASE}${list.path}`, { waitUntil: 'networkidle' })
   await page.waitForTimeout(2500)
 
-  // The attendance page defaults to TODAY, and the seeded dataset ends a few
-  // days before the wall clock does - so "today" is legitimately an empty day
-  // and the list correctly says so. Asserting "rows > 1" there would be
-  // asserting that the demo data is fresh. Step back a week instead, which is
-  // inside the seeded window, so the list has something to page through.
+  // The attendance page defaults to TODAY, and the seeded window ends whenever it
+  // was seeded - so "today" is legitimately an empty day and the list correctly
+  // says so. Asserting "rows > 1" there would be asserting that the demo data is
+  // fresh. OPEN_DAY is the most recent day the database actually has rows for.
   if (list.path === '/attendance') {
-    const past = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10)
-    const dateBox = page.locator('main input[type=date]').first()
-    if (await dateBox.count()) {
-      await dateBox.fill(past)
-      await page.waitForTimeout(2000)
+    // Same OPEN_DAY step-back as before, now THROUGH the popover: the picker is
+    // a chip whose inputs only exist while it is open, so the bare-input `fill`
+    // this used to do no longer matches anything and the sweep would read the
+    // empty "today" and report a working table as broken.
+    await setRangeTo(page, OPEN_DAY, OPEN_DAY)
+    await page.waitForTimeout(2000)
+  }
+
+  // Open the view that carries the table. `exact: true` matters here: the
+  // notifications tab strip is "Announcements | Recent Notifications" and
+  // "Notifications" alone would be a substring of the second one, so an
+  // unanchored match could resolve to the wrong tab (or to two).
+  if (list.tab) {
+    const tab = page.getByRole('tab', { name: list.tab, exact: true })
+    if (await tab.count()) {
+      await tab.first().click()
+      await page.waitForTimeout(1200)
     }
   }
 
@@ -690,19 +812,50 @@ for (const list of RECORD_LISTS) {
   }
 }
 
+// ---- predictions: the date filter belongs to the Recent list --------------
+// It used to be shown on BOTH tabs, which was defensible only while the two
+// Generate KPI cards counted the same range-filtered query. They now report the
+// whole table instead, so a chip sitting beside them would filter a list that
+// is not on screen and move nothing - it would look load-bearing and be inert.
+// Hence Recent-only, the same rule Notifications follows.
+const totalOn = () => page.evaluate(() => {
+  const card = [...document.querySelectorAll('main .glass-card')]
+    .find(c => /Total Predictions/.test(c.innerText))
+  const m = card?.innerText.match(/(\d+)/)
+  return m ? Number(m[1]) : null
+})
+await page.goto(`${BASE}/predictions`, { waitUntil: 'networkidle' })
+await page.waitForTimeout(2500)
+// Generate is the landing view, so the chip must be absent on first paint.
+const genChips = await page.locator('main button[aria-haspopup="dialog"]').count()
+const genBefore = await totalOn()
+await page.getByRole('tab', { name: 'Recent Predictions', exact: true }).click()
+await page.waitForTimeout(1200)
+const recentChips = await page.locator('main button[aria-haspopup="dialog"]').count()
+await setRangeTo(page, OPEN_DAY, OPEN_DAY)
+await page.waitForTimeout(1500)
+// Back to Generate, where the chip is gone. The headline count must be exactly
+// what it was before the window was narrowed: an admin cannot undo a filter
+// they cannot see, so the numbers must not move underneath them.
+await page.getByRole('tab', { name: 'Generate', exact: true }).click()
+await page.waitForTimeout(2000)
+const genAfter = await totalOn()
+check('[Predictions] the date filter is shown on the Recent tab only',
+  genChips === 0 && recentChips === 1, `generate=${genChips} recent=${recentChips}`)
+check('[Predictions] narrowing the Recent window leaves the Generate totals alone',
+  genBefore != null && genAfter === genBefore,
+  `total ${genBefore} -> ${genAfter} after filtering Recent to ${OPEN_DAY}`)
+
 // The attendance page carries its own Members/Trainers tabs, and both are the
 // same list - so page 3 of the member view must not open as page 3 of the
 // (shorter) trainer view. That is what the `key` on the table is for.
 await page.goto(`${BASE}/attendance`, { waitUntil: 'networkidle' })
 await page.waitForTimeout(2000)
-// Same date step-back as above: on an empty "today" both tabs read as empty and
-// the assertion below would pass for the wrong reason.
-const pastDate = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10)
-const dateInput = page.locator('main input[type=date]').first()
-if (await dateInput.count()) {
-  await dateInput.fill(pastDate)
-  await page.waitForTimeout(2000)
-}
+// Same OPEN_DAY step-back as above: on an empty "today" both tabs read as empty
+// and the assertion below would pass for the wrong reason.
+const sameDayApplied = await setRangeTo(page, OPEN_DAY, OPEN_DAY)
+check('[Attendance] the date chip can be opened and set to an exact day',
+  sameDayApplied, 'the range chip or its popover is not reachable from the toolbar')
 const trainerTab = page.getByRole('button', { name: 'Trainers', exact: true })
 if (await trainerTab.count()) {
   await trainerTab.first().click()
@@ -713,6 +866,190 @@ if (await trainerTab.count()) {
     `range=${trainers.range} page=${trainers.page} heads=${JSON.stringify(trainers.heads)}`)
 } else {
   check('[Attendance] the trainers tab is its own list, starting at page 1', false, 'no trainers tab')
+}
+
+// ---- trainer detail: paged Assigned Members / Recent Feedback ------------
+// This route is not in ROUTES: its path needs a real trainer id, and the
+// numbers it has to agree with live only in the database. So the trainer is
+// picked at runtime (busiest by feedback, so the feedback tab really has a
+// second page to turn) and every count below is compared against what the
+// database says, never against a literal copied from a past run.
+console.log('\n--- trainer detail sweep ---')
+
+let detailTrainer = null
+let pickError = null
+let memberTotal = 0
+let assignedEmails = []
+try {
+  const { createClient } = await import('@supabase/supabase-js')
+  const db = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  })
+  const [{ data: assigns, error: aErr }, { data: fbs, error: fErr }, { data: trainers, error: tErr }] = await Promise.all([
+    db.from('trainer_assignments').select('trainer_id, member_id, status'),
+    db.from('trainer_feedback').select('trainer_id, rating'),
+    db.from('profiles').select('id, full_name').eq('role', 'trainer'),
+  ])
+  if (aErr || fErr || tErr) throw new Error(aErr?.message ?? fErr?.message ?? tErr?.message)
+  const assigned = new Map()
+  for (const a of assigns ?? []) {
+    if (a.status === 'active') assigned.set(a.trainer_id, (assigned.get(a.trainer_id) ?? 0) + 1)
+  }
+  const fb = new Map()
+  const rated = new Map()
+  for (const f of fbs ?? []) {
+    fb.set(f.trainer_id, (fb.get(f.trainer_id) ?? 0) + 1)
+    if (f.rating != null) rated.set(f.trainer_id, (rated.get(f.trainer_id) ?? 0) + 1)
+  }
+  detailTrainer = (trainers ?? [])
+    .filter(t => (assigned.get(t.id) ?? 0) > 0 && (fb.get(t.id) ?? 0) > 0)
+    .map(t => ({ id: t.id, name: t.full_name, assigned: assigned.get(t.id) ?? 0, feedback: fb.get(t.id) ?? 0, rated: rated.get(t.id) ?? 0 }))
+    .sort((x, y) => (y.feedback - x.feedback) || (y.assigned - x.assigned))[0] ?? null
+  if (detailTrainer) {
+    const { count } = await db.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'member')
+    memberTotal = count ?? 0
+    const { data: mine, error: mErr } = await db
+      .from('trainer_assignments')
+      .select('member_id')
+      .eq('trainer_id', detailTrainer.id)
+      .eq('status', 'active')
+    if (mErr) throw new Error(mErr.message)
+    const ids = (mine ?? []).map(a => a.member_id)
+    const { data: mails, error: eErr } = await db.from('profiles').select('email').in('id', ids)
+    if (eErr) throw new Error(eErr.message)
+    assignedEmails = (mails ?? []).map(r => r.email).filter(Boolean)
+  }
+} catch (err) {
+  detailTrainer = null
+  pickError = err.message
+}
+
+if (!detailTrainer) {
+  check('[Trainer Detail] a trainer with assignments and feedback exists', false, pickError ?? 'none in the database')
+} else {
+  // The contract under test: DETAIL_PAGE_SIZE rows a page, the records footer
+  // inside the card, and the tab badge printing the REAL total - the feedback
+  // badge used to print 10 (the old .limit(10)) whatever the truth was.
+  //
+  // Ten, not the app-wide LIST_PAGE_SIZE of fifteen: the detail page is the one
+  // list with its own density (see DETAIL_PAGE_SIZE in TrainerDetailPage), so it
+  // is asserted against ten. This constant is local to this block - the members,
+  // trainers and memberships sweeps above carry their own 15 and are unaffected.
+  const PAGE = 10
+  const tr = detailTrainer
+  const expectMembersRows = Math.min(PAGE, tr.assigned)
+  const expectFeedbackRows = Math.min(PAGE, tr.feedback)
+  const expectFeedbackPages = Math.max(1, Math.ceil(tr.feedback / PAGE))
+
+  consoleErrors = []
+  failedResponses = []
+  await page.goto(`${BASE}/trainers/${tr.id}`, { waitUntil: 'networkidle' })
+  await page.waitForTimeout(2500)
+
+  const readDetail = () => page.evaluate(() => {
+    const text = document.body.innerText
+    const badges = {}
+    for (const tab of document.querySelectorAll('[role="tab"]')) {
+      // Tab labels carry the count hard against the label ("Recent
+      // Feedback20"): JSX drops the whitespace between the expression and the
+      // span, the visible gap is a margin. Split on the trailing digits then.
+      const m = tab.innerText.trim().match(/^([\s\S]*?)(\d+)$/)
+      if (m) badges[m[1].trim()] = Number(m[2])
+    }
+    const table = document.querySelector('main table')
+    const scroller = table?.closest('.overflow-auto')
+    return {
+      rows: document.querySelectorAll('main tbody tr').length,
+      range: text.match(/Showing ([\d,]+)–([\d,]+) of ([\d,]+) records/)?.[0] ?? null,
+      // The pager numbers, matched the same way the list sweeps match them:
+      // digits, space, slash, digits. The rating summary renders `4.6/ 5` with
+      // no space before the slash, so it can never match this pattern.
+      page: text.match(/\b(\d+ \/ \d+)\b/)?.[1] ?? null,
+      badges,
+      heads: [...document.querySelectorAll('main thead th')].map(th => th.innerText.trim()),
+      firstIndex: document.querySelector('main tbody tr td:first-child')?.innerText?.trim() ?? null,
+      bodyScroll: scroller ? scroller.scrollHeight - scroller.clientHeight : -1,
+      docScroll: document.documentElement.scrollHeight - document.documentElement.clientHeight,
+    }
+  })
+
+  const landing = await readDetail()
+  check('[Trainer Detail] members tab pages against the database total',
+    landing.rows === expectMembersRows
+    && landing.range === `Showing 1–${expectMembersRows} of ${tr.assigned} records`
+    && landing.page === `1 / ${Math.max(1, Math.ceil(tr.assigned / PAGE))}`
+    && landing.badges['Assigned Members'] === tr.assigned
+    && landing.heads[0] === '#',
+    `rows=${landing.rows} range=${landing.range} page=${landing.page} badge=${landing.badges['Assigned Members']} want=${tr.assigned}`)
+  check('[Trainer Detail] the members table fits its page without scrolling',
+    landing.bodyScroll <= 2, `bodyScroll=${landing.bodyScroll}px`)
+
+  await page.getByRole('button', { name: /Assign Member/ }).click()
+  await page.waitForTimeout(2500)
+  const drawer = await page.evaluate(() => {
+    // Anchor on the slide-in panel, NOT on `div.fixed.inset-0` + text: other
+    // fixed wrappers can contain the whole page (and the members table prints
+    // assigned emails), which made a correctly filtered drawer look like it
+    // leaked an assigned member. The leak test reads the scrollable list only.
+    const panel = document.querySelector('.slide-in-right')
+    if (!panel) return null
+    const list = panel.querySelector('.flex-1')
+    const offers = [...panel.querySelectorAll('button')]
+      .map(b => b.innerText.split('\n').find(l => /\S+@\S+/.test(l)) ?? '')
+      .filter(Boolean)
+    return { offers, text: (list ?? panel).innerText }
+  })
+  check('[Trainer Detail] the assign drawer offers exactly the unassigned members',
+    drawer !== null && drawer.offers.length === memberTotal - tr.assigned,
+    `offers=${drawer?.offers.length} want=${memberTotal - tr.assigned}`)
+  // The drawer used to filter the PAGED table - one page of rows - so every
+  // already-assigned member from page 2 onwards was offered again as if free.
+  // Matched as EXACT emails: `new.member2@mock.fit` contains `member2@mock.fit`,
+  // and a substring scan called a correctly filtered drawer a leak. An offer
+  // line is the bare email followed by the member code.
+  const offered = drawer
+    ? drawer.offers.map(o => (o.match(/^\S+@\S+/) ?? [o])[0])
+    : []
+  const leaked = assignedEmails.filter(e => offered.includes(e))
+  check('[Trainer Detail] the assign drawer never offers an already-assigned member',
+    drawer !== null && leaked.length === 0, `leaked=${leaked.slice(0, 3).join(', ')}`)
+  await page.locator('.slide-in-right button').first().click()
+  await page.waitForTimeout(500)
+
+  await page.getByRole('tab', { name: /Recent Feedback/ }).click()
+  await page.waitForTimeout(1500)
+  const feedback1 = await readDetail()
+  check('[Trainer Detail] feedback tab pages against the database total',
+    feedback1.rows === expectFeedbackRows
+    && feedback1.range === `Showing 1–${expectFeedbackRows} of ${tr.feedback} records`
+    && feedback1.page === `1 / ${expectFeedbackPages}`
+    && feedback1.badges['Recent Feedback'] === tr.feedback,
+    `rows=${feedback1.rows} range=${feedback1.range} page=${feedback1.page} badge=${feedback1.badges['Recent Feedback']} want=${tr.feedback}`)
+
+  if (expectFeedbackPages > 1) {
+    await page.getByRole('button', { name: 'Next page' }).click()
+    await page.waitForTimeout(900)
+    const feedback2 = await readDetail()
+    check('[Trainer Detail] the feedback tail is reachable and indexed',
+      feedback2.rows === tr.feedback - PAGE
+      && feedback2.range === `Showing ${PAGE + 1}–${tr.feedback} of ${tr.feedback} records`
+      && feedback2.page === `2 / ${expectFeedbackPages}`
+      && feedback2.firstIndex === String(PAGE + 1),
+      `rows=${feedback2.rows} range=${feedback2.range} page=${feedback2.page} first#=${feedback2.firstIndex}`)
+  }
+
+  if (tr.rated > 0) {
+    const ratedShown = await page.evaluate(() => document.body.innerText.match(/(\d+) rated/)?.[1] ?? null)
+    check('[Trainer Detail] the rating summary counts every rated row',
+      ratedShown !== null && Number(ratedShown) === tr.rated, `shown=${ratedShown} want=${tr.rated}`)
+  }
+
+  const dirtyConsole = consoleErrors.filter(e => !/status of 404/.test(e))
+  check('[Trainer Detail] no console errors or failed requests',
+    dirtyConsole.length === 0 && failedResponses.length === 0,
+    `${dirtyConsole.length} console / ${failedResponses.length} http: ${dirtyConsole[0] ?? failedResponses[0]?.url ?? ''}`)
+  check('[Trainer Detail] the page itself does not scroll',
+    landing.docScroll <= 0, `docScroll=${landing.docScroll}px`)
 }
 
 // ---- no-scroll sweep -----------------------------------------------------

@@ -52,6 +52,19 @@ function computeStatus(m: Membership, recentAttendance: Set<string>) {
   return 'active'
 }
 
+/**
+ * Whether this membership can carry the renewal affordances.
+ *
+ * `plan_name` is free text in the database (the seed and the create drawer both
+ * write 'Daily'/'Monthly'), so the test is on 'daily' rather than on 'Monthly':
+ * anything that is not a daily plan stays renewable, so a custom plan an admin
+ * typed by hand does not silently lose its Renew button. A daily pass is
+ * bought per day, so there is nothing to renew.
+ */
+function canRenew(m: Membership) {
+  return (m.plan_name ?? '').trim().toLowerCase() !== 'daily'
+}
+
 type MemberOption = { id: string; full_name: string; email: string; code: string | null }
 
 /** Glass-styled custom dropdown (native <select> popups render white and can't be themed). */
@@ -330,7 +343,12 @@ export default function MembershipsPage() {
       header: 'Status',
       render: m => {
         const status = computeStatus(m, recentMemberIds)
-        const pendingRequest = pendingByMember.current.get(m.member_id)
+        // A renewal is a monthly-plan concept: a daily pass is bought the day it
+        // is used, so a member on one does not renew it - they buy the next day.
+        // The badge therefore keys off the row's OWN plan, not just "this member
+        // has something pending", which is what used to print RENEWAL REQUESTED
+        // and a Renew button on the Daily tab.
+        const pendingRequest = canRenew(m) ? pendingByMember.current.get(m.member_id) : undefined
         return (
           <div className="flex items-center gap-2">
             <StatusBadge status={status} />
@@ -349,7 +367,11 @@ export default function MembershipsPage() {
       header: 'Actions',
       align: 'right',
       render: m => {
-        const pendingRequest = pendingByMember.current.get(m.member_id)
+        // Same rule as the Status cell: no Renew button on a daily row. The
+        // delete button stays - a daily pass is still a row that can be removed -
+        // which is also what makes the Daily Actions column one icon wide and
+        // evenly spaced instead of a ragged mix of a button and an icon.
+        const pendingRequest = canRenew(m) ? pendingByMember.current.get(m.member_id) : undefined
         return (
           <div className="flex items-center justify-end gap-2">
             {pendingRequest && (
@@ -523,37 +545,50 @@ export default function MembershipsPage() {
   return (
     <div className="h-full min-h-0 flex flex-col gap-3">
       {/*
-        The page's one action button sits above the card, in the toolbar strip.
-        The SEARCH used to sit beside it, above the tab strip and shared by all
-        three tabs; it now lives in each table's own card header, beside the tab's
-        title - the same place the QR queue keeps it. The tab filter is still
-        what selects the queue, so the "Start date" button that once duplicated
-        it stays gone.
+        ONE control row, and that is the whole change here.
+
+        The action button sat in a toolbar strip with the Daily/Monthly/Renewal
+        tabs in a SECOND row below it, so the two things an admin uses to decide
+        what they are looking at - which view, and adding to it - were on
+        different lines with a gap between them. `left` pins the tab strip and
+        the button stays in the right-aligned cluster, putting both on one line
+        the way every other list page's controls already were.
+
+        The SEARCH is not up here either: it lives in each table's own card
+        header, beside the tab's title - the same place the QR queue keeps it.
+        The tab strip is what selects the queue, so the "Start date" button that
+        once duplicated it stays gone, and this page still has no date filter.
+
+        Losing a row is worth having on this page in particular: the table below
+        is a fixed fifteen rows measured against the space it is given, so every
+        row of chrome it does not need is breathing room for those rows.
       */}
-      <ListToolbar>
+      <ListToolbar
+        left={(
+          <div className="flex gap-1 glass-card rounded-xl p-1 w-fit" role="tablist" aria-label="Membership views">
+            {(['daily', 'monthly', 'renewal'] as const).map(tab => (
+              <button
+                key={tab}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-5 py-2 text-sm rounded-lg font-medium transition-all cursor-pointer ${
+                  activeTab === tab
+                    ? 'bg-[#7C3AED] text-white shadow-sm'
+                    : 'text-fg hover:text-fg-strong'
+                }`}
+              >
+                {tab === 'daily' ? 'Daily' : tab === 'monthly' ? 'Monthly' : 'Renewal'}
+              </button>
+            ))}
+          </div>
+        )}
+      >
         <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2 bg-[#7C3AED] text-white rounded-xl text-sm hover:bg-[#6D28D9] shrink-0 cursor-pointer">
           <Plus className="w-4 h-4" /> Add Membership
         </button>
       </ListToolbar>
-
-      {/* Tabs */}
-      <div className="flex gap-1 glass-card rounded-xl p-1 w-fit shrink-0 self-start" role="tablist" aria-label="Membership views">
-        {(['daily', 'monthly', 'renewal'] as const).map(tab => (
-          <button
-            key={tab}
-            role="tab"
-            aria-selected={activeTab === tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-5 py-2 text-sm rounded-lg font-medium transition-all cursor-pointer ${
-              activeTab === tab
-                ? 'bg-[#7C3AED] text-white shadow-sm'
-                : 'text-fg hover:text-fg-strong'
-            }`}
-          >
-            {tab === 'daily' ? 'Daily' : tab === 'monthly' ? 'Monthly' : 'Renewal'}
-          </button>
-        ))}
-      </div>
 
       {activeTab === 'renewal' ? (
         pendingList.length > 0 ? (
@@ -793,7 +828,7 @@ export default function MembershipsPage() {
                       code belongs beside the other members' codes, not wedged
                       into the middle of this one name. */}
                   <p className="text-sm font-medium text-fg-strong">{request.profiles?.full_name ?? '—'}</p>
-                  {request.profiles?.code != null && <p className="text-xs font-mono text-accent-purple mt-0.5">{request.profiles.code}</p>}
+                  {request.profiles?.code != null && <p className="text-xs font-mono text-fg-strong mt-0.5">{request.profiles.code}</p>}
                   {request.profiles?.email != null && <p className="text-xs text-fg-muted mt-0.5">{request.profiles.email}</p>}
                 </div>
                 <div>

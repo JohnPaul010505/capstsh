@@ -77,6 +77,17 @@ export interface WorkoutLog {
   duration_minutes: number | null
   notes: string | null
   logged_at: string
+  /**
+   * Session label added by a later manual migration; null on legacy rows, so
+   * readers fall back to `exercise_name`. Same for the three below: `weight_kg`
+   * is the seed/dev alias of `weight`, `duration_seconds` the newer duration
+   * column, and `proof_url`/`proof_type` the public proofs-bucket video.
+   */
+  workout_name?: string | null
+  weight_kg?: number | null
+  duration_seconds?: number | null
+  proof_url?: string | null
+  proof_type?: string | null
 }
 
 export interface BodyMeasurement {

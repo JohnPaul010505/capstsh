@@ -56,7 +56,8 @@ final trainerDashboardProvider = FutureProvider<Map<String, dynamic>>((ref) asyn
   final canChat = roomMemberIds.where((id) => memberIds.contains(id)).length;
 
   final now = DateTime.now();
-  final weekStart = now.subtract(Duration(days: now.weekday - 1));
+  final startOfToday = DateTime(now.year, now.month, now.day);
+  final weekStart = startOfToday.subtract(Duration(days: now.weekday - 1));
   final weekCounts = List.generate(7, (i) => 0);
 
   final attendance = await client

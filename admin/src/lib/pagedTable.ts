@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react'
-import { useQuery } from '@tanstack/react-query'
+﻿import { useEffect, useRef } from 'react'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 
 /**
@@ -104,6 +104,11 @@ export function usePagedTable<T = any>(opts: PagedTableOptions): PagedTableResul
   const query = useQuery({
     queryKey: [table, 'paged', { page, pageSize, search, from, to, eq, inFilter, orderBy }],
     enabled,
+    // Keep the previous page on screen while the next one loads: the pager, the
+    // tab badges and the stat cards all read total from this query and would
+    // otherwise drop to 0 on every turn - and PaginationFooter already promises
+    // the reader that the previous page stays put during the fetch.
+    placeholderData: keepPreviousData,
     queryFn: async (): Promise<PagedTableResult<T>> => {
       let q = supabase.from(table).select(select, { count: 'exact' })
       for (const [col, val] of Object.entries(eq ?? {})) {

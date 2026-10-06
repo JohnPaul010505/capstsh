@@ -139,7 +139,12 @@ export function useFitRowHeight<T extends HTMLElement = HTMLDivElement>({
     const el = ref.current
     if (!el) return
     const available = el.clientHeight - reserve
-    const next = Math.max(min, Math.min(max, Math.floor(available / Math.max(1, count))))
+    // No flooring: rounding the division down left up to `count - 1`px of the
+    // budget unfilled under the last row, and these pages promise the rows fill
+    // the card edge to edge. The fractional height is safe because a table
+    // row's `height` is a MINIMUM - the sum lands on the budget rather than
+    // past it - and the clamps either side still hold.
+    const next = Math.max(min, Math.min(max, available / Math.max(1, count)))
     setRowHeight(prev => (prev === next ? prev : next))
   }, [count, reserve, min, max])
 

@@ -32,8 +32,21 @@ export default function Header({ title }: HeaderProps) {
     body: string
     read: boolean
     created_at: string
+    /** Whose row this is. The feed is gym-wide, so it is NOT always the admin's. */
+    user_id: string
     profiles?: { full_name: string }
   }>>([])
+  /**
+   * The badge on the bell, counted from the whole feed rather than the rows the
+   * dropdown happens to hold.
+   *
+   * The dropdown reads the newest 15 notifications; the badge reads only what is
+   * unread. Counting inside the 15 would understate it: the seeded gym has a long
+   * unread tail, so a member's renewal request would arrive, land in the newest
+   * 15, be counted - and a rename or a broadcast push could push the next one
+   * straight back out of the count without anything having been read.
+   */
+  const [unreadCount, setUnreadCount] = useState(0)
   const [dropdownStyle, setDropdownStyle] = useState({})
 
   // One handler for both menus. Each closes on a mousedown that is outside its
@@ -101,9 +114,59 @@ export default function Header({ title }: HeaderProps) {
       .order('created_at', { ascending: false })
       .limit(10)
     setNotifications(data ?? [])
+
+    // Badge count from the whole feed, not the 10 rows above - see the note on
+    // the `unreadCount` state. Scoped to this admin's own rows: the feed is a
+    // gym-wide list (it carries member and trainer traffic too), and the 0027
+    // trigger writes the renewal request to every admin, so the admin's own
+    // unread rows are exactly what "something wants you" means. Same realtime
+    // event drives both, so a renewal arriving updates the list and badge in one
+    // pass.
+    const { count } = await supabase
+      .from('notifications')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', profile?.id ?? '')
+      .eq('read', false)
+    setUnreadCount(count ?? 0)
+  }
+
+  /**
+   * Opening the panel is the admin reading their own feed, so their unread rows
+   * are marked read. Folders and inboxes behave this way: the badge is an "is
+   * there something new" signal, not a running tally, and here it is fed by the
+   * 0027 trigger writing one row per admin per renewal request - if opening the
+   * bell did not clear them, an admin who checked once a day would carry every
+   * past request's badge forever.
+   *
+   * The rows are flipped locally first so the panel never re-renders mid-read,
+   * and the write is narrowed to THIS admin's unread rows. Without that filter
+   * the update would be a table-wide `read = true` - admins hold the all-access
+   * policy, so it would succeed, and it would mark members' and trainers'
+   * unread notifications as read behind their backs (the same rows their own
+   * apps badge as unread). Only rows addressed to the admin are cleared.
+   */
+  const markNotificationsRead = async () => {
+    if (!profile?.id || unreadCount === 0) return
+    // Only the admin's OWN rows flip, mirroring the `.eq('user_id', profile.id)`
+    // on the write below. Marking every rendered row would have been the easy
+    // version and would have been wrong twice over: the panel is gym-wide, so
+    // most rows in it are member and trainer traffic whose `read` flag means
+    // "did THEY read it" - painting those read would report another user's
+    // inbox as handled, and the next fetch would snap them back to unread.
+    setNotifications(rows => rows.map(n => (n.read || n.user_id !== profile.id ? n : { ...n, read: true })))
+    setUnreadCount(0)
+    await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('user_id', profile.id)
+      .eq('read', false)
   }
 
   useEffect(() => {
+    // The unread count is this admin's own rows, so it needs the profile id -
+    // running on mount alone would query with an empty id (profile still
+    // loading) and leave the badge at zero until the next realtime event.
+    if (!profile?.id) return
     fetchNotifications()
     const channel = supabase
       .channel('notifications_header')
@@ -116,7 +179,7 @@ export default function Header({ title }: HeaderProps) {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [])
+  }, [profile?.id])
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr)
@@ -145,14 +208,30 @@ export default function Header({ title }: HeaderProps) {
               // when the bell is clicked, but a keyboard activation of the bell
               // fires no mousedown at all, so the two menus would overlap.
               setProfileMenuOpen(false)
+              // Opening the panel is reading it, so the badge clears - but only
+              // on the way open; a click that closes the panel must not re-clear
+              // anything a renewal inserted while the panel was open.
+              if (!notificationDropdownOpen) void markNotificationsRead()
             }}
-            className="p-2 rounded-lg transition-colors cursor-pointer"
-            aria-label="Notifications"
+            className="relative p-2 rounded-lg transition-colors cursor-pointer"
+            aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
           >
             <Bell
-              className={`w-5 h-5 transition-colors ${notificationDropdownOpen ? 'text-accent-purple' : 'text-fg-strong'}`}
+              className={`w-5 h-5 transition-colors ${notificationDropdownOpen || unreadCount > 0 ? 'text-accent-purple' : 'text-fg-strong'}`}
               strokeWidth={2}
             />
+            {/* The badge is what makes a member's renewal visible: the panel is
+                closed, so this pill is the whole signal that something arrived.
+                The seeded feed runs to hundreds, so the count caps at 99+ - a
+                four-digit pill would cover the bell it sits on. */}
+            {unreadCount > 0 && (
+              <span
+                data-testid="notifications-unread-badge"
+                className="absolute -top-0.5 -right-0.5 min-w-[1.125rem] h-[1.125rem] px-1 flex items-center justify-center rounded-full bg-[#EF4444] text-white text-[0.625rem] font-bold leading-none ring-2 ring-[#0F172A]"
+              >
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
           </button>
         </div>
         {/* The account trigger. It was an inert <span>, so nothing about it said

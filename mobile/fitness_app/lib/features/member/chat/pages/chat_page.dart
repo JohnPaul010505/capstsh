@@ -37,8 +37,7 @@ final trainerChatProvider = FutureProvider.autoDispose<Map<String, dynamic>?>((
   final existingRoom = await client
       .from('chat_rooms')
       .select('id')
-      .or('participant_one.eq.$userId,participant_two.eq.$userId')
-      .or('participant_one.eq.$trainerId,participant_two.eq.$trainerId')
+      .or('and(participant_one.eq.$userId,participant_two.eq.$trainerId),and(participant_one.eq.$trainerId,participant_two.eq.$userId)')
       .limit(1);
 
   String? roomId;
@@ -134,7 +133,14 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       });
 
       await _loadMessages();
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) {
+        _messageController.text = text;
+        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+          const SnackBar(content: Text('Failed to send message. Please try again.')),
+        );
+      }
+    }
   }
 
   Future<String> _createRoom() async {

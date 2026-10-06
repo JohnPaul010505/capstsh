@@ -1,12 +1,30 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { fetchAllRows } from '@/features/dashboard/lib/fetchAll'
+import { isAllTime, localEndIso, localStartIso, type Range } from '@/features/dashboard/lib/dateRange'
 
-export function usePredictions() {
+/**
+ * The newest stored forecasts, optionally narrowed to the page's date window.
+ *
+ * `created_at` is a `timestamptz`, so the bounds are LOCAL-midnight ISO instants
+ * (`localStartIso` / `localEndIso`) rather than bare 'YYYY-MM-DD' strings. The
+ * bare strings get cast by Postgres in the session timezone - UTC here - which
+ * puts every bound 8 hours before local midnight in PH and quietly drops the
+ * first and last day of the window the admin asked for.
+ *
+ * On `All time` NO filter is sent at all, which is both the cheaper query and
+ * the one that keeps this page's landing render identical to the one before the
+ * picker existed (see `isAllTime` for the member who would otherwise vanish).
+ */
+export function usePredictions(range?: Range) {
+  const all = !range || isAllTime(range)
+  const from = all ? undefined : localStartIso(range.start)
+  const to = all ? undefined : localEndIso(range.end)
+
   return useQuery({
-    queryKey: ['predictions'],
+    queryKey: ['predictions', from, to],
     queryFn: async () => {
-      const { data } = await supabase
+      let q = supabase
         .from('predictions')
         // current_value/unit/data_points/span_days/date_from/date_to/daily_rate/
         // change/clamped come from migration 0030_prediction_basis.sql. Older rows
@@ -15,6 +33,9 @@ export function usePredictions() {
         // Body-fat rows written before the feature was dropped are hidden: they
         // were computed from dev-seeded random values, not real measurements.
         .neq('metric_name', 'body_fat')
+      if (from) q = q.gte('created_at', from)
+      if (to) q = q.lte('created_at', to)
+      const { data } = await q
         .order('created_at', { ascending: false })
         .limit(50)
       return (data ?? []) as any[]

@@ -9,8 +9,18 @@ interface FeedbackRow {
   content: string
   rating?: number | null
   rated_at?: string | null
+  /**
+   * The member's own reply to this feedback, added in migration 0038. Rendered
+   * only in the detail drawer: the list row is one measured 45px line, and a
+   * second line of prose in it would break the row-height contract the whole
+   * table is built on.
+   */
+  member_comment?: string | null
+  member_commented_at?: string | null
   created_at: string
-  member?: { full_name: string }
+  // `code` and `email` are joined but only read by the drawer; the list cell
+  // still shows the name alone.
+  member?: { full_name: string; code?: string | null; email?: string | null }
   trainer?: { full_name: string }
   profiles?: { full_name: string }
 }
@@ -18,7 +28,11 @@ interface FeedbackRow {
 interface FeedbackTableProps {
   data: FeedbackRow[]
   isLoading: boolean
+  /** Opens the detail drawer for a row. Optional: absent, rows are inert. */
+  onRowClick?: (row: FeedbackRow) => void
 }
+
+export type { FeedbackRow }
 
 /**
  * Recent feedback as the same paged, searchable list as every other list page.
@@ -37,7 +51,7 @@ interface FeedbackTableProps {
  *   - The header's "N entries" count is gone because the footer now states the
  *     range and the total, which is a more useful sentence.
  */
-export function FeedbackTable({ data, isLoading }: FeedbackTableProps) {
+export function FeedbackTable({ data, isLoading, onRowClick }: FeedbackTableProps) {
   // Search state lives here, not in the page, so the two pages that mount this
   // component (Coach Feedback, and the unused ReportsAttendancePage) neither has
   // to own it.
@@ -112,6 +126,7 @@ export function FeedbackTable({ data, isLoading }: FeedbackTableProps) {
       searchValue={search}
       onSearchChange={setSearch}
       isLoading={isLoading}
+      onRowClick={onRowClick}
       emptyMessage={data.length === 0 ? 'No feedback recorded yet' : 'No feedback matches this search'}
     />
   )

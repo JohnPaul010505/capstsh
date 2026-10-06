@@ -1,8 +1,10 @@
-import { useState } from 'react'
+﻿import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import StatusBadge from '@/components/StatusBadge'
 import RecordsTable, { type RecordsColumn } from '@/components/RecordsTable'
+import DateRangePicker from '@/components/DateRangePicker'
+import { allTime, isAllTime, LIST_PRESETS, type Range } from '@/features/dashboard/lib/dateRange'
 
 const DAY = 24 * 60 * 60 * 1000
 
@@ -44,6 +46,17 @@ export default function InactiveReportPage() {
   // pre-filter the other list, which is exactly what QR's two search boxes
   // exist to avoid.
   const [search, setSearch] = useState('')
+  /**
+   * One window per sub-tab, both defaulting to All time. Sharing a single range
+   * would pre-filter the other list the moment you switched - the same trap the
+   * search term avoids - so the picker below reads whichever pair belongs to the
+   * active tab, and stays mounted across the switch (only value/onChange swap),
+   * which is what pins it to the identical x-position on both tabs.
+   */
+  const [membersRange, setMembersRange] = useState<Range>(() => allTime())
+  const [trainersRange, setTrainersRange] = useState<Range>(() => allTime())
+  const range = subTab === 'members' ? membersRange : trainersRange
+  const setRange: (r: Range) => void = subTab === 'members' ? setMembersRange : setTrainersRange
 
   const { data: inactiveMembers, isLoading: membersLoading } = useQuery({
     queryKey: ['report-inactive-members'],
@@ -176,7 +189,22 @@ export default function InactiveReportPage() {
   const active = SUB_TABS.find(t => t.id === subTab)!
   const data = subTab === 'members' ? inactiveMembers : inactiveTrainers
   const isLoading = subTab === 'members' ? membersLoading : trainersLoading
-  const rows = data ?? []
+
+  /**
+   * The window filters LAST CHECK-IN, client-side: a row survives when its last
+   * check-in day falls inside [start, end]. All time - the default - sends no
+   * bounds and keeps everyone, including the "Never" rows, which have no date to
+   * place inside a bounded window and so appear only on All time. The tab counts            above stay UNFILTERED totals, the way search leaves them.
+   */
+  const rows = useMemo(() => {
+    const base = data ?? []
+    if (isAllTime(range)) return base
+    return base.filter(r =>
+      r.lastCheckIn != null
+      && r.lastCheckIn.slice(0, 10) >= range.start
+      && r.lastCheckIn.slice(0, 10) <= range.end,
+    )
+  }, [data, range])
 
   // The member code moves OUT of the name cell and into a column of its own.
   // `RecordsTable` measures its rows at a fixed 44px, which is what makes the
@@ -240,34 +268,58 @@ export default function InactiveReportPage() {
       measure a whole page of rows from.
     */
     <div className="h-full min-h-0 flex flex-col gap-3">
-      <div role="tablist" aria-label="Inactive report sections" className="flex flex-wrap items-center gap-1.5 shrink-0">
-        {SUB_TABS.map(t => {
-          const count = t.id === 'members' ? inactiveMembers?.length : inactiveTrainers?.length
-          return (
-            <button
-              key={t.id}
-              type="button"
-              role="tab"
-              aria-selected={subTab === t.id}
-              onClick={() => { setSubTab(t.id); setSearch('') }}
-              className={`px-3.5 py-2 rounded-xl text-sm transition-colors cursor-pointer ${
-                subTab === t.id
-                  ? 'bg-[#7C3AED] text-white'
-                  : 'bg-overlay-8 border border-line text-fg-muted hover:text-fg-strong hover:border-[#7C3AED]/40'
-              }`}
-            >
-              {t.label}{count === undefined ? '' : ` (${count})`}
-            </button>
-          )
-        })}
+      {/*
+        One strip: the two sub-tabs on the left, the date window pinned right -
+        the same right-aligned picker row the members list and Member Detail
+        use. The picker lives OUTSIDE the tab map, so it stays mounted when the
+        sub-tab flips (only value/onChange swap) and never shifts position
+        between the two tabs.
+      */}
+      <div className="flex flex-wrap items-center justify-between gap-3 shrink-0">
+        <div role="tablist" aria-label="Inactive report sections" className="flex flex-wrap items-center gap-1.5">
+          {SUB_TABS.map(t => {
+            const count = t.id === 'members' ? inactiveMembers?.length : inactiveTrainers?.length
+            return (
+              <button
+                key={t.id}
+                type="button"
+                role="tab"
+                aria-selected={subTab === t.id}
+                onClick={() => { setSubTab(t.id); setSearch('') }}
+                className={`px-3.5 py-2 rounded-xl text-sm transition-colors cursor-pointer ${
+                  subTab === t.id
+                    ? 'bg-[#7C3AED] text-white'
+                    : 'bg-overlay-8 border border-line text-fg-muted hover:text-fg-strong hover:border-[#7C3AED]/40'
+                }`}
+              >
+                {t.label}{count === undefined ? '' : ` (${count})`}
+              </button>
+            )
+          })}
+        </div>
+        <DateRangePicker value={range} onChange={setRange} presets={LIST_PRESETS} className="shrink-0" />
       </div>
 
       <div role="tabpanel" aria-label={active.label} className="flex-1 min-h-0 min-w-0 flex">
         {/* `key` resets the table's own page index when the view changes, so page
-            4 of the members never opens as page 4 of a shorter trainer list. */}
+            4 of the members never opens as page 4 of a shorter trainer list. The
+            range is part of the key for the same reason: narrowing the window can
+            collapse the list to one page, and the reader should land back on
+            page 1 rather than a clamped holdover page. */}
         <RecordsTable
-          key={subTab}
+          key={`${subTab}:${range.start}:${range.end}`}
           title={active.label}
+          /* PINNED at 12, not measured.
+
+             The measured page size is a function of the window, which made this
+             list a promise it could not keep: the footer said "1-14 of 88" on a
+             tall screen and clipped a row mid-height on a short one. Twelve is
+             a number the page can actually honour - the rest are overleaf on
+             the pager, where they are reachable and countable - and it fits
+             the 1024x768 and 1366x768 windows the gate sweeps without the body
+             scrolling. `RecordsTable` caps its own body at exactly
+             header + 12 x 44px, so the card never grows past what it shows. */
+          pageSize={12}
           columns={columns}
           rows={rows}
           rowKey={r => r.userId}
@@ -276,9 +328,13 @@ export default function InactiveReportPage() {
           searchValue={search}
           onSearchChange={setSearch}
           isLoading={isLoading}
-          emptyMessage={rows.length === 0
-            ? `No inactive ${active.noun}`
-            : `No inactive ${active.noun} match this search`}
+          emptyMessage={
+            rows.length === 0
+              ? (data?.length ?? 0) > 0
+                ? `No inactive ${active.noun} in this date range`
+                : `No inactive ${active.noun}`
+              : `No inactive ${active.noun} match this search`
+          }
         />
       </div>
     </div>

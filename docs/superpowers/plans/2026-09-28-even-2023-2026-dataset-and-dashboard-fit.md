@@ -1,4 +1,4 @@
-﻿# Even 2023-2026 Demo Dataset + Dashboard Table Fit Implementation Plan
+# Even 2023-2026 Demo Dataset + Dashboard Table Fit Implementation Plan
 
 > **Goal:** Re-seed one coherent, evenly-distributed dataset covering 2023-01-01 through today, and fix the admin dashboard so *All time* loads correct non-zero figures in a couple of seconds and no tab renders a half-cut row.
 
@@ -26,7 +26,7 @@
 
 ### Phase 3: Make All Time Load
 - [x] **Task 9: Parallel paging in `fetchAll.ts`.** DONE: four pages in flight, one retry per page, speculative batching instead of a count query (saves a round trip and needs no call-site changes; costs at most 3 empty requests at the tail), pages stitched back in offset order. **Measured against the live API on the All time attendance fetch: 2,695 ms sequential -> 617 ms, 4.4x, with all 12,974 rows unique and in order.** Combined with the smaller dataset that is the 16 s -> ~0.6 s change.
-- [~] **Task 10: `0036_member_last_checkin_paging.sql` + paged client.** DONE (code), **NOT APPLIED**: the migration is written with `p_limit`/`p_offset` (defaults keep the 0035 zero-argument call working) plus a `member_last_checkin_count()`, but it cannot be applied from here — the Supabase management API rejects the service-role key with `401 JWT failed verification`, so a personal access token is required. Re-measured on the new dataset, the RPC returns **986 of 986** rows, so the bug is latent rather than active. The client is now guarded regardless: a response of exactly `PAGE` rows is treated as truncated and falls through to the paged read, which costs ~0.6 s now instead of the ~29 s it cost when written.
+- [~] **Task 10: `0036_member_last_checkin_paging.sql` + paged client.** DONE (code). **Re-measured 2026-10-02: 0036 IS applied and 0037 is NOT**, which inverts what this task said. Live evidence: `member_last_checkin_count()` answers 200/980, `member_last_checkin({"p_limit":1})` answers 200, and a bare `member_last_checkin({})` answers **300 PGRST203 "Could not choose the best candidate function between: public.member_last_checkin(), public.member_last_checkin(p_limit => integer, p_offset => integer)"** — 0035's zero-argument overload and 0036's defaulted two-argument one are BOTH in the database, and a call with no arguments matches both. `0037_drop_ambiguous_member_last_checkin.sql` drops the zero-argument overload and is **still unapplied** (same blocker as before: the management API rejects the service-role key with `401 JWT failed verification`, so a personal access token is required). The app is not broken by this — `attendance.ts` always passes explicit `p_limit`/`p_offset`, so the dashboard reads every member in 2 requests — but a caller that forgets the arguments gets a silent 300 and falls through to the ~100-request date-window scan. The 300 was invisible to `verify-dashboard-tabs.mjs` because its tolerance filtered on `status >= 400`; that dead tolerance has now been removed.
 - [x] **Task 11: Honest loading states.** DONE: `KpiCard` takes `isLoading` and renders an em dash + pulsing bar + `aria-busy` instead of a confident `0` — all 20 dashboard cards are wired. All five hooks use `placeholderData: keepPreviousData`, so a range change keeps the previous figures on screen instead of blanking to zeros. The stale 404 tolerance for the 0035 RPC is gone from `verify-admin-ui.mjs`, and the gate still passes, which proves the RPC is really there. Dropped from the plan: a "page n of m" progress readout — at ~0.6 s a page counter would only flicker, and the shimmer already says "working".
 
 ### Phase 4: The Cut-Data Fix
@@ -47,22 +47,116 @@
 
 | Figure | Before | After |
 | --- | --- | --- |
-| Attendance rows | 42,141 | **12,974** |
-| Attendance window | 2020-01-04 -> today | **2023-01-02 -> 2026-09-28** |
-| Attendance months covered | ~78 of 78, 60% in 2026 | **45 of 45, flat region 1.32x** |
-| All time attendance fetch | 16.1 s | **0.6 s** |
+| Attendance rows | 42,141 | **13,027** (13,026 seeded + 1 showcase) |
+| Attendance window | 2020-01-04 -> today | **2023-01-02 -> 2026-10-02** |
+| Attendance months covered | ~78 of 78, 60% in 2026 | **46 of 46, flat region median 234/mo** |
+| All time attendance fetch | 16.1 s | **0.6 s for one `fetchAll`** (the All-time *view* additionally pays for the other tabs' fetches; see Notes) |
 | Memberships | 1,860 (1,746 start in 2026) | **1,860, every month has sales** |
 | Profiles | 987 / 89 / 1 | **unchanged**, join dates 21-25 per month |
 | Enrollments | 10 pending / 45 confirmed | **unchanged** |
 | Renewals | 24 / 150 / 36 (all in the last 3 months) | **unchanged counts, 37 months** |
-| Predictions | 320 risk / 26 weight | **270 risk / 26 weight**, bands high 160 / medium 102 / low 8 |
-| Notifications | 841 rows, 4 months | **1,261 rows, 45 months, 9 titles** |
-| `member_last_checkin()` | 1,000 of 1,047 (capped) | **986 of 986** (below the cap; guarded, 0036 pending) |
+| Predictions | 320 risk / 26 weight | **272 risk / 26 weight**, bands high 160 / medium 102 / low 10 |
+| Notifications | 841 rows, 4 months | **841 rows, 9 titles** — the 1,261 previously recorded here was **wrong: 420 of those rows were a duplicated trigger batch** (see Notes) |
+| `member_last_checkin()` | 1,000 of 1,047 (capped) | **978 of 978** (below the cap; guarded; 0036 applied, 0037 pending) |
 
 ## Notes
 
 - **Risk bands are thinner than before** (low 8, was 58) because the committed cohort had to shrink from 330 members to 44 to fit a 13k-row dataset. All three bands are still populated; widening `low` means growing the overlay and the row count with it.
 - **The last ~12 weeks run ~3x the flat baseline** by design: the retention model scores a member's last 30 check-ins, so a cohort training 3-7 times a week has to exist recently or the Predictions page has no low or medium band. The spread verifier excludes exactly that window, computed from the generator's own `OVERLAY_WEEKS` / `offsetWeeks` rather than a hardcoded number.
 - **`REVIEW_DAYS` stays 180** on purpose — see Task 7.
-- **Migration 0036 is written but unapplied** — see Task 10.
+- **0036 is applied, 0037 is not** — corrected 2026-10-02; this note previously said the opposite. See Task 10 for the live probe output.
 - A re-seed needs `reset-demo-data.mjs --confirm` AND the generated manifests cleared; see Task 8.
+
+---
+
+## 2026-10-02: Re-seed for freshness, and what it uncovered
+
+The dataset was seeded on 2026-09-30, so on 2026-10-02 `verify-dataset-spread` failed with
+`every month has attendance (missing 2026-10)` — the generator's window ends on the day it runs
+(attendance `2026-09-28 → 32`, `09-29 → 35`, `09-30 → 32`, `10-01 → 0`, `10-02 → 0`), and the
+verifier demands every month from `DATA_START` to today. **This is a property of the design, not a
+one-off: the dataset is fresh only through its seed day, so the spread gate goes red every time the
+month rolls over until a re-seed.** A cheap incremental "extend to today" path was considered and
+declined in favour of the documented full re-seed.
+
+Full sequence: `reset-demo-data.mjs --confirm` → clear the per-table manifests (keeping
+`members.json` / `trainers.json`, which carry the people→profileId map `seed-attendance.mjs` needs,
+and `joined-at-backup.json`) → `seed-users.mjs --verify-only` → attendance → memberships → coaching
+→ enrollments. `seed-users` was skipped deliberately: profiles are never purged, the re-anchor is
+already applied, and a full run is ~25 minutes of auth work. Every stage printed VERIFY PASSED.
+
+| Figure | Before (2026-09-30 seed) | After (2026-10-02 seed) |
+| --- | --- | --- |
+| Attendance | 13,004 rows, to 2026-09-30 | **13,027 rows, to 2026-10-02**, 4 open sessions today |
+| Notifications | 1,051 | **841** |
+| Memberships | 1,860 | 1,860 (332 active / 1,468 expired / 60 trial) |
+| Assignments / feedback | 1,126 / 1,054 | 1,126 / 1,061 |
+| Predictions | 298 | 298 (272 risk / 26 weight) |
+| Enrollments / renewals | 10+45 / 24+210 | unchanged |
+| Profiles | 1,077 (987/89/1) | **unchanged** |
+
+### 1. Every re-seed was silently duplicating the renewal notifications
+
+`notifications` held **1,051** rows: 631 inside the `3e01a009` seed range and **420 outside it** —
+exactly `2 × RENEWAL_TARGET`. Migration 0027's `AFTER INSERT` trigger writes one
+`Membership Renewal Request` row per admin per renewal using a **database-generated uuid**, so those
+rows are outside every seed prefix and `reset-demo-data.mjs` could never match them. A purge left
+them behind, the next seeding run created another 210, and `alignAutoRenewalNotices()` re-stamped
+both batches from the same `requested_at`, making them exact duplicates — 56 of them inside the
+newest 400 rows the Notifications screen reads. That is the "Notifications showed one type" defect
+from Task 15, re-introduced by the re-seed.
+
+`reset-demo-data.mjs` now has a `TRIGGER_OWNED` list: those rows are matched by **title** rather than
+by id, and the delete is refused if any matching row turns out to sit *inside* the seed id range
+(measured 0), so the title match cannot quietly grow into deleting seed-owned rows. After the purge
+the table is back to 841 = 631 seeded + 210 trigger rows.
+
+### 2. Five latent defects in the release gate, found by running it
+
+Both browser gates now pass — `verify-dashboard-tabs` **95/0** and `verify-admin-ui` **132/0** — but
+only after five fixes to the gates themselves. They are worth recording because every one of them
+fails *silently* or *misleadingly* rather than loudly, and four of the five were introduced by
+`1d7b8f6`, the commit that added these checks and had never been run to green.
+
+An early reading of these failures was wrong and is corrected here: they were first blamed on the
+All-time view being slow (25 attendance requests, chart drawn at ~35 s). That measurement was taken
+while a second browser was left open on the All-time dashboard, so two clients were paging the same
+13k-row table at once. With a single client the All-time view loads inside the gate's budget and
+every assertion holds. The database was never the problem either way — the same deep-offset query
+answers offset 12000 in 1.6 s and offset 6000 in 0.36 s from the service key. The contention was
+real, but it was self-inflicted, and it is exactly the kind of thing that makes a timing-sensitive
+gate look like a product regression.
+
+- **`num()` could invent a zero.** It stripped non-numeric characters and called `Number('')`, and
+  `Number('')` is `0` — so a `KpiCard` still showing its loading em dash was read as a confident
+  zero. That is how a correct 0.7 was reported as `shown=0`. It now returns NaN, so a value that has
+  not arrived can never be believed.
+- **A fixed sleep raced the one uncached fetch.** The All-time section read the panel 2.5 s after a
+  range switch, and switching to All time is the only read in the run that is not already cached. It
+  now polls for the chart to be drawn (`waitForChartDrawn`) and adds an explicit check
+  ("the All-time growth chart is drawn, not still loading"). The helper returns a boolean instead of
+  throwing, because a `locator.waitFor` that rejects aborts the whole run and takes the ~75 checks
+  after it with it — which is precisely what happened on the first attempt at this fix.
+- **A dead 404 tolerance.** The console gate excused a 404 on `member_last_checkin` "until migration
+  0035 is applied". 0035 and 0036 are both applied, and the client always passes explicit arguments,
+  so the endpoint cannot 404 — the exemption could only hide real breakage. Worth noting that it
+  would not even have caught the live 300 PGRST203 (see Task 10): the filter was `status >= 400`.
+  Removed rather than narrowed.
+- **`verify-admin-ui` aborted on its own navigation budget.** The sweep walks 12 heavy routes in one
+  page, and by the later routes the accumulated PostgREST requests pushed the next `page.goto` past
+  Playwright's 30 s default — `/notifications` alone reaches `networkidle` in ~1.3 s, so this was a
+  budget problem, not a page problem. Crashing there reported nothing about the routes after it.
+  Raised to 60 s; no assertion was touched.
+- **One assertion tested the seed's vocabulary instead of the app.** The Coach Feedback check typed a
+  24-character prefix of a note and demanded *exactly one* row back. The notes come from a small
+  template pool, so a prefix is shared by several rows — 3 of 1,061 after this re-seed, up from 1,054
+  before it. It now asserts something stronger: the result set shrank **and every row that came back
+  actually contains the typed text**, which is what pins the search to the note column rather than the
+  truncated cell, and holds however many rows share the prefix.
+
+**Not fixed, deliberately:** the gates still assume one client. Two dashboards open at once will make
+the All-time view slow enough to trip the timing-sensitive checks, because each tab pages the whole
+attendance table independently with no in-flight de-duplication. A single-flight dataset cache in
+`attendance.ts` would fix that, but it is an app change and this was a data refresh.
+
+

@@ -223,16 +223,18 @@ async function run() {
 
   // The codes are measured to fill their card (`useFitSquare`), which sets a
   // side length from the card's own box and then clamps it. That clamp is the
-  // guard that stops a code on a 1080p monitor from growing to the full width
-  // of its card and reading as a mistake rather than a poster, so it is worth
-  // asserting: a ceiling that silently stopped applying would let the QR run
-  // away with the layout, and one that was set too low would shrink a code
-  // meant to be scanned off a gym wall.
+  // guard that stops a code from swallowing its whole card on a 1080p monitor
+  // and reading as a mistake rather than a poster, so it is worth asserting: a
+  // ceiling that silently stopped applying would let the QR run away with the
+  // layout, and one set too low would shrink a code meant to be scanned off a
+  // phone.
   //
-  // 500 is the measured ceiling. The un-capped fit is 342px at 1024x768, 513px
-  // at 1366x768 and 892px at 1920x1080, so the cap decides the two larger
-  // viewports and 1024 is free to fill its card.
-  const QR_CEILING = 500
+  // 240 is the ceiling. The un-capped fit is 342px at 1024x768, 513px at
+  // 1366x768 and 892px at 1920x1080, so the cap now decides ALL THREE viewports
+  // - the code is the same size on every screen, which is the point: these are
+  // scanned off a phone held at arm's length, not read across a room, and the
+  // floor in `useFitSquare` still shrinks it on a window too short for 240.
+  const QR_CEILING = 240
   for (const [w, h] of [[1920, 1080], [1366, 768], [1024, 768]]) {
     await page.setViewportSize({ width: w, height: h })
     await page.waitForTimeout(500)

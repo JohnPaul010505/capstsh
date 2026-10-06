@@ -1,6 +1,6 @@
 import {
   Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart,
-  ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis,
+  ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
 import { useChartTheme } from '@/hooks/useChartTheme'
 
@@ -73,8 +73,7 @@ export function BarTrend({ points, ariaLabel, valueName, gradientId = 'trendBarG
 }
 
 /**
- * Member Growth's chart: a filled area for new signups over time, with a
- * dashed benchmark line showing the average per bucket.
+ * Member Growth's chart: a filled area for new signups over time.
  *
  * This replaced a dual-line chart that plotted daily signups and the running
  * membership total on ONE shared axis. The two series differ by orders of
@@ -83,27 +82,24 @@ export function BarTrend({ points, ariaLabel, valueName, gradientId = 'trendBarG
  * whole panel - the chart was technically correct and practically unreadable.
  *
  * The area makes the SHAPE of growth legible (a spike, a steady ramp, a lull),
- * which is the actual question this tab answers, and the benchmark line answers
- * "was this bucket better or worse than typical" without adding a second scale.
+ * which is the actual question this tab answers. The dashed "Avg" benchmark
+ * line that used to cut across it was removed on request: the KPI row already
+ * states the averages, and a horizontal line through a 0..N wave read as a
+ * defect rather than as context.
  */
-export function GrowthAreaTrend({ points, average, ariaLabel, gradientId = 'growthGrad' }: {
+export function GrowthAreaTrend({ points, ariaLabel, gradientId = 'growthGrad' }: {
   points: TrendPoint[]
   ariaLabel: string
-  /**
-   * Mean signups PER BUCKET, drawn as the benchmark. Omitted when <= 0.
-   *
-   * The unit has to match the axis: this is drawn on the same scale as
-   * `points[].value`, so it must be the per-bucket mean. All time is 987
-   * members over 1,369 days but 45 monthly buckets, and passing the daily mean
-   * (0.7) instead of the monthly one (21.9) put the "Avg 0.7" label on the
-   * floor of a 0..23 axis - a chart that looks broken rather than mis-argued.
-   */
-  average?: number
   gradientId?: string
 }) {
   const t = useChartTheme()
   const interval = Math.max(0, Math.ceil(points.length / 12))
-  const max = niceMax(points.map(p => p.value))
+  // The ceiling used to sit EXACTLY on the tallest point (domain [0, max]), so
+  // every plateau - a run of equal days, which is what a spread roster gives -
+  // was shaved flush against the top gridline and the wave read as cut off.
+  // 25% of headroom keeps the peak inside the frame; `allowDecimals` stays
+  // false on the axis below, so the extra room never buys a 1.5-member tick.
+  const max = Math.ceil(niceMax(points.map(p => p.value)) * 1.25)
 
   return (
     <div role="img" aria-label={ariaLabel} className="h-full w-full">
@@ -125,16 +121,7 @@ export function GrowthAreaTrend({ points, average, ariaLabel, gradientId = 'grow
             formatter={(v: number | string) => [Number(v) || 0, 'New members']}
             labelFormatter={(_, payload) => (payload?.[0]?.payload as TrendPoint | undefined)?.full ?? ''}
           />
-          {/* The benchmark sits UNDER the area: it is context, not the subject. */}
-          {average && average > 0 && (
-            <ReferenceLine
-              y={average}
-              stroke="#A855F7"
-              strokeDasharray="6 4"
-              strokeWidth={1.5}
-              label={{ value: `Avg ${average.toFixed(1)}`, position: 'insideTopRight', fill: t.tooltipLabel, fontSize: 11 }}
-            />
-          )}
+
           <Area
             type="monotone" dataKey="value" name="New members"
             stroke="#7C3AED" strokeWidth={2.5}

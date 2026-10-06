@@ -59,11 +59,12 @@ final needsOnboardingSyncProvider = Provider<bool>((ref) {
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
-  final needsOnboarding = ref.read(needsOnboardingSyncProvider);
+  final needsOnboarding = ref.watch(needsOnboardingSyncProvider);
 
   return GoRouter(
     initialLocation: '/login',
     redirect: (context, state) {
+      if (authState.isLoading) return null;
       final isLoggedIn = authState.valueOrNull != null;
       final profile = authState.valueOrNull;
       final isLoginRoute = state.matchedLocation == '/login';

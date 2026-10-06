@@ -27,16 +27,10 @@ export interface GrowthRecord {
  * Member Growth tab: members whose profile was created inside the range,
  * plotted as daily additions per bucket.
  *
- * Two averages come out of this, and conflating them is what made the All-time
- * chart look broken:
- *   `avg`          - new members per DAY, which is what the "Daily Average" KPI
- *                    card states and nothing else may reuse.
- *   `avgPerBucket` - new members per CHART BUCKET. The benchmark line on the
- *                    trend is drawn against a bucket axis, so at All time it
- *                    has to read ~21.9 (45 monthly buckets) and not 0.7 (1,369
- *                    daily buckets). Passing the daily figure used to pin the
- *                    reference line to the floor of a 0..23 axis, which looks
- *                    exactly like a chart that agrees with nothing.
+ * `avg` is new members per DAY, which is what the "Daily Average" KPI card
+ * states and nothing else may reuse. The per-CHART-BUCKET mean this hook used
+ * to return fed the trend's dashed benchmark line; that line was removed on
+ * request, so the mean went with it rather than being kept for no reader.
  */
 export function useGrowthTab(range: Range, plan: PlanFilter, grain?: Grain) {
   const effectiveGrain = useMemo(() => grain ?? autoGrain(range), [grain, range.start, range.end])
@@ -113,11 +107,6 @@ export function useGrowthTab(range: Range, plan: PlanFilter, grain?: Grain) {
       return { key: b.key, label: b.label, full: b.full, value: v }
     })
 
-    // The benchmark line is drawn on the bucket axis, so it is the mean OF THE
-    // BUCKETS. Dividing by the bucket count (rather than averaging `value`) is
-    // the same figure without a second pass, and it stays correct when a
-    // clipped first or last bucket covers a partial month.
-    const avgPerBucket = buckets.length ? totalNew / buckets.length : 0
 
     const records: GrowthRecord[] = [...createdInRange]
       .sort((a, b) => b.created_at.localeCompare(a.created_at))
@@ -135,7 +124,7 @@ export function useGrowthTab(range: Range, plan: PlanFilter, grain?: Grain) {
         }
       })
 
-    return { totalNew, avg, avgPerBucket, days, peakDay, peakCount, activeCount: activeIds.size, points, records }
+    return { totalNew, avg, days, peakDay, peakCount, activeCount: activeIds.size, points, records }
   }, [q.data, range.start, range.end, effectiveGrain, plan])
 
   return { ...derived, isLoading: q.isLoading, error: q.error }

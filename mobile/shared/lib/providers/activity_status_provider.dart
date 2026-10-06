@@ -1,8 +1,20 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/services/supabase_client.dart';
+import 'auth_provider.dart';
 
 final memberActivityStatusProvider = FutureProvider.autoDispose.family<bool, String>((ref, memberId) async {
   final client = SupabaseClientService().client;
+  // User-scoped: after a trainer -> member switch on the same device, a stale
+  // memberId must never render the previous user's attendance as this user's
+  // fire. Mismatched ids read as inactive instead of leaking.
+  final userId = ref.watch(activeUserIdProvider);
+  final authUid = client.auth.currentUser?.id;
+  if (userId == null || authUid == null || userId != authUid) {
+    return false;
+  }
+  if (memberId != userId) {
+    return false;
+  }
   // `check_in_date` is a plain date column — compare against a local
   // date-only string (a local datetime without a Z offset skews the
   // 7-day window by the UTC offset).

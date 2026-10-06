@@ -12,7 +12,7 @@ import { useGrowthTab, type GrowthRecord } from '@/features/dashboard/hooks/useG
 
 export default function GrowthTab(props: TabPanelProps) {
   const { range, onRangeChange, plan, onPlanChange, grain, onGrainChange, grainOptions } = props
-  const { totalNew, avg, avgPerBucket, days, peakDay, peakCount, activeCount, points, records, isLoading } =
+  const { totalNew, avg, days, peakDay, peakCount, activeCount, points, records, isLoading } =
     useGrowthTab(range, plan, grain)
   const [search, setSearch] = useState('')
 
@@ -45,7 +45,7 @@ export default function GrowthTab(props: TabPanelProps) {
     <div className="h-full min-h-0 flex flex-col gap-3.5">
       <TabHeader
         title="Member Growth"
-        subtitle="New members who joined inside the selected window, against the average per period."
+        subtitle="New members who joined inside the selected window."
         range={range}
         onRangeChange={onRangeChange}
         filter={{
@@ -82,8 +82,7 @@ export default function GrowthTab(props: TabPanelProps) {
       >
         <GrowthAreaTrend
           points={chartPoints}
-          average={avgPerBucket}
-          ariaLabel={`Area chart of new members per period with the average per period (${avgPerBucket.toFixed(1)}) as a benchmark`}
+          ariaLabel="Area chart of new members per period for the selected range"
         />
       </TrendChartCard>
 

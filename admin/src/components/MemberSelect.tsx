@@ -10,7 +10,7 @@ export type SelectOption = { id: string; label: string; disabled?: boolean }
  * Reusable component extracted from MembershipsPage.tsx so both MembershipsPage
  * and PredictionsPage can render a themed dropdown without fighting native OS styling.
  */
-export function MemberSelect({ options, value, onChange, placeholder = 'Select...', className, buttonClassName }: {
+export function MemberSelect({ options, value, onChange, placeholder = 'Select...', className, buttonClassName, searchable = false }: {
   options: SelectOption[] | undefined
   value: string
   onChange: (id: string) => void
@@ -18,10 +18,32 @@ export function MemberSelect({ options, value, onChange, placeholder = 'Select..
   className?: HTMLAttributes<HTMLDivElement>['className']
   /** Extra classes merged onto the trigger button (e.g. larger dashboard-filter sizing). */
   buttonClassName?: string
+  /**
+   * Renders a search box at the top of the open list and narrows the options as
+   * you type.
+   *
+   * Off by default, because it is not free. The option list is whatever the
+   * caller passed - for a member picker that is the full roster (987 members in
+   * the seeded data), and the dashboard's own filters are short by nature, so a
+   * text box above a five-item grain selector would be clutter. Predictions asks
+   * for one member out of that same full roster, where scrolling to find them is
+   * not a picker, so it opts in and the other callers are untouched.
+   */
+  searchable?: boolean
 }) {
   const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
   const rootRef = useRef<HTMLDivElement>(null)
+  const searchRef = useRef<HTMLInputElement>(null)
   const selected = options?.find(o => o.id === value)
+
+  /* Matched on the label, which is the whole string the reader sees - "Ada
+     Mendoza (M034) - ada@demo.fit" - so one box covers name, member code and
+     email without the caller having to say which of the three it expects. */
+  const term = query.trim().toLowerCase()
+  const visible = !searchable || !term
+    ? options ?? []
+    : (options ?? []).filter(o => o.label.toLowerCase().includes(term))
 
   useEffect(() => {
     if (!open) return
@@ -38,6 +60,18 @@ export function MemberSelect({ options, value, onChange, placeholder = 'Select..
       document.removeEventListener('keydown', onKeyDown)
     }
   }, [open])
+
+  /* Open with the caret already in the box, and start from a clean one each
+     time. A term left over from the last open would silently hide most of the
+     roster the moment the list is reopened, which reads as "the picker is
+     broken" rather than "you still have a filter on". */
+  useEffect(() => {
+    if (!open) {
+      setQuery('')
+      return
+    }
+    if (searchable) searchRef.current?.focus()
+  }, [open, searchable])
 
   return (
     <div ref={rootRef} className={cn('relative', className)}>
@@ -59,6 +93,22 @@ export function MemberSelect({ options, value, onChange, placeholder = 'Select..
       </button>
       {open && (
         <div className="glass-card absolute left-0 top-full mt-1 z-30 min-w-full w-max max-w-[min(90vw,32rem)] max-h-56 overflow-y-auto rounded-lg border border-line py-1 shadow-xl">
+          {searchable && (
+            /* Sticky, because the list scrolls UNDER it: 987 members is a long
+               scroll, and a filter that scrolls out of sight is no use. */
+            <div className="sticky top-0 z-10 bg-[var(--table-head-bg)] px-2 pt-2 pb-1.5">
+              <input
+                ref={searchRef}
+                type="text"
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') setOpen(false) }}
+                placeholder="Search name, code or email…"
+                aria-label="Search members"
+                className="w-full px-3 py-1.5 bg-overlay-8 border border-line rounded-lg text-sm text-fg-strong placeholder:text-fg-faint focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50"
+              />
+            </div>
+          )}
           <button
             type="button"
             onClick={() => { onChange(''); setOpen(false) }}
@@ -66,7 +116,10 @@ export function MemberSelect({ options, value, onChange, placeholder = 'Select..
           >
             {placeholder}
           </button>
-          {(options ?? []).map(opt => (
+          {visible.length === 0 && (
+            <p className="px-3 py-2 text-sm text-fg-faint">No members match &ldquo;{query.trim()}&rdquo;</p>
+          )}
+          {visible.map(opt => (
             <button
               key={opt.id}
               type="button"

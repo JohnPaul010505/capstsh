@@ -1,4 +1,4 @@
-﻿import 'package:flutter/cupertino.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show Colors, ScaffoldMessenger, SnackBar;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -19,6 +19,13 @@ class MembershipPage extends ConsumerStatefulWidget {
 
 class _MembershipPageState extends ConsumerState<MembershipPage> {
   bool _submitting = false;
+
+  /// Daily passes are re-bought daily rather than renewed, so the page needs to
+  /// know which case it is showing. `plan_name` is free text in the database,
+  /// hence the case-insensitive compare against the single value we write.
+  static bool _isDaily(dynamic membership) =>
+      membership != null &&
+      (membership.planName as String).trim().toLowerCase() == 'daily';
 
   Future<void> _applyForRenewal() async {
     final state = ref.read(membershipProvider).valueOrNull;
@@ -83,7 +90,10 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
                   error: (e, _) => Center(
                     child: Text(
                       'Error: $e',
-                      style: const TextStyle(color: Color(0xFF636366), fontSize: 13),
+                      style: const TextStyle(
+                        color: Color(0xFF636366),
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                   data: (state) => _buildContent(state),
@@ -108,13 +118,15 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
         MembershipStatusCard(
           membership: current,
           hasPendingRequest: pending != null,
+          openSession: state.openSession,
         ),
         if (pending != null) ...[
           const SizedBox(height: 12),
           _infoBanner(
             icon: CupertinoIcons.hourglass,
             color: const Color(0xFFFF9F0A),
-            text: 'Your ${pending.planName} renewal request is waiting for '
+            text:
+                'Your ${pending.planName} renewal request is waiting for '
                 'admin approval. You will get a notification once it is decided.',
           ),
         ],
@@ -123,7 +135,8 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
           _infoBanner(
             icon: CupertinoIcons.xmark_circle,
             color: const Color(0xFFFF453A),
-            text: 'Your previous renewal request was declined. You can submit '
+            text:
+                'Your previous renewal request was declined. You can submit '
                 'a new one or talk to the gym admin.',
           ),
         ],
@@ -135,30 +148,47 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
             borderRadius: BorderRadius.circular(12),
             onPressed: canApply && !_submitting ? _applyForRenewal : null,
             child: _submitting
-                ? const CupertinoActivityIndicator(color: Colors.white, radius: 10)
+                ? const CupertinoActivityIndicator(
+                    color: Colors.white,
+                    radius: 10,
+                  )
                 : Text(
-                    current == null ? 'Apply for Membership' : 'Apply for Renewal',
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                    current == null
+                        ? 'Apply for Membership'
+                        : 'Apply for Renewal',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
           ),
         ),
         if (!canApply && pending == null) ...[
           const SizedBox(height: 8),
-          const Center(
+          Center(
             child: Text(
-              'Renewal opens when your membership is about to end (7 days or less).',
+              // A daily pass has no renewal window at all, so the generic
+              // "about to end" line would leave a daily member staring at a
+              // disabled button with an explanation that does not apply to
+              // them. Daily passes are simply re-bought each day.
+              _isDaily(current)
+                  ? 'Daily passes are not renewed - buy a new pass any day at the front desk.'
+                  : 'Renewal opens when your membership is about to end (7 days or less).',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 11, color: Color(0xFF8E8E93)),
+              style: const TextStyle(fontSize: 11, color: Color(0xFF8E8E93)),
             ),
           ),
         ],
         const SizedBox(height: 24),
-        const Text('HISTORY', style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: Color(0xFF8E8E93),
-          letterSpacing: 0.5,
-        )),
+        const Text(
+          'HISTORY',
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF8E8E93),
+            letterSpacing: 0.5,
+          ),
+        ),
         const SizedBox(height: 8),
         if (state.renewalRequests.isEmpty)
           const Text(
@@ -176,13 +206,13 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
     final color = isPending
         ? const Color(0xFFFF9F0A)
         : request.isApproved
-            ? const Color(0xFF30D158)
-            : const Color(0xFFFF453A);
+        ? const Color(0xFF30D158)
+        : const Color(0xFFFF453A);
     final label = isPending
         ? 'PENDING'
         : request.isApproved
-            ? 'APPROVED'
-            : 'DECLINED';
+        ? 'APPROVED'
+        : 'DECLINED';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -209,7 +239,10 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
                 ),
                 Text(
                   'Requested ${_fmtDate(request.requestedAt)}',
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF8E8E93)),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF8E8E93),
+                  ),
                 ),
               ],
             ),
@@ -249,7 +282,10 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
             child: Text(
               text,
               style: const TextStyle(
-                  fontSize: 12, color: Color(0xFFD8D8DE), height: 1.35),
+                fontSize: 12,
+                color: Color(0xFFD8D8DE),
+                height: 1.35,
+              ),
             ),
           ),
         ],

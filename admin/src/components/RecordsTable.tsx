@@ -1,4 +1,4 @@
-﻿import { useMemo, useState, type ReactNode } from 'react'
+﻿import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { ChevronLeft, ChevronRight, Inbox, Search } from 'lucide-react'
 import { useFitRows } from '@/hooks/useFitRows'
 
@@ -42,10 +42,29 @@ interface RecordsTableProps<T> {
    * the boundary rendered sliced in half with no scrollbar to explain it.
    */
   pageSize?: number
+  /**
+   * Makes rows clickable. OPTIONAL, and absent by default: most tables in the app
+   * have no row-level destination, and making every row look clickable where it
+   * is not is a lie the cursor tells. Supply this only where a row really does
+   * open something, and the pointer and hover treatment follow automatically.
+   */
+  onRowClick?: (row: T) => void
 }
 
-/** One row is `py-3` around `text-sm`/`text-[12px]` content plus a 1px rule. */
-const ROW_HEIGHT = 44
+/**
+ * One row is `py-3` (24px of cell padding) around a 20px `leading-5` line box,
+ * plus the 1px rule = 45px.
+ *
+ * This was 44, on the theory that every cell had been written to "settle at the
+ * 44px budget". The theory was wrong by a pixel: `leading-5` IS a 20px line box, so rows have
+ * always rendered at 45 while `useFitRows` divided the available height by 44. That only worked
+ * when the leftover `available % 44` happened to be at least as large as the 1px-per-row
+ * error - pure luck. Attendance landed on a remainder of exactly 0 and its body
+ * overflowed by one pixel a row. Measuring against the height rows really are
+ * makes a page fit by construction instead of by coincidence, and 45 sits inside
+ * the 44-46 band the release gate checks.
+ */
+const ROW_HEIGHT = 45
 /** The sticky header row: `py-2.5` around `text-[12px]`, plus its bottom rule. */
 const HEADER_HEIGHT = 40
 
@@ -63,6 +82,7 @@ const HEADER_HEIGHT = 40
 export default function RecordsTable<T>({
   title, columns, rows, rowKey, searchFields, searchPlaceholder,
   searchValue, onSearchChange, isLoading, emptyMessage, subtitle, pageSize: pageSizeProp,
+  onRowClick,
 }: RecordsTableProps<T>) {
 
   const [page, setPage] = useState(0)
@@ -82,7 +102,6 @@ export default function RecordsTable<T>({
   // grows to whatever height the panel hands it. The cap also means the body
   // scrolls internally whenever the rows do not fit the space left over, which
   // is what keeps the panel from pushing the page past the viewport.
-  const pinnedBodyHeight = pageSizeProp ? HEADER_HEIGHT + pageSizeProp * ROW_HEIGHT : undefined
 
   const filtered = useMemo(() => {
     const q = searchValue.trim().toLowerCase()
@@ -95,8 +114,36 @@ export default function RecordsTable<T>({
   const from = filtered.length === 0 ? 0 : safePage * pageSize + 1
   const to = Math.min(filtered.length, safePage * pageSize + pageSize)
   const pageRows = filtered.slice(safePage * pageSize, safePage * pageSize + pageSize)
+  // The height one row ACTUALLY renders at, read off the first data row.
+  //
+  // `ROW_HEIGHT` is what the measured page size is computed FROM, so a table whose
+  // cells happen to render taller than the budget quietly breaks that division.
+  // The inactive report breaks it: its `Notify` button is 28px of control inside 24px
+  // of cell padding, putting those rows at 53px. That broke the PINNED cap
+  // worst - capping a 53px table at `header + 12 * 45` produced a body shorter than its
+  // own content, so the rows below the cap were reachable only by scrolling a
+  // body that fit its cap exactly. Measured, the cap contains what it caps.
+  const firstRowRef = useRef<HTMLTableRowElement>(null)
+  const [actualRowHeight, setActualRowHeight] = useState(ROW_HEIGHT)
+  useLayoutEffect(() => {
+    const h = firstRowRef.current?.getBoundingClientRect().height
+    if (!h) return
+    const next = Math.round(h)
+    setActualRowHeight(prev => (prev === next ? prev : next))
+  }, [safePage, pageSize, pageRows.length])
+  const pinnedBodyHeight = pageSizeProp
+    ? HEADER_HEIGHT + pageSizeProp * actualRowHeight
+    : undefined
 
   const goto = (p: number) => setPage(Math.max(0, Math.min(pageCount - 1, p)))
+  /**
+   * Rows are only interactive when the caller says so. The `hover` tint is
+   * already on every row here, so the pointer cursor plus a focus ring is what
+   * distinguishes a row that opens something from one that merely highlights.
+   * Keyboard parity matters: a `<tr>` with onClick is unreachable by tab, so
+   * when a handler exists the row also takes Enter/Space.
+   */
+  const rowInteractive = Boolean(onRowClick)
 
   return (
     // `flex-1 min-h-0` lets the table absorb whatever height the header, KPIs
@@ -163,7 +210,21 @@ export default function RecordsTable<T>({
                 </tr>
               ) : (
                 pageRows.map((row, i) => (
-                  <tr key={rowKey(row)} className="border-b border-line-soft last:border-0 hover:bg-[#7C3AED]/5 transition-colors">
+                  <tr
+                    ref={i === 0 ? firstRowRef : undefined}
+                    key={rowKey(row)}
+                    className={`border-b border-line-soft last:border-0 hover:bg-[#7C3AED]/5 transition-colors${rowInteractive ? ' cursor-pointer focus:outline-none focus-visible:bg-[#7C3AED]/10' : ''}`}
+                    onClick={rowInteractive ? () => onRowClick?.(row) : undefined}
+                    tabIndex={rowInteractive ? 0 : undefined}
+                    onKeyDown={rowInteractive
+                      ? e => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            onRowClick?.(row)
+                          }
+                        }
+                      : undefined}
+                  >
                     <td className="px-4 py-3 text-sm text-fg-muted tabular-nums">{safePage * pageSize + i + 1}</td>
                     {columns.map(c => (
                       <td

@@ -21,13 +21,15 @@ import 'add_food_wizard.dart';
 final todayMealsProvider =
     FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
       final userId = SupabaseClientService().client.auth.currentUser!.id;
-      final today = DateTime.now().toIso8601String().split('T')[0];
+      final now = DateTime.now();
+      final startOfDay = DateTime(now.year, now.month, now.day);
+      final endOfDay = startOfDay.add(const Duration(days: 1));
       final response = await SupabaseClientService().client
           .from('meal_logs')
           .select()
           .eq('member_id', userId)
-          .gte('meal_time', '${today}T00:00:00')
-          .lt('meal_time', '${today}T23:59:59')
+          .gte('meal_time', startOfDay.toUtc().toIso8601String())
+          .lt('meal_time', endOfDay.toUtc().toIso8601String())
           .order('meal_time', ascending: false);
       return (response as List).cast<Map<String, dynamic>>();
     });

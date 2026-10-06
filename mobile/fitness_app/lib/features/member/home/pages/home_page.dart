@@ -18,7 +18,6 @@ import '../../../shared/widgets/clay/clay_card.dart';
 import '../../../shared/widgets/clay/clay_button.dart';
 import '../../../shared/widgets/clay/clay_avatar.dart';
 import '../../../shared/widgets/clay_area_chart.dart';
-import '../../calendar/providers/calendar_seed_data.dart';
 import '../../../shared/widgets/notification_popup.dart';
 import '../../../shared/widgets/activity_status_badge.dart';
 import '../../../shared/services/prediction_service.dart';
@@ -26,12 +25,24 @@ import '../../../shared/services/prediction_service.dart';
 // Kept alive for the whole session: independent queries run in parallel, and
 // the previous result stays cached so returning to Home renders instantly
 // (no skeleton) instead of blocking on ~6 sequential network round-trips.
-final homeDataProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+//
+// User-scoped: watches [activeUserIdProvider] so a trainer -> member account
+// switch on the same device disposes the previous user's result instead of
+// flashing e.g. the trainer's open attendance session as the member's ACTIVE
+// membership card. Throws when signed out / mismatched so callers show the
+// loading or error state rather than another user's data.
+final homeDataProvider =
+    FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   final client = SupabaseClientService().client;
-  final userId = client.auth.currentUser!.id;
+  final userId = ref.watch(activeUserIdProvider);
+  final authUid = client.auth.currentUser?.id;
+  if (userId == null || authUid == null || userId != authUid) {
+    throw Exception('Signed out — please log in again.');
+  }
 
   final profile = ref.watch(authProvider).valueOrNull;
-  final today = DateTime.now();
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
   final weekStart = today.subtract(Duration(days: today.weekday - 1));
   final weekEnd = weekStart.add(const Duration(days: 7));
   final yearStart = DateTime(today.year, 1, 1);
@@ -82,16 +93,6 @@ final homeDataProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   final assignment = results[3] as List;
   final weekWorkouts = results[4] as List;
 
-  final isM002 = profile?.code == 'M002';
-  if (isM002 && today.year == 2026 && today.month == 8 && today.day == 14) {
-    final currentUserId = client.auth.currentUser!.id;
-    yearList.addAll(CalendarSeedData.generateAug14Attendance(currentUserId));
-    measurements.addAll(
-      CalendarSeedData.generateAug14Measurement(currentUserId),
-    );
-    weekWorkouts.addAll(CalendarSeedData.generateAug14Workouts(currentUserId));
-  }
-
   // Workouts grouped by PH/local weekday (Mon-first). Parsing with toLocal()
   // keeps early-morning sessions (e.g. 01:17 PH = 17:17 UTC the day before)
   // on the correct weekday.
@@ -115,7 +116,24 @@ final homeDataProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   }
 
   final totalWorkouts = monthCounts.reduce((a, b) => a + b);
-  final activeDays = monthCounts.where((c) => c > 0).length;
+
+  // Active-day accounting for THIS MONTH, from REAL attendance only.
+  //
+  // Rule: distinct `check_in_date` values inside the current local month,
+  // already member-scoped by the `.eq('member_id', ...)` query above.
+  // Workout logs are exercise evidence, not presence, so they never feed
+  // this count. Distinct dates prevent the same day being counted twice.
+  final activeDates = <String>{};
+  final monthPrefix =
+      '${today.year.toString().padLeft(4, '0')}-'
+      '${today.month.toString().padLeft(2, '0')}';
+  for (final a in yearList.cast<Map<String, dynamic>>()) {
+    final checkInDate = a['check_in_date'];
+    if (checkInDate is String && checkInDate.startsWith(monthPrefix)) {
+      activeDates.add(checkInDate);
+    }
+  }
+  final activeDays = activeDates.length;
 
   final monthlyBmis = List<double?>.generate(12, (i) => null);
   for (final m in measurements.cast<Map<String, dynamic>>()) {
@@ -131,21 +149,6 @@ final homeDataProvider = FutureProvider<Map<String, dynamic>>((ref) async {
       monthlyBmis[t.month - 1] = double.parse(
         (weightKg / (h * h)).toStringAsFixed(1),
       );
-    }
-  }
-
-  if (isM002 && today.year == 2026 && today.month >= 1 && today.month <= 8) {
-    final latestBmi = monthlyBmis[today.month - 1];
-    if (latestBmi != null) {
-      final baseBmi = 20.0;
-      final step = (latestBmi - baseBmi) / (today.month - 1);
-      for (var month = 1; month < today.month; month++) {
-        if (monthlyBmis[month - 1] == null) {
-          monthlyBmis[month - 1] = double.parse(
-            (baseBmi + step * (month - 1)).toStringAsFixed(1),
-          );
-        }
-      }
     }
   }
 
@@ -189,6 +192,7 @@ class _HomePageState extends ConsumerState<HomePage>
   bool _wasHome = true;
   StreamSubscription? _attendanceSub;
   StreamSubscription? _workoutSub;
+  String? _listeningUserId;
   Timer? _periodicInvalidateTimer;
 
   @override
@@ -206,6 +210,10 @@ class _HomePageState extends ConsumerState<HomePage>
   void _startRealtimeListeners() {
     final userId = SupabaseClientService().client.auth.currentUser?.id;
     if (userId == null) return;
+    if (_listeningUserId == userId) return;
+    _attendanceSub?.cancel();
+    _workoutSub?.cancel();
+    _listeningUserId = userId;
 
     final client = SupabaseClientService().client;
 
@@ -281,6 +289,13 @@ class _HomePageState extends ConsumerState<HomePage>
 
   @override
   Widget build(BuildContext context) {
+    // Re-subscribe realtime listeners if the account changed (trainer ->
+    // member on the same device). initState only fires once because Home
+    // stays alive in the indexed-stack shell.
+    final authUid = SupabaseClientService().client.auth.currentUser?.id;
+    if (authUid != null && authUid != _listeningUserId) {
+      _startRealtimeListeners();
+    }
     final dataAsync = ref.watch(homeDataProvider);
     final profile = ref.watch(authProvider).valueOrNull;
     final onboardingAsync = ref.watch(needsOnboardingProvider);
@@ -396,6 +411,12 @@ class _HomeContentState extends State<HomeContent> {
 
     final maxCount = weekCounts.reduce((a, b) => a > b ? a : b).clamp(1, 100);
 
+    // Always the signed-in user: profile can lag one frame behind on a
+    // trainer -> member switch, and the old id would light the fire badge
+    // with the previous account's attendance.
+    final memberId =
+        SupabaseClientService().client.auth.currentUser?.id ?? profile?.id;
+
     return ListView(
       // extendBody already reserves the nav-bar height via SafeArea;
       // this is just a small breathing buffer above the pill.
@@ -412,7 +433,7 @@ class _HomeContentState extends State<HomeContent> {
           onBellTap: _toggleNotifications,
           isNotificationOpen: _isNotificationOpen,
           bellKey: _bellKey,
-          memberId: profile.id,
+          memberId: memberId,
         ),
         NotificationPopup(
           isOpen: _isNotificationOpen,
@@ -421,11 +442,11 @@ class _HomeContentState extends State<HomeContent> {
           bellKey: _bellKey,
         ),
         const SizedBox(height: 12),
-        StaggeredFadeIn(index: 0, child: _PredictionCard(memberId: profile.id)),
+        StaggeredFadeIn(index: 0, child: _PredictionCard(memberId: memberId)),
         const SizedBox(height: 8),
         StaggeredFadeIn(
           index: 1,
-          child: _ActiveDaysCard(activeDays: activeDays, memberId: profile.id),
+          child: _ActiveDaysCard(activeDays: activeDays, memberId: memberId),
         ),
         const SizedBox(height: 8),
         StaggeredFadeIn(

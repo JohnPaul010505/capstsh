@@ -1,15 +1,28 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { fetchAllRows } from '@/features/dashboard/lib/fetchAll'
+import type { Range } from '@/features/dashboard/lib/dateRange'
 
 // The two SELECT shapes this hook needs, so the role-filtered branch below and
 // the unfiltered one cannot drift apart.
 const BASE_SELECT = '*, profiles!attendance_member_id_fkey(full_name, email, role, code)'
 const INNER_SELECT = '*, profiles!attendance_member_id_fkey!inner(full_name, email, role, code)'
 
-export function useAttendance(date?: string, category?: 'member' | 'trainer') {
+/**
+ * Check-ins inside a day RANGE, for one role (or both).
+ *
+ * This was `useAttendance(date)` with a single `.eq('check_in_date', date)`. It
+ * is now a window, so the admin can read a whole month at once - which is how a
+ * gym actually reads its sheet - without that costing a different code path.
+ *
+ * `check_in_date` is a `date` column, so the bounds stay plain 'YYYY-MM-DD'
+ * strings. That is NOT the case for the `created_at` columns the other list
+ * pages filter on, which are `timestamptz` and need `localStartIso`/
+ * `localEndIso`; see `usePredictions`.
+ */
+export function useAttendance(range?: Range, category?: 'member' | 'trainer') {
   return useQuery({
-    queryKey: ['attendance', date, category],
+    queryKey: ['attendance', range?.start, range?.end, category],
     queryFn: async () => {
       // Role is a property of the JOINED profile, not of the attendance row, so
       // it cannot be a filter on this query. Resolving the ids and passing them
@@ -34,8 +47,8 @@ export function useAttendance(date?: string, category?: 'member' | 'trainer') {
       //
       //   ...&order=check_in_time.desc,id.desc x4&offset=3000&limit=1000
       //
-      // Page 0's `offset=0` was never requested. The page is scoped to a single
-      // day, so `offset=3000` matched nothing and answered 200 with zero rows -
+      // Page 0's `offset=0` was never requested. The page is scoped to a day or
+      // two, so `offset=3000` matched nothing and answered 200 with zero rows -
       // and the page then rendered "No attendance records" for EVERY date, with
       // no error anywhere, while the dashboard (whose `pageOf` builds a new
       // builder per page) showed the same rows fine. Building inside the
@@ -43,7 +56,10 @@ export function useAttendance(date?: string, category?: 'member' | 'trainer') {
       const pageOf = async (from: number, to: number) => {
         let q = supabase.from('attendance').select(category ? INNER_SELECT : BASE_SELECT)
         if (category) q = q.eq('profiles.role', category)
-        if (date) q = q.eq('check_in_date', date)
+        if (range) {
+          q = q.gte('check_in_date', range.start)
+          q = q.lte('check_in_date', range.end)
+        }
 
         // `check_in_time` then `id`: the unique tiebreak keeps pages disjoint
         // when several check-ins share a timestamp, which PostgREST's OFFSET
@@ -58,7 +74,12 @@ export function useAttendance(date?: string, category?: 'member' | 'trainer') {
         }
       }
 
-      // This pages the day, so the count is whatever that one day holds.
+      // This pages the whole window, so the count is whatever the selected days
+      // hold. `All time` is the one to watch: that is the entire attendance
+      // table (~13k rows) paged in at 1,000 a request and then filtered in the
+      // browser by `RecordsTable`. It is the slowest chip on this page by an
+      // order of magnitude - the dashboard's Member Overview tab already pages a
+      // larger table, so it is inside what this app does, but it is not free.
       return fetchAllRows<any>(pageOf)
     },
   })

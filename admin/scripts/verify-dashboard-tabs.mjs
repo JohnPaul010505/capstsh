@@ -102,16 +102,14 @@ async function computeExpected() {
   }
   const planCount = name => attendance.filter(a => resolvePlan(a.member_id, a.check_in_date) === name).length
 
-  // All-time growth ground truth. The trend's benchmark line has to be the mean
-  // PER BUCKET over All time's calendar months, which is a completely different
-  // number from the per-DAY mean the "Daily Average" KPI reports (987 joins over
-  // 1,369 days is 0.7 a day; over 45 months it is ~21.9 a month). The bug this
-  // data exists for was the daily figure being drawn on the monthly axis.
+  // All-time growth ground truth. `allDailyAvg` is the per-DAY mean behind the
+  // "Daily Average" KPI (987 joins over 1,369 days is 0.7 a day). The chart
+  // used to ALSO draw a per-BUCKET mean as a dashed benchmark - a completely
+  // different number (~21.9 over 45 monthly buckets) - but that line was
+  // removed on request, so nothing renders a mean on the bucket axis anymore.
   const joins = members.map(p => localDay(p.created_at)).sort()
   const firstJoin = joins[0]
   const today = new Date()
-  const monthIndex = d => d.getFullYear() * 12 + d.getMonth()
-  const allBuckets = monthIndex(today) - monthIndex(new Date(`${firstJoin}T00:00:00`)) + 1
   const allDays = Math.round((new Date(`${localDay(today.toISOString())}T00:00:00`) - new Date(`${firstJoin}T00:00:00`)) / DAY) + 1
 
   return {
@@ -129,8 +127,6 @@ async function computeExpected() {
     activeMembers: members.filter(m => activeMemberIds.has(m.id)).length,
     allNewMembers: joins.length,
     allDays,
-    allBuckets,
-    allAvgPerBucket: joins.length / allBuckets,
     allDailyAvg: joins.length / allDays,
   }
 }
@@ -286,16 +282,16 @@ async function run() {
 
   // ---- Remaining tabs, dark â†’ light â†’ narrow ----------------------------
   // ---- Member Growth over All time --------------------------------------
-  // Two defects this section exists to pin down, both of which made the All-time
-  // view look broken while every number in it was correct:
-  //   1. the benchmark line was the per-DAY mean drawn on a per-BUCKET axis
-  //      ("Avg 0.7" pinned to the floor of a 0..23 monthly chart);
-  //   2. a hand-picked Daily grain survived the switch to All time and drew
-  //      1,369 buckets, about a pixel each.
+  // One defect this section exists to pin down, which made the All-time view
+  // look broken while every number in it was correct: a hand-picked Daily grain
+  // survived the switch to All time and drew 1,369 buckets, about a pixel each.
+  // The dashed per-bucket "Avg" benchmark line is asserted here too - by its
+  // ABSENCE: it was removed on request, and a label creeping back would put
+  // the old floor-pinned "Avg 0.7" on this chart again.
   // The demo roster is spread evenly by design (~21 new members in every month),
   // so a flat plateau here is the dataset, not a bug - what is asserted is that
-  // the chart says so honestly: monthly buckets, a per-bucket mean, and ticks
-  // that carry the year across a four-year axis.
+  // the chart says so honestly: monthly buckets and ticks that carry the year
+  // across a four-year axis.
   await page.getByRole('tab', { name: 'Member Growth' }).click()
   await page.waitForTimeout(700)
   await page.getByRole('button', { name: /Date range:/ }).first().click()
@@ -305,6 +301,17 @@ async function run() {
   await page.waitForTimeout(2500)
 
   const growthChart = page.locator('section[aria-label="New members per period for the selected range"]')
+  // Switching to All time re-keys the query and forces a COLD fetch of all
+  // three datasets (987 profiles, 1,860 memberships, 13k attendance rows). It is
+  // the one read in this run that is not already cached, and a fixed sleep is a
+  // race against it: read too early and the panel is still loading, so the KPI
+  // cards show their em dash and the chart is a skeleton. The four checks below
+  // then measure the loading state rather than the numbers - which is how this
+  // section came to report shown=0 for a correct 0.7. Wait for the chart to
+  // actually be drawn; the assertions themselves are unchanged.
+  const drawn = await waitForChartDrawn(growthChart)
+  check('the All-time growth chart is drawn, not still loading', drawn, drawn ? '.recharts-surface attached' : 'no .recharts-surface within 30s')
+
   const grainTrigger = growthChart.getByRole('button', { name: /^(Daily|Weekly|Monthly)$/ })
   const openingGrain = (await grainTrigger.innerText()).trim()
   check('All time opens on Monthly', openingGrain === 'Monthly', `got "${openingGrain}"`)
@@ -323,19 +330,14 @@ async function run() {
     byLabel.Daily === true && byLabel.Weekly === true && byLabel.Monthly === false,
     JSON.stringify(grainOptions))
 
-  // Recharts renders ticks and the reference label as SVG <text>, where
-  // innerText is null - textContent is the only way to read them.
+  // Recharts renders ticks and any chart label as SVG <text>, where innerText
+  // is null - textContent is the only way to read them. The dashed "Avg"
+  // benchmark line was removed on request, so the label must NOT be back.
   const avgLabel = (await growthChart.locator('text').filter({ hasText: /^Avg / }).allTextContents())[0] ?? ''
-  const avgShown = Number(avgLabel.replace(/[^0-9.]/g, ''))
-  check('the benchmark is the mean per bucket, not per day',
-    Number.isFinite(avgShown) && Math.abs(avgShown - expected.allAvgPerBucket) <= 0.5,
-    `label="${avgLabel}" want≈${expected.allAvgPerBucket.toFixed(1)} (daily mean is ${expected.allDailyAvg.toFixed(1)})`)
-  check('the benchmark is not the daily mean',
-    Math.abs(avgShown - expected.allDailyAvg) > 1,
-    `shown=${avgShown} dailyMean=${expected.allDailyAvg.toFixed(1)}`)
+  check('the dashed Avg benchmark line stays removed', avgLabel === '', `label="${avgLabel}"`)
 
-  // The KPI card keeps the per-DAY figure; the two averages must not have been
-  // merged into one number.
+  // The KPI card keeps the per-DAY figure - the only average left now that the
+  // chart's benchmark line is gone.
   const growthPanel = page.getByRole('tabpanel', { name: 'Member Growth' })
   const dailyAvgShown = await num(cardValue(page, 'Daily Average', growthPanel)).catch(() => NaN)
   check('the Daily Average KPI still reports the per-day mean',
@@ -662,18 +664,27 @@ async function run() {
   // the response log instead: only a 404 on the RPC endpoint is excused, and
   // any other 404 still fails. Matching on the message text alone ("404")
   // would wave through every unrelated missing asset on the page.
-  const RPC_PATH = '/rest/v1/rpc/member_last_checkin'
-  const rpcNotFound = failedResponses.filter(r => r.status === 404 && r.url.includes(RPC_PATH)).length
-  const otherFailures = failedResponses.filter(r => r.status >= 400 && r.url !== undefined && !r.url.includes(RPC_PATH))
-  if (rpcNotFound) {
-    console.log(`NOTE: ${rpcNotFound} 404(s) from the unapplied 0035 RPC (expected until that migration is run).`)
-  }
+  // No failed response is tolerated, on any endpoint.
+  //
+  // This used to excuse a 404 on migration 0035's member_last_checkin RPC
+  // "until that migration is applied". That is no longer true and the exemption
+  // had stopped being an exemption: 0035 and 0036 are both applied, and
+  // attendance.ts calls the function with explicit p_limit/p_offset, so the
+  // endpoint cannot 404. What it could do - and what it did on 2026-10-02, when
+  // 0037 had not been applied yet - is answer 300 PGRST203 "could not choose the
+  // best candidate function", because 0035's zero-argument overload and 0036's
+  // defaulted (p_limit, p_offset) one are both candidates for a bare call. A
+  // status of 300 is not even >= 400, so the filter below never saw it; the
+  // client swallowed it and fell back to the slow scan. Anchoring the tolerance
+  // on a status code that can no longer occur only hides real breakage, so it is
+  // gone rather than narrowed.
+  const otherFailures = failedResponses.filter(r => r.status >= 400 && r.url !== undefined)
 
   const uniqueErrors = [...new Set(consoleErrors)]
   check(
     'no unexpected console/page errors across the whole run',
-    uniqueErrors.length <= rpcNotFound && otherFailures.length === 0,
-    uniqueErrors.filter(e => !/status of 404/.test(e)).slice(0, 5).join(' || ')
+    uniqueErrors.length === 0 && otherFailures.length === 0,
+    uniqueErrors.slice(0, 5).join(' || ')
       || otherFailures.slice(0, 5).map(f => `${f.status} ${f.url}`).join(' || '),
   )
 
@@ -695,7 +706,14 @@ run().catch(err => {
 
 const num = async locator => {
   const text = (await locator.first().innerText()).trim()
-  const n = Number(text.replace(/[^0-9.]/g, ''))
+  // A card that is still loading renders an em dash, not a number: KpiCard
+  // swaps the value for "—" and sets aria-busy while it does. Stripping the
+  // non-numeric characters from that leaves '', and Number('') is 0 - so a value
+  // that has not arrived yet would be read as a confident zero. An empty result
+  // is NaN here, so the caller waits or fails instead of believing it.
+  const cleaned = text.replace(/[^0-9.]/g, '')
+  if (!cleaned) return NaN
+  const n = Number(cleaned)
   return Number.isFinite(n) ? n : NaN
 }
 
@@ -724,6 +742,30 @@ async function waitForCardValue(page, title, want, { timeout = 15000, root } = {
   console.log(`  (timeout waiting for "${title}" = ${want}, last=${last})`)
   return false
 }
+
+/**
+ * Polls until a chart is actually drawn, bounded by `timeout`.
+ *
+ * Replaces a fixed sleep in front of assertions that read the chart's own SVG.
+ * While a tab is loading, the trend card renders a skeleton instead, so the
+ * axis ticks and the KPI values behind it are simply absent
+ * - reading them then reports a failure about numbers the app never claimed.
+ *
+ * It RETURNS a boolean rather than throwing on timeout. A locator.waitFor that
+ * rejects would abort the whole run at this point and take the ~75 checks after
+ * it with it; a gate that cannot reach a state should report that one state as
+ * failed and carry on so the rest of the run is still reported.
+ */
+async function waitForChartDrawn(chart, timeout = 30000) {
+  const surface = chart.locator('.recharts-surface').first()
+  const deadline = Date.now() + timeout
+  while (Date.now() < deadline) {
+    if (await surface.count().catch(() => 0)) return true
+    await new Promise(r => setTimeout(r, 250))
+  }
+  return false
+}
+
 
 /** Whole card text (for trend/% checks). */
 const cardText = (page, title, root = page) =>

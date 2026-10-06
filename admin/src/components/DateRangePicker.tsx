@@ -1,12 +1,21 @@
 import { useEffect, useRef, useState } from 'react'
 import { Calendar, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { DATA_START, RANGE_PRESETS, formatRangeLabel, normalizeRange, toDay, type Range } from '@/features/dashboard/lib/dateRange'
+import { DATA_START, RANGE_PRESETS, formatRangeLabel, normalizeRange, toDay, type Range, type RangePreset } from '@/features/dashboard/lib/dateRange'
 
 interface DateRangePickerProps {
   value: Range
   onChange: (range: Range) => void
   className?: string
+  /**
+   * Which quick presets to offer. Omit for the full dashboard list.
+   *
+   * The list pages pass a four-chip subset (`LIST_PRESETS`), and attendance
+   * passes its own month-oriented set (`MONTH_PRESETS`). `RANGE_PRESETS` stays
+   * the default so the dashboard - which has charts to draw and so genuinely
+   * benefits from 30/90-day and this-year windows - is unchanged.
+   */
+  presets?: RangePreset[]
 }
 
 /**
@@ -15,7 +24,7 @@ interface DateRangePickerProps {
  * Native inputs are used on purpose — their calendar popup is OS-handled and
  * cannot break the dashboard theme or throw chart-sizing errors.
  */
-export default function DateRangePicker({ value, onChange, className }: DateRangePickerProps) {
+export default function DateRangePicker({ value, onChange, className, presets = RANGE_PRESETS }: DateRangePickerProps) {
   const [open, setOpen] = useState(false)
   const [draftStart, setDraftStart] = useState(value.start)
   const [draftEnd, setDraftEnd] = useState(value.end)
@@ -111,7 +120,7 @@ export default function DateRangePicker({ value, onChange, className }: DateRang
             </label>
           </div>
           <div className="mt-2 flex flex-wrap gap-1.5">
-            {RANGE_PRESETS.map(p => (
+            {presets.map(p => (
               <button
                 key={p.id}
                 type="button"

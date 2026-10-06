@@ -45,7 +45,7 @@ class AuthService {
     } catch (e) {
       final msg = e.toString();
       if (msg.contains('Invalid login credentials')) {
-        throw Exception('Wrong password. Use Welcome123!');
+        throw Exception('Invalid code or password. Please try again.');
       }
       rethrow;
     }

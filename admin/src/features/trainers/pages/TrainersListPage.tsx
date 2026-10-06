@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import PeopleTable, { peopleCells, type PeopleColumn } from '@/components/PeopleTable'
 import PaginationFooter from '@/components/PaginationFooter'
 import ListToolbar from '@/components/ListToolbar'
+import { allTime, isAllTime, type Range } from '@/features/dashboard/lib/dateRange'
 import { useFitRowHeight } from '@/hooks/useFitRows'
 import { useTrainersList, LIST_PAGE_SIZE } from '@/lib/listHooks'
 import { useResetPageOnChange } from '@/lib/pagedTable'
@@ -18,25 +19,27 @@ export default function TrainersListPage() {
 
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
-  const [from, setFrom] = useState<string | undefined>()
-  const [to, setTo] = useState<string | undefined>()
+  // The hire-date window, opened on the whole dataset - see the same note in
+  // MembersListPage for why "no filter" is expressed as `isAllTime` rather than
+  // a pair of undefined bounds.
+  const [range, setRange] = useState<Range>(() => allTime())
 
-  const { rows, total, pageCount, isLoading } = useTrainersList({ page, pageSize: LIST_PAGE_SIZE, search, from, to })
+  const all = isAllTime(range)
+  const { rows, total, pageCount, isLoading } = useTrainersList({
+    page, pageSize: LIST_PAGE_SIZE, search,
+    from: all ? undefined : range.start,
+    to: all ? undefined : range.end,
+  })
   // Fifteen rows is the contract; the height of one of them is what gives.
   const [scrollRef, rowHeight] = useFitRowHeight<HTMLDivElement>({ count: LIST_PAGE_SIZE })
-  useResetPageOnChange(setPage, search, from, to)
+  useResetPageOnChange(setPage, search, range.start, range.end)
 
   const columns: PeopleColumn<Profile>[] = [
     {
       key: 'name',
       header: 'Name',
       render: t => (
-        <span className="flex items-center gap-2.5">
-          <span className="w-7 h-7 rounded-full bg-gradient-to-br from-[#22C55E]/30 to-[#4ADE80]/30 flex items-center justify-center shrink-0">
-            <span className="text-[11px] font-bold text-accent-green">{t.full_name.charAt(0)}</span>
-          </span>
-          <span className="font-medium text-fg-strong">{t.full_name}</span>
-        </span>
+        <span className="font-medium text-fg-strong">{t.full_name}</span>
       ),
     },
     { key: 'code', header: 'Code', render: t => peopleCells.code(t.code) },
@@ -163,12 +166,10 @@ export default function TrainersListPage() {
 
   return (
     <div className="h-full min-h-0 flex flex-col gap-3">
-      <ListToolbar
-        from={from}
-        to={to}
-        onDateRangeChange={(a, b) => { setFrom(a); setTo(b) }}
-        dateLabel="Hired"
-      >
+      {/* The date filter sits immediately BESIDE the action button, both
+          right-aligned - one row, one cluster, the way the dashboard pins its
+          range pill opposite the title. */}
+      <ListToolbar range={range} onRangeChange={setRange}>
         <button onClick={() => setShowModal(true)}
           className="px-4 py-2 bg-[#7C3AED] text-white rounded-xl hover:bg-[#6D28D9] text-sm shrink-0 cursor-pointer">
           + Create Trainer

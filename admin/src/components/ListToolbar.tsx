@@ -1,93 +1,60 @@
-import { useState } from 'react'
-import { X, Calendar } from 'lucide-react'
+import DateRangePicker from '@/components/DateRangePicker'
+import { LIST_PRESETS, type Range, type RangePreset } from '@/features/dashboard/lib/dateRange'
 
 /**
  * The strip of page-level controls that sits ABOVE the list card, shared by the
- * members, trainers and memberships pages so all three read identically.
+ * members, trainers, memberships, attendance, coach-feedback, predictions and
+ * notifications pages so all of them read identically.
  *
- * It used to own the search box too. It does not any more: the search now lives
- * in the card's own header, where the QR queue and every dashboard tab have
- * always kept theirs, so a reader moving between pages finds the box in the same
- * place on all of them. The debounce moved with it, into `PeopleTable` - it is
- * still there for the same reason (one PostgREST round trip per word, not per
- * character), just owned by the component that now renders the input.
+ * One row, three slots. `left` is pinned to the start: the memberships tab
+ * strip uses it, and so does Coach Feedback, which puts its rating KPI card
+ * there so the card and the date filter share one line instead of the card
+ * sitting alone and centred above the filter. Everything else - the date-range
+ * filter and the page's action button - collects in a right-aligned cluster,
+ * which is where an admin's eye already goes for controls on every one of these
+ * pages.
  *
- * What is left here is what has no home inside a table card: the date-range
- * filter and the page's one action button.
+ * It used to own a "Joined" / "Hired" toggle button that revealed two raw date
+ * inputs inline. That is gone: it was a second, plainer spelling of the
+ * dashboard's own picker, it had no presets, and it left the popover's
+ * `absolute right-0` anchoring to fight an input that sat in normal flow. Every
+ * page now uses `DateRangePicker`, so the start/end inputs, the preset chips
+ * and the "Apply range" button are literally the same code the dashboard's
+ * charts are filtered by.
+ *
+ * The search box is not here either - it lives in each table's own card header,
+ * beside the title, which is where the QR queue and every dashboard tab have
+ * always kept theirs.
  */
 export interface ListToolbarProps {
-  /** 'YYYY-MM-DD' inclusive bounds, or undefined for "no filter". */
-  from?: string
-  to?: string
-  onDateRangeChange?: (from: string | undefined, to: string | undefined) => void
-  /** What the date bound applies to, e.g. "Joined" — used in the label. */
-  dateLabel?: string
-  /** Extra controls rendered on the right (a page action button). */
+  /** Control pinned left (e.g. the memberships tab strip). */
+  left?: React.ReactNode
+  /** The selected window. Omit together with `onRangeChange` for no date control. */
+  range?: Range
+  onRangeChange?: (range: Range) => void
+  /**
+   * Preset chips inside the picker's popover. Defaults to `LIST_PRESETS`
+   * (Today / Last 7 days / This month / All time), which is right for a table
+   * of rows; attendance passes `MONTH_PRESETS` because a gym reads check-ins a
+   * month at a time.
+   */
+  presets?: RangePreset[]
+  /** The page's action button(s), rendered after the date control. */
   children?: React.ReactNode
 }
 
 export default function ListToolbar({
-  from, to, onDateRangeChange, dateLabel = 'Date', children,
+  left, range, onRangeChange, presets = LIST_PRESETS, children,
 }: ListToolbarProps) {
-  const [showDates, setShowDates] = useState(Boolean(from || to))
-
-  const hasDates = Boolean(from || to)
-  const change = (next: { from?: string; to?: string }) => onDateRangeChange?.(next.from, next.to)
-
   return (
     <div className="flex flex-wrap items-center gap-2 shrink-0">
-      {onDateRangeChange && (
-        <>
-          <button
-            type="button"
-            onClick={() => { setShowDates(v => !v); if (showDates) change({}) }}
-            aria-pressed={showDates}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm border transition-colors cursor-pointer ${
-              hasDates
-                ? 'border-[#7C3AED]/60 text-fg-strong bg-[#7C3AED]/10'
-                : 'bg-overlay-8 border-line text-fg-muted hover:border-fg-muted'
-            }`}
-          >
-            <Calendar className="w-4 h-4" />
-            {dateLabel}
-            {hasDates && <span className="text-[11px] text-fg-muted">· {from || '…'} → {to || '…'}</span>}
-          </button>
-
-          {showDates && (
-            <div className="flex items-center gap-2">
-              <input
-                type="date"
-                value={from ?? ''}
-                max={to}
-                onChange={e => change({ from: e.target.value || undefined, to })}
-                aria-label={`${dateLabel} from`}
-                className="px-2.5 py-2 glass-input rounded-xl text-sm text-fg-strong focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50"
-              />
-              <span className="text-fg-faint text-sm">→</span>
-              <input
-                type="date"
-                value={to ?? ''}
-                min={from}
-                onChange={e => change({ from, to: e.target.value || undefined })}
-                aria-label={`${dateLabel} to`}
-                className="px-2.5 py-2 glass-input rounded-xl text-sm text-fg-strong focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50"
-              />
-              {hasDates && (
-                <button
-                  type="button"
-                  onClick={() => change({})}
-                  aria-label="Clear date filter"
-                  className="p-1.5 rounded-lg glass-chip cursor-pointer hover:border-[#7C3AED]/50"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-          )}
-        </>
-      )}
-
-      <div className="flex items-center gap-2 ml-auto">{children}</div>
+      {left}
+      <div className="flex items-center gap-2 ml-auto">
+        {range && onRangeChange && (
+          <DateRangePicker value={range} onChange={onRangeChange} presets={presets} />
+        )}
+        {children}
+      </div>
     </div>
   )
 }

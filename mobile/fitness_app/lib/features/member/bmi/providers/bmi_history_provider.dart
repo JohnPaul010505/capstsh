@@ -1,9 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared/providers/auth_provider.dart';
 import 'package:shared/providers/body_measurement_provider.dart';
 import 'package:shared/services/supabase_client.dart';
 import '../data/bmi_info.dart';
 
-final latestBmiProvider = FutureProvider<BmiInfo?>((ref) async {
+final latestBmiProvider = FutureProvider.autoDispose<BmiInfo?>((ref) async {
   final measurement = await ref.watch(latestBodyMeasurementProvider.future);
   if (measurement == null) return null;
   return bmiFromMeasurement(
@@ -16,10 +17,17 @@ final latestBmiProvider = FutureProvider<BmiInfo?>((ref) async {
 
 /// Full BMI history for the current member, oldest first. Each point comes
 /// from one `body_measurements` row (onboarding seeds the first one).
-final bmiHistoryProvider = FutureProvider<List<BmiInfo>>((ref) async {
-  final userId = SupabaseClientService().client.auth.currentUser!.id;
-  final rows = await SupabaseClientService()
-      .client
+///
+/// User-scoped: watches [activeUserIdProvider] so a trainer -> member account
+/// switch on the same device disposes the previous user's rows.
+final bmiHistoryProvider = FutureProvider.autoDispose<List<BmiInfo>>((ref) async {
+  final client = SupabaseClientService().client;
+  final userId = ref.watch(activeUserIdProvider);
+  final authUid = client.auth.currentUser?.id;
+  if (userId == null || authUid == null || userId != authUid) {
+    throw Exception('Signed out — please log in again.');
+  }
+  final rows = await client
       .from('body_measurements')
       .select('height_cm, weight_kg, measured_at')
       .eq('member_id', userId)
@@ -39,10 +47,18 @@ final bmiHistoryProvider = FutureProvider<List<BmiInfo>>((ref) async {
 
 /// Raw `body_measurements` rows for the current member, newest first. Used by
 /// the BMI history list (date, weight, height, BMI, delete).
-final bmiRawRowsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
-  final userId = SupabaseClientService().client.auth.currentUser!.id;
-  final rows = await SupabaseClientService()
-      .client
+///
+/// User-scoped: watches [activeUserIdProvider] so a trainer -> member account
+/// switch on the same device disposes the previous user's rows.
+final bmiRawRowsProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  final client = SupabaseClientService().client;
+  final userId = ref.watch(activeUserIdProvider);
+  final authUid = client.auth.currentUser?.id;
+  if (userId == null || authUid == null || userId != authUid) {
+    throw Exception('Signed out — please log in again.');
+  }
+  final rows = await client
       .from('body_measurements')
       .select('id, height_cm, weight_kg, measured_at')
       .eq('member_id', userId)

@@ -36,11 +36,18 @@ class WorkoutPage extends ConsumerStatefulWidget {
 class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingObserver {
   bool _showPrevCards = false;
   bool _showCompletionMessage = false;
+  String? _accountId;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _accountId = SupabaseClientService().client.auth.currentUser?.id;
+    // New calendar day starts blank: yesterday's in-progress input is dropped
+    // here (history stays in workout_logs / calendar views).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.read(workoutSessionProvider.notifier).checkDayRollover();
+    });
   }
 
   @override
@@ -66,6 +73,9 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
     if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
       // App going to background — persist any in-progress exercises.
       ref.read(workoutSessionProvider.notifier).persistSession().then((_) {});
+    } else if (state == AppLifecycleState.resumed) {
+      // Foreground after midnight: drop yesterday's input, keep DB history.
+      ref.read(workoutSessionProvider.notifier).checkDayRollover();
     }
   }
 
@@ -112,6 +122,17 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
 
   @override
   Widget build(BuildContext context) {
+    // Account changed (trainer -> member on the same device): drop the
+    // previous user's in-progress input. DB history is untouched.
+    final currentId = SupabaseClientService().client.auth.currentUser?.id;
+    if (currentId != null && currentId != _accountId) {
+      _accountId = currentId;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ref.read(workoutSessionProvider.notifier).clearOnAccountSwitch();
+        }
+      });
+    }
     final session = ref.watch(workoutSessionProvider);
     final notifier = ref.read(workoutSessionProvider.notifier);
     final isRunning = session.isRunning;

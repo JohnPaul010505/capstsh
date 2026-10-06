@@ -1,11 +1,16 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared/providers/auth_provider.dart';
 import 'package:shared/services/supabase_client.dart';
 import 'package:shared/models/workout_log.dart';
 
 final workoutHistoryProvider = FutureProvider.autoDispose
     .family<Map<String, List<WorkoutLog>>, DateTime>((ref, date) async {
   final client = SupabaseClientService().client;
-  final userId = client.auth.currentUser!.id;
+  final userId = ref.watch(activeUserIdProvider);
+  final authUid = client.auth.currentUser?.id;
+  if (userId == null || authUid == null || userId != authUid) {
+    throw Exception('Signed out — please log in again.');
+  }
 
   final startOfDay = DateTime(date.year, date.month, date.day);
   final endOfDay = DateTime(date.year, date.month, date.day + 1);
