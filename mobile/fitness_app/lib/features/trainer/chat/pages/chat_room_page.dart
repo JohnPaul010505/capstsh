@@ -67,9 +67,33 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage> {
           .select()
           .eq('room_id', widget.roomId)
           .order('created_at', ascending: true);
+      // Same assignment-boundary rule as the member side: hide anything
+      // predating the member's current active assignment (never deleted).
+      DateTime? cutoff;
+      if (otherId != null) {
+        try {
+          final assignment = await client
+              .from('trainer_assignments')
+              .select('assigned_at')
+              .eq('member_id', otherId)
+              .eq('status', 'active')
+              .order('assigned_at', ascending: false)
+              .limit(1);
+          if ((assignment as List).isNotEmpty) {
+            cutoff = DateTime.tryParse(
+                (assignment as List)[0]['assigned_at']?.toString() ?? '');
+          }
+        } catch (_) {}
+      }
       if (mounted) {
         setState(() {
-          _messages = (response as List).cast<Map<String, dynamic>>();
+          final all = (response as List).cast<Map<String, dynamic>>();
+          _messages = cutoff == null
+              ? all
+              : all.where((m) {
+                  final t = DateTime.tryParse(m['created_at']?.toString() ?? '');
+                  return t == null || !t.isBefore(cutoff!);
+                }).toList();
           _loading = false;
         });
         _scrollToBottom();

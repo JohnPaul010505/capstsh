@@ -16,14 +16,16 @@ final trainerChatProvider = FutureProvider.autoDispose<Map<String, dynamic>?>((
 
   final assignment = await client
       .from('trainer_assignments')
-      .select('trainer_id')
+      .select('trainer_id, assigned_at')
       .eq('member_id', userId)
       .eq('status', 'active')
+      .order('assigned_at', ascending: false)
       .limit(1);
 
   if ((assignment as List).isEmpty) return null;
 
   final trainerId = assignment[0]['trainer_id'] as String;
+  final assignedAt = assignment[0]['assigned_at'] as String?;
 
   final trainerResp = await client
       .from('profiles')
@@ -45,7 +47,7 @@ final trainerChatProvider = FutureProvider.autoDispose<Map<String, dynamic>?>((
     roomId = existingRoom[0]['id'] as String;
   }
 
-  return {'trainer': trainer, 'trainerId': trainerId, 'roomId': roomId};
+  return {'trainer': trainer, 'trainerId': trainerId, 'roomId': roomId, 'assignedAt': assignedAt};
 });
 
 class ChatPage extends ConsumerStatefulWidget {
@@ -62,6 +64,9 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   bool _loadingMessages = true;
   String? _roomId;
   String? _trainerId;
+  // Start of the current assignment: messages predating it belong to a
+  // previous trainer and are hidden (never deleted).
+  DateTime? _assignedAt;
 
   @override
   void initState() {
@@ -75,6 +80,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
 
     _trainerId = data['trainerId'] as String?;
     _roomId = data['roomId'] as String?;
+    final assignedRaw = data['assignedAt'] as String?;
+    _assignedAt = assignedRaw == null ? null : DateTime.tryParse(assignedRaw);
 
     if (_roomId != null) {
       await _loadMessages();
@@ -95,7 +102,16 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           .order('created_at', ascending: true);
       if (mounted) {
         setState(() {
-          _messages = (response as List).cast<Map<String, dynamic>>();
+          final all = (response as List).cast<Map<String, dynamic>>();
+          // Hide anything predating the current assignment (>= keeps
+          // messages sent exactly at the assignment second).
+          final cutoff = _assignedAt;
+          _messages = cutoff == null
+              ? all
+              : all.where((m) {
+                  final t = DateTime.tryParse(m['created_at']?.toString() ?? '');
+                  return t == null || !t.isBefore(cutoff);
+                }).toList();
           _loadingMessages = false;
         });
       }
