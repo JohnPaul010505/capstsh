@@ -72,6 +72,7 @@ class _KpiCard extends StatelessWidget {
       rx: 14,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             width: 28,
@@ -275,12 +276,15 @@ class _KpiGrid extends StatelessWidget {
     for (var i = 0; i < cards.length; i += 2) {
       if (i > 0) rows.add(const SizedBox(height: 8));
       rows.add(
-        Row(
-          children: [
-            Expanded(child: cards[i]),
-            const SizedBox(width: 8),
-            if (i + 1 < cards.length) Expanded(child: cards[i + 1]),
-          ],
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(child: cards[i]),
+              const SizedBox(width: 8),
+              if (i + 1 < cards.length) Expanded(child: cards[i + 1]),
+            ],
+          ),
         ),
       );
     }
