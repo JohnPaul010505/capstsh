@@ -8,41 +8,56 @@ import '../../../shared/widgets/skeleton.dart';
 import '../../../shared/widgets/app_glow_background.dart';
 import '../../../shared/widgets/clay/clay_avatar.dart';
 
-final chatRoomsWithProfilesProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+/// One row per ACTIVELY assigned member, room attached when it exists.
+/// Members with no room yet (never messaged) still appear; tapping their
+/// row creates the room on demand. Rooms of non-assigned members are hidden
+/// (consistent with the assignment-boundary reset).
+final trainerConversationsProvider =
+    FutureProvider<List<Map<String, dynamic>>>((ref) async {
   final client = SupabaseClientService().client;
   final userId = client.auth.currentUser!.id;
 
-  final rooms = await client
-      .from('chat_rooms')
-      .select()
-      .or('participant_one.eq.$userId,participant_two.eq.$userId')
-      .order('created_at', ascending: false);
+  final results = await Future.wait([
+    client
+        .from('trainer_assignments')
+        .select('member_id, profiles!trainer_assignments_member_id_fkey(id, full_name, avatar_url, code)')
+        .eq('trainer_id', userId)
+        .eq('status', 'active'),
+    client
+        .from('chat_rooms')
+        .select('id, participant_one, participant_two')
+        .or('participant_one.eq.$userId,participant_two.eq.$userId'),
+  ]);
+  final assignments = (results[0] as List).cast<Map<String, dynamic>>();
+  final rooms = (results[1] as List).cast<Map<String, dynamic>>();
 
-  final roomList = (rooms as List).cast<Map<String, dynamic>>();
-  final result = <Map<String, dynamic>>[];
-
-  for (final room in roomList) {
-    final otherId = (room['participant_one'] as String?) == userId
-        ? room['participant_two'] as String?
-        : room['participant_one'] as String?;
-    if (otherId == null) continue;
-
-    try {
-      final profile = await client
-          .from('profiles')
-          .select('id, full_name, avatar_url')
-          .eq('id', otherId)
-          .single();
-      result.add({
-        'roomId': room['id'] as String,
-        'memberId': otherId,
-        'full_name': profile['full_name'] as String? ?? 'Unknown',
-        'avatar_url': profile['avatar_url'] as String?,
-      });
-    } catch (_) {}
+  String? roomIdFor(String memberId) {
+    for (final r in rooms) {
+      final p1 = r['participant_one'] as String?;
+      final p2 = r['participant_two'] as String?;
+      if ((p1 == userId && p2 == memberId) ||
+          (p1 == memberId && p2 == userId)) {
+        return r['id'] as String;
+      }
+    }
+    return null;
   }
 
-  return result;
+  final rows = <Map<String, dynamic>>[];
+  for (final a in assignments) {
+    final p = a['profiles'] as Map<String, dynamic>?;
+    if (p == null) continue;
+    final mid = (p['id'] ?? a['member_id']) as String;
+    rows.add({
+      'memberId': mid,
+      'full_name': p['full_name'] as String? ?? 'Unknown',
+      'avatar_url': p['avatar_url'] as String?,
+      'roomId': roomIdFor(mid),
+    });
+  }
+  rows.sort(
+      (x, y) => (x['full_name'] as String).compareTo(y['full_name'] as String));
+  return rows;
 });
 
 class ChatListPage extends ConsumerStatefulWidget {
@@ -55,7 +70,7 @@ class ChatListPage extends ConsumerStatefulWidget {
 class _ChatListPageState extends ConsumerState<ChatListPage> {
   @override
   Widget build(BuildContext context) {
-    final roomsAsync = ref.watch(chatRoomsWithProfilesProvider);
+    final roomsAsync = ref.watch(trainerConversationsProvider);
 
     return Scaffold(
       backgroundColor: ClayTokens.clayDarkBase,
@@ -91,7 +106,31 @@ class _ChatListPageState extends ConsumerState<ChatListPage> {
                          return Semantics(
                            label: 'Chat with $name',
                            child: GestureDetector(
-                             onTap: () => context.push('/trainer/chat/${r['roomId']}'),
+                             onTap: () async {
+                               // Room exists: open it. Otherwise create it on
+                               // demand so every assigned member is reachable.
+                               final existing = r['roomId'] as String?;
+                               if (existing != null) {
+                                 context.push('/trainer/chat/$existing');
+                                 return;
+                               }
+                               final client = SupabaseClientService().client;
+                               final me = client.auth.currentUser!.id;
+                               final mid = r['memberId'] as String;
+                               final inserted = await client
+                                   .from('chat_rooms')
+                                   .insert({
+                                     'participant_one': me,
+                                     'participant_two': mid,
+                                   })
+                                   .select('id')
+                                   .single();
+                               ref.invalidate(trainerConversationsProvider);
+                               if (context.mounted) {
+                                 context.push(
+                                     '/trainer/chat/${inserted['id']}');
+                               }
+                             },
                              child: Container(
                                padding: const EdgeInsets.all(12),
                                margin: const EdgeInsets.only(bottom: 8),
