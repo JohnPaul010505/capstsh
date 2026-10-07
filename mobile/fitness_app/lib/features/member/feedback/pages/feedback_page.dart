@@ -12,15 +12,23 @@ import '../../../shared/widgets/clay/clay_card.dart';
 
 /// Feedback the trainer has written for this member (Figure 20), newest first.
 /// The trainer's name is embedded through the trainer_id foreign key.
+///
+/// Scoped to the CURRENT trainer only: the active assignment is resolved
+/// first, so after an admin reassignment the old trainer's rows stay in the
+/// DB but no longer show here. No active trainer means an empty list.
 final trainerFeedbackProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
   final userId = SupabaseClientService().client.auth.currentUser!.id;
-  final response = await SupabaseClientService()
+  final assignment = await SupabaseClientService()
       .client
-      .from('trainer_feedback')
-      .select('*, trainer:profiles!trainer_feedback_trainer_id_fkey(full_name)')
+      .from('trainer_assignments')
+      .select('trainer_id')
       .eq('member_id', userId)
-      .order('created_at', ascending: false);
-  return (response as List).cast<Map<String, dynamic>>();
+      .eq('status', 'active')
+      .order('assigned_at', ascending: false)
+      .limit(1);
+  if ((assignment as List).isEmpty) return <Map<String, dynamic>>[];
+  final trainerId = (assignment as List)[0]['trainer_id'] as String;
+  return FeedbackService().getFeedbackWithTrainer(userId, trainerId: trainerId);
 });
 
 class FeedbackPage extends ConsumerStatefulWidget {
@@ -36,6 +44,35 @@ class _FeedbackPageState extends ConsumerState<FeedbackPage> {
   String? _editingId;
   // The feedback id with a save in flight.
   String? _commentSaving;
+  // Refresh-on-return: the shell keeps this page alive, so a router listener
+  // refetches when coming back (e.g. after tapping a new-feedback
+  // notification) while cached rows render instantly.
+  GoRouter? _router;
+  bool _wasFeedback = true;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_router == null) {
+      _router = GoRouter.of(context);
+      _router!.routerDelegate.addListener(_onRouteChanged);
+    }
+  }
+
+  void _onRouteChanged() {
+    final isFeedback =
+        _router!.routerDelegate.currentConfiguration.uri.path == '/member/feedback';
+    if (isFeedback && !_wasFeedback && mounted) {
+      ref.invalidate(trainerFeedbackProvider);
+    }
+    _wasFeedback = isFeedback;
+  }
+
+  @override
+  void dispose() {
+    _router?.routerDelegate.removeListener(_onRouteChanged);
+    super.dispose();
+  }
 
   /// The member's single comment on a piece of the trainer's feedback.
   ///

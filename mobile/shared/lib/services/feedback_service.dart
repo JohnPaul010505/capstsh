@@ -27,12 +27,21 @@ class FeedbackService {
 
   /// Feedback rows addressed to [memberId], with the trainer's name embedded
   /// (Figure 20: the Member views the feedback of the trainer).
-  Future<List<Map<String, dynamic>>> getFeedbackWithTrainer(String memberId) async {
-    final response = await _client
+  ///
+  /// Pass [trainerId] to scope to the CURRENT trainer only: after an admin
+  /// reassignment, old trainers' rows stay in the DB but are hidden here.
+  Future<List<Map<String, dynamic>>> getFeedbackWithTrainer(
+    String memberId, {
+    String? trainerId,
+  }) async {
+    dynamic query = _client
         .from('trainer_feedback')
         .select('*, trainer:profiles!trainer_feedback_trainer_id_fkey(full_name)')
-        .eq('member_id', memberId)
-        .order('created_at', ascending: false);
+        .eq('member_id', memberId);
+    if (trainerId != null) {
+      query = query.eq('trainer_id', trainerId);
+    }
+    final response = await query.order('created_at', ascending: false);
     return (response as List).cast<Map<String, dynamic>>();
   }
 
