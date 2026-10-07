@@ -168,6 +168,15 @@ app.post('/api/assign-trainer', async (req, res) => {
   }
 
   try {
+    // End any other active assignment for this member first, so exactly one
+    // active row per member survives. Old rows stay for history.
+    const { error: endError } = await adminClient
+      .from('trainer_assignments')
+      .update({ status: 'ended', ended_at: new Date().toISOString() })
+      .eq('member_id', member_id)
+      .eq('status', 'active')
+    if (endError) throw endError
+
     const { data, error } = await adminClient
       .from('trainer_assignments')
       .insert({ trainer_id, member_id, status: 'active' })
