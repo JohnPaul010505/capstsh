@@ -8,6 +8,7 @@ import 'package:shared/services/supabase_client.dart';
 import 'package:shared/services/notification_service.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../shared/widgets/app_glow_background.dart';
+import '../../../shared/widgets/glass_card.dart';
 import '../../../shared/widgets/pressable.dart';
 import '../../../../features/member/workout/data/met_exercise_repository.dart';
 
@@ -240,6 +241,10 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
     final reps = repsController.text.trim();
     final weight = weightController.text.trim();
     if (name.isEmpty || sets.isEmpty || reps.isEmpty) return;
+    // Numbers only — letters never reach the plan (the training section also
+    // surfaces a visible error before calling this).
+    if (int.tryParse(sets) == null || int.tryParse(reps) == null) return;
+    if (weight.isNotEmpty && double.tryParse(weight) == null) return;
 
     setState(() {
       exercisesByDay.putIfAbsent(_currentDay, () => []).add({
@@ -286,13 +291,9 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
                 child: ListView(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                   children: [
-                    Container(
+                    GlassPanel(
                       padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: ClayTokens.clayPrimaryLight.withAlpha(25),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.white.withAlpha(18)),
-                      ),
+                      borderRadius: BorderRadius.circular(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -345,9 +346,9 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: ClayTokens.clayPrimaryLight.withAlpha(25),
+                                color: Colors.white.withAlpha(10),
                                 borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.white.withAlpha(18)),
+                                border: Border.all(color: Colors.white.withAlpha(28)),
                               ),
                               child: Row(
                                 children: [
@@ -508,12 +509,12 @@ class _DaySelector extends StatelessWidget {
               borderColor = const Color(0xFF7C3AED).withAlpha(200);
               textColor = Colors.white;
             } else if (isSelected) {
-              backgroundColor = ClayTokens.clayDarkSurfaceElevated;
+              backgroundColor = Colors.white.withAlpha(14);
               borderColor = ClayTokens.clayPrimary;
               textColor = ClayTokens.clayPrimary;
             } else {
-              backgroundColor = ClayTokens.clayDarkSurfaceElevated;
-              borderColor = Colors.white.withAlpha(18);
+              backgroundColor = Colors.white.withAlpha(14);
+              borderColor = Colors.white.withAlpha(30);
               textColor = ClayTokens.clayDarkTextSecondary;
             }
 
@@ -560,8 +561,18 @@ class _ClientSection extends StatelessWidget {
     required this.onChanged,
   });
 
+  String? get _selectedName {
+    for (final member in members) {
+      if (member['id'] == selectedClient) {
+        return member['full_name'] as String?;
+      }
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final name = _selectedName;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -575,18 +586,216 @@ class _ClientSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 10),
-        DropdownField<String>(
-          value: selectedClient,
-          fillColor: ClayTokens.clayDarkSurfaceElevated,
-          items: members.map((member) {
-            final name = member['full_name'] as String? ?? '';
-            final id = member['id'] as String? ?? '';
-            return DropdownItem<String>(label: name, value: id);
-          }).toList(),
-          onChanged: onChanged,
-          placeholder: 'Select Client',
+        GestureDetector(
+          onTap: () => _openMemberPicker(context),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            decoration: BoxDecoration(
+              color: Colors.white.withAlpha(14),
+              borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
+              border: Border.all(color: Colors.white.withAlpha(30)),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  CupertinoIcons.search,
+                  size: 16,
+                  color: Color(0xFF8E8E93),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    name ?? 'Search & select a member',
+                    style: ClayTokens.darkBodyMedium.copyWith(
+                      color: name != null
+                          ? ClayTokens.clayDarkTextPrimary
+                          : ClayTokens.clayDarkTextTertiary,
+                    ),
+                  ),
+                ),
+                Icon(
+                  CupertinoIcons.chevron_down,
+                  size: 16,
+                  color: ClayTokens.clayDarkTextTertiary,
+                ),
+              ],
+            ),
+          ),
         ),
       ],
+    );
+  }
+
+  Future<void> _openMemberPicker(BuildContext context) async {
+    final picked = await showDialog<String>(
+      context: context,
+      builder: (_) => _MemberPickerDialog(
+        members: members,
+        selected: selectedClient,
+      ),
+    );
+    if (picked != null) onChanged(picked);
+  }
+}
+
+/// Searchable member picker: type-ahead over the trainer's assigned members,
+/// rendered as a glass dialog — tap a row to select it.
+class _MemberPickerDialog extends StatefulWidget {
+  final List<Map<String, dynamic>> members;
+  final String? selected;
+
+  const _MemberPickerDialog({required this.members, this.selected});
+
+  @override
+  State<_MemberPickerDialog> createState() => _MemberPickerDialogState();
+}
+
+class _MemberPickerDialogState extends State<_MemberPickerDialog> {
+  final _searchController = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final q = _query.trim().toLowerCase();
+    final filtered = q.isEmpty
+        ? widget.members
+        : widget.members.where((m) {
+            final name = (m['full_name'] as String? ?? '').toLowerCase();
+            return name.contains(q);
+          }).toList();
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+      child: GlassPanel(
+        padding: const EdgeInsets.all(14),
+        borderRadius: BorderRadius.circular(18),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Select member',
+              style: ClayTokens.darkBodyMedium.copyWith(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _searchController,
+              autofocus: true,
+              onChanged: (v) => setState(() => _query = v),
+              decoration: InputDecoration(
+                hintText: 'Search members…',
+                hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF7070A0)),
+                prefixIcon: const Icon(
+                  Icons.search,
+                  size: 18,
+                  color: Color(0xFF7070A0),
+                ),
+                filled: true,
+                fillColor: Colors.white.withAlpha(14),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.white.withAlpha(30)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFFA78BFA)),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
+              ),
+              style: const TextStyle(fontSize: 13, color: Colors.white),
+            ),
+            const SizedBox(height: 10),
+            if (filtered.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Text(
+                  'No members match "$_query"',
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF8E8E93)),
+                ),
+              )
+            else
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 300),
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: filtered.length,
+                  itemBuilder: (_, i) {
+                    final member = filtered[i];
+                    final id = member['id'] as String? ?? '';
+                    final name = member['full_name'] as String? ?? 'Unknown';
+                    final isSelected = id == widget.selected;
+                    return InkWell(
+                      onTap: () => Navigator.pop(context, id),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? ClayTokens.clayPrimary.withAlpha(35)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                name,
+                                style: ClayTokens.darkBodyMedium.copyWith(
+                                  fontWeight: isSelected
+                                      ? FontWeight.w700
+                                      : FontWeight.w400,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : ClayTokens.clayDarkTextSecondary,
+                                ),
+                              ),
+                            ),
+                            if (isSelected)
+                              const Icon(
+                                CupertinoIcons.checkmark_circle_fill,
+                                size: 18,
+                                color: Color(0xFFA78BFA),
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerRight,
+              child: CupertinoButton(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                onPressed: () => Navigator.pop(context),
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(fontSize: 13, color: Color(0xFF8E8E93)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -648,9 +857,9 @@ class _NutritionSectionState extends State<_NutritionSection> {
         const SizedBox(height: 10),
         Container(
           decoration: BoxDecoration(
-            color: ClayTokens.clayPrimaryLight.withAlpha(25),
+            color: Colors.white.withAlpha(10),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withAlpha(18)),
+            border: Border.all(color: Colors.white.withAlpha(28)),
           ),
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -672,14 +881,14 @@ class _NutritionSectionState extends State<_NutritionSection> {
                                 ? ClayTokens.clayPrimary
                                 : isAdded
                                     ? ClayTokens.clayPrimary.withAlpha(40)
-                                    : ClayTokens.clayDarkSurfaceElevated,
+                                    : Colors.white.withAlpha(14),
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
                               color: isSelected
                                   ? ClayTokens.clayPrimary
                                   : isAdded
                                       ? ClayTokens.clayPrimary.withAlpha(120)
-                                      : Colors.white.withAlpha(18),
+                                      : Colors.white.withAlpha(30),
                             ),
                           ),
                         child: Center(
@@ -718,8 +927,9 @@ class _NutritionSectionState extends State<_NutritionSection> {
                       placeholderStyle: ClayTokens.darkBodyMedium.copyWith(color: ClayTokens.clayDarkTextTertiary),
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                       decoration: BoxDecoration(
-                        color: ClayTokens.clayDarkSurfaceElevated,
+                        color: Colors.white.withAlpha(14),
                         borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
+                        border: Border.all(color: Colors.white.withAlpha(30)),
                       ),
                       style: ClayTokens.darkBodyMedium,
                       cursorColor: ClayTokens.clayPrimary,
@@ -753,7 +963,7 @@ class _NutritionSectionState extends State<_NutritionSection> {
                 Container(
                   padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
                   decoration: BoxDecoration(
-                    color: ClayTokens.clayDarkSurfaceElevated,
+                    color: Colors.white.withAlpha(14),
                     borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
                   ),
                   child: Row(
@@ -785,24 +995,25 @@ class _NutritionSectionState extends State<_NutritionSection> {
                     margin: const EdgeInsets.only(bottom: 8),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF7C3AED),
+                      color: Colors.white.withAlpha(10),
                       borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
+                      border: Border.all(color: Colors.white.withAlpha(28)),
                     ),
                     child: Row(
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: ClayTokens.clayPrimary.withAlpha(25),
+                            color: Colors.white.withAlpha(20),
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: ClayTokens.clayPrimary.withAlpha(50)),
+                            border: Border.all(color: Colors.white.withAlpha(45)),
                           ),
                           child: Text(
                             _mealTypeLabel(mealType),
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
-                              color: ClayTokens.clayPrimaryLight,
+                              color: Colors.white,
                             ),
                           ),
                         ),
@@ -810,7 +1021,11 @@ class _NutritionSectionState extends State<_NutritionSection> {
                         Expanded(
                           child: Text(
                             food['name'] ?? '',
-                            style: const TextStyle(color: Colors.white),
+                            style: const TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                         CupertinoButton(
@@ -870,12 +1085,20 @@ class _TrainingSectionState extends State<_TrainingSection> {
   bool _isSearching = false;
   String _query = '';
   bool _showAddButton = false;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
     widget.nameController.addListener(_updateAddButtonVisibility);
+    widget.setsController.addListener(_clearNumericError);
+    widget.repsController.addListener(_clearNumericError);
+    widget.weightController.addListener(_clearNumericError);
     _updateAddButtonVisibility();
+  }
+
+  void _clearNumericError() {
+    if (_error != null && mounted) setState(() => _error = null);
   }
 
   @override
@@ -897,9 +1120,35 @@ class _TrainingSectionState extends State<_TrainingSection> {
   @override
   void dispose() {
     widget.nameController.removeListener(_updateAddButtonVisibility);
+    widget.setsController.removeListener(_clearNumericError);
+    widget.repsController.removeListener(_clearNumericError);
+    widget.weightController.removeListener(_clearNumericError);
     _searchController.dispose();
     _debounceTimer?.cancel();
     super.dispose();
+  }
+
+  /// Sets / reps must be positive whole numbers; weight (optional) may be a
+  /// decimal. Letters are rejected with a visible error and nothing is added.
+  String? _validateNumeric() {
+    final sets = widget.setsController.text.trim();
+    final reps = widget.repsController.text.trim();
+    final weight = widget.weightController.text.trim();
+    final setsValue = int.tryParse(sets);
+    final repsValue = int.tryParse(reps);
+    if (setsValue == null || setsValue <= 0) {
+      return 'Sets must be a whole number — letters are not allowed (e.g. 3).';
+    }
+    if (repsValue == null || repsValue <= 0) {
+      return 'Reps must be a whole number — letters are not allowed (e.g. 12).';
+    }
+    if (weight.isNotEmpty) {
+      final weightValue = double.tryParse(weight);
+      if (weightValue == null || weightValue < 0) {
+        return 'Weight must be a number — letters are not allowed (e.g. 20 or 12.5).';
+      }
+    }
+    return null;
   }
 
   void _onQueryChanged(String value) {
@@ -958,7 +1207,7 @@ class _TrainingSectionState extends State<_TrainingSection> {
         Container(
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
           decoration: BoxDecoration(
-            color: ClayTokens.clayDarkSurfaceElevated,
+            color: Colors.white.withAlpha(14),
             borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
           ),
           child: Row(
@@ -981,8 +1230,9 @@ class _TrainingSectionState extends State<_TrainingSection> {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: const Color(0xFF7C3AED),
+          color: Colors.white.withAlpha(10),
           borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
+          border: Border.all(color: Colors.white.withAlpha(28)),
         ),
         child: Row(
           children: [
@@ -992,12 +1242,17 @@ class _TrainingSectionState extends State<_TrainingSection> {
                 children: [
                   Text(
                     exercise['name'] ?? '',
-                    style: ClayTokens.darkBodyMedium.copyWith(fontWeight: FontWeight.w600),
+                    style: ClayTokens.darkBodyMedium.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     '${exercise['sets'] ?? 0} sets × ${exercise['reps'] ?? 0} reps${exercise['weight'] != null && exercise['weight'].toString().isNotEmpty ? ' • ${exercise['weight']} kg' : ''}',
-                    style: ClayTokens.darkBodySmall,
+                    style: ClayTokens.darkBodySmall.copyWith(
+                      color: ClayTokens.clayDarkTextSecondary,
+                    ),
                   ),
                 ],
               ),
@@ -1030,9 +1285,9 @@ class _TrainingSectionState extends State<_TrainingSection> {
         const SizedBox(height: 10),
         Container(
           decoration: BoxDecoration(
-            color: ClayTokens.clayPrimaryLight.withAlpha(25),
+            color: Colors.white.withAlpha(10),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withAlpha(18)),
+            border: Border.all(color: Colors.white.withAlpha(28)),
           ),
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -1049,7 +1304,7 @@ class _TrainingSectionState extends State<_TrainingSection> {
               const SizedBox(height: 8),
               DropdownField<String>(
                 value: widget.workoutType,
-                fillColor: ClayTokens.clayDarkSurfaceElevated,
+                fillColor: Colors.white.withAlpha(14),
                 items: widget.workoutTypes.map((type) {
                   return DropdownItem<String>(label: type, value: type);
                 }).toList(),
@@ -1065,10 +1320,10 @@ class _TrainingSectionState extends State<_TrainingSection> {
                   hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF7070A0)),
                   prefixIcon: const Icon(Icons.search, color: Color(0xFF7070A0), size: 18),
                   filled: true,
-                  fillColor: ClayTokens.clayDarkSurfaceElevated,
+                  fillColor: Colors.white.withAlpha(14),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF2A2A45)),
+                    borderSide: BorderSide(color: Colors.white.withAlpha(30)),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -1148,10 +1403,10 @@ class _TrainingSectionState extends State<_TrainingSection> {
                   hintText: 'Exercise name',
                   hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF7070A0)),
                   filled: true,
-                  fillColor: ClayTokens.clayDarkSurfaceElevated,
+                  fillColor: Colors.white.withAlpha(14),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF2A2A45)),
+                    borderSide: BorderSide(color: Colors.white.withAlpha(30)),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -1171,10 +1426,10 @@ class _TrainingSectionState extends State<_TrainingSection> {
                         hintText: 'Sets',
                         hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF7070A0)),
                         filled: true,
-                        fillColor: ClayTokens.clayDarkSurfaceElevated,
+                        fillColor: Colors.white.withAlpha(14),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFF2A2A45)),
+                          borderSide: BorderSide(color: Colors.white.withAlpha(30)),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -1194,10 +1449,10 @@ class _TrainingSectionState extends State<_TrainingSection> {
                         hintText: 'Reps',
                         hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF7070A0)),
                         filled: true,
-                        fillColor: ClayTokens.clayDarkSurfaceElevated,
+                        fillColor: Colors.white.withAlpha(14),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFF2A2A45)),
+                          borderSide: BorderSide(color: Colors.white.withAlpha(30)),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -1217,10 +1472,10 @@ class _TrainingSectionState extends State<_TrainingSection> {
                         hintText: 'Weight (kg)',
                         hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF7070A0)),
                         filled: true,
-                        fillColor: ClayTokens.clayDarkSurfaceElevated,
+                        fillColor: Colors.white.withAlpha(14),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFF2A2A45)),
+                          borderSide: BorderSide(color: Colors.white.withAlpha(30)),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -1234,6 +1489,13 @@ class _TrainingSectionState extends State<_TrainingSection> {
                   ),
                 ],
               ),
+              if (_error != null) ...[
+                const SizedBox(height: 6),
+                Text(
+                  _error!,
+                  style: const TextStyle(fontSize: 11, color: Color(0xFFFF453A)),
+                ),
+              ],
               const SizedBox(height: 10),
               if (_showAddButton)
                 CupertinoButton(
@@ -1241,8 +1503,16 @@ class _TrainingSectionState extends State<_TrainingSection> {
                   color: ClayTokens.clayPrimary,
                   borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
                   onPressed: () {
+                    final error = _validateNumeric();
+                    if (error != null) {
+                      setState(() => _error = error);
+                      return;
+                    }
                     widget.onAddExercise();
-                    setState(() => _showAddButton = false);
+                    setState(() {
+                      _error = null;
+                      _showAddButton = false;
+                    });
                   },
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -1297,9 +1567,9 @@ class _NotesSection extends StatelessWidget {
         const SizedBox(height: 10),
         Container(
           decoration: BoxDecoration(
-            color: ClayTokens.clayPrimaryLight.withAlpha(25),
+            color: Colors.white.withAlpha(10),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withAlpha(18)),
+            border: Border.all(color: Colors.white.withAlpha(28)),
           ),
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -1322,7 +1592,7 @@ class _NotesSection extends StatelessWidget {
                   hintText: 'Add instructions, rest days, intensity, or trainer notes...',
                   hintStyle: ClayTokens.darkBodyMedium.copyWith(color: ClayTokens.clayDarkTextTertiary),
                   filled: true,
-                  fillColor: ClayTokens.clayDarkSurfaceElevated,
+                  fillColor: Colors.white.withAlpha(14),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
                   ),
@@ -1480,7 +1750,9 @@ class _DropdownFieldState<T> extends State<DropdownField<T>> {
             color: widget.fillColor ?? ClayTokens.clayDarkBase,
             borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
             border: Border.all(
-              color: _open ? ClayTokens.clayPrimary.withAlpha(128) : Colors.transparent,
+              color: _open
+                  ? ClayTokens.clayPrimary.withAlpha(128)
+                  : Colors.white.withAlpha(30),
             ),
           ),
           child: Row(
@@ -1527,24 +1799,23 @@ class _DropdownMenu<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: Colors.transparent,
-      child: Container(
+      child: SizedBox(
         width: width,
-        decoration: BoxDecoration(
-          color: ClayTokens.clayDarkCard,
+        child: GlassPanel(
+          padding: EdgeInsets.zero,
           borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
-          border: Border.all(color: ClayTokens.clayPrimary.withAlpha(40)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: items
-              .map(
-                (item) => _MenuItem<T>(
-                  item: item,
-                  isSelected: item.value == value,
-                  onTap: () => onChanged(item.value),
-                ),
-              )
-              .toList(),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: items
+                .map(
+                  (item) => _MenuItem<T>(
+                    item: item,
+                    isSelected: item.value == value,
+                    onTap: () => onChanged(item.value),
+                  ),
+                )
+                .toList(),
+          ),
         ),
       ),
     );

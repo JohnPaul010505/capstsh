@@ -6,6 +6,7 @@ import 'package:shared/services/supabase_client.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../shared/widgets/app_glow_background.dart';
 import '../../../shared/widgets/clay/clay_avatar.dart';
+import '../../../shared/widgets/glass_card.dart';
 
 class ChatRoomPage extends ConsumerStatefulWidget {
   final String roomId;
@@ -81,7 +82,8 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage> {
               .limit(1);
           if ((assignment as List).isNotEmpty) {
             cutoff = DateTime.tryParse(
-                (assignment as List)[0]['assigned_at']?.toString() ?? '');
+              (assignment as List)[0]['assigned_at']?.toString() ?? '',
+            );
           }
         } catch (_) {}
       }
@@ -91,7 +93,9 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage> {
           _messages = cutoff == null
               ? all
               : all.where((m) {
-                  final t = DateTime.tryParse(m['created_at']?.toString() ?? '');
+                  final t = DateTime.tryParse(
+                    m['created_at']?.toString() ?? '',
+                  );
                   return t == null || !t.isBefore(cutoff!);
                 }).toList();
           _loading = false;
@@ -104,8 +108,7 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage> {
   }
 
   void _subscribe() {
-    _subscription = SupabaseClientService()
-        .client
+    _subscription = SupabaseClientService().client
         .from('chat_messages')
         .stream(primaryKey: ['id'])
         .eq('room_id', widget.roomId)
@@ -161,13 +164,22 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                 decoration: BoxDecoration(
-                  border: Border(bottom: BorderSide(color: ClayTokens.clayDarkBorder, width: 0.5)),
+                  border: Border(
+                    bottom: BorderSide(
+                      color: ClayTokens.clayDarkBorder,
+                      width: 0.5,
+                    ),
+                  ),
                 ),
                 child: Row(
                   children: [
                     GestureDetector(
                       onTap: () => Navigator.pop(context),
-                      child: Icon(CupertinoIcons.back, color: ClayTokens.clayDarkTextPrimary, size: 24),
+                      child: Icon(
+                        CupertinoIcons.back,
+                        color: ClayTokens.clayDarkTextPrimary,
+                        size: 24,
+                      ),
                     ),
                     const SizedBox(width: 10),
                     if (_otherMemberName != null)
@@ -176,12 +188,23 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage> {
                           children: [
                             ClayAvatar(
                               imageUrl: _otherMemberAvatarUrl,
-                              initials: _otherMemberName!.split(' ').map((n) => n[0]).take(2).join(),
+                              initials: _otherMemberName!
+                                  .split(' ')
+                                  .map((n) => n[0])
+                                  .take(2)
+                                  .join(),
                               size: ClayAvatarSize.md,
                             ),
                             const SizedBox(width: 10),
-                            Text(_otherMemberName!, style: ClayTokens.titleLarge.copyWith(
-                              fontSize: 15, fontWeight: FontWeight.w500, color: ClayTokens.clayDarkTextPrimary, letterSpacing: -0.24)),
+                            Text(
+                              _otherMemberName!,
+                              style: ClayTokens.titleLarge.copyWith(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                                color: ClayTokens.clayDarkTextPrimary,
+                                letterSpacing: -0.24,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -190,59 +213,106 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage> {
               ),
               Expanded(
                 child: _loading
-                    ? Center(child: CupertinoActivityIndicator(radius: 12, color: ClayTokens.clayPrimary))
-                    : _messages.isEmpty
-                        ? Center(
-                            child: Text('Start a conversation', style: ClayTokens.bodySmall.copyWith(fontSize: 13, fontWeight: FontWeight.w400, color: ClayTokens.clayDarkTextTertiary, letterSpacing: -0.08)))
-                        : ListView.builder(
-                            controller: _scrollController,
-                            padding: const EdgeInsets.all(12),
-                            itemCount: _messages.length,
-                            itemBuilder: (_, i) {
-                              final msg = _messages[i];
-                              final isMe = msg['sender_id'] == userId;
-                              final content = msg['content'] as String? ?? '';
-                              final time = msg['created_at'] as String? ?? '';
-                              final timeStr = time.length >= 16 ? time.substring(11, 16) : '';
+                    ? Center(
+                          child: CupertinoActivityIndicator(
+                            radius: 12,
+                            color: ClayTokens.clayPrimary,
+                          ),
+                        )
+                      : _messages.isEmpty
+                      ? Center(
+                          child: Text(
+                            'Start a conversation',
+                            style: ClayTokens.bodySmall.copyWith(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w400,
+                              color: ClayTokens.clayDarkTextTertiary,
+                              letterSpacing: -0.08,
+                            ),
+                          ),
+                        )
+                      : ListView.builder(
+                          controller: _scrollController,
+                          padding: const EdgeInsets.all(12),
+                          itemCount: _messages.length,
+                          itemBuilder: (_, i) {
+                            final msg = _messages[i];
+                            final isMe = msg['sender_id'] == userId;
+                            final content = msg['content'] as String? ?? '';
+                            final time = msg['created_at'] as String? ?? '';
+                            final timeStr = time.length >= 16
+                                ? time.substring(11, 16)
+                                : '';
 
-                              return Column(
-                                crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    constraints: BoxConstraints(
-                                      maxWidth: MediaQuery.of(context).size.width * 0.75),
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-                                    decoration: BoxDecoration(
-                                      color: isMe ? ClayTokens.clayPrimary : ClayTokens.clayDarkSurfaceElevated,
-                                      borderRadius: BorderRadius.only(
-                                        topLeft: const Radius.circular(14),
-                                        topRight: const Radius.circular(14),
-                                        bottomLeft: isMe ? const Radius.circular(14) : const Radius.circular(3),
-                                        bottomRight: isMe ? const Radius.circular(3) : const Radius.circular(14),
+                            return Column(
+                              crossAxisAlignment: isMe
+                                  ? CrossAxisAlignment.end
+                                  : CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  constraints: BoxConstraints(
+                                    maxWidth:
+                                        MediaQuery.of(context).size.width *
+                                        0.75,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 9,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isMe
+                                        ? ClayTokens.clayPrimary
+                                        : ClayTokens.clayDarkSurfaceElevated,
+                                    borderRadius: BorderRadius.only(
+                                      topLeft: const Radius.circular(14),
+                                      topRight: const Radius.circular(14),
+                                      bottomLeft: isMe
+                                          ? const Radius.circular(14)
+                                          : const Radius.circular(3),
+                                      bottomRight: isMe
+                                          ? const Radius.circular(3)
+                                          : const Radius.circular(14),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    content,
+                                    style: ClayTokens.bodySmall.copyWith(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w400,
+                                      color: isMe
+                                          ? ClayTokens.clayDarkTextPrimary
+                                          : ClayTokens.clayDarkTextPrimary,
+                                      letterSpacing: -0.08,
+                                    ),
+                                  ),
+                                ),
+                                if (timeStr.isNotEmpty)
+                                  Padding(
+                                    padding: EdgeInsets.only(
+                                      top: 2,
+                                      left: isMe ? 0 : 2,
+                                      right: isMe ? 2 : 0,
+                                    ),
+                                    child: Text(
+                                      timeStr,
+                                      style: ClayTokens.labelMedium.copyWith(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w400,
+                                        color: ClayTokens.clayDarkTextTertiary,
+                                        letterSpacing: -0.08,
                                       ),
                                     ),
-                                    child: Text(content, style: ClayTokens.bodySmall.copyWith(
-                                      fontSize: 13, fontWeight: FontWeight.w400,
-                                      color: isMe ? ClayTokens.clayDarkTextPrimary : ClayTokens.clayDarkTextPrimary,
-                                      letterSpacing: -0.08,
-                                    )),
                                   ),
-                                  if (timeStr.isNotEmpty)
-                                    Padding(
-                                      padding: EdgeInsets.only(top: 2, left: isMe ? 0 : 2, right: isMe ? 2 : 0),
-                                      child: Text(timeStr, style: ClayTokens.labelMedium.copyWith(fontSize: 11, fontWeight: FontWeight.w400, color: ClayTokens.clayDarkTextTertiary, letterSpacing: -0.08)),
-                                    ),
-                                  const SizedBox(height: 6),
-                                ],
-                              );
-                            },
-                          ),
+                                const SizedBox(height: 6),
+                              ],
+                            );
+                          },
+                        ),
               ),
-              Container(
-                padding: const EdgeInsets.fromLTRB(14, 10, 14, 16),
-                decoration: BoxDecoration(
-                  color: ClayTokens.clayDarkSurface,
-                ),
+              GlassPanel(
+                margin: const EdgeInsets.fromLTRB(10, 6, 10, 12),
+                padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+                borderRadius: BorderRadius.circular(18),
                 child: Row(
                   children: [
                     Expanded(
@@ -252,22 +322,34 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage> {
                         onSubmitted: (_) => _sendMessage(),
                         minLines: 1,
                         maxLines: 3,
-                        style: ClayTokens.darkBodyLarge.copyWith(color: ClayTokens.clayDarkTextPrimary),
+                        style: ClayTokens.darkBodyLarge.copyWith(
+                          color: ClayTokens.clayDarkTextPrimary,
+                        ),
                         cursorColor: ClayTokens.clayPrimary,
                         decoration: InputDecoration(
                           hintText: 'Type a message',
                           isDense: true,
                           filled: true,
-                          fillColor: ClayTokens.clayDarkSurfaceElevated,
-                          hintStyle: ClayTokens.darkBodyMedium.copyWith(color: ClayTokens.clayDarkTextTertiary),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          fillColor: Colors.transparent,
+                          hintStyle: ClayTokens.darkBodyMedium.copyWith(
+                            color: ClayTokens.clayDarkTextTertiary,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: ClayTokens.clayDarkBorder),
+                            borderSide: BorderSide(
+                              color: Colors.white.withAlpha(24),
+                            ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: ClayTokens.clayPrimary, width: 1.5),
+                            borderSide: BorderSide(
+                              color: ClayTokens.clayPrimary,
+                              width: 1.5,
+                            ),
                           ),
                         ),
                       ),
@@ -276,7 +358,8 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage> {
                     GestureDetector(
                       onTap: _sendMessage,
                       child: Container(
-                        width: 44, height: 44,
+                        width: 44,
+                        height: 44,
                         decoration: BoxDecoration(
                           color: ClayTokens.clayPrimary,
                           shape: BoxShape.circle,

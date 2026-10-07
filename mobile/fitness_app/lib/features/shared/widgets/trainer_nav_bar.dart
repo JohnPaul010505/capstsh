@@ -31,7 +31,7 @@ class TrainerNavBar extends StatelessWidget {
     final purple = ClayTokens.clayPrimary;
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(10, 0, 10, bottom + 8),
+      padding: EdgeInsets.fromLTRB(10, 0, 10, bottom + 16),
       child: SizedBox(
         height: barH + _raise,
         child: Stack(
@@ -191,4 +191,4 @@ class TrainerNavBar extends StatelessWidget {
       ),
     );
   }
-}
+}

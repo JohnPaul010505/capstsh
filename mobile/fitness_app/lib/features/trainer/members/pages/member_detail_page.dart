@@ -96,9 +96,16 @@ class _MemberDetailPageState extends ConsumerState<MemberDetailPage> {
                           padding: ClayCardPadding.none,
                           child: Column(
                             children: [
-                              _DetailTile(icon: Icons.directions_walk, title: 'View Workouts', onTap: () {}),
-                              _DetailTile(icon: Icons.trending_up, title: 'View Progress', onTap: () {}),
-                              _DetailTile(icon: Icons.flag_outlined, title: 'Goals', onTap: () {}),
+                              _DetailTile(
+                                icon: Icons.directions_walk,
+                                title: 'View Workouts',
+                                onTap: () => context.push('/trainer/members/${widget.id}/progress'),
+                              ),
+                              _DetailTile(
+                                icon: Icons.trending_up,
+                                title: 'View Progress',
+                                onTap: () => context.push('/trainer/members/${widget.id}/progress'),
+                              ),
                             ],
                           ),
                         ),

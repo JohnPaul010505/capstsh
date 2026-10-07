@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/trainer_feedback.dart';
+import 'notification_service.dart';
 import 'supabase_client.dart';
 
 class FeedbackService {
@@ -53,11 +54,27 @@ class FeedbackService {
     final updated = await _client.from('trainer_feedback').update({
       'rating': rating,
       'rated_at': DateTime.now().toUtc().toIso8601String(),
-    }).eq('id', feedbackId).select('id');
-    if ((updated as List).isEmpty) {
+    }).eq('id', feedbackId).select('id, trainer_id');
+    final rows = updated as List;
+    if (rows.isEmpty) {
       throw Exception(
         'Rating was not saved — it may belong to another member or the session expired.',
       );
+    }
+    // Figure 24: the system notifies the Trainer when the member rates their
+    // feedback ("Assigned pair can insert notifications" policy, 0026).
+    // Best-effort: the rating itself is already saved.
+    final trainerId = rows.first['trainer_id'] as String?;
+    if (trainerId != null) {
+      try {
+        await NotificationService().createNotification(
+          userId: trainerId,
+          title: 'Member rated your feedback',
+          body: 'A member gave your feedback $rating out of 5 stars.',
+        );
+      } catch (_) {
+        // The rating is saved; a failed notification must not surface as an error.
+      }
     }
   }
 
@@ -81,12 +98,29 @@ class FeedbackService {
       final updated = await _client.from('trainer_feedback').update({
         'member_comment': comment,
         'member_commented_at': DateTime.now().toUtc().toIso8601String(),
-      }).eq('id', feedbackId).select('id');
-      if ((updated as List).isEmpty) {
+      }).eq('id', feedbackId).select('id, trainer_id');
+      final rows = updated as List;
+      if (rows.isEmpty) {
         throw Exception(
           'Comment was not saved — the feedback may belong to another member '
           'or the session expired. Pull to refresh and try again.',
         );
+      }
+      // Figure 24: the system notifies the Trainer when the member comments on
+      // their feedback. Best-effort — the comment itself is already saved.
+      final trainerId = rows.first['trainer_id'] as String?;
+      if (trainerId != null) {
+        try {
+          await NotificationService().createNotification(
+            userId: trainerId,
+            title: 'Member commented on your feedback',
+            body: comment.length > 140
+                ? '${comment.substring(0, 140)}…'
+                : comment,
+          );
+        } catch (_) {
+          // The comment is saved; a failed notification must not surface.
+        }
       }
     } on PostgrestException catch (e) {
       final msg = e.message;

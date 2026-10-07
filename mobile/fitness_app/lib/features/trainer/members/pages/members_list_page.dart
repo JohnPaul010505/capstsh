@@ -6,6 +6,7 @@ import 'package:shared/services/supabase_client.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../shared/widgets/app_glow_background.dart';
 import '../../../shared/widgets/activity_status_badge.dart';
+import '../../../shared/widgets/glass_card.dart';
 
 final assignedMembersProvider = FutureProvider<List<Profile>>((ref) async {
   final client = SupabaseClientService().client;
@@ -43,9 +44,18 @@ class MembersListPage extends ConsumerWidget {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.group_outlined, color: ClayTokens.clayDarkTextTertiary, size: 48),
+                            Icon(
+                              Icons.group_outlined,
+                              color: ClayTokens.clayDarkTextTertiary,
+                              size: 48,
+                            ),
                             const SizedBox(height: 12),
-                            Text('No assigned members yet', style: ClayTokens.bodySmall.copyWith(color: ClayTokens.clayDarkTextTertiary)),
+                            Text(
+                              'No assigned members yet',
+                              style: ClayTokens.bodySmall.copyWith(
+                                color: ClayTokens.clayDarkTextTertiary,
+                              ),
+                            ),
                           ],
                         ),
                       );
@@ -61,33 +71,59 @@ class MembersListPage extends ConsumerWidget {
                       itemBuilder: (_, i) {
                         final member = members[i];
                         return GestureDetector(
-                          onTap: () => context.push('/trainer/members/${member.id}'),
-                          child: Container(
+                          onTap: () =>
+                              context.push('/trainer/members/${member.id}'),
+                          child: GlassCardLight(
                             padding: const EdgeInsets.symmetric(vertical: 10),
                             child: Row(
                               children: [
                                 Container(
-                                  width: 36, height: 36,
+                                  width: 36,
+                                  height: 36,
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
                                     color: ClayTokens.clayDarkSurface,
                                   ),
                                   alignment: Alignment.center,
-                                  child: Text(member.fullName[0], style: ClayTokens.titleMedium.copyWith(color: ClayTokens.clayDarkTextPrimary)),
+                                  child: Text(
+                                    member.fullName[0],
+                                    style: ClayTokens.titleMedium.copyWith(
+                                      color: ClayTokens.clayDarkTextPrimary,
+                                    ),
+                                  ),
                                 ),
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Text(member.fullName, style: ClayTokens.bodyLarge.copyWith(color: ClayTokens.clayDarkTextPrimary)),
-                                      Text(member.email, style: ClayTokens.bodySmall.copyWith(color: ClayTokens.clayDarkTextTertiary)),
+                                      Text(
+                                        member.fullName,
+                                        style: ClayTokens.bodyLarge.copyWith(
+                                          color: ClayTokens.clayDarkTextPrimary,
+                                        ),
+                                      ),
+                                      Text(
+                                        member.email,
+                                        style: ClayTokens.bodySmall.copyWith(
+                                          color:
+                                              ClayTokens.clayDarkTextTertiary,
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),
-                                ActivityStatusBadgeCompact(memberId: member.id, size: 22),
+                                ActivityStatusBadgeCompact(
+                                  memberId: member.id,
+                                  size: 22,
+                                ),
                                 const SizedBox(width: 8),
-                                Icon(Icons.chevron_right, color: ClayTokens.clayDarkTextTertiary, size: 18),
+                                Icon(
+                                  Icons.chevron_right,
+                                  color: ClayTokens.clayDarkTextTertiary,
+                                  size: 18,
+                                ),
                               ],
                             ),
                           ),
@@ -95,8 +131,16 @@ class MembersListPage extends ConsumerWidget {
                       },
                     );
                   },
-                  loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (e, _) => Center(child: Text('Error: $e', style: ClayTokens.bodySmall.copyWith(color: ClayTokens.clayError))),
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (e, _) => Center(
+                    child: Text(
+                      'Error: $e',
+                      style: ClayTokens.bodySmall.copyWith(
+                        color: ClayTokens.clayError,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ],

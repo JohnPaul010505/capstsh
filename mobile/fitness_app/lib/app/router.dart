@@ -222,13 +222,6 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/trainer/chat',
                 pageBuilder: (_, __) => _iosPush(const ChatListPage()),
-                routes: [
-                  GoRoute(
-                    path: ':roomId',
-                    pageBuilder: (_, state) => _iosPush(ChatRoomPage(
-                        roomId: state.pathParameters['roomId']!)),
-                  ),
-                ],
               ),
             ],
           ),
@@ -277,6 +270,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/trainer/record',
         pageBuilder: (_, __) => _iosPush(const RecordScreen()),
+      ),
+      // Full-screen conversation pushed on the root navigator (same pattern
+      // as /member/chat) so the trainer nav bar is hidden while chatting and
+      // "<" pops back to the conversation list in the shell branch.
+      GoRoute(
+        path: '/trainer/chat/:roomId',
+        pageBuilder: (_, state) => _iosPush(
+          ChatRoomPage(roomId: state.pathParameters['roomId']!),
+        ),
       ),
     ],
   );

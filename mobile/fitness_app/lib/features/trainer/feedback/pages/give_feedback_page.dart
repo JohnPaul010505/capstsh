@@ -9,6 +9,7 @@ import 'package:shared/services/notification_service.dart';
 import 'package:shared/services/supabase_client.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../shared/widgets/app_glow_background.dart';
+import '../../../shared/widgets/glass_card.dart';
 
 final assignedMembersProvider = FutureProvider.family<List<Map<String, dynamic>>, String>((ref, trainerId) async {
   final response = await SupabaseClientService()
@@ -50,11 +51,59 @@ class GiveFeedbackPage extends ConsumerStatefulWidget {
 }
 
 class _GiveFeedbackPageState extends ConsumerState<GiveFeedbackPage> {
+  static const _historyPageSize = 10;
   String? _selectedMemberId;
   String? _selectedMemberName;
   final _contentController = TextEditingController();
   bool _saving = false;
   String? _error;
+
+  // Feedback-history filter: which date window is shown and which page of 10.
+  String _historyPreset = 'all';
+  int _historyPage = 0;
+
+  DateTime _historyCutoff() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    switch (_historyPreset) {
+      case 'today':
+        return today;
+      case 'last7':
+        return today.subtract(const Duration(days: 6));
+      case 'month':
+        return DateTime(now.year, now.month, 1);
+      default:
+        return DateTime(2000, 1, 1);
+    }
+  }
+
+  Widget _historyChip(String label, String value) {
+    final selected = _historyPreset == value;
+    return GestureDetector(
+      onTap: () => setState(() {
+        _historyPreset = value;
+        _historyPage = 0;
+      }),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? ClayTokens.clayPrimary : Colors.white.withAlpha(14),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: selected ? ClayTokens.clayPrimary : Colors.white.withAlpha(30),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: selected ? Colors.white : ClayTokens.clayDarkTextSecondary,
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   void dispose() {
@@ -183,15 +232,12 @@ class _GiveFeedbackPageState extends ConsumerState<GiveFeedbackPage> {
                         children: [
                           const Text('Member', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF8E8E93))),
                           const SizedBox(height: 6),
-                          Container(
+                          SizedBox(
                             width: double.infinity,
-                            padding: const EdgeInsets.symmetric(horizontal: 14),
-                            decoration: BoxDecoration(
-                              color: ClayTokens.clayDarkSurfaceElevated,
+                            child: GlassPanel(
+                              padding: const EdgeInsets.symmetric(horizontal: 14),
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.white.withAlpha(25)),
-                            ),
-                            child: DropdownButtonHideUnderline(
+                              child: DropdownButtonHideUnderline(
                               child: DropdownButton<String>(
                                 isExpanded: true,
                                 value: _selectedMemberId,
@@ -217,6 +263,7 @@ class _GiveFeedbackPageState extends ConsumerState<GiveFeedbackPage> {
                                 },
                               ),
                             ),
+                          ),
                           ),
                         ],
                       ),
@@ -269,9 +316,9 @@ class _GiveFeedbackPageState extends ConsumerState<GiveFeedbackPage> {
                       placeholderStyle: ClayTokens.bodyMedium.copyWith(color: ClayTokens.clayDarkTextTertiary),
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF2A2A4E),
+                        color: Colors.white.withAlpha(14),
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: ClayTokens.clayDarkBorder),
+                        border: Border.all(color: Colors.white.withAlpha(30)),
                       ),
                       maxLines: 5,
                       minLines: 3,
@@ -303,18 +350,45 @@ class _GiveFeedbackPageState extends ConsumerState<GiveFeedbackPage> {
                     const SizedBox(height: 24),
                     const Text('Feedback history', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF8E8E93))),
                     const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        _historyChip('Today', 'today'),
+                        _historyChip('Last 7 days', 'last7'),
+                        _historyChip('This month', 'month'),
+                        _historyChip('All time', 'all'),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
                     Consumer(
                       builder: (context, ref, _) {
                         final historyAsync = ref.watch(givenFeedbackProvider(trainerId));
                         return historyAsync.when(
-                          data: (rows) => rows.isEmpty
-                              ? const Text('No feedback sent yet.', style: TextStyle(fontSize: 12, color: Color(0xFF8E8E93)))
-                              : Column(
+                          data: (rows) {
+                            if (rows.isEmpty) {
+                              return const Text('No feedback sent yet.', style: TextStyle(fontSize: 12, color: Color(0xFF8E8E93)));
+                            }
+                            final cutoff = _historyCutoff();
+                            final filtered = rows.where((row) {
+                              final t = DateTime.tryParse(row['created_at']?.toString() ?? '');
+                              return t == null || !t.isBefore(cutoff);
+                            }).toList();
+                            if (filtered.isEmpty) {
+                              return const Text('No feedback in this date range.', style: TextStyle(fontSize: 12, color: Color(0xFF8E8E93)));
+                            }
+                            final pageCount = (filtered.length + _historyPageSize - 1) ~/ _historyPageSize;
+                            final page = _historyPage.clamp(0, pageCount - 1);
+                            final startIndex = page * _historyPageSize;
+                            final visible = filtered.skip(startIndex).take(_historyPageSize).toList();
+                            return Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: rows.map((row) {
+                                  children: [
+                                    ...visible.map((row) {
                                     final member = (row['member'] as Map<String, dynamic>?)?['full_name'] as String? ?? 'Member';
                                     final content = row['content'] as String? ?? '';
                                     final rating = row['rating'] as int?;
+                                    final memberComment = (row['member_comment'] as String? ?? '').trim();
                                     final created = DateTime.tryParse(row['created_at']?.toString() ?? '');
                                     final day = created == null ? '' : DateFormat('MMM d, yyyy').format(created.toLocal());
                                     return Container(
@@ -349,11 +423,56 @@ class _GiveFeedbackPageState extends ConsumerState<GiveFeedbackPage> {
                                               ),
                                             ],
                                           ),
+                                          if (memberComment.isNotEmpty) ...[
+                                            const SizedBox(height: 8),
+                                            Container(
+                                              width: double.infinity,
+                                              padding: const EdgeInsets.all(10),
+                                              decoration: BoxDecoration(
+                                                color: Colors.white.withAlpha(10),
+                                                borderRadius: BorderRadius.circular(10),
+                                                border: Border.all(color: Colors.white.withAlpha(24)),
+                                              ),
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  const Text(
+                                                    'MEMBER COMMENT',
+                                                    style: TextStyle(
+                                                      fontSize: 9.5,
+                                                      fontWeight: FontWeight.w700,
+                                                      letterSpacing: 0.5,
+                                                      color: Color(0xFF8E8E93),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  Text(
+                                                    memberComment,
+                                                    style: const TextStyle(
+                                                      fontSize: 12,
+                                                      height: 1.4,
+                                                      color: Color(0xFFB4B4D0),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
                                         ],
                                       ),
                                     );
-                                  }).toList(),
-                                ),
+                                    }),
+                                    _HistoryPager(
+                                      start: startIndex + 1,
+                                      shown: visible.length,
+                                      total: filtered.length,
+                                      page: page,
+                                      pageCount: pageCount,
+                                      onPage: (p) => setState(() => _historyPage = p),
+                                    ),
+                                  ],
+                                );
+                          },
                           loading: () => const Padding(
                             padding: EdgeInsets.symmetric(vertical: 8),
                             child: LinearProgressIndicator(minHeight: 2, color: Color(0xFFBF5AF2)),
@@ -373,3 +492,95 @@ class _GiveFeedbackPageState extends ConsumerState<GiveFeedbackPage> {
     );
   }
 }
+
+/// Pagination footer for the feedback history: record range + Prev/Next glass
+/// chips, mirroring the dashboard activity-feed pager (10 rows per page).
+class _HistoryPager extends StatelessWidget {
+  final int start;
+  final int shown;
+  final int total;
+  final int page;
+  final int pageCount;
+  final ValueChanged<int> onPage;
+
+  const _HistoryPager({
+    required this.start,
+    required this.shown,
+    required this.total,
+    required this.page,
+    required this.pageCount,
+    required this.onPage,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const style = TextStyle(fontSize: 10.5, color: Color(0xFF8E8E93));
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            pageCount > 1
+                ? 'Showing $start\u2013${start + shown - 1} of $total'
+                : '$total record${total == 1 ? '' : 's'}',
+            style: style,
+          ),
+          if (pageCount > 1)
+            Row(
+              children: [
+                _HistoryPagerBtn(
+                  label: '\u2039 Prev',
+                  enabled: page > 0,
+                  onTap: () => onPage(page - 1),
+                ),
+                const SizedBox(width: 6),
+                _HistoryPagerBtn(
+                  label: 'Next \u203A',
+                  enabled: page < pageCount - 1,
+                  onTap: () => onPage(page + 1),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HistoryPagerBtn extends StatelessWidget {
+  final String label;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  const _HistoryPagerBtn({
+    required this.label,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: enabled ? Colors.white.withAlpha(16) : Colors.white.withAlpha(6),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: enabled ? Colors.white.withAlpha(40) : Colors.white.withAlpha(12),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 10.5,
+            fontWeight: FontWeight.w600,
+            color: enabled ? Colors.white : const Color(0xFF8E8E93),
+          ),
+        ),
+      ),
+    );
+  }
+}
