@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared/services/supabase_client.dart';
 import 'package:shared/providers/auth_provider.dart';
 import '../../../../app/design_tokens.dart';
@@ -137,6 +138,32 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   bool _isNotificationOpen = false;
   final _bellKey = GlobalKey();
+  // Refresh-on-return: the indexed-stack shell keeps this page alive, so a
+  // router listener refetches while cached data renders instantly.
+  GoRouter? _router;
+  bool _wasDashboard = true;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _router ??= GoRouter.of(context);
+    _router!.routerDelegate.addListener(_onRouteChanged);
+  }
+
+  void _onRouteChanged() {
+    final isDashboard = _router!.routerDelegate.currentConfiguration.uri.path ==
+        '/trainer/dashboard';
+    if (isDashboard && !_wasDashboard && mounted) {
+      ProviderScope.containerOf(context).invalidate(trainerDashboardProvider);
+    }
+    _wasDashboard = isDashboard;
+  }
+
+  @override
+  void dispose() {
+    _router?.routerDelegate.removeListener(_onRouteChanged);
+    super.dispose();
+  }
 
   void _toggleNotifications() {
     setState(() => _isNotificationOpen = !_isNotificationOpen);

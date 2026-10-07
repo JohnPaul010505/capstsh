@@ -28,8 +28,6 @@ import '../features/shared/widgets/member_nav_bar.dart';
 import '../features/member/onboarding/pages/onboarding_splash_screen.dart';
 import '../features/shared/widgets/trainer_nav_bar.dart';
 
-final _trainerShellKey = GlobalKey<NavigatorState>();
-
 Page<dynamic> _iosPush(Widget child) => CustomTransitionPage(
   child: child,
   transitionsBuilder: (_, animation, __, child) {
@@ -178,50 +176,91 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/member/membership',
         pageBuilder: (_, __) => _iosPush(const MembershipPage()),
       ),
-      ShellRoute(
-        navigatorKey: _trainerShellKey,
-        builder: (_, __, child) => TrainerShell(child: child),
-        routes: [
-          GoRoute(
-            path: '/trainer/dashboard',
-            pageBuilder: (_, __) => _iosPush(const trainer.DashboardPage()),
-          ),
-          GoRoute(
-            path: '/trainer/members',
-            pageBuilder: (_, __) => _iosPush(const ProgressListPage()),
-          ),
-          GoRoute(
-            path: '/trainer/checkin',
-            pageBuilder: (_, __) => _iosPush(
-              const CheckinPage(
-                showBack: false,
-                returnRoute: '/trainer/dashboard',
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) =>
+            TrainerShell(navigationShell: navigationShell),
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/trainer/dashboard',
+                pageBuilder: (_, __) => _iosPush(const trainer.DashboardPage()),
               ),
-            ),
+            ],
           ),
-          GoRoute(
-            path: '/trainer/chat',
-            pageBuilder: (_, __) => _iosPush(const ChatListPage()),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/trainer/members',
+                pageBuilder: (_, __) => _iosPush(const ProgressListPage()),
+                routes: [
+                  GoRoute(
+                    path: ':id',
+                    pageBuilder: (_, state) => _iosPush(
+                      MemberProgressPage(id: state.pathParameters['id']!),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          GoRoute(
-            path: '/trainer/profile',
-            pageBuilder: (_, __) =>
-                _iosPush(const trainer_profile.ProfilePage()),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/trainer/checkin',
+                pageBuilder: (_, __) => _iosPush(
+                  const CheckinPage(
+                    showBack: false,
+                    returnRoute: '/trainer/dashboard',
+                  ),
+                ),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/trainer/chat',
+                pageBuilder: (_, __) => _iosPush(const ChatListPage()),
+                routes: [
+                  GoRoute(
+                    path: ':roomId',
+                    pageBuilder: (_, state) => _iosPush(ChatRoomPage(
+                        roomId: state.pathParameters['roomId']!)),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/trainer/profile',
+                pageBuilder: (_, __) =>
+                    _iosPush(const trainer_profile.ProfilePage()),
+                routes: [
+                  GoRoute(
+                    path: 'notifications',
+                    pageBuilder: (_, __) =>
+                        _iosPush(const TrainerNotificationsPage()),
+                  ),
+                  GoRoute(
+                    path: 'set-plan',
+                    pageBuilder: (_, __) => _iosPush(const CreatePlanScreen()),
+                  ),
+                  GoRoute(
+                    path: 'feedback',
+                    pageBuilder: (_, __) => _iosPush(const GiveFeedbackPage()),
+                  ),
+                  GoRoute(
+                    path: 'record',
+                    pageBuilder: (_, __) => _iosPush(const RecordScreen()),
+                  ),
+                ],
+              ),
+            ],
           ),
         ],
-      ),
-      // Full-screen pushes on the root navigator: the trainer nav bar is
-      // hidden while viewing a member's progress / a conversation.
-      GoRoute(
-        path: '/trainer/members/:id',
-        pageBuilder: (_, state) => _iosPush(
-          MemberProgressPage(id: state.pathParameters['id']!),
-        ),
-      ),
-      GoRoute(
-        path: '/trainer/chat/:roomId',
-        pageBuilder: (_, state) =>
-            _iosPush(ChatRoomPage(roomId: state.pathParameters['roomId']!)),
       ),
       GoRoute(
         path: '/trainer/set-plan',
@@ -282,51 +321,22 @@ class _MemberShellState extends State<MemberShell> {
 }
 
 class TrainerShell extends StatefulWidget {
-  final Widget child;
-  const TrainerShell({super.key, required this.child});
+  final StatefulNavigationShell navigationShell;
+  const TrainerShell({super.key, required this.navigationShell});
 
   @override
   State<TrainerShell> createState() => _TrainerShellState();
 }
 
 class _TrainerShellState extends State<TrainerShell> {
-  int _currentIndex = 0;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _currentIndex = _trainerIndex();
-  }
-
-  @override
-  void didUpdateWidget(covariant TrainerShell oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    _currentIndex = _trainerIndex();
-  }
-
-  int _trainerIndex() {
-    final location = GoRouterState.of(context).matchedLocation;
-    if (location.startsWith('/trainer/members')) return 1;
-    if (location.startsWith('/trainer/chat')) return 3;
-    if (location.startsWith('/trainer/profile')) return 4;
-    if (location.startsWith('/trainer/checkin')) return 2;
-    return 0;
-  }
-
   void _onTap(int index) {
-    setState(() => _currentIndex = index);
-    switch (index) {
-      case 0:
-        context.go('/trainer/dashboard');
-      case 1:
-        context.go('/trainer/members');
-      case 2:
-        context.go('/trainer/checkin');
-      case 3:
-        context.go('/trainer/chat');
-      case 4:
-        context.go('/trainer/profile');
-    }
+    // Detail/room pages live INSIDE their branch, so the nav bar stays and
+    // the branch keeps its scroll position; tapping the active tab pops back
+    // to the branch root (e.g. room list).
+    widget.navigationShell.goBranch(
+      index,
+      initialLocation: index == widget.navigationShell.currentIndex,
+    );
   }
 
   @override
@@ -336,9 +346,9 @@ class _TrainerShellState extends State<TrainerShell> {
       // behind/around the floating nav pill (no black band underneath).
       backgroundColor: Colors.transparent,
       extendBody: true,
-      body: widget.child,
+      body: widget.navigationShell,
       bottomNavigationBar: TrainerNavBar(
-        currentIndex: _currentIndex,
+        currentIndex: widget.navigationShell.currentIndex,
         onTap: _onTap,
       ),
     );
