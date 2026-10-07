@@ -8,7 +8,12 @@ import '../../../shared/widgets/skeleton.dart';
 import '../../../shared/widgets/app_glow_background.dart';
 import '../../../shared/widgets/clay/clay_avatar.dart';
 
-final assignedMembersWithStatsProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+/// Assigned members with latest stats, fetched in THREE parallel queries
+/// (profiles + measurements + goals) instead of 2xN per-member round trips.
+/// Keep-alive (not autoDispose): the indexed-stack shell keeps this page
+/// alive, so revisits render cached rows instantly while the router listener
+/// below refetches in the background.
+final assignedMembersWithStatsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
   final client = SupabaseClientService().client;
   final userId = client.auth.currentUser!.id;
 
@@ -21,51 +26,51 @@ final assignedMembersWithStatsProvider = FutureProvider.autoDispose<List<Map<Str
   final memberIds = (assignments as List).map((a) => a['member_id'] as String).toList();
   if (memberIds.isEmpty) return [];
 
-  final profiles = await client
-      .from('profiles')
-      .select('id, full_name, avatar_url')
-      .or(memberIds.map((id) => 'id.eq.$id').join(','));
-
-  final profileList = (profiles as List).cast<Map<String, dynamic>>();
-
-  final result = <Map<String, dynamic>>[];
-  for (final p in profileList) {
-    final mid = p['id'] as String;
-    final measurement = await client
+  final results = await Future.wait([
+    client
+        .from('profiles')
+        .select('id, full_name, avatar_url, code')
+        .inFilter('id', memberIds),
+    // Newest-first for all members at once; first row per member wins below.
+    client
         .from('body_measurements')
-        .select('weight_kg, height_cm')
-        .eq('member_id', mid)
-        .order('measured_at', ascending: false)
-        .limit(1);
-
-    final goal = await client
+        .select('member_id, weight_kg, height_cm')
+        .inFilter('member_id', memberIds)
+        .order('measured_at', ascending: false),
+    client
         .from('goals')
-        .select('title')
-        .eq('member_id', mid)
-        .eq('status', 'active')
-        .limit(1);
+        .select('member_id, title')
+        .inFilter('member_id', memberIds)
+        .eq('status', 'active'),
+  ]);
 
-    Map<String, dynamic>? meas;
-    if ((measurement as List).isNotEmpty) {
-      meas = measurement[0] as Map<String, dynamic>?;
-    }
+  final profileList = (results[0] as List).cast<Map<String, dynamic>>();
 
-    String? goalTitle;
-    if ((goal as List).isNotEmpty) {
-      goalTitle = goal[0]['title'] as String?;
-    }
+  final measByMember = <String, Map<String, dynamic>>{};
+  for (final m in (results[1] as List).cast<Map<String, dynamic>>()) {
+    final mid = m['member_id'] as String?;
+    if (mid != null) measByMember.putIfAbsent(mid, () => m);
+  }
 
-    result.add({
+  final goalByMember = <String, String>{};
+  for (final g in (results[2] as List).cast<Map<String, dynamic>>()) {
+    final mid = g['member_id'] as String?;
+    if (mid != null) goalByMember.putIfAbsent(mid, () => g['title'] as String? ?? '');
+  }
+
+  return profileList.map((p) {
+    final mid = p['id'] as String;
+    final meas = measByMember[mid];
+    return {
       'id': mid,
       'full_name': p['full_name'] as String? ?? 'Unknown',
       'avatar_url': p['avatar_url'] as String?,
+      'code': p['code'] as String?,
       'weight_kg': meas?['weight_kg'],
       'height_cm': meas?['height_cm'],
-      'goal': goalTitle,
-    });
-  }
-
-  return result;
+      'goal': goalByMember[mid],
+    };
+  }).toList();
 });
 
 class ProgressListPage extends ConsumerStatefulWidget {
@@ -76,12 +81,34 @@ class ProgressListPage extends ConsumerStatefulWidget {
 }
 
 class _ProgressListPageState extends ConsumerState<ProgressListPage> {
+  final _searchController = TextEditingController();
+  String _query = '';
+  // Refresh-on-return: the indexed-stack shell keeps this page alive, so a
+  // router listener refetches while cached rows render instantly.
+  GoRouter? _router;
+  bool _wasMembers = true;
+
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _router ??= GoRouter.of(context);
+    _router!.routerDelegate.addListener(_onRouteChanged);
+  }
+
+  void _onRouteChanged() {
+    final isMembers =
+        _router!.routerDelegate.currentConfiguration.uri.path == '/trainer/members';
+    if (isMembers && !_wasMembers && mounted) {
       ref.invalidate(assignedMembersWithStatsProvider);
-    });
+    }
+    _wasMembers = isMembers;
+  }
+
+  @override
+  void dispose() {
+    _router?.routerDelegate.removeListener(_onRouteChanged);
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -96,6 +123,48 @@ class _ProgressListPageState extends ConsumerState<ProgressListPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildTrainerNavBar('Members'),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (v) => setState(() => _query = v.trim().toLowerCase()),
+                  style: ClayTokens.bodyLarge.copyWith(
+                      color: ClayTokens.clayDarkTextPrimary, fontSize: 14),
+                  cursorColor: ClayTokens.clayPrimary,
+                  decoration: InputDecoration(
+                    hintText: 'Search members',
+                    hintStyle: ClayTokens.bodySmall.copyWith(
+                        color: ClayTokens.clayDarkTextTertiary),
+                    prefixIcon: Icon(Icons.search,
+                        color: ClayTokens.clayDarkTextTertiary, size: 18),
+                    suffixIcon: _query.isEmpty
+                        ? null
+                        : IconButton(
+                            icon: Icon(Icons.clear,
+                                color: ClayTokens.clayDarkTextTertiary,
+                                size: 18),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _query = '');
+                            },
+                          ),
+                    isDense: true,
+                    filled: true,
+                    fillColor: ClayTokens.clayDarkSurface,
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 10),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: ClayTokens.clayDarkBorder),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                          color: ClayTokens.clayPrimary, width: 1.5),
+                    ),
+                  ),
+                ),
+              ),
               Expanded(
                 child: membersAsync.when(
                   data: (members) {
@@ -111,11 +180,36 @@ class _ProgressListPageState extends ConsumerState<ProgressListPage> {
                         ),
                       );
                     }
+                     // Client-side search on name + member code (e.g. M002).
+                     final q = _query;
+                     final filtered = q.isEmpty
+                         ? members
+                         : members.where((m) {
+                             final name =
+                                 (m['full_name'] as String? ?? '')
+                                     .toLowerCase();
+                             final code =
+                                 (m['code'] as String? ?? '').toLowerCase();
+                             return name.contains(q) || code.contains(q);
+                           }).toList();
+                     if (filtered.isEmpty) {
+                       return Center(
+                         child: Text(
+                           'No members match "${_searchController.text.trim()}"',
+                           style: ClayTokens.bodySmall.copyWith(
+                               fontSize: 13,
+                               fontWeight: FontWeight.w400,
+                               color: ClayTokens.clayDarkTextTertiary,
+                               letterSpacing: -0.08),
+                         ),
+                       );
+                     }
                      return ListView.builder(
+                       key: ValueKey('members-$_query'),
                        padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
-                       itemCount: members.length,
+                       itemCount: filtered.length,
                        itemBuilder: (_, i) {
-                         final m = members[i];
+                         final m = filtered[i];
                          final name = m['full_name'] as String? ?? 'Unknown';
                          final initials = name.split(' ').map((n) => n[0]).take(2).join();
                          final avatarUrl = m['avatar_url'] as String?;
