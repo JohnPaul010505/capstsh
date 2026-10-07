@@ -1280,13 +1280,15 @@ class _PagerBtn extends StatelessWidget {
     return GestureDetector(
       onTap: enabled ? onTap : null,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: enabled ? Colors.white.withAlpha(16) : Colors.white.withAlpha(6),
+          color: enabled
+              ? ClayTokens.clayPrimary
+              : Colors.white.withAlpha(6),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: enabled
-                ? Colors.white.withAlpha(40)
+                ? ClayTokens.clayPrimary
                 : Colors.white.withAlpha(12),
           ),
         ),
@@ -1294,9 +1296,9 @@ class _PagerBtn extends StatelessWidget {
           label,
           style: TextStyle(
             fontSize: 10.5,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w700,
             color: enabled
-                ? ClayTokens.clayDarkTextPrimary
+                ? Colors.white
                 : ClayTokens.clayDarkTextTertiary,
           ),
         ),
@@ -1475,7 +1477,7 @@ class _DailyCheckinsView extends ConsumerStatefulWidget {
 }
 
 class _DailyCheckinsViewState extends ConsumerState<_DailyCheckinsView> {
-  static const _pageSize = 10;
+  static const _pageSize = 8;
   int _page = 0;
 
   @override
@@ -2418,7 +2420,7 @@ class _RecentActivityView extends ConsumerStatefulWidget {
 }
 
 class _RecentActivityViewState extends ConsumerState<_RecentActivityView> {
-  static const _pageSize = 10;
+  static const _pageSize = 8;
   int _page = 0;
 
   @override
