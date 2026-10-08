@@ -104,6 +104,10 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
     );
     showModalBottomSheet(
       context: context,
+      // Root navigator: the sheet (and its scrim) covers the shell's bottom
+      // nav bar — otherwise the branch-level sheet renders UNDER the bar and
+      // the nav stays visible on top of the plan overlay.
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => TrainerPlanWorkoutOverlay(

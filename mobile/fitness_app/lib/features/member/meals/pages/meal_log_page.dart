@@ -44,7 +44,7 @@ const mealIcons = {
 const mealIconColors = {
   'breakfast': Color(0xFFFF9500),
   'lunch': Color(0xFF0A84FF),
-  'dinner': Color(0xFFBF5AF2),
+  'dinner': Color(0xFF7C3AED),
   'snack': Color(0xFF30D158),
 };
 
@@ -73,6 +73,10 @@ Future<void> _openDayOnePlanSheet(
   );
   showModalBottomSheet(
     context: context,
+    // Root navigator: the sheet (and its scrim) covers the shell's bottom
+    // nav bar — otherwise the branch-level sheet renders UNDER the bar and
+    // the nav stays visible on top of the plan overlay.
+    useRootNavigator: true,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     builder: (_) => TrainerPlanFoodOverlay(
@@ -131,10 +135,10 @@ class MealLogPage extends ConsumerWidget {
                               vertical: 3,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFBF5AF2).withAlpha(140),
+                              color: const Color(0xFF7C3AED).withAlpha(140),
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
-                                color: const Color(0xFFBF5AF2).withAlpha(180),
+                                color: const Color(0xFF7C3AED).withAlpha(180),
                               ),
                             ),
                             child: Text(
@@ -153,10 +157,10 @@ class MealLogPage extends ConsumerWidget {
                               vertical: 3,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFBF5AF2).withAlpha(140),
+                              color: const Color(0xFF7C3AED).withAlpha(140),
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
-                                color: const Color(0xFFBF5AF2).withAlpha(180),
+                                color: const Color(0xFF7C3AED).withAlpha(180),
                               ),
                             ),
                             child: mealsAsync.when(
@@ -298,14 +302,13 @@ class MealLogPage extends ConsumerWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          color: const Color(0xFFBF5AF2),
+          color: const Color(0xFF7C3AED),
           borderRadius: BorderRadius.circular(14),
         ),
+        // Text only — the old "+" icon is gone, per the design pass.
         child: const Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(CupertinoIcons.add, color: Colors.white, size: 17),
-            SizedBox(width: 6),
             Text(
               'Add Food',
               style: TextStyle(

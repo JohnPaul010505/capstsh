@@ -193,14 +193,6 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/trainer/members',
                 pageBuilder: (_, __) => _iosPush(const ProgressListPage()),
-                routes: [
-                  GoRoute(
-                    path: ':id',
-                    pageBuilder: (_, state) => _iosPush(
-                      MemberProgressPage(id: state.pathParameters['id']!),
-                    ),
-                  ),
-                ],
               ),
             ],
           ),
@@ -254,6 +246,15 @@ final routerProvider = Provider<GoRouter>((ref) {
             ],
           ),
         ],
+      ),
+      // Full-screen member progress pushed on the root navigator (same
+      // pattern as /member/chat) so the trainer nav bar is hidden while
+      // reviewing a member and "<" pops back to the Members list branch.
+      GoRoute(
+        path: '/trainer/members/:id',
+        pageBuilder: (_, state) => _iosPush(
+          MemberProgressPage(id: state.pathParameters['id']!),
+        ),
       ),
       GoRoute(
         path: '/trainer/set-plan',

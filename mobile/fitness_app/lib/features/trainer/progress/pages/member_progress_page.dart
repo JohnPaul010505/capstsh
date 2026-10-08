@@ -21,22 +21,16 @@ final memberProgressDataProvider = FutureProvider.autoDispose.family<Map<String,
   final weekEnd = weekStart.add(const Duration(days: 7));
   final yearStart = DateTime(today.year, 1, 1);
   final nextYear = DateTime(today.year + 1, 1, 1);
-  final currentMonthStart = DateTime(today.year, today.month, 1);
-  final nextMonthStart = DateTime(today.year, today.month + 1, 1);
-
   final results = await Future.wait([
+    // Yearly attendance — the SAME source the member's own Home uses for
+    // its This Week / This Month / Active-days cards, so this page always
+    // shows the member's data instead of a different (workout-log) series.
     client
-        .from('workout_logs')
-        .select('logged_at')
+        .from('attendance')
+        .select('check_in_time')
         .eq('member_id', memberId)
-        .gte('logged_at', weekStart.toUtc().toIso8601String())
-        .lt('logged_at', weekEnd.toUtc().toIso8601String()),
-    client
-        .from('workout_logs')
-        .select('logged_at')
-        .eq('member_id', memberId)
-        .gte('logged_at', yearStart.toUtc().toIso8601String())
-        .lt('logged_at', nextYear.toUtc().toIso8601String()),
+        .gte('check_in_time', yearStart.toUtc().toIso8601String())
+        .lt('check_in_time', nextYear.toUtc().toIso8601String()),
     client
         .from('body_measurements')
         .select('weight_kg, height_cm, measured_at')
@@ -45,45 +39,30 @@ final memberProgressDataProvider = FutureProvider.autoDispose.family<Map<String,
         .lt('measured_at', nextYear.toUtc().toIso8601String())
         .order('measured_at', ascending: true),
     client
-        .from('workout_logs')
-        .select('exercise_name, logged_at, sets, reps, weight_kg, proof_url, workout_name, total_calories, duration_seconds')
-        .eq('member_id', memberId)
-        .gte('logged_at', currentMonthStart.toUtc().toIso8601String())
-        .lt('logged_at', nextMonthStart.toUtc().toIso8601String())
-        .order('logged_at', ascending: false),
-    client
-        .from('meal_logs')
-        .select('food_name, meal_type, meal_time')
-        .eq('member_id', memberId)
-        .gte('meal_time', currentMonthStart.toUtc().toIso8601String())
-        .lt('meal_time', nextMonthStart.toUtc().toIso8601String())
-        .order('meal_time', ascending: false),
-    client
         .from('profiles')
         .select('id, full_name, email, avatar_url')
         .eq('id', memberId)
         .single(),
   ]);
 
-  final weekWorkouts = results[0] as List;
-  final yearWorkouts = results[1] as List;
-  final measurements = results[2] as List;
-  final monthMeals = results[4] as List;
-  final profile = results[5] as Map<String, dynamic>;
+  final yearAttendance = results[0] as List;
+  final measurements = results[1] as List;
+  final profile = results[2] as Map<String, dynamic>;
 
+  // Week + month counts computed with the exact same math as the member's
+  // home provider, so the trainer view always agrees with what the member
+  // sees (toLocal() for the weekday, raw month for the year chart).
   final weekCounts = List.generate(7, (i) => 0);
-  for (final w in weekWorkouts.cast<Map<String, dynamic>>()) {
-    final t = DateTime.tryParse(w['logged_at'] as String? ?? '')?.toLocal();
-    if (t != null && !t.isBefore(weekStart) && t.isBefore(weekEnd)) {
-      weekCounts[t.weekday - 1]++;
-    }
-  }
-
   final monthlyCounts = List.generate(12, (i) => 0);
-  for (final w in yearWorkouts.cast<Map<String, dynamic>>()) {
-    final t = DateTime.tryParse(w['logged_at'] as String? ?? '')?.toLocal();
-    if (t != null && t.year == today.year && t.month >= 1 && t.month <= 12) {
-      monthlyCounts[t.month - 1]++;
+  for (final a in yearAttendance.cast<Map<String, dynamic>>()) {
+    final raw = DateTime.tryParse(a['check_in_time'] as String? ?? '');
+    if (raw == null) continue;
+    final local = raw.toLocal();
+    if (!local.isBefore(weekStart) && local.isBefore(weekEnd)) {
+      weekCounts[local.weekday - 1]++;
+    }
+    if (raw.month - 1 >= 0 && raw.month - 1 < 12) {
+      monthlyCounts[raw.month - 1]++;
     }
   }
 
@@ -104,7 +83,6 @@ final memberProgressDataProvider = FutureProvider.autoDispose.family<Map<String,
     'maxWeek': weekCounts.reduce((a, b) => a > b ? a : b).clamp(1, 100),
     'monthlyCounts': monthlyCounts,
     'monthlyWeights': monthlyBmis,
-    'monthMeals': monthMeals,
     'today': today,
   };
 });
@@ -147,47 +125,49 @@ class MemberProgressPage extends ConsumerStatefulWidget {
 }
 
 class _MemberProgressPageState extends ConsumerState<MemberProgressPage> {
-  StreamSubscription? _workoutSub;
-  StreamSubscription? _mealSub;
+  StreamSubscription? _attendanceSub;
+  StreamSubscription? _measurementSub;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _subscribeWorkouts();
-      _subscribeMeals();
+      _subscribeAttendance();
+      _subscribeMeasurements();
       ref.invalidate(memberProgressDataProvider(widget.id));
     });
   }
 
-  void _subscribeWorkouts() {
-    _workoutSub?.cancel();
-    _workoutSub = SupabaseClientService()
+  // The charts read attendance (check-ins) + body measurements now, so
+  // those are the streams worth listening to.
+  void _subscribeAttendance() {
+    _attendanceSub?.cancel();
+    _attendanceSub = SupabaseClientService()
         .client
-        .from('workout_logs')
+        .from('attendance')
         .stream(primaryKey: ['id'])
         .eq('member_id', widget.id)
-        .order('logged_at', ascending: false)
+        .order('check_in_time', ascending: false)
         .limit(1)
         .listen((_) => ref.invalidate(memberProgressDataProvider(widget.id)));
   }
 
-  void _subscribeMeals() {
-    _mealSub?.cancel();
-    _mealSub = SupabaseClientService()
+  void _subscribeMeasurements() {
+    _measurementSub?.cancel();
+    _measurementSub = SupabaseClientService()
         .client
-        .from('meal_logs')
+        .from('body_measurements')
         .stream(primaryKey: ['id'])
         .eq('member_id', widget.id)
-        .order('meal_time', ascending: false)
+        .order('measured_at', ascending: false)
         .limit(1)
         .listen((_) => ref.invalidate(memberProgressDataProvider(widget.id)));
   }
 
   @override
   void dispose() {
-    _workoutSub?.cancel();
-    _mealSub?.cancel();
+    _attendanceSub?.cancel();
+    _measurementSub?.cancel();
     super.dispose();
   }
 
@@ -329,7 +309,13 @@ class _WeekChartState extends State<_WeekChart> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('This Week', style: ClayTokens.titleMedium.copyWith(color: ClayTokens.clayDarkTextPrimary)),
+                  Text(
+                    'This Week',
+                    style: ClayTokens.titleMedium.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  ),
                   const SizedBox(height: 1),
                   if (_selectedDay != null)
                     AnimatedOpacity(
@@ -337,11 +323,15 @@ class _WeekChartState extends State<_WeekChart> {
                       opacity: 1.0,
                       child: Text(
                         '${labels[_selectedDay!]}: ${widget.weekCounts[_selectedDay!]} workout${widget.weekCounts[_selectedDay!] == 1 ? '' : 's'}',
-                        style: TextStyle(fontSize: 10, color: ClayTokens.clayPrimaryLight, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     )
                   else
-                    Text('Tap a bar for details', style: TextStyle(fontSize: 10, color: ClayTokens.clayDarkTextTertiary)),
+                    Text('Tap a bar for details', style: TextStyle(fontSize: 10, color: Colors.white)),
                 ],
               ),
             ],
@@ -384,13 +374,12 @@ class _WeekChartState extends State<_WeekChart> {
           const SizedBox(height: 5),
           Row(
             children: List.generate(7, (i) {
-              final isToday = i == today;
               return Expanded(
                 child: Text(labels[i],
                   textAlign: TextAlign.center,
                    style: TextStyle(
-                     fontSize: 10, fontWeight: FontWeight.w500,
-                     color: isToday ? ClayTokens.clayPrimaryDark : ClayTokens.clayDarkTextTertiary,
+                     fontSize: 10, fontWeight: FontWeight.w800,
+                     color: Colors.white,
                    ),
                 ),
               );
@@ -429,19 +418,52 @@ class _MonthChart extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('This Month', style: ClayTokens.titleMedium.copyWith(color: ClayTokens.clayDarkTextPrimary)),
+                  Row(
+                    children: [
+                      Text(
+                        'This Month',
+                        style: ClayTokens.titleMedium.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        DateTime.now().year.toString(),
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontFamily: ClayTypography.headingFamily,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFFA78BFA),
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 2),
-                  Text(DateTime.now().year.toString(), style: TextStyle(fontSize: 13, color: ClayTokens.clayPrimaryDark, fontWeight: FontWeight.w700)),
+                  Text(
+                    'Check-ins per month',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                 decoration: BoxDecoration(
                   color: ClayTokens.clayPrimary,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: ClayTokens.clayPrimaryLight.withAlpha(120)),
                 ),
-                child: Text('Total: ${monthlyCounts.reduce((a, b) => a + b)}', style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w700)),
+                child: Text(
+                  'Total: ${monthlyCounts.reduce((a, b) => a + b)}',
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
             ],
           ),
@@ -450,7 +472,6 @@ class _MonthChart extends StatelessWidget {
             values: values,
             labels: _monthShort,
             strokeColor: ClayTokens.clayPrimaryDark,
-            legendLabel: 'Workouts per month',
             showYAxis: false,
             showValueLabels: true,
           ),
@@ -483,20 +504,40 @@ class _GrowthChart extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Growth Over Time', style: ClayTokens.titleMedium.copyWith(color: ClayTokens.clayDarkTextPrimary)),
+                  Text(
+                    'Growth Over Time',
+                    style: ClayTokens.titleMedium.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  ),
                   const SizedBox(height: 2),
-                  Text('BMI per month', style: TextStyle(fontSize: 10, color: ClayTokens.clayDarkTextTertiary)),
+                  Text(
+                    'BMI per month',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontFamily: ClayTypography.headingFamily,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  ),
                 ],
               ),
               if (latestWeight != null)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                   decoration: BoxDecoration(
                     color: ClayTokens.clayPrimary,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: ClayTokens.clayPrimaryLight.withAlpha(120)),
                   ),
-                  child: Text(latestWeight.toStringAsFixed(1), style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w700)),
+                  child: Text(
+                    latestWeight.toStringAsFixed(1),
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
             ],
           ),

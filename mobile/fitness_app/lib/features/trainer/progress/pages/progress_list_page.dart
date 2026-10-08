@@ -88,24 +88,10 @@ final assignedMembersWithStatsProvider =
         if (prev == null || t.isAfter(prev)) lastCheckIn[mid] = t;
       }
 
-      // Retention risk (AI service, local scikit-learn) for each assigned
-      // member. Requests capped at 30; a member without enough data or a
-      // failed call simply drops the risk badge instead of failing the page.
-      final predictionService = PredictionService();
-      final riskByMember = <String, String>{};
-      try {
-        final forecasts = await Future.wait(
-          memberIds.take(30).map((id) => predictionService.getForecast(id)),
-        );
-        for (var i = 0; i < forecasts.length; i++) {
-          final risk = forecasts[i].retention;
-          if (risk == null) continue;
-          riskByMember[memberIds[i]] = risk.riskLabel;
-        }
-      } catch (e) {
-        debugPrint('Retention risk fetch failed: $e');
-      }
-
+      // Retention risk is intentionally NOT fetched here: it round-trips
+      // through the AI service and used to hold the whole list behind a
+      // skeleton for seconds. Rows render from the four fast DB queries;
+      // badges fill in from memberRetentionRiskProvider (watched below).
       final rows = profileList.map((p) {
         final mid = p['id'] as String;
         final meas = measByMember[mid] ?? const <Map<String, dynamic>>[];
@@ -130,7 +116,6 @@ final assignedMembersWithStatsProvider =
               ? (current / target).clamp(0.0, 1.0)
               : null,
           'last_checkin': lastCheckIn[mid],
-          'risk_label': riskByMember[mid],
         };
       }).toList();
 
@@ -144,6 +129,50 @@ final assignedMembersWithStatsProvider =
         return lb.compareTo(la);
       });
       return rows;
+    });
+
+/// Retention risk badges, fetched OFF the list's critical path. The AI
+/// service sits behind the dev tunnel/LAN and used to hold the member list
+/// behind a skeleton for seconds; rows now render from the fast DB queries
+/// and the badges pop in when these forecasts land. Keep-alive (like the
+/// list itself) so the AI is hit once per session, not on every visit.
+final memberRetentionRiskProvider =
+    FutureProvider<Map<String, String>>((ref) async {
+      final client = SupabaseClientService().client;
+      final userId = client.auth.currentUser!.id;
+      final assignments = await client
+          .from('trainer_assignments')
+          .select('member_id')
+          .eq('trainer_id', userId)
+          .eq('status', 'active');
+      final memberIds = (assignments as List)
+          .map((a) => a['member_id'] as String)
+          .toList();
+      if (memberIds.isEmpty) return const {};
+
+      final service = PredictionService();
+      final out = <String, String>{};
+      // Per-member 5s cap: one slow host never delays the rest, and a
+      // failure just drops that badge (the list is already on screen).
+      final forecasts = await Future.wait(
+        memberIds.take(30).map((id) async {
+          try {
+            return await service
+                .getForecast(id)
+                .timeout(const Duration(seconds: 5));
+          } catch (_) {
+            return null;
+          }
+        }),
+      );
+      for (var i = 0; i < forecasts.length; i++) {
+        final forecast = forecasts[i];
+        if (forecast == null) continue;
+        final risk = forecast.retention;
+        if (risk == null) continue;
+        out[memberIds[i]] = risk.riskLabel;
+      }
+      return out;
     });
 
 class ProgressListPage extends ConsumerStatefulWidget {
@@ -188,6 +217,11 @@ class _ProgressListPageState extends ConsumerState<ProgressListPage> {
   @override
   Widget build(BuildContext context) {
     final membersAsync = ref.watch(assignedMembersWithStatsProvider);
+    // Retention badges arrive after the rows — they must never gate the
+    // first paint or re-skeletonize cached data on refresh.
+    final risks =
+        ref.watch(memberRetentionRiskProvider).valueOrNull ??
+        const <String, String>{};
 
     return Scaffold(
       backgroundColor: ClayTokens.clayDarkBase,
@@ -263,6 +297,10 @@ class _ProgressListPageState extends ConsumerState<ProgressListPage> {
               ),
               Expanded(
                 child: membersAsync.when(
+                  // Cached rows stay on screen during background refetches
+                  // (the router listener invalidates on every tab return).
+                  skipLoadingOnRefresh: true,
+                  skipLoadingOnReload: true,
                   data: (members) {
                     if (members.isEmpty) {
                       return Center(
@@ -321,7 +359,9 @@ class _ProgressListPageState extends ConsumerState<ProgressListPage> {
                         final name = m['full_name'] as String? ?? 'Unknown';
                         return Semantics(
                           label: 'View $name progress',
-                          child: _MemberProgressCard(data: m),
+                          child: _MemberProgressCard(
+                            data: {...m, 'risk_label': risks[m['id']]},
+                          ),
                         );
                       },
                     );

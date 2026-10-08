@@ -47,7 +47,6 @@ final homeDataProvider =
   final weekEnd = weekStart.add(const Duration(days: 7));
   final yearStart = DateTime(today.year, 1, 1);
   final nextYear = DateTime(today.year + 1, 1, 1);
-  final monthEnd = DateTime(today.year, today.month + 1, 0).day;
 
   // Fire all independent queries in parallel (ONE network latency total).
   final results = await Future.wait<dynamic>([
@@ -78,44 +77,34 @@ final homeDataProvider =
         .eq('member_id', userId)
         .eq('status', 'active')
         .limit(1),
-    // This Week chart counts actual logged workouts (not QR check-ins).
-    client
-        .from('workout_logs')
-        .select('logged_at')
-        .eq('member_id', userId)
-        .gte('logged_at', weekStart.toUtc().toIso8601String())
-        .lt('logged_at', weekEnd.toUtc().toIso8601String()),
   ]);
 
   final yearList = results[0] as List;
   final measurements = results[1] as List;
   final goals = results[2] as List;
   final assignment = results[3] as List;
-  final weekWorkouts = results[4] as List;
 
-  // Workouts grouped by PH/local weekday (Mon-first). Parsing with toLocal()
-  // keeps early-morning sessions (e.g. 01:17 PH = 17:17 UTC the day before)
-  // on the correct weekday.
+  // This Week counts the SAME attendance rows as the This Month chart and
+  // the Active-days card (QR check-ins), so every card on Home agrees.
+  // toLocal() keeps early-morning check-ins (e.g. 01:17 PH = 17:17 UTC the
+  // day before) on the correct weekday.
   final weekCounts = List.generate(7, (i) => 0);
-  for (final w in weekWorkouts.cast<Map<String, dynamic>>()) {
-    final t = DateTime.tryParse(w['logged_at'] as String? ?? '')?.toLocal();
+  for (final a in yearList.cast<Map<String, dynamic>>()) {
+    final t = DateTime.tryParse(a['check_in_time'] as String? ?? '')?.toLocal();
     if (t != null && !t.isBefore(weekStart) && t.isBefore(weekEnd)) {
       weekCounts[t.weekday - 1]++;
     }
   }
 
   final monthlyCounts = List.generate(12, (i) => 0);
-  final monthCounts = List.generate(monthEnd, (i) => 0);
   for (final a in yearList.cast<Map<String, dynamic>>()) {
     final t = DateTime.parse(a['check_in_time'] as String);
-    final day = t.day - 1;
     if (t.month - 1 >= 0 && t.month - 1 < 12) monthlyCounts[t.month - 1]++;
-    if (t.month == today.month && day >= 0 && day < monthEnd) {
-      monthCounts[day]++;
-    }
   }
 
-  final totalWorkouts = monthCounts.reduce((a, b) => a + b);
+  // The Total pill sums every month plotted in the year chart (the whole
+  // year total), not just the current month.
+  final totalWorkouts = monthlyCounts.reduce((a, b) => a + b);
 
   // Active-day accounting for THIS MONTH, from REAL attendance only.
   //
@@ -564,13 +553,14 @@ class _PredictionCardState extends State<_PredictionCard> {
                 width: 28,
                 height: 28,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFBF5AF2).withAlpha(38),
+                  // Solid purple badge, white glyph (design pass).
+                  color: const Color(0xFF7C3AED),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0x33BF5AF2)),
+                  border: Border.all(color: const Color(0xFFA78BFA)),
                 ),
                 child: const Icon(
                   Icons.insights,
-                  color: Color(0xFFD6A5FF),
+                  color: Colors.white,
                   size: 16,
                 ),
               ),
@@ -686,13 +676,14 @@ class _ActiveDaysCard extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: const Color(0xFFBF5AF2).withAlpha(38),
+              // Solid purple badge, white glyph (design pass).
+              color: const Color(0xFF7C3AED),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0x33BF5AF2)),
+              border: Border.all(color: const Color(0xFFA78BFA)),
             ),
             child: const Icon(
               Icons.event_available,
-              color: Color(0xFFD6A5FF),
+              color: Colors.white,
               size: 20,
             ),
           ),
@@ -818,12 +809,34 @@ class _GreetingRow extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                firstName,
-                style: ClayTokens.displaySmall.copyWith(
-                  letterSpacing: 0,
-                  color: ClayTokens.clayPrimary,
-                ),
+              // Login-screen logo beside the name (left corner), with an
+              // errorBuilder fallback so a missing asset can never throw.
+              Row(
+                children: [
+                  Image.asset(
+                    'assets/logo.png',
+                    width: 38,
+                    height: 38,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => const Icon(
+                      Icons.fitness_center,
+                      color: Colors.white,
+                      size: 26,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      firstName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: ClayTokens.displaySmall.copyWith(
+                        letterSpacing: 0,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 2),
               Row(
@@ -914,7 +927,7 @@ class _WeekChartState extends State<_WeekChart> {
                       overflow: TextOverflow.ellipsis,
                       style: ClayTokens.titleMedium.copyWith(
                         fontWeight: FontWeight.w800,
-                        color: const Color(0xFFA78BFA),
+                        color: Colors.white,
                       ),
                     ),
                     const SizedBox(height: 1),
@@ -1138,7 +1151,7 @@ class _YearChart extends StatelessWidget {
                         'This Month',
                         style: ClayTokens.titleMedium.copyWith(
                           fontWeight: FontWeight.w800,
-                          color: const Color(0xFFA78BFA),
+                          color: Colors.white,
                         ),
                       ),
                       const SizedBox(width: 6),
@@ -1246,7 +1259,7 @@ class _GrowthChart extends StatelessWidget {
                     'Growth Over Time',
                     style: ClayTokens.titleMedium.copyWith(
                       fontWeight: FontWeight.w800,
-                      color: const Color(0xFFA78BFA),
+                      color: Colors.white,
                     ),
                   ),
                   const SizedBox(height: 2),

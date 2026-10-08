@@ -36,7 +36,7 @@ const _mealTypeOptions = <String, (String, String, IconData, Color)>{
     'Dinner',
     'Meals eaten in the evening.',
     CupertinoIcons.moon_stars,
-    Color(0xFFBF5AF2),
+    Color(0xFF7C3AED),
   ),
   'snack': (
     'Snack',
@@ -590,7 +590,7 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: const BorderSide(
-                color: Color(0xFFBF5AF2),
+                color: Color(0xFF7C3AED),
                 width: 1.6,
               ),
             ),
@@ -599,7 +599,7 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
         const SizedBox(height: 12),
         if (_searching)
           const LinearProgressIndicator(
-            color: Color(0xFFBF5AF2),
+            color: Color(0xFF7C3AED),
             minHeight: 2,
             backgroundColor: Color(0xFF1C1C35),
           ),
@@ -700,20 +700,20 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: const BorderSide(
-                color: Color(0xFFBF5AF2),
+                color: Color(0xFF7C3AED),
                 width: 1.4,
               ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: const BorderSide(
-                color: Color(0xFFBF5AF2),
+                color: Color(0xFF7C3AED),
                 width: 1.4,
               ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: Color(0xFFBF5AF2), width: 2),
+              borderSide: const BorderSide(color: Color(0xFF7C3AED), width: 2),
             ),
           ),
         ),
@@ -795,7 +795,7 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
         ),
         _ReviewRow(
           icon: CupertinoIcons.photo,
-          color: const Color(0xFFBF5AF2),
+          color: const Color(0xFF7C3AED),
           label: 'Photo',
           value: _image != null ? 'Attached' : 'Skipped',
           onEdit: () => setState(() => _step = _WizardStep.photo),
@@ -836,7 +836,7 @@ class _StepIndicator extends StatelessWidget {
   final int current;
   const _StepIndicator({required this.current});
 
-  static const _purple = Color(0xFFBF5AF2);
+  static const _purple = Color(0xFF7C3AED);
   static const _pending = Color(0xFF353555);
 
   @override
@@ -1044,7 +1044,7 @@ class _PhotoPlaceholder extends StatelessWidget {
                   icon: const Icon(CupertinoIcons.camera, size: 18),
                   label: const Text('Take photo'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFBF5AF2),
+                    backgroundColor: const Color(0xFF7C3AED),
                     foregroundColor: Colors.white,
                     minimumSize: const Size.fromHeight(50),
                     padding: const EdgeInsets.symmetric(vertical: 14),
@@ -1062,7 +1062,7 @@ class _PhotoPlaceholder extends StatelessWidget {
                   label: const Text('Gallery'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: const Color(0xFFD6A5FF),
-                    side: const BorderSide(color: Color(0xFFBF5AF2)),
+                    side: const BorderSide(color: Color(0xFF7C3AED)),
                     minimumSize: const Size.fromHeight(50),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
@@ -1100,7 +1100,7 @@ class _GhostButton extends StatelessWidget {
         label: Text(label, style: const TextStyle(fontSize: 13)),
         style: OutlinedButton.styleFrom(
           foregroundColor: const Color(0xFFD6A5FF),
-          side: const BorderSide(color: Color(0xFFBF5AF2)),
+          side: const BorderSide(color: Color(0xFF7C3AED)),
           padding: const EdgeInsets.symmetric(vertical: 12),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -1129,10 +1129,10 @@ class _FoodResultTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFFBF5AF2).withAlpha(26) : _glassFill,
+          color: selected ? const Color(0xFF7C3AED).withAlpha(26) : _glassFill,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: selected ? const Color(0xFFBF5AF2) : _glassBorder,
+            color: selected ? const Color(0xFF7C3AED) : _glassBorder,
             width: selected ? 1.5 : 1,
           ),
         ),
@@ -1174,7 +1174,7 @@ class _FoodResultTile extends StatelessWidget {
             if (selected)
               const Icon(
                 CupertinoIcons.check_mark_circled_solid,
-                color: Color(0xFFBF5AF2),
+                color: Color(0xFF7C3AED),
                 size: 20,
               ),
           ],
@@ -1217,7 +1217,7 @@ class _SelectedFoodCard extends StatelessWidget {
               _Per100(
                 label: 'kcal',
                 value: food.caloriesKcal.toStringAsFixed(0),
-                color: const Color(0xFFBF5AF2),
+                color: const Color(0xFF7C3AED),
               ),
               _Per100(
                 label: 'protein',
@@ -1296,10 +1296,10 @@ class _GramChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFFBF5AF2).withAlpha(30) : _glassFill,
+          color: selected ? const Color(0xFF7C3AED).withAlpha(30) : _glassFill,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: selected ? const Color(0xFFBF5AF2) : _glassBorder,
+            color: selected ? const Color(0xFF7C3AED) : _glassBorder,
           ),
         ),
         child: Text(
@@ -1491,7 +1491,7 @@ class _ReviewRow extends StatelessWidget {
             const Text(
               'Edit',
               style: TextStyle(
-                color: Color(0xFFBF5AF2),
+                color: Color(0xFF7C3AED),
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),
@@ -1543,14 +1543,14 @@ class _BottomBar extends StatelessWidget {
             child: ElevatedButton(
               onPressed: enabled ? onPressed : null,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFBF5AF2),
+                backgroundColor: const Color(0xFF7C3AED),
                 foregroundColor: Colors.white,
                 disabledBackgroundColor: const Color(0xFF1C1C35),
                 disabledForegroundColor: const Color(0xFF7070A0),
                 minimumSize: const Size.fromHeight(54),
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 elevation: enabled ? 6 : 0,
-                shadowColor: const Color(0xFFBF5AF2),
+                shadowColor: const Color(0xFF7C3AED),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),

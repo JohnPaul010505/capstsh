@@ -237,7 +237,9 @@ class _AreaChartPainter extends CustomPainter {
           style: TextStyle(
             fontSize: 9,
             fontWeight: FontWeight.w700,
-            color: strokeColor,
+            // White so the numbers read on every dark card (member home +
+            // trainer member progress), per the design pass.
+            color: Colors.white,
           ),
         ),
         textDirection: TextDirection.ltr,
