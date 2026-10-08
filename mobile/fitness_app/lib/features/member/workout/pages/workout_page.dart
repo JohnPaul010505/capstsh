@@ -225,9 +225,11 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
                 ),
                 if (session.idleWarning)
                   WorkoutIdleOverlay(session: session, notifier: notifier),
-                Positioned.fill(
-                  child: Consumer(
-                    builder: (context, ref, _) {
+                // No Positioned.fill wrapper: it would swallow touches over
+                // the whole screen. The logo positions itself, so only its
+                // own pixels hit-test — drags start on the logo directly.
+                Consumer(
+                  builder: (context, ref, _) {
                       if (!(ref.watch(hasActivePlanProvider).value ??
                           false)) {
                         return const SizedBox.shrink();
@@ -280,21 +282,18 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
                         },
                       );
                       final f = logoPos.fraction;
-                      return Stack(
-                        children: [
-                          if (f == null)
-                            Positioned(right: 16, bottom: 96, child: logo)
-                          else
-                            Positioned(
-                              left: f.dx * screen.width,
-                              top: f.dy * screen.height,
-                              child: logo,
-                            ),
-                        ],
+                      // The logo IS the positioned child — no extra Stack.
+                      if (f == null) {
+                        return Positioned(
+                            right: 16, bottom: 96, child: logo);
+                      }
+                      return Positioned(
+                        left: f.dx * screen.width,
+                        top: f.dy * screen.height,
+                        child: logo,
                       );
                     },
                   ),
-                ),
               ],
             ),
           ),

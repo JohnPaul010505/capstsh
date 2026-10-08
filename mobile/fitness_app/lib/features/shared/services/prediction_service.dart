@@ -78,16 +78,37 @@ class PredictionService {
   /// the primary one; the extras keep one dev build working from every target
   /// (physical phone on the same Wi-Fi -> PC LAN IP, Android emulator ->
   /// 10.0.2.2, web/desktop on the PC -> localhost).
+  ///
+  /// Port note: the AI service (FastAPI) listens on **8001** while the admin
+  /// Express proxy listens on **3001** (`/api/ai/predictions` -> AI service).
+  /// Either endpoint serves forecasts, so every host is tried on BOTH ports —
+  /// a stale `.env` port or a stopped proxy no longer kills the card.
   static const _fallbackHosts = ['192.168.100.181', '10.0.2.2', 'localhost'];
+  static const _fallbackPorts = [8001, 3001];
+
+  /// Short-lived cache: one forecast per member for 2 minutes. The trainer
+  /// members list fires up to 30 forecasts in parallel; without this every
+  /// tab visit re-hammers all hosts and spams logcat with timeouts.
+  static final Map<String, _CachedForecast> _cache = {};
 
   List<String> _candidateUrls() {
     final configured = aiApiBaseUrl();
     final parsed = Uri.tryParse(configured);
     if (parsed == null || !parsed.hasAuthority) return [configured];
     final candidates = <String>[configured];
-    for (final host in _fallbackHosts) {
-      final url = parsed.replace(host: host).toString();
-      if (!candidates.contains(url)) candidates.add(url);
+    final hosts = <String>[
+      parsed.host,
+      ..._fallbackHosts,
+    ];
+    final ports = <int>[
+      if (parsed.hasPort) parsed.port,
+      ..._fallbackPorts,
+    ];
+    for (final host in hosts) {
+      for (final port in ports) {
+        final url = parsed.replace(host: host, port: port).toString();
+        if (!candidates.contains(url)) candidates.add(url);
+      }
     }
     return candidates;
   }
@@ -96,6 +117,13 @@ class PredictionService {
     String memberId, {
     int daysAhead = 30,
   }) async {
+    // Serve repeats (trainer N+1 fan-out, home rebuilds) from the short cache.
+    final cached = _cache[memberId];
+    if (cached != null &&
+        cached.daysAhead == daysAhead &&
+        DateTime.now().difference(cached.at).inMinutes < 2) {
+      return cached.forecast;
+    }
     final candidates = _candidateUrls();
 
     for (var i = 0; i < candidates.length; i++) {
@@ -109,16 +137,22 @@ class PredictionService {
                 'days_ahead': daysAhead,
               }),
             )
-            // Keep the first (configured) attempt generous; the fallback
-            // addresses are only reached when that one is unreachable, so a
-            // short timeout is enough to skip past them.
-            .timeout(Duration(seconds: i == 0 ? 20 : 6));
+            // Every attempt is short: hosts that are down (emulator-only /
+            // PC-only addresses from the wrong target) fail fast instead of
+            // hanging the card for 20s each and spamming logcat.
+            .timeout(const Duration(seconds: 4));
 
         if (resp.statusCode == 200) {
           final list = (jsonDecode(resp.body) as List)
               .map((e) => PredictionResult.fromJson(e as Map<String, dynamic>))
               .toList();
-          return MemberForecast(results: list);
+          final forecast = MemberForecast(results: list);
+          _cache[memberId] = _CachedForecast(
+            forecast: forecast,
+            daysAhead: daysAhead,
+            at: DateTime.now(),
+          );
+          return forecast;
         }
         if (resp.statusCode == 404) {
           String? detail;
@@ -127,18 +161,35 @@ class PredictionService {
                 (jsonDecode(resp.body) as Map<String, dynamic>)['detail']
                     as String?;
           } catch (_) {}
-          return MemberForecast(
-            results: const [],
+          // 404 = definitive "not enough data" from a REACHABLE server:
+          // cache it too so the next 30 members don't re-probe dead hosts.
+          const empty = MemberForecast(
+            results: [],
             notEnoughData: true,
-            error: detail,
           );
+          _cache[memberId] = _CachedForecast(
+            forecast: empty,
+            daysAhead: daysAhead,
+            at: DateTime.now(),
+          );
+          return detail == null
+              ? empty
+              : MemberForecast(
+                  results: const [],
+                  notEnoughData: true,
+                  error: detail,
+                );
         }
         return MemberForecast(
           results: const [],
           error: 'Prediction service error (${resp.statusCode})',
         );
       } catch (e) {
-        debugPrint('PREDICTION SERVICE unreachable (${candidates[i]}): $e');
+        // Only the last candidate logs: intermediate fallbacks are expected
+        // misses (emulator vs phone addresses), not spam-worthy.
+        if (i == candidates.length - 1) {
+          debugPrint('PREDICTION SERVICE unreachable ($memberId): $e');
+        }
       }
     }
 
@@ -147,4 +198,17 @@ class PredictionService {
       error: 'Could not reach the prediction service',
     );
   }
+}
+
+/// Cache entry for [PredictionService._cache].
+class _CachedForecast {
+  final MemberForecast forecast;
+  final int daysAhead;
+  final DateTime at;
+
+  const _CachedForecast({
+    required this.forecast,
+    required this.daysAhead,
+    required this.at,
+  });
 }

@@ -198,9 +198,11 @@ class MealLogPage extends ConsumerWidget {
                   const SizedBox(height: 16),
                 ],
               ),
-              Positioned.fill(
-                child: Consumer(
-                  builder: (context, ref, _) {
+              // No Positioned.fill wrapper: it would swallow touches over
+              // the whole screen. The logo positions itself, so only its
+              // own pixels hit-test — drags start on the logo directly.
+              Consumer(
+                builder: (context, ref, _) {
                       if (!(ref.watch(hasActivePlanProvider).value ??
                           false)) {
                         return const SizedBox.shrink();
@@ -253,21 +255,18 @@ class MealLogPage extends ConsumerWidget {
                         },
                       );
                       final f = logoPos.fraction;
-                      return Stack(
-                        children: [
-                          if (f == null)
-                            Positioned(right: 16, bottom: 96, child: logo)
-                          else
-                            Positioned(
-                              left: f.dx * screen.width,
-                              top: f.dy * screen.height,
-                              child: logo,
-                            ),
-                        ],
+                      // The logo IS the positioned child — no extra Stack.
+                      if (f == null) {
+                        return Positioned(
+                            right: 16, bottom: 96, child: logo);
+                      }
+                      return Positioned(
+                        left: f.dx * screen.width,
+                        top: f.dy * screen.height,
+                        child: logo,
                       );
                     },
                   ),
-                ),
             ],
           ),
         ),
