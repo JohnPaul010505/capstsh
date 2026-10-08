@@ -29,7 +29,7 @@ class _PlanFloatingLogoState extends ConsumerState<PlanFloatingLogo> {
   // Gesture state lives HERE (not in build): every drag tick calls
   // position.dragTo -> notifyListeners -> build reruns. Locals inside build()
   // would reset mid-drag and the logo would stick after one frame.
-  Offset? _dragStart;
+  Offset? _focalStart;
   bool _moved = false;
 
   @override
@@ -37,42 +37,44 @@ class _PlanFloatingLogoState extends ConsumerState<PlanFloatingLogo> {
     final position = ref.watch(floatingLogoPositionProvider);
     final size = position.size;
 
-    // One GestureDetector: pan moves immediately (no long-press), scale with
-    // two fingers resizes. A tap is a pan that barely moved — detected
-    // manually from drag distance, because combining onTap with onPan* would
-    // fire the sheet after every drag.
+    // One GestureDetector using ONLY the scale recognizer. Flutter treats
+    // onPan* + onScale* as conflicting recognizers and throws
+    // ("scale is a superset of pan"), which red-screens release builds.
+    // onScale* handles all three gestures here: one finger = drag,
+    // two fingers = pinch-resize, no movement = tap (opens Day-1 sheet).
+    // NOTE: onScaleEnd fires for taps too, so the tap check lives there —
+    // there is intentionally no onTap callback.
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
-      onPanStart: (details) {
-        _dragStart = details.globalPosition;
+      onScaleStart: (details) {
+        _focalStart = details.focalPoint;
         _moved = false;
-        position.beginDrag(
-            details.globalPosition, MediaQuery.sizeOf(context));
+        if (details.pointerCount >= 2) {
+          position.beginScale();
+        } else {
+          position.beginDrag(
+              details.focalPoint, MediaQuery.sizeOf(context));
+        }
       },
-      onPanUpdate: (details) {
-        final start = _dragStart;
+      onScaleUpdate: (details) {
+        final start = _focalStart;
         if (start != null &&
-            (details.globalPosition - start).distance > 8) {
+            (details.focalPoint - start).distance > 8) {
           _moved = true;
         }
-        if (_moved) {
-          position.dragTo(details.globalPosition, MediaQuery.sizeOf(context));
+        if (details.pointerCount >= 2) {
+          // Pinch with two fingers resizes; never treated as a tap.
+          _moved = true;
+          position.scaleTo(details.scale, MediaQuery.sizeOf(context));
+        } else if (_moved) {
+          position.dragTo(details.focalPoint, MediaQuery.sizeOf(context));
         }
       },
-      onPanEnd: (_) {
+      onScaleEnd: (_) {
         position.persist();
         if (!_moved) widget.onTap();
-        _dragStart = null;
+        _focalStart = null;
       },
-      onPanCancel: () => position.persist(),
-      onScaleStart: (_) => position.beginScale(),
-      onScaleUpdate: (details) {
-        if (details.pointerCount >= 2) {
-          _moved = true; // a pinch is not a tap
-          position.scaleTo(details.scale, MediaQuery.sizeOf(context));
-        }
-      },
-      onScaleEnd: (_) => position.persist(),
       child: AnimatedRotation(
         turns: widget.isExpanded ? 1 : 0,
         duration: const Duration(milliseconds: 400),
@@ -84,18 +86,22 @@ class _PlanFloatingLogoState extends ConsumerState<PlanFloatingLogo> {
         child: Stack(
           alignment: Alignment.center,
           children: [
+            // Soft radial glow BEHIND the image. A gradient circle fades to
+            // transparent at its edges, so it never tints the logo's
+            // transparent corners (a boxShadow blur would, which is what left
+            // the purple disc in the screenshots).
             Container(
               width: size,
               height: size,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: ClayTokens.clayPrimary.withAlpha(70),
-                    blurRadius: 18,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
+                gradient: RadialGradient(
+                  colors: [
+                    ClayTokens.clayPrimary.withAlpha(0),
+                    ClayTokens.clayPrimary.withAlpha(90),
+                  ],
+                  stops: const [0.55, 1.0],
+                ),
               ),
             ),
             Image.asset(
