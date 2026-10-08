@@ -84,6 +84,27 @@ class _NotesBanner extends StatelessWidget {
   }
 }
 
+/// Normalises a plan/log name for comparison: trimmed, lowercase, with
+/// whitespace collapsed (shared by the workout and food sheets).
+String _normPlanName(String s) =>
+    s.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+
+/// True when the member logged [name] today. Exact normalised match first,
+/// then a containment match (both sides >= 4 chars) so a planned
+/// "Bench Press" also hits a logged "Barbell Bench Press" and a planned
+/// "Avocado, green" hits a logged "Avocado, green, raw".
+bool _planNameLogged(String name, Set<String> logged) {
+  final n = _normPlanName(name);
+  if (n.isEmpty) return false;
+  if (logged.contains(n)) return true;
+  for (final l in logged) {
+    if (l.length >= 4 && n.length >= 4 && (l.contains(n) || n.contains(l))) {
+      return true;
+    }
+  }
+  return false;
+}
+
 class TrainerPlanWorkoutOverlay extends ConsumerStatefulWidget {
   final String planId;
   final int dayNumber;
@@ -199,13 +220,13 @@ class _TrainerPlanWorkoutOverlayState extends ConsumerState<TrainerPlanWorkoutOv
               .map(
                 (r) => (r as Map)['exercise_name'] as String? ?? '',
               )
-              .map(_norm)
+              .map(_normPlanName)
               .where((n) => n.isNotEmpty)
               .toSet();
       if (logged.isEmpty) return;
       for (final e in dayExercises) {
         final name = e['name'] as String? ?? '';
-        if (name.isNotEmpty && logged.contains(_norm(name))) {
+        if (_planNameLogged(name, logged)) {
           _completed.add(name);
         }
       }
@@ -213,9 +234,6 @@ class _TrainerPlanWorkoutOverlayState extends ConsumerState<TrainerPlanWorkoutOv
       // Auto-check is best-effort: rows just stay unchecked.
     }
   }
-
-  String _norm(String s) =>
-      s.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
 
   /// Notes live on their own full screen (no nav bar) rather than inline in
   /// this sheet, so a long recommendation can't squeeze out the plan.
@@ -438,7 +456,9 @@ class TrainerPlanFoodOverlay extends ConsumerStatefulWidget {
 
 class _TrainerPlanFoodOverlayState extends ConsumerState<TrainerPlanFoodOverlay> {
   List<Map<String, dynamic>> foods = [];
+  final Set<String> _completed = <String>{};
   bool _loading = true;
+  bool _saving = false;
 
   @override
   void initState() {
@@ -457,10 +477,20 @@ class _TrainerPlanFoodOverlayState extends ConsumerState<TrainerPlanFoodOverlay>
     // The day's foods live one level down inside `foods`.
     final dayFoods = _rowsForDay(foodPlan, 'foods');
 
+    // A food row shows as done the SAME way exercises do: the member
+    // actually logged it today (a matching `meal_logs` row) — there is no
+    // manual toggle, so the strike-through always reflects real intake.
+    await _autoCheckFromLogs(dayFoods);
+    if (!mounted) return;
+
     setState(() {
       foods = dayFoods;
       _loading = false;
     });
+
+    if (_completed.isNotEmpty) {
+      await _syncCompletion();
+    }
   }
 
   /// Pulls the individual rows planned for [day] out of a per-day grouped
@@ -486,6 +516,67 @@ class _TrainerPlanFoodOverlayState extends ConsumerState<TrainerPlanFoodOverlay>
       }
     }
     return rows;
+  }
+
+  /// Day-1 convenience, mirroring the workout sheet: pre-check rows whose
+  /// food name appears in the member's meal logs for today
+  /// (case/whitespace-insensitive, tolerant contains-match). Stores the
+  /// ORIGINAL plan-row name so row UI comparisons keep working.
+  Future<void> _autoCheckFromLogs(
+    List<Map<String, dynamic>> dayFoods,
+  ) async {
+    try {
+      final client = SupabaseClientService().client;
+      final memberId = client.auth.currentUser?.id;
+      if (memberId == null) return;
+      final now = DateTime.now();
+      final startOfDay = DateTime(now.year, now.month, now.day);
+      final endOfDay = startOfDay.add(const Duration(days: 1));
+      final rows =
+          await client
+              .from('meal_logs')
+              .select('food_name')
+              .eq('member_id', memberId)
+              .gte('meal_time', startOfDay.toUtc().toIso8601String())
+              .lt('meal_time', endOfDay.toUtc().toIso8601String())
+              .limit(200);
+      final logged =
+          (rows as List)
+              .map((r) => (r as Map)['food_name'] as String? ?? '')
+              .map(_normPlanName)
+              .where((n) => n.isNotEmpty)
+              .toSet();
+      if (logged.isEmpty) return;
+      for (final f in dayFoods) {
+        final name = f['name'] as String? ?? '';
+        if (_planNameLogged(name, logged)) {
+          _completed.add(name);
+        }
+      }
+    } catch (_) {
+      // Auto-check is best-effort: rows just stay unchecked.
+    }
+  }
+
+  /// Mirrors the derived (log-matched) food state back to the plan record so
+  /// the trainer's progress view reflects what the member actually ate.
+  /// `PlanRepository.saveDayCompletion` MERGES with the workout sheet's half
+  /// of the day row, so this can never wipe exercise completion.
+  Future<void> _syncCompletion() async {
+    if (_saving) return;
+    setState(() => _saving = true);
+    try {
+      await PlanRepository().saveDayCompletion(
+        planId: widget.planId,
+        memberId: SupabaseClientService().client.auth.currentUser!.id,
+        dayNumber: widget.dayNumber,
+        completedExercises: const [],
+        completedFoods: _completed.toList(),
+        isComplete: foods.isNotEmpty && _completed.length == foods.length,
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   /// Notes live on their own full screen (no nav bar) rather than inline in
@@ -600,26 +691,64 @@ class _TrainerPlanFoodOverlayState extends ConsumerState<TrainerPlanFoodOverlay>
                                 const SizedBox(height: 8),
                                 ...items.map((food) {
                                   final name = food['name'] as String? ?? '';
+                                  final isDone = _completed.contains(name);
 
+                                  // Same treatment as the workout sheet: a
+                                  // done row gets the green check circle, a
+                                  // greyed strike-through name and the
+                                  // "Logged" badge.
                                   return GlassPanel(
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 14, vertical: 12),
                                     child: Row(
                                       children: [
-                                        const Icon(Icons.restaurant_menu,
-                                            size: 16,
-                                            color: Color(0xFFD6A5FF)),
-                                        const SizedBox(width: 10),
+                                        Container(
+                                          width: 24,
+                                          height: 24,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: isDone
+                                                ? const Color(0xFF30D158)
+                                                : Colors.transparent,
+                                            border: Border.all(
+                                              color: isDone
+                                                  ? const Color(0xFF30D158)
+                                                  : const Color(0xFF8E8E93),
+                                              width: 2,
+                                            ),
+                                          ),
+                                          child: isDone
+                                              ? const Icon(Icons.check,
+                                                  size: 14,
+                                                  color: Colors.white)
+                                              : null,
+                                        ),
+                                        const SizedBox(width: 12),
                                         Expanded(
                                           child: Text(
                                             name,
-                                            style: const TextStyle(
+                                            style: TextStyle(
                                               fontSize: 14,
                                               fontWeight: FontWeight.w600,
-                                              color: Color(0xFFFFFFFF),
+                                              color: isDone
+                                                  ? const Color(0xFF8E8E93)
+                                                  : const Color(0xFFFFFFFF),
+                                              decoration: isDone
+                                                  ? TextDecoration.lineThrough
+                                                  : TextDecoration.none,
                                             ),
                                           ),
                                         ),
+                                        if (isDone)
+                                          const Text(
+                                            'Logged',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w700,
+                                              color: Color(0xFF30D158),
+                                              letterSpacing: 0.4,
+                                            ),
+                                          ),
                                       ],
                                     ),
                                   );
@@ -630,6 +759,15 @@ class _TrainerPlanFoodOverlayState extends ConsumerState<TrainerPlanFoodOverlay>
                         },
                       ),
           ),
+          if (foods.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.fromLTRB(16, 8, 16, bottomPadding + 12),
+              child: Text(
+                '${_completed.length}/${foods.length} logged today',
+                style: const TextStyle(fontSize: 12, color: Color(0xFF8E8E93)),
+                textAlign: TextAlign.center,
+              ),
+            ),
           SizedBox(height: bottomPadding + 8),
         ],
       ),

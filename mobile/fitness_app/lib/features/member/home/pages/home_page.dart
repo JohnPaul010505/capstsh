@@ -811,17 +811,22 @@ class _GreetingRow extends ConsumerWidget {
             children: [
               // Login-screen logo beside the name (left corner), with an
               // errorBuilder fallback so a missing asset can never throw.
+              // The top padding drops the glyph a little so it sits optically
+              // level with the big name instead of riding high.
               Row(
                 children: [
-                  Image.asset(
-                    'assets/logo.png',
-                    width: 38,
-                    height: 38,
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => const Icon(
-                      Icons.fitness_center,
-                      color: Colors.white,
-                      size: 26,
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Image.asset(
+                      'assets/logo.png',
+                      width: 38,
+                      height: 38,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.fitness_center,
+                        color: Colors.white,
+                        size: 26,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -838,27 +843,32 @@ class _GreetingRow extends ConsumerWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 2),
-              Row(
-                children: [
-                  Container(
-                    width: 10,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF22C55E),
-                      shape: BoxShape.circle,
+              const SizedBox(height: 6),
+              // Greeting aligns with the NAME's left edge (38 logo + 8 gap
+              // = 46px) and sits a little lower than before.
+              Padding(
+                padding: const EdgeInsets.only(left: 46),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF22C55E),
+                        shape: BoxShape.circle,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    greeting,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: Colors.white,
-                      fontWeight: FontWeight.w500,
+                    const SizedBox(width: 6),
+                    Text(
+                      greeting,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),

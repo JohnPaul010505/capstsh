@@ -127,13 +127,30 @@ class PlanRepository {
     try {
       final existing = await client
           .from('plan_day_completions')
-          .select('id')
+          .select('id, completed_exercises, completed_foods, is_complete')
           .eq('plan_id', planId)
           .eq('member_id', memberId)
           .eq('day_number', dayNumber)
           .maybeSingle();
 
       if (existing != null && existing['id'] != null) {
+        // The workout sheet writes the EXERCISES half of this day row and
+        // the food sheet writes the FOODS half — each save must MERGE with
+        // what is already stored or it wipes the other sheet's work.
+        // Completion is monotonic (rows derive from real logs), so unioning
+        // the arrays and OR-ing is_complete is safe.
+        final prevExercises =
+            ((existing['completed_exercises'] as List?) ?? const [])
+                .whereType<String>()
+                .toSet();
+        final prevFoods =
+            ((existing['completed_foods'] as List?) ?? const [])
+                .whereType<String>()
+                .toSet();
+        payload['completed_exercises'] =
+            {...prevExercises, ...completedExercises}.toList();
+        payload['completed_foods'] = {...prevFoods, ...completedFoods}.toList();
+        payload['is_complete'] = existing['is_complete'] == true || isComplete;
         await client
             .from('plan_day_completions')
             .update(payload)
