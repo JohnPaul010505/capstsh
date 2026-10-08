@@ -41,11 +41,12 @@ class _TrainerPlanWorkoutOverlayState extends ConsumerState<TrainerPlanWorkoutOv
     final exercisePlan =
         (dayData['exercise_plan'] as List<dynamic>? ?? [])
             .cast<Map<String, dynamic>>();
-    final dayExercises =
-        exercisePlan
-            .where((e) => e['day'] == widget.dayNumber)
-            .map((e) => Map<String, dynamic>.from(e))
-            .toList();
+    // The trainer writes plan rows GROUPED per day:
+    //   exercise_plan = [{'day': 1, 'exercises': [{...}, {...}]}, ...]
+    // so the day's exercises live one level down inside `exercises`. Reading
+    // them flat returned the day wrapper itself, and the sheet rendered one
+    // empty row instead of the trainer's recommendation.
+    final dayExercises = _rowsForDay(exercisePlan, 'exercises');
 
     if (widget.dayNumber == 1) {
       await _autoCheckFromLogs(dayExercises);
@@ -56,6 +57,31 @@ class _TrainerPlanWorkoutOverlayState extends ConsumerState<TrainerPlanWorkoutOv
       exercises = dayExercises;
       _loading = false;
     });
+  }
+
+  /// Pulls the individual rows planned for [day] out of a per-day grouped
+  /// plan column (`exercises` / `foods`). Tolerates a legacy FLAT shape
+  /// (`[{'day':1,'name':…}, …]`) so plans written by older builds still show.
+  List<Map<String, dynamic>> _rowsForDay(
+    List<Map<String, dynamic>> planColumn,
+    String nestedKey,
+  ) {
+    final rows = <Map<String, dynamic>>[];
+    for (final group in planColumn) {
+      if (group['day'] != widget.dayNumber) continue;
+      final nested = group[nestedKey];
+      if (nested is List) {
+        rows.addAll(
+          nested
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e)),
+        );
+      } else if ((group['name'] as String?)?.isNotEmpty == true) {
+        // Legacy flat row: the entry IS the exercise/food itself.
+        rows.add(Map<String, dynamic>.from(group));
+      }
+    }
+    return rows;
   }
 
   /// Day-1 convenience: pre-check rows whose exercise name appears in the
@@ -327,16 +353,42 @@ class _TrainerPlanFoodOverlayState extends ConsumerState<TrainerPlanFoodOverlay>
     final days = await PlanRepository().getPlanDays(widget.planId);
     if (!mounted) return;
     final dayData = days.isNotEmpty ? days.first : <String, dynamic>{};
-    final foodPlan = (dayData['food_plan'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>();
-    final dayFoods = foodPlan
-        .where((f) => f['day'] == widget.dayNumber)
-        .map((f) => Map<String, dynamic>.from(f))
-        .toList();
+    final foodPlan = (dayData['food_plan'] as List<dynamic>? ?? [])
+        .cast<Map<String, dynamic>>();
+    // Same per-day grouping as exercises:
+    //   food_plan = [{'day': 1, 'foods': [{...}, {...}]}, ...]
+    // The day's foods live one level down inside `foods`.
+    final dayFoods = _rowsForDay(foodPlan, 'foods');
 
     setState(() {
       foods = dayFoods;
       _loading = false;
     });
+  }
+
+  /// Pulls the individual rows planned for [day] out of a per-day grouped
+  /// plan column (`foods`). Tolerates a legacy FLAT shape
+  /// (`[{'day':1,'name':…}, …]`) so plans written by older builds still show.
+  List<Map<String, dynamic>> _rowsForDay(
+    List<Map<String, dynamic>> planColumn,
+    String nestedKey,
+  ) {
+    final rows = <Map<String, dynamic>>[];
+    for (final group in planColumn) {
+      if (group['day'] != widget.dayNumber) continue;
+      final nested = group[nestedKey];
+      if (nested is List) {
+        rows.addAll(
+          nested
+              .whereType<Map>()
+              .map((f) => Map<String, dynamic>.from(f)),
+        );
+      } else if ((group['name'] as String?)?.isNotEmpty == true) {
+        // Legacy flat row: the entry IS the food itself.
+        rows.add(Map<String, dynamic>.from(group));
+      }
+    }
+    return rows;
   }
 
   @override

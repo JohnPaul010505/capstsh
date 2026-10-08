@@ -1,24 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../app/design_tokens.dart';
 import '../providers/plan_providers.dart';
 
 /// Member's floating trainer-plan logo — the bare logo image with NO
-/// background circle (transparent around it).
-/// - quick tap         -> onTap (opens the Day-1 sheet)
-/// - single-finger drag -> move anywhere on screen (no long-press needed)
-/// - two-finger pinch  -> resize (44-96 px)
-/// Position/size persist across pages via [floatingLogoPositionProvider].
+/// background shape at all (the earlier purple disc was a gradient/boxShadow
+/// painted behind the PNG showing through its transparent margins).
+///
+/// Gestures, all on ONE scale recognizer (mixing `onPan*` with `onScale*`
+/// makes Flutter throw "scale is a superset of pan" and red-screens):
+///   - one finger, no movement -> tap (opens the Day-1 plan sheet)
+///   - one finger, moved       -> drag, confined to [bounds] (the page's own
+///                                body box, so it can never slip under the
+///                                bottom nav bar)
+///   - two fingers             -> pinch resize (44-96 px)
+///
+/// Releasing a drag in the middle of the screen snaps the logo to the nearer
+/// side edge, so it never covers the page content.
 class PlanFloatingLogo extends ConsumerStatefulWidget {
   final VoidCallback onTap;
   final bool isExpanded;
   final String memberId;
+
+  /// The area the logo may occupy. Callers pass the page's body box (screen
+  /// minus the nav bar) so the logo is always fully visible.
+  final Size bounds;
 
   const PlanFloatingLogo({
     super.key,
     required this.onTap,
     required this.isExpanded,
     required this.memberId,
+    required this.bounds,
   });
 
   @override
@@ -36,14 +48,8 @@ class _PlanFloatingLogoState extends ConsumerState<PlanFloatingLogo> {
   Widget build(BuildContext context) {
     final position = ref.watch(floatingLogoPositionProvider);
     final size = position.size;
+    final bounds = widget.bounds;
 
-    // One GestureDetector using ONLY the scale recognizer. Flutter treats
-    // onPan* + onScale* as conflicting recognizers and throws
-    // ("scale is a superset of pan"), which red-screens release builds.
-    // onScale* handles all three gestures here: one finger = drag,
-    // two fingers = pinch-resize, no movement = tap (opens Day-1 sheet).
-    // NOTE: onScaleEnd fires for taps too, so the tap check lives there —
-    // there is intentionally no onTap callback.
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
       onScaleStart: (details) {
@@ -52,26 +58,28 @@ class _PlanFloatingLogoState extends ConsumerState<PlanFloatingLogo> {
         if (details.pointerCount >= 2) {
           position.beginScale();
         } else {
-          position.beginDrag(
-              details.focalPoint, MediaQuery.sizeOf(context));
+          position.beginDrag(details.focalPoint, bounds);
         }
       },
       onScaleUpdate: (details) {
         final start = _focalStart;
-        if (start != null &&
-            (details.focalPoint - start).distance > 8) {
+        if (start != null && (details.focalPoint - start).distance > 8) {
           _moved = true;
         }
         if (details.pointerCount >= 2) {
           // Pinch with two fingers resizes; never treated as a tap.
           _moved = true;
-          position.scaleTo(details.scale, MediaQuery.sizeOf(context));
+          position.scaleTo(details.scale, bounds);
         } else if (_moved) {
-          position.dragTo(details.focalPoint, MediaQuery.sizeOf(context));
+          position.dragTo(details.focalPoint, bounds);
         }
       },
       onScaleEnd: (_) {
+        // Release from the middle of the screen -> park it on a side edge.
+        if (_moved) position.snapToSide(bounds);
         position.persist();
+        // onScaleEnd also fires for taps, so the tap check lives here —
+        // there is intentionally no onTap callback on this detector.
         if (!_moved) widget.onTap();
         _focalStart = null;
       },
@@ -79,43 +87,19 @@ class _PlanFloatingLogoState extends ConsumerState<PlanFloatingLogo> {
         turns: widget.isExpanded ? 1 : 0,
         duration: const Duration(milliseconds: 400),
         curve: Curves.easeInOutCubic,
-        // Bare logo: no gradient circle, no ClipOval. logo.png carries its
-        // own transparent margins — the purple disc in the screenshots was
-        // the old BoxDecoration showing through them. A soft glow painted
-        // BEHIND the image keeps depth without tinting transparent pixels.
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            // Soft radial glow BEHIND the image. A gradient circle fades to
-            // transparent at its edges, so it never tints the logo's
-            // transparent corners (a boxShadow blur would, which is what left
-            // the purple disc in the screenshots).
-            Container(
-              width: size,
-              height: size,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    ClayTokens.clayPrimary.withAlpha(0),
-                    ClayTokens.clayPrimary.withAlpha(90),
-                  ],
-                  stops: const [0.55, 1.0],
-                ),
-              ),
-            ),
-            Image.asset(
-              'assets/logo.png',
-              width: size,
-              height: size,
-              fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) => Icon(
-                Icons.fitness_center,
-                color: Colors.white,
-                size: size * 0.46,
-              ),
-            ),
-          ],
+        // Bare logo: no circle, no gradient, no shadow. logo.png already has
+        // transparent margins, and any shape drawn behind it shows straight
+        // through them.
+        child: Image.asset(
+          'assets/logo.png',
+          width: size,
+          height: size,
+          fit: BoxFit.contain,
+          errorBuilder: (_, __, ___) => Icon(
+            Icons.fitness_center,
+            color: Colors.white,
+            size: size * 0.46,
+          ),
         ),
       ),
     );

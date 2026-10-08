@@ -83,31 +83,55 @@ class PredictionService {
   /// Express proxy listens on **3001** (`/api/ai/predictions` -> AI service).
   /// Either endpoint serves forecasts, so every host is tried on BOTH ports —
   /// a stale `.env` port or a stopped proxy no longer kills the card.
-  static const _fallbackHosts = ['192.168.100.181', '10.0.2.2', 'localhost'];
-  static const _fallbackPorts = [8001, 3001];
+  /// `localhost` is tried FIRST: with `adb reverse` (USB debug) it reaches the
+  /// PC in milliseconds, and without the tunnel the phone refuses it just as
+  /// fast — so it never costs the member a timeout. The PC's LAN IP only
+  /// answers once Windows Firewall allows inbound (see
+  /// `admin/scripts/open-firewall-lan.bat`); `10.0.2.2` is the emulator's
+  /// alias for the host loopback.
+  static const _fallbackHosts = ['localhost', '10.0.2.2', '192.168.100.181'];
+  static const _fallbackPorts = [3001, 8001];
 
   /// Short-lived cache: one forecast per member for 2 minutes. The trainer
   /// members list fires up to 30 forecasts in parallel; without this every
   /// tab visit re-hammers all hosts and spams logcat with timeouts.
   static final Map<String, _CachedForecast> _cache = {};
 
+  /// Probe order: `localhost` first (instant win over the `adb reverse` USB
+  /// tunnel, instant refusal without it), then the URL from `.env`, then every
+  /// other host/port pair. Probing sequentially costs one timeout per dead
+  /// host, so the fast path has to come first — otherwise a firewall-blocked
+  /// LAN IP stalls the card for seconds on every open.
   List<String> _candidateUrls() {
     final configured = aiApiBaseUrl();
     final parsed = Uri.tryParse(configured);
     if (parsed == null || !parsed.hasAuthority) return [configured];
-    final candidates = <String>[configured];
-    final hosts = <String>[
-      parsed.host,
-      ..._fallbackHosts,
-    ];
+
+    final candidates = <String>[];
+    void add(Uri uri) {
+      final url = uri.toString();
+      if (!candidates.contains(url)) candidates.add(url);
+    }
+
     final ports = <int>[
       if (parsed.hasPort) parsed.port,
       ..._fallbackPorts,
     ];
+
+    // 1. localhost on every port — the USB-tunnel / PC-dev path.
+    for (final port in ports) {
+      add(parsed.replace(host: 'localhost', port: port));
+    }
+    // 2. Whatever `.env` actually points at (LAN IP in dev builds).
+    add(parsed);
+    // 3. Remaining fallbacks: emulator alias, then the PC's LAN IP.
+    final hosts = <String>[
+      parsed.host,
+      ..._fallbackHosts.where((h) => h != 'localhost'),
+    ];
     for (final host in hosts) {
       for (final port in ports) {
-        final url = parsed.replace(host: host, port: port).toString();
-        if (!candidates.contains(url)) candidates.add(url);
+        add(parsed.replace(host: host, port: port));
       }
     }
     return candidates;

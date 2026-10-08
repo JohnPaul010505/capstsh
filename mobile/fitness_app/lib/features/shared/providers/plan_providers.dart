@@ -127,9 +127,14 @@ final planOverlayControllerProvider = ChangeNotifierProvider<PlanOverlayControll
 });
 
 /// Fraction-based position + size of the member's floating plan logo.
-/// Stored as fractions of the screen so rotation/resolution never breaks it;
-/// `fraction == null` means "default spot" (right:16, bottom:96).
+/// Stored as fractions of the **body box** (the area the page owns, i.e. the
+/// screen minus the bottom nav bar) so rotation/resolution never breaks it.
+/// `fraction == null` means "default spot" (bottom-right corner).
 class FloatingLogoPosition extends ChangeNotifier {
+  /// Kept clear of every screen edge so the logo is never half-clipped, and
+  /// so a drag can always be grabbed again.
+  static const double _margin = 12;
+
   Offset? _fraction;
   double _size = 52;
   bool _loaded = false;
@@ -156,33 +161,73 @@ class FloatingLogoPosition extends ChangeNotifier {
     }
   }
 
-  Offset defaultFraction(Size screen) => Offset(
-        (screen.width - _size - 16) / screen.width,
-        (screen.height - _size - 96) / screen.height,
+  Offset defaultFraction(Size bounds) => Offset(
+        (bounds.width - _size - _margin) / bounds.width,
+        (bounds.height - _size - _margin) / bounds.height,
       );
 
-  void beginDrag(Offset globalPoint, Size screen) {
-    _dragStartPoint = globalPoint;
-    _dragStartFraction = _fraction ?? defaultFraction(screen);
+  /// Largest legal fraction on each axis for [bounds]. Dividing by the axis
+  /// length keeps the result a true fraction of that axis.
+  Offset _maxFraction(Size bounds) {
+    final usableW = (bounds.width - _size - _margin).clamp(0.0, bounds.width);
+    final usableH = (bounds.height - _size - _margin).clamp(0.0, bounds.height);
+    return Offset(usableW / bounds.width, usableH / bounds.height);
   }
 
-  void dragTo(Offset globalPoint, Size screen) {
+  /// The fraction actually used to place the logo: always inside [bounds], so
+  /// a position persisted by an older build (which clamped against the whole
+  /// screen) can never render underneath the nav bar.
+  Offset clampedFraction(Size bounds) {
+    final f = _fraction ?? defaultFraction(bounds);
+    final max = _maxFraction(bounds);
+    return Offset(f.dx.clamp(0.0, max.dx), f.dy.clamp(0.0, max.dy));
+  }
+
+  void beginDrag(Offset globalPoint, Size bounds) {
+    _dragStartPoint = globalPoint;
+    _dragStartFraction = clampedFraction(bounds);
+  }
+
+  void dragTo(Offset globalPoint, Size bounds) {
     final delta = globalPoint - _dragStartPoint;
-    final maxX = (screen.width - _size - 8) / screen.width;
-    final maxY = (screen.height - _size - 8) / screen.height;
+    final max = _maxFraction(bounds);
     _fraction = Offset(
-      (_dragStartFraction.dx + delta.dx / screen.width).clamp(0.0, maxX),
-      (_dragStartFraction.dy + delta.dy / screen.height).clamp(0.0, maxY),
+      (_dragStartFraction.dx + delta.dx / bounds.width).clamp(0.0, max.dx),
+      (_dragStartFraction.dy + delta.dy / bounds.height).clamp(0.0, max.dy),
     );
     notifyListeners();
   }
 
+  /// Rule the member asked for: a logo parked in the middle of the screen
+  /// snaps back to whichever side edge is nearer, so it never sits on top of
+  /// the page content. The vertical position is kept (and re-clamped).
+  void snapToSide(Size bounds) {
+    final f = clampedFraction(bounds);
+    final centrePx = f.dx * bounds.width + _size / 2;
+    final middle = bounds.width / 2;
+    // Only snap when the logo really is in the central band; a logo already
+    // resting against an edge stays exactly where the member put it.
+    if ((centrePx - middle).abs() < bounds.width * 0.25) {
+      final toLeft = centrePx < middle;
+      final x = toLeft ? _margin : (bounds.width - _size - _margin);
+      final max = _maxFraction(bounds);
+      _fraction = Offset(x / bounds.width, f.dy.clamp(0.0, max.dy));
+      notifyListeners();
+    }
+  }
+
   void beginScale() => _dragStartSize = _size;
 
-  void scaleTo(double scale, Size screen) {
-    final maxDim = screen.width < screen.height ? screen.width : screen.height;
+  /// Test-only hook: simulates a position persisted by an older build.
+  @visibleForTesting
+  void debugSetFraction(Offset fraction) => _fraction = fraction;
+
+  void scaleTo(double scale, Size bounds) {
+    final maxDim = bounds.width < bounds.height ? bounds.width : bounds.height;
     final cap = maxDim - 16 < 96 ? maxDim - 16 : 96.0;
     _size = (_dragStartSize * scale).clamp(44.0, cap);
+    // A bigger logo must not push itself past an edge — re-clamp to match.
+    _fraction = clampedFraction(bounds);
     notifyListeners();
   }
 

@@ -48,6 +48,43 @@ const mealIconColors = {
   'snack': Color(0xFF30D158),
 };
 
+/// Opens the trainer's Day-1 nutrition sheet for the floating logo.
+///
+/// `activePlanProvider` is `autoDispose`, so `ref.read(...)` on a provider
+/// nobody is watching hands back an unresolved `AsyncValue` whose `.value`
+/// is null — the old code returned right there, which is why tapping the
+/// logo did nothing at all. Awaiting `.future` loads it on demand.
+Future<void> _openDayOnePlanSheet(
+  BuildContext context,
+  WidgetRef ref,
+) async {
+  final overlay = ref.read(planOverlayControllerProvider);
+  if (overlay.isOpen) {
+    overlay.close();
+    return;
+  }
+
+  final plan = await ref.read(activePlanProvider.future);
+  if (plan == null || !context.mounted) return;
+
+  overlay.openForFood(
+    SupabaseClientService().client.auth.currentUser!.id,
+    plan['start_date'] as String? ?? '',
+  );
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => TrainerPlanFoodOverlay(
+      planId: plan['id'] as String,
+      dayNumber: 1, // Day 1 only, per design
+      notes: plan['notes'] as String?,
+    ),
+  ).then((_) {
+    if (overlay.isOpen) overlay.close();
+  });
+}
+
 class MealLogPage extends ConsumerWidget {
   const MealLogPage({super.key});
 
@@ -58,8 +95,18 @@ class MealLogPage extends ConsumerWidget {
       backgroundColor: ClayTokens.clayDarkBase,
       body: AppGlowBackground(
         child: SafeArea(
-          child: Stack(
-            children: [
+          // LayoutBuilder must wrap the Stack, not sit inside it: `Positioned`
+          // is a ParentDataWidget that only works as a DIRECT child of a
+          // Stack (wrapping it throws "Incorrect use of ParentDataWidget").
+          // The constraints here are exactly the body box, which Scaffold
+          // already sized without the bottom nav bar — so clamping to them
+          // makes it impossible to drag the logo underneath the nav bar.
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final bounds =
+                  Size(constraints.maxWidth, constraints.maxHeight);
+              return Stack(
+                children: [
               ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 physics: const ClampingScrollPhysics(),
@@ -203,14 +250,17 @@ class MealLogPage extends ConsumerWidget {
               // own pixels hit-test — drags start on the logo directly.
               Consumer(
                 builder: (context, ref, _) {
-                      if (!(ref.watch(hasActivePlanProvider).value ??
-                          false)) {
-                        return const SizedBox.shrink();
-                      }
-                      final logoPos =
-                          ref.watch(floatingLogoPositionProvider);
-                      final screen = MediaQuery.sizeOf(context);
-                      final logo = PlanFloatingLogo(
+                    if (!(ref.watch(hasActivePlanProvider).value ??
+                        false)) {
+                      return const SizedBox.shrink();
+                    }
+                    final logoPos =
+                        ref.watch(floatingLogoPositionProvider);
+                    final f = logoPos.clampedFraction(bounds);
+                    return Positioned(
+                      left: f.dx * bounds.width,
+                      top: f.dy * bounds.height,
+                      child: PlanFloatingLogo(
                         memberId: SupabaseClientService()
                             .client
                             .auth
@@ -219,55 +269,16 @@ class MealLogPage extends ConsumerWidget {
                         isExpanded: ref
                             .watch(planOverlayControllerProvider)
                             .isOpen,
-                        onTap: () {
-                          final overlay =
-                              ref.read(planOverlayControllerProvider);
-                          final planAsync = ref.read(activePlanProvider);
-                          final plan = planAsync.value;
-                          if (plan == null) return;
-
-                          if (overlay.isOpen) {
-                            overlay.close();
-                          } else {
-                            overlay.openForFood(
-                              SupabaseClientService()
-                                  .client
-                                  .auth
-                                  .currentUser!
-                                  .id,
-                              plan['start_date'] as String? ?? '',
-                            );
-                            showModalBottomSheet(
-                              context: context,
-                              isScrollControlled: true,
-                              backgroundColor: Colors.transparent,
-                              builder: (_) => TrainerPlanFoodOverlay(
-                                planId: plan['id'] as String,
-                                dayNumber: 1, // Day 1 only, per design
-                                notes: plan['notes'] as String?,
-                              ),
-                            ).then((_) {
-                              if (overlay.isOpen) {
-                                overlay.close();
-                              }
-                            });
-                          }
-                        },
-                      );
-                      final f = logoPos.fraction;
-                      // The logo IS the positioned child — no extra Stack.
-                      if (f == null) {
-                        return Positioned(
-                            right: 16, bottom: 96, child: logo);
-                      }
-                      return Positioned(
-                        left: f.dx * screen.width,
-                        top: f.dy * screen.height,
-                        child: logo,
-                      );
-                    },
-                  ),
-            ],
+                        bounds: bounds,
+                        onTap: () =>
+                            _openDayOnePlanSheet(context, ref),
+                      ),
+                    );
+                  },
+                ),
+                ],
+              );
+            },
           ),
         ),
       ),
