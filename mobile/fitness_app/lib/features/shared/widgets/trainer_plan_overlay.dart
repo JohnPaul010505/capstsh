@@ -38,17 +38,72 @@ class _TrainerPlanWorkoutOverlayState extends ConsumerState<TrainerPlanWorkoutOv
     final days = await PlanRepository().getPlanDays(widget.planId);
     if (!mounted) return;
     final dayData = days.isNotEmpty ? days.first : <String, dynamic>{};
-    final exercisePlan = (dayData['exercise_plan'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>();
-    final dayExercises = exercisePlan
-        .where((e) => e['day'] == widget.dayNumber)
-        .map((e) => Map<String, dynamic>.from(e))
-        .toList();
+    final exercisePlan =
+        (dayData['exercise_plan'] as List<dynamic>? ?? [])
+            .cast<Map<String, dynamic>>();
+    final dayExercises =
+        exercisePlan
+            .where((e) => e['day'] == widget.dayNumber)
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+
+    if (widget.dayNumber == 1) {
+      await _autoCheckFromLogs(dayExercises);
+      if (!mounted) return;
+    }
 
     setState(() {
       exercises = dayExercises;
       _loading = false;
     });
   }
+
+  /// Day-1 convenience: pre-check rows whose exercise name appears in the
+  /// member's workout logs for today (case/whitespace-insensitive). Stores the
+  /// ORIGINAL plan-row name so row UI comparisons keep working.
+  Future<void> _autoCheckFromLogs(
+    List<Map<String, dynamic>> dayExercises,
+  ) async {
+    try {
+      final client = SupabaseClientService().client;
+      final memberId = client.auth.currentUser?.id;
+      if (memberId == null) return;
+      final now = DateTime.now();
+      final startOfDay = DateTime(now.year, now.month, now.day);
+      final endOfDay = startOfDay.add(const Duration(days: 1));
+      final rows =
+          await client
+              .from('workout_logs')
+              .select('exercise_name')
+              .eq('member_id', memberId)
+              .gte(
+                'created_at',
+                startOfDay.toUtc().toIso8601String(),
+              )
+              .lt('created_at', endOfDay.toUtc().toIso8601String())
+              .limit(200);
+      final logged =
+          (rows as List)
+              .map(
+                (r) => (r as Map)['exercise_name'] as String? ?? '',
+              )
+              .map(_norm)
+              .where((n) => n.isNotEmpty)
+              .toSet();
+      if (logged.isEmpty) return;
+      for (final e in dayExercises) {
+        final name = e['name'] as String? ?? '';
+        if (name.isNotEmpty && logged.contains(_norm(name))) {
+          _completed.add(name);
+        }
+      }
+    } catch (_) {
+      // Auto-check is best-effort: rows just stay unchecked.
+    }
+  }
+
+  String _norm(String s) =>
+      s.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
 
   Future<void> _toggleExercise(String name) async {
     setState(() {

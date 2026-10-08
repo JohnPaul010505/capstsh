@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/design_tokens.dart';
+import '../providers/plan_providers.dart';
 
-class PlanFloatingLogo extends ConsumerStatefulWidget {
+/// Member's floating trainer-plan logo.
+/// - quick tap         -> onTap (opens the Day-1 sheet)
+/// - long-press + drag -> move anywhere on screen
+/// - two-finger pinch  -> resize (44-96 px)
+/// Position/size persist across pages via [floatingLogoPositionProvider].
+class PlanFloatingLogo extends ConsumerWidget {
   final VoidCallback onTap;
   final bool isExpanded;
   final String memberId;
@@ -15,21 +21,33 @@ class PlanFloatingLogo extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<PlanFloatingLogo> createState() => _PlanFloatingLogoState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final position = ref.watch(floatingLogoPositionProvider);
+    final size = position.size;
 
-class _PlanFloatingLogoState extends ConsumerState<PlanFloatingLogo> {
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedRotation(
-      turns: widget.isExpanded ? 1 : 0,
-      duration: const Duration(milliseconds: 400),
-      curve: Curves.easeInOutCubic,
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: Container(
-          width: 52,
-          height: 52,
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      onLongPressStart: (details) => position.beginDrag(
+          details.globalPosition, MediaQuery.sizeOf(context)),
+      onLongPressMoveUpdate: (details) => position.dragTo(
+          details.globalPosition, MediaQuery.sizeOf(context)),
+      onLongPressEnd: (_) => position.persist(),
+      onScaleStart: (_) => position.beginScale(),
+      onScaleUpdate: (details) {
+        if (details.pointerCount >= 2) {
+          position.scaleTo(details.scale, MediaQuery.sizeOf(context));
+        }
+      },
+      onScaleEnd: (_) => position.persist(),
+      child: AnimatedRotation(
+        turns: isExpanded ? 1 : 0,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOutCubic,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          width: size,
+          height: size,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: LinearGradient(
@@ -48,13 +66,13 @@ class _PlanFloatingLogoState extends ConsumerState<PlanFloatingLogo> {
           child: ClipOval(
             child: Image.asset(
               'assets/logo.png',
-              width: 52,
-              height: 52,
+              width: size,
+              height: size,
               fit: BoxFit.cover,
               errorBuilder: (_, __, ___) => Icon(
                 Icons.fitness_center,
                 color: Colors.white,
-                size: 24,
+                size: size * 0.46,
               ),
             ),
           ),

@@ -1,9 +1,13 @@
 // analyzer-workaround-20260907
 import 'dart:async';
+import 'dart:ui' show ImageFilter;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared/models/nutrition_food.dart';
+import 'package:shared/services/nutrition_service.dart';
 import 'package:shared/services/supabase_client.dart';
 import 'package:shared/services/notification_service.dart';
 import '../../../../app/design_tokens.dart';
@@ -39,6 +43,15 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
   List<Map<String, dynamic>>? members;
   Map<String, bool> memberHasActivePlan = <String, bool>{};
   bool _confirmReplace = false;
+
+  DateTime _startDate = DateTime.now();
+
+  static const _monthNames = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+
+  String _fmtDate(DateTime d) => '${_monthNames[d.month - 1]} ${d.day}, ${d.year}';
 
   bool _isDayComplete(int day) {
     final foods = foodsByDay[day] ?? [];
@@ -153,8 +166,12 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
         'food_plan': foodPlan,
         'exercise_plan': exercisePlan,
         'notes': notesController.text.trim().isNotEmpty ? notesController.text.trim() : null,
-        'start_date': DateTime.now().toIso8601String().split('T').first,
-        'end_date': DateTime.now().add(const Duration(days: 6)).toIso8601String().split('T').first,
+        'start_date': _startDate.toIso8601String().split('T').first,
+        'end_date': _startDate
+            .add(const Duration(days: 6))
+            .toIso8601String()
+            .split('T')
+            .first,
         'timeframe': '7_days',
         'updated_at': DateTime.now().toIso8601String(),
         'trainer_id': client.auth.currentUser!.id,
@@ -177,12 +194,17 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
       }
 
       if (!mounted) return;
-      final notes = notesController.text.trim();
-      if (notes.isNotEmpty && selectedClient != null) {
+      if (selectedClient != null) {
+        final trainerName = await _trainerDisplayName(client);
+        final notes = notesController.text.trim();
+        final body = StringBuffer(
+            'Your 7-day plan starts ${_fmtDate(_startDate)}.');
+        if (notes.isNotEmpty) body.write(' $notes');
+        body.write('\n- $trainerName');
         await NotificationService().createNotification(
           userId: selectedClient!,
           title: 'Trainer Set a Plan',
-          body: notes,
+          body: body.toString(),
         );
       }
       if (!mounted) return;
@@ -200,6 +222,25 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
         setState(() => isSaving = false);
       }
     }
+  }
+
+  /// Signed name for plan notifications: the trainer's full_name, or the
+  /// literal "trainer" when the profile lookup fails (never blocks assigning).
+  Future<String> _trainerDisplayName(dynamic client) async {
+    try {
+      final id = client.auth.currentUser?.id;
+      if (id == null) return 'trainer';
+      final row = await client
+          .from('profiles')
+          .select('full_name')
+          .eq('id', id)
+          .maybeSingle();
+      final name = row == null ? null : row['full_name'] as String?;
+      if (name != null && name.trim().isNotEmpty) return name.trim();
+    } catch (_) {
+      // fall through to the generic signature
+    }
+    return 'trainer';
   }
 
   void _addFood() {
@@ -260,6 +301,20 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
     });
   }
 
+  Future<void> _pickStartDate() async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _startDate.isAfter(today) ? _startDate : today,
+      firstDate: today,
+      lastDate: today.add(const Duration(days: 365)),
+    );
+    if (picked != null && mounted) {
+      setState(() => _startDate = picked);
+    }
+  }
+
   void _removeExercise(int index) {
     setState(() {
       final list = exercisesByDay[_currentDay];
@@ -291,9 +346,7 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
                 child: ListView(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                   children: [
-                    GlassPanel(
-                      padding: const EdgeInsets.all(16),
-                      borderRadius: BorderRadius.circular(16),
+                    _NotificationGlassPanel(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -371,6 +424,50 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
                             onDayChanged: (day) {
                               setState(() => _currentDay = day);
                             },
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'START DATE',
+                            style: ClayTokens.displaySmall.copyWith(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1.2,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          GestureDetector(
+                            onTap: _pickStartDate,
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 14),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withAlpha(14),
+                                borderRadius:
+                                    BorderRadius.circular(ClayTokens.radiusMd),
+                                border:
+                                    Border.all(color: Colors.white.withAlpha(30)),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(CupertinoIcons.calendar,
+                                      size: 16, color: Color(0xFF8E8E93)),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      _fmtDate(_startDate),
+                                      style: ClayTokens.darkBodyMedium.copyWith(
+                                        color: ClayTokens.clayDarkTextPrimary,
+                                      ),
+                                    ),
+                                  ),
+                                  Icon(CupertinoIcons.chevron_down,
+                                      size: 16,
+                                      color: ClayTokens.clayDarkTextTertiary),
+                                ],
+                              ),
+                            ),
                           ),
                           const SizedBox(height: 16),
                           _NutritionSection(
@@ -460,6 +557,64 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
           ),
           const SizedBox(width: 32),
         ],
+      ),
+    );
+  }
+}
+
+/// The notification-popup glass surface (the "No notifications" panel):
+/// live backdrop blur + navy→indigo vertical gradient, white rim, and the
+/// dual glow (black drop + purple bloom). Wraps the Create Plan card so it
+/// sits in the same liquid-glass system as the popups instead of the lighter
+/// nav-bar `GlassPanel`.
+class _NotificationGlassPanel extends StatelessWidget {
+  final Widget child;
+
+  const _NotificationGlassPanel({required this.child});
+
+  static const _radius = BorderRadius.all(Radius.circular(16));
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: _radius,
+        boxShadow: [
+          const BoxShadow(
+            color: Color(0x69000000), // black@105
+            blurRadius: 24,
+            offset: Offset(0, 10),
+          ),
+          BoxShadow(
+            color: ClayTokens.clayPrimary.withAlpha(36),
+            blurRadius: 44,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: _radius,
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  const Color(0xFF14142A).withAlpha(150),
+                  const Color(0xFF221A4A).withAlpha(120),
+                  const Color(0xFF14142A).withAlpha(160),
+                ],
+                stops: const [0.0, 0.55, 1.0],
+              ),
+              borderRadius: _radius,
+              border: Border.all(color: Colors.white.withAlpha(38)),
+            ),
+            child: child,
+          ),
+        ),
       ),
     );
   }
@@ -824,6 +979,90 @@ class _NutritionSection extends StatefulWidget {
 class _NutritionSectionState extends State<_NutritionSection> {
   static const _mealTypes = ['breakfast', 'lunch', 'dinner'];
 
+  // FNRI / PhilFCT food search (same `search_nutrition_foods` RPC the
+  // member food wizard uses) so the trainer can pick real database foods.
+  Timer? _foodDebounce;
+  List<NutritionFood> _foodResults = [];
+  bool _searchingFoods = false;
+  bool _hasFoodQuery = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.searchController.addListener(_onControllerChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.searchController.removeListener(_onControllerChanged);
+    _foodDebounce?.cancel();
+    super.dispose();
+  }
+
+  /// Clear stale suggestions when the field is emptied (e.g. after the
+  /// parent's onAddFood clears the controller programmatically).
+  void _onControllerChanged() {
+    if (widget.searchController.text.isEmpty &&
+        (_foodResults.isNotEmpty || _hasFoodQuery || _searchingFoods)) {
+      _foodDebounce?.cancel();
+      setState(() {
+        _foodResults = [];
+        _hasFoodQuery = false;
+        _searchingFoods = false;
+      });
+    }
+  }
+
+  void _onFoodQueryChanged(String value) {
+    final q = value.trim();
+    _foodDebounce?.cancel();
+    if (q.isEmpty) {
+      setState(() {
+        _foodResults = [];
+        _hasFoodQuery = false;
+        _searchingFoods = false;
+      });
+      return;
+    }
+    setState(() {
+      _hasFoodQuery = true;
+      _searchingFoods = true;
+    });
+    _foodDebounce = Timer(const Duration(milliseconds: 300), () async {
+      try {
+        final results = await NutritionService().searchFoods(q);
+        if (mounted) {
+          setState(() {
+            _foodResults = results;
+            _searchingFoods = false;
+          });
+        }
+      } catch (_) {
+        // Search is a convenience — a failed lookup falls back to the
+        // free-text entry the trainer can still type by hand.
+        if (mounted) {
+          setState(() {
+            _foodResults = [];
+            _searchingFoods = false;
+          });
+        }
+      }
+    });
+  }
+
+  /// Fill the field with the picked FNRI food and add it to the meal.
+  void _pickFood(NutritionFood food) {
+    widget.searchController.text = food.foodName;
+    setState(() {
+      _foodResults = [];
+      _hasFoodQuery = false;
+      _searchingFoods = false;
+    });
+    if (widget.selectedMealType != null && widget.foods.length < 3) {
+      widget.onAddFood();
+    }
+  }
+
   String _mealTypeLabel(String type) {
     switch (type.toLowerCase()) {
       case 'breakfast':
@@ -934,6 +1173,7 @@ class _NutritionSectionState extends State<_NutritionSection> {
                       style: ClayTokens.darkBodyMedium,
                       cursorColor: ClayTokens.clayPrimary,
                       enabled: widget.selectedMealType != null && !isFull,
+                      onChanged: _onFoodQueryChanged,
                       onSubmitted: (_) {
                         if (widget.selectedMealType != null && !isFull) {
                           widget.onAddFood();
@@ -951,6 +1191,111 @@ class _NutritionSectionState extends State<_NutritionSection> {
                   ),
                 ],
               ),
+              if (_searchingFoods) ...[
+                const SizedBox(height: 10),
+                const Center(
+                  child: SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Color(0xFFD6A5FF),
+                    ),
+                  ),
+                ),
+              ],
+              if (!_searchingFoods && _hasFoodQuery && _foodResults.isEmpty) ...[
+                const SizedBox(height: 10),
+                const Text(
+                  'No FNRI foods found. You can still type the food name.',
+                  style: TextStyle(fontSize: 11, color: Color(0xFF8E8E93)),
+                ),
+              ],
+              if (_foodResults.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                // Glass suggestion list — frosted panel matching the
+                // create-plan section cards.
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 220),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Colors.white.withAlpha(24),
+                              ClayTokens.clayPrimary.withAlpha(22),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white.withAlpha(38)),
+                        ),
+                        child: ListView.builder(
+                          shrinkWrap: true,
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          itemCount: _foodResults.length,
+                          itemBuilder: (context, index) {
+                            final food = _foodResults[index];
+                            return InkWell(
+                              onTap: () => _pickFood(food),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 28,
+                                      height: 28,
+                                      decoration: BoxDecoration(
+                                        color: ClayTokens.clayPrimary.withAlpha(35),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Icon(
+                                        CupertinoIcons.add,
+                                        color: Color(0xFFD6A5FF),
+                                        size: 16,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            food.foodName,
+                                            style: const TextStyle(
+                                              fontSize: 12.5,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                          Text(
+                                            '${food.category} · ${food.caloriesKcal.round()} kcal',
+                                            style: const TextStyle(
+                                              fontSize: 10,
+                                              color: Color(0xFF8E8E93),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
               if (isFull) ...[
                 const SizedBox(height: 8),
                 const Text(
@@ -1004,9 +1349,9 @@ class _NutritionSectionState extends State<_NutritionSection> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: Colors.white.withAlpha(20),
+                            color: ClayTokens.clayPrimary,
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.white.withAlpha(45)),
+                            border: Border.all(color: ClayTokens.clayPrimary),
                           ),
                           child: Text(
                             _mealTypeLabel(mealType),
@@ -1128,25 +1473,16 @@ class _TrainingSectionState extends State<_TrainingSection> {
     super.dispose();
   }
 
-  /// Sets / reps must be positive whole numbers; weight (optional) may be a
-  /// decimal. Letters are rejected with a visible error and nothing is added.
+  /// Sets / reps must be positive whole numbers. The fields are digits-only,
+  /// so the only realistic failure is an empty or zero value — the hint stays
+  /// neutral ("Enter sets & reps") instead of accusing the user of letters.
   String? _validateNumeric() {
     final sets = widget.setsController.text.trim();
     final reps = widget.repsController.text.trim();
-    final weight = widget.weightController.text.trim();
     final setsValue = int.tryParse(sets);
     final repsValue = int.tryParse(reps);
-    if (setsValue == null || setsValue <= 0) {
-      return 'Sets must be a whole number — letters are not allowed (e.g. 3).';
-    }
-    if (repsValue == null || repsValue <= 0) {
-      return 'Reps must be a whole number — letters are not allowed (e.g. 12).';
-    }
-    if (weight.isNotEmpty) {
-      final weightValue = double.tryParse(weight);
-      if (weightValue == null || weightValue < 0) {
-        return 'Weight must be a number — letters are not allowed (e.g. 20 or 12.5).';
-      }
+    if (setsValue == null || setsValue <= 0 || repsValue == null || repsValue <= 0) {
+      return 'Enter sets & reps';
     }
     return null;
   }
@@ -1354,12 +1690,31 @@ class _TrainingSectionState extends State<_TrainingSection> {
                 const SizedBox(height: 8),
                 Column(
                   children: _searchResults.map((e) {
-                    return PressableCard(
-                      onTap: () => _addExerciseFromSearch(e),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    // Glass result row — frosted panel like the create-plan
+                    // section cards instead of a solid dark tile.
+                    return Container(
                       margin: const EdgeInsets.only(bottom: 6),
-                      borderRadius: BorderRadius.circular(12),
-                      child: Row(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                          child: PressableCard(
+                            onTap: () => _addExerciseFromSearch(e),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            borderRadius: BorderRadius.circular(12),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  Colors.white.withAlpha(24),
+                                  ClayTokens.clayPrimary.withAlpha(20),
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.white.withAlpha(38)),
+                            ),
+                            child: Row(
                         children: [
                           Container(
                             width: 28,
@@ -1390,8 +1745,11 @@ class _TrainingSectionState extends State<_TrainingSection> {
                               ],
                             ),
                           ),
-                        ],
+                          ],
+                        ),
                       ),
+                    ),
+                    ),
                     );
                   }).toList(),
                 ),
@@ -1439,6 +1797,10 @@ class _TrainingSectionState extends State<_TrainingSection> {
                       ),
                       style: const TextStyle(fontSize: 13, color: Color(0xFFFFFFFF)),
                       keyboardType: TextInputType.number,
+                      // Numbers only, max 2 digits (up to 99).
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'^\d{0,2}$')),
+                      ],
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -1462,6 +1824,10 @@ class _TrainingSectionState extends State<_TrainingSection> {
                       ),
                       style: const TextStyle(fontSize: 13, color: Color(0xFFFFFFFF)),
                       keyboardType: TextInputType.number,
+                      // Numbers only, max 2 digits (up to 99).
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'^\d{0,2}$')),
+                      ],
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -1485,6 +1851,10 @@ class _TrainingSectionState extends State<_TrainingSection> {
                       ),
                       style: const TextStyle(fontSize: 13, color: Color(0xFFFFFFFF)),
                       keyboardType: TextInputType.number,
+                      // Numbers only, max 3 digits (up to 999).
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'^\d{0,3}$')),
+                      ],
                     ),
                   ),
                 ],
@@ -1493,7 +1863,7 @@ class _TrainingSectionState extends State<_TrainingSection> {
                 const SizedBox(height: 6),
                 Text(
                   _error!,
-                  style: const TextStyle(fontSize: 11, color: Color(0xFFFF453A)),
+                  style: const TextStyle(fontSize: 11, color: Color(0xFF8E8E93)),
                 ),
               ],
               const SizedBox(height: 10),

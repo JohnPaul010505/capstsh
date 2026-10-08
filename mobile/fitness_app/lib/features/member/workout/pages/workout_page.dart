@@ -225,44 +225,76 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
                 ),
                 if (session.idleWarning)
                   WorkoutIdleOverlay(session: session, notifier: notifier),
-                if (ref.watch(hasActivePlanProvider).value ?? false)
-                  Positioned(
-                    right: 16,
-                    bottom: 96,
-                    child: PlanFloatingLogo(
-                      memberId: SupabaseClientService().client.auth.currentUser!.id,
-                      isExpanded: ref.watch(planOverlayControllerProvider).isOpen,
-                      onTap: () {
-                        final overlay = ref.read(planOverlayControllerProvider);
-                        final planAsync = ref.read(activePlanProvider);
-                        final plan = planAsync.value;
-                        if (plan == null) return;
+                Positioned.fill(
+                  child: Consumer(
+                    builder: (context, ref, _) {
+                      if (!(ref.watch(hasActivePlanProvider).value ??
+                          false)) {
+                        return const SizedBox.shrink();
+                      }
+                      final logoPos =
+                          ref.watch(floatingLogoPositionProvider);
+                      final screen = MediaQuery.sizeOf(context);
+                      final logo = PlanFloatingLogo(
+                        memberId: SupabaseClientService()
+                            .client
+                            .auth
+                            .currentUser!
+                            .id,
+                        isExpanded: ref
+                            .watch(planOverlayControllerProvider)
+                            .isOpen,
+                        onTap: () {
+                          final overlay =
+                              ref.read(planOverlayControllerProvider);
+                          final planAsync = ref.read(activePlanProvider);
+                          final plan = planAsync.value;
+                          if (plan == null) return;
 
-                        if (overlay.isOpen) {
-                          overlay.close();
-                        } else {
-                          overlay.openForWorkout(
-                            SupabaseClientService().client.auth.currentUser!.id,
-                            plan['start_date'] as String? ?? '',
-                          );
-                          showModalBottomSheet(
-                            context: context,
-                            isScrollControlled: true,
-                            backgroundColor: Colors.transparent,
-                            builder: (_) => TrainerPlanWorkoutOverlay(
-                              planId: plan['id'] as String,
-                              dayNumber: overlay.currentDay,
-                              notes: plan['notes'] as String?,
+                          if (overlay.isOpen) {
+                            overlay.close();
+                          } else {
+                            overlay.openForWorkout(
+                              SupabaseClientService()
+                                  .client
+                                  .auth
+                                  .currentUser!
+                                  .id,
+                              plan['start_date'] as String? ?? '',
+                            );
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (_) => TrainerPlanWorkoutOverlay(
+                                planId: plan['id'] as String,
+                                dayNumber: 1, // Day 1 only, per design
+                                notes: plan['notes'] as String?,
+                              ),
+                            ).then((_) {
+                              if (overlay.isOpen) {
+                                overlay.close();
+                              }
+                            });
+                          }
+                        },
+                      );
+                      final f = logoPos.fraction;
+                      return Stack(
+                        children: [
+                          if (f == null)
+                            Positioned(right: 16, bottom: 96, child: logo)
+                          else
+                            Positioned(
+                              left: f.dx * screen.width,
+                              top: f.dy * screen.height,
+                              child: logo,
                             ),
-                          ).then((_) {
-                            if (overlay.isOpen) {
-                              overlay.close();
-                            }
-                          });
-                        }
-                      },
-                    ),
+                        ],
+                      );
+                    },
                   ),
+                ),
               ],
             ),
           ),

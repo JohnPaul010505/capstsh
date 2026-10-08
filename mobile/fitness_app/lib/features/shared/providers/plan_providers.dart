@@ -1,6 +1,7 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/services/supabase_client.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../trainer/set_plan/data/plan_repository.dart';
 
 final planRepositoryProvider = Provider<PlanRepository>((ref) {
@@ -123,4 +124,86 @@ class PlanOverlayController extends ChangeNotifier {
 
 final planOverlayControllerProvider = ChangeNotifierProvider<PlanOverlayController>((ref) {
   return PlanOverlayController();
+});
+
+/// Fraction-based position + size of the member's floating plan logo.
+/// Stored as fractions of the screen so rotation/resolution never breaks it;
+/// `fraction == null` means "default spot" (right:16, bottom:96).
+class FloatingLogoPosition extends ChangeNotifier {
+  Offset? _fraction;
+  double _size = 52;
+  bool _loaded = false;
+
+  Offset? get fraction => _fraction;
+  double get size => _size;
+
+  Offset _dragStartPoint = Offset.zero;
+  Offset _dragStartFraction = Offset.zero;
+  double _dragStartSize = 52;
+
+  Future<void> load() async {
+    if (_loaded) return;
+    _loaded = true;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _size = (prefs.getDouble('plan_logo_size') ?? 52).clamp(44.0, 96.0);
+      final x = prefs.getDouble('plan_logo_x');
+      final y = prefs.getDouble('plan_logo_y');
+      if (x != null && y != null) _fraction = Offset(x, y);
+      notifyListeners();
+    } catch (_) {
+      // Defaults are fine when prefs are unavailable.
+    }
+  }
+
+  Offset defaultFraction(Size screen) => Offset(
+        (screen.width - _size - 16) / screen.width,
+        (screen.height - _size - 96) / screen.height,
+      );
+
+  void beginDrag(Offset globalPoint, Size screen) {
+    _dragStartPoint = globalPoint;
+    _dragStartFraction = _fraction ?? defaultFraction(screen);
+  }
+
+  void dragTo(Offset globalPoint, Size screen) {
+    final delta = globalPoint - _dragStartPoint;
+    final maxX = (screen.width - _size - 8) / screen.width;
+    final maxY = (screen.height - _size - 8) / screen.height;
+    _fraction = Offset(
+      (_dragStartFraction.dx + delta.dx / screen.width).clamp(0.0, maxX),
+      (_dragStartFraction.dy + delta.dy / screen.height).clamp(0.0, maxY),
+    );
+    notifyListeners();
+  }
+
+  void beginScale() => _dragStartSize = _size;
+
+  void scaleTo(double scale, Size screen) {
+    final maxDim = screen.width < screen.height ? screen.width : screen.height;
+    final cap = maxDim - 16 < 96 ? maxDim - 16 : 96.0;
+    _size = (_dragStartSize * scale).clamp(44.0, cap);
+    notifyListeners();
+  }
+
+  Future<void> persist() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble('plan_logo_size', _size);
+      final f = _fraction;
+      if (f != null) {
+        await prefs.setDouble('plan_logo_x', f.dx);
+        await prefs.setDouble('plan_logo_y', f.dy);
+      }
+    } catch (_) {
+      // Persistence is best-effort.
+    }
+  }
+}
+
+final floatingLogoPositionProvider =
+    ChangeNotifierProvider<FloatingLogoPosition>((ref) {
+  final position = FloatingLogoPosition();
+  position.load();
+  return position;
 });
