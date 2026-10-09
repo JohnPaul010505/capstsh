@@ -7,6 +7,7 @@ import 'package:shared/providers/auth_provider.dart';
 import 'package:shared/services/auth_service.dart';
 import '../../../app/cupertino_theme.dart';
 import '../../shared/widgets/animations.dart';
+import '../../shared/widgets/app_glow_background.dart';
 
 /// Small helper: forces off any inherited text decoration (e.g. underline)
 /// so labels always render clean regardless of ambient theme defaults.
@@ -110,7 +111,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
       );
 
       if (profile == null) {
-        setState(() => _error = 'Invalid code or password');
+        setState(() => _error = 'Wrong password. Please try again.');
         _fadeController.forward(from: 0);
         return;
       }
@@ -121,7 +122,12 @@ class _LoginPageState extends ConsumerState<LoginPage>
         profile.role == 'trainer' ? '/trainer/dashboard' : '/member/home',
       );
     } catch (e) {
-      setState(() => _error = e.toString());
+      // AuthService throws plain-English messages ("Invalid member code" /
+      // "Wrong password. ..."); strip the "Exception: " wrapper so only the
+      // human-readable message reaches the error banner.
+      final raw = e.toString();
+      final msg = raw.replaceFirst(RegExp(r'^Exception: '), '');
+      setState(() => _error = msg);
       _fadeController.forward(from: 0);
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -139,156 +145,13 @@ class _LoginPageState extends ConsumerState<LoginPage>
         child: AnimatedBuilder(
           animation: _bgAnim,
           builder: (context, child) {
-            final shift = _bgAnim.value * 60;
+            // Member-home glow background: the same AppGlowBackground every
+            // other screen uses, so the login matches the rest of the app.
             return Stack(
               children: [
-                // Admin atmosphere (admin/src/components/AppBackground.tsx):
-                // rotated neon light trails + radial blooms, then the dark
-                // vignette. IgnorePointer keeps taps for the form below.
                 Positioned.fill(
                   child: IgnorePointer(
-                    child: Stack(
-                      children: [
-                        // Large purple trail — top left (-18°)
-                        Positioned(
-                          top: -170 - shift,
-                          left: -230,
-                          width: 560,
-                          height: 280,
-                          child: Transform.rotate(
-                            angle: -0.31,
-                            child: const _LightTrail(
-                              colors: [
-                                Color(0x6B8B5CF6),
-                                Color(0x3D6366F1),
-                                Color(0x008B5CF6),
-                              ],
-                              glow: [Color(0x8C8B5CF6), Color(0x528B5CF6)],
-                            ),
-                          ),
-                        ),
-                        // Blue trail — top right (+12°)
-                        Positioned(
-                          top: -130,
-                          right: -240,
-                          width: 520,
-                          height: 260,
-                          child: Transform.rotate(
-                            angle: 0.21,
-                            child: _LightTrail(
-                              colors: [
-                                Color(0x6B3B82F6),
-                                Color(0x3D6366F1),
-                                Color(0x003B82F6),
-                              ],
-                              glow: [Color(0x8C3B82F6), Color(0x523B82F6)],
-                            ),
-                          ),
-                        ),
-                        // Indigo sweep — centre (-8°)
-                        Positioned(
-                          top: 70,
-                          left: -90,
-                          width: 600,
-                          height: 300,
-                          child: Transform.rotate(
-                            angle: -0.14,
-                            child: _LightTrail(
-                              colors: [
-                                Color(0x426366F1),
-                                Color(0x246366F1),
-                                Color(0x006366F1),
-                              ],
-                              glow: [Color(0x596366F1), Color(0x336366F1)],
-                            ),
-                          ),
-                        ),
-                        // Purple sweep — bottom right (-15°)
-                        Positioned(
-                          bottom: -190 + shift,
-                          right: -230,
-                          width: 560,
-                          height: 300,
-                          child: Transform.rotate(
-                            angle: -0.26,
-                            child: const _LightTrail(
-                              colors: [
-                                Color(0x708B5CF6),
-                                Color(0x3DA855F7),
-                                Color(0x008B5CF6),
-                              ],
-                              glow: [Color(0x998B5CF6), Color(0x598B5CF6)],
-                            ),
-                          ),
-                        ),
-                        // Blue sweep — bottom left (+12°)
-                        Positioned(
-                          bottom: -150,
-                          left: -240,
-                          width: 520,
-                          height: 280,
-                          child: Transform.rotate(
-                            angle: 0.21,
-                            child: _LightTrail(
-                              colors: [
-                                Color(0x6B3B82F6),
-                                Color(0x3D6366F1),
-                                Color(0x003B82F6),
-                              ],
-                              glow: [Color(0x8C3B82F6), Color(0x523B82F6)],
-                            ),
-                          ),
-                        ),
-                        // Soft radial blooms behind the trails
-                        const Positioned(
-                          top: -150,
-                          left: -140,
-                          child: _GlowBlob(
-                            size: 340,
-                            colors: [
-                              Color(0x578B5CF6),
-                              Color(0x1E7C3AED),
-                              Color(0x008B5CF6),
-                            ],
-                          ),
-                        ),
-                        const Positioned(
-                          top: 210,
-                          left: -90,
-                          child: _GlowBlob(
-                            size: 280,
-                            colors: [
-                              Color(0x4D6366F1),
-                              Color(0x146366F1),
-                              Color(0x006366F1),
-                            ],
-                          ),
-                        ),
-                        const Positioned(
-                          top: -120,
-                          right: -130,
-                          child: _GlowBlob(
-                            size: 320,
-                            colors: [
-                              Color(0x573B82F6),
-                              Color(0x1E3B82F6),
-                              Color(0x003B82F6),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                // Dark vignette — mirrors the admin .theme-vignette.
-                const Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: RadialGradient(
-                        colors: [Color(0x00020514), Color(0x8C020514)],
-                        stops: [0.25, 1.0],
-                      ),
-                    ),
+                    child: AppGlowBackground(child: SizedBox.expand()),
                   ),
                 ),
                 child!,
@@ -306,14 +169,20 @@ class _LoginPageState extends ConsumerState<LoginPage>
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const SizedBox(height: 48),
+                        const SizedBox(height: 40),
                         Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             // Logo — sits fully above the glass card.
                             StaggeredFadeIn(
                               index: 0,
-                              child: Stack(
+                              child: Transform.translate(
+                                // The 132px glow circle carries 18px of transparent
+                                // padding below the 96px image; translating down 18px
+                                // puts the image bottom 1px above the card without
+                                // changing the layout height.
+                                offset: const Offset(0, 18),
+                                child: Stack(
                                 alignment: Alignment.center,
                                 children: [
                                   Container(
@@ -338,8 +207,9 @@ class _LoginPageState extends ConsumerState<LoginPage>
                                   ),
                                 ],
                               ),
+                              ),
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 1),
                             // Glass card
                             ClipRRect(
                               borderRadius: BorderRadius.circular(24),
@@ -372,14 +242,14 @@ class _LoginPageState extends ConsumerState<LoginPage>
                                     ),
                                     borderRadius: BorderRadius.circular(24),
                                     border: Border.all(
-                                      color: Color(0x33BF5AF2),
+                                      color: Color(0x337C3AED),
                                     ),
                                     boxShadow: [
                                       // Purple ambient glow, same idea as
                                       // the admin login card's
                                       // 0 0 60px rgba(124,58,237,0.28).
                                       BoxShadow(
-                                        color: Color(0x47BF5AF2),
+                                        color: Color(0x477C3AED),
                                         blurRadius: 52,
                                         spreadRadius: -8,
                                         offset: const Offset(0, 18),
@@ -422,7 +292,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
                                                 ],
                                               ).createShader(bounds),
                                           child: Text(
-                                            'FitTrack',
+                                            'Triple J Fitness',
                                             textAlign: TextAlign.center,
                                             style: _clean(
                                               sfText(
@@ -466,7 +336,8 @@ class _LoginPageState extends ConsumerState<LoginPage>
                                           ),
                                         ),
                                       ),
-                                      const SizedBox(height: 14),
+                                      // Breathing room between the two glass inputs.
+                                      const SizedBox(height: 12),
                                       StaggeredFadeIn(
                                         index: 5,
                                         child: Semantics(
@@ -597,7 +468,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
                                                 boxShadow: [
                                                   BoxShadow(
                                                     color: const Color(
-                                                      0xFFBF5AF2,
+                                                      0xFF7C3AED,
                                                     ).withValues(alpha: 0.45),
                                                     blurRadius: 18,
                                                     offset: const Offset(0, 10),
@@ -629,7 +500,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
                                       ),
                                       const SizedBox(height: 18),
                                       Text(
-                                        'v1.0.0 · Powered by FitTrack',
+                                        'v1.0.0 · Powered by Triple J Fitness',
                                         textAlign: TextAlign.center,
                                         style: _clean(
                                           sfText(
@@ -646,7 +517,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
                             ),
                           ],
                         ),
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 96),
                       ],
                     ),
                   ),
@@ -724,13 +595,15 @@ class _FloatingLabelInputState extends State<_FloatingLabelInput> {
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeInOut,
       decoration: BoxDecoration(
-        color: CupertinoAppColors.cardElevated,
+        // Glass fill: translucent white over the card's backdrop blur so the
+        // glow shows through (matches the wizard's glass inputs).
+        color: Colors.white.withValues(alpha: 0.07),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: focused
               // Purple focus ring — the login card's accent colour.
-              ? const Color(0xFFBF5AF2).withValues(alpha: 0.75)
-              : CupertinoAppColors.separator.withValues(alpha: 0.4),
+              ? const Color(0xFF7C3AED).withValues(alpha: 0.75)
+              : Colors.white.withValues(alpha: 0.18),
           width: focused ? 1.4 : 1,
         ),
       ),
@@ -754,9 +627,8 @@ class _FloatingLabelInputState extends State<_FloatingLabelInput> {
             duration: const Duration(milliseconds: 200),
             curve: Curves.easeInOut,
             left: 16,
-            top: floating ? -9 : 14,
+            top: floating ? 6 : 14,
             child: Container(
-              color: CupertinoAppColors.cardElevated,
               padding: floating
                   ? const EdgeInsets.symmetric(horizontal: 4)
                   : EdgeInsets.zero,
@@ -781,50 +653,3 @@ class _FloatingLabelInputState extends State<_FloatingLabelInput> {
   }
 }
 
-/// One rotated neon "light trail" from the admin atmosphere
-/// (admin/src/components/AppBackground.tsx): a soft pill gradient with a
-/// two-layer coloured glow, the building block of the login background.
-class _LightTrail extends StatelessWidget {
-  final List<Color> colors;
-  final List<Color> glow;
-
-  const _LightTrail({required this.colors, required this.glow});
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(400),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: colors,
-        ),
-        boxShadow: [
-          BoxShadow(color: glow[0], blurRadius: 70, spreadRadius: 8),
-          BoxShadow(color: glow[1], blurRadius: 150, spreadRadius: 24),
-        ],
-      ),
-    );
-  }
-}
-
-/// Soft, non-interactive gradient glow used behind the login card for depth.
-class _GlowBlob extends StatelessWidget {
-  final double size;
-  final List<Color> colors;
-
-  const _GlowBlob({required this.size, required this.colors});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: RadialGradient(colors: colors),
-      ),
-    );
-  }
-}
