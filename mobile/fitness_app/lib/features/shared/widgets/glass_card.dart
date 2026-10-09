@@ -138,3 +138,48 @@ class GlassPanel extends StatelessWidget {
     );
   }
 }
+
+/// Translucent bottom-sheet shell — the sheet twin of [GlassPanel]: a
+/// top-rounded, backdrop-blurred dark-violet glass surface with a hairline
+/// rim. Used by the trainer plan sheets and the trainer record details so
+/// every sheet reads as one glass system.
+class GlassSheetShell extends StatelessWidget {
+  final Widget child;
+  final double blur;
+
+  const GlassSheetShell({super.key, required this.child, this.blur = 28});
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xB31E1B3A), // dark violet @70% — blur shows through
+                Color(0xD9120F26), // deeper @85% toward the bottom
+              ],
+            ),
+            borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(20)),
+            border: Border.all(color: Colors.white.withAlpha(30)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(90),
+                blurRadius: 30,
+                offset: const Offset(0, -6),
+              ),
+            ],
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
