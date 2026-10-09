@@ -273,13 +273,10 @@ class _TrainerPlanWorkoutOverlayState extends ConsumerState<TrainerPlanWorkoutOv
   Widget build(BuildContext context) {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
-    return Container(
+    return SizedBox(
       height: MediaQuery.of(context).size.height * 0.75,
-      decoration: BoxDecoration(
-        color: ClayTokens.clayDarkCard,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: Column(
+      child: GlassSheetShell(
+        child: Column(
         children: [
           Container(
             margin: const EdgeInsets.only(top: 12),
@@ -433,6 +430,7 @@ class _TrainerPlanWorkoutOverlayState extends ConsumerState<TrainerPlanWorkoutOv
               ),
             ),
         ],
+      ),
       ),
     );
   }
@@ -606,13 +604,10 @@ class _TrainerPlanFoodOverlayState extends ConsumerState<TrainerPlanFoodOverlay>
     }
     mealTypes.keys.where((k) => !orderedMealTypes.contains(k)).forEach(orderedMealTypes.add);
 
-    return Container(
+    return SizedBox(
       height: MediaQuery.of(context).size.height * 0.6,
-      decoration: BoxDecoration(
-        color: ClayTokens.clayDarkCard,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: Column(
+      child: GlassSheetShell(
+        child: Column(
         children: [
           Container(
             margin: const EdgeInsets.only(top: 12),
@@ -770,6 +765,7 @@ class _TrainerPlanFoodOverlayState extends ConsumerState<TrainerPlanFoodOverlay>
             ),
           SizedBox(height: bottomPadding + 8),
         ],
+      ),
       ),
     );
   }
