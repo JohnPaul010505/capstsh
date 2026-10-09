@@ -48,21 +48,20 @@ class _NeumorphicSurface extends StatelessWidget {
   }
 }
 
-/// Neumorphic KPI card: small icon tile (solid brand + white glyph, like the
-/// admin KpiCard) + big value + tiny sub-caption.
+/// Neumorphic KPI card: small icon tile (solid brand purple + white glyph —
+/// the same treatment on all twelve dashboard KPI cards) + big value + tiny
+/// sub-caption.
 class _KpiCard extends StatelessWidget {
   final String label;
   final String value;
   final String? sub;
   final IconData icon;
-  final Color glyphColor;
 
   const _KpiCard({
     required this.label,
     required this.value,
     this.sub,
     required this.icon,
-    required this.glyphColor,
   });
 
   @override
@@ -78,10 +77,10 @@ class _KpiCard extends StatelessWidget {
             width: 28,
             height: 28,
             decoration: BoxDecoration(
-              color: glyphColor,
+              color: ClayTokens.clayPrimary,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, color: Colors.white, size: 13),
+            child: Icon(icon, color: Colors.white, size: 15),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -200,33 +199,47 @@ class _CardShell extends StatelessWidget {
   Widget _emptyState({required String message, String? hint}) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
+      // Stretch so the block spans the card and centres inside it, instead of
+      // shrink-wrapping and hugging the left edge (both Activity Feed cards
+      // show this state when the selected range has no records).
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: const Color(0x1D7C3AED),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              CupertinoIcons.doc_text,
-              color: ClayTokens.clayPrimaryLight,
-              size: 16,
+          Center(
+            child: Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: const Color(0x1D7C3AED),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                CupertinoIcons.doc_text,
+                color: ClayTokens.clayPrimaryLight,
+                size: 16,
+              ),
             ),
           ),
           const SizedBox(height: 10),
-          Text(message, style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: ClayTokens.clayDarkTextSecondary,
-          )),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: ClayTokens.clayDarkTextSecondary,
+            ),
+          ),
           if (hint != null) ...[
             const SizedBox(height: 4),
-            Text(hint, style: TextStyle(
-              fontSize: 11,
-              color: ClayTokens.clayDarkTextTertiary,
-            )),
+            Text(
+              hint,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 11,
+                color: ClayTokens.clayDarkTextTertiary,
+              ),
+            ),
           ],
         ],
       ),
@@ -234,29 +247,35 @@ class _CardShell extends StatelessWidget {
   }
 }
 
-/// A thin 1px border stripe behind badge text, the same treatment as the admin
-/// `Badge` (manual = amber, qr = green) but drawn manually so we keep one
-/// neumorphic system instead of pulling in the admin badge component.
+/// A small pill badge. Default = outline style (tinted bg + colored text),
+/// the admin `Badge` treatment. [solid] flips it to a whole-color chip with
+/// white text, used by the activity feed's TYPE column.
 class _InlineBadge extends StatelessWidget {
   final String label;
   final Color color;
   final bool small;
+  final bool solid;
 
-  const _InlineBadge({required this.label, required this.color, this.small = false});
+  const _InlineBadge({
+    required this.label,
+    required this.color,
+    this.small = false,
+    this.solid = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: small ? 6 : 8, vertical: small ? 2 : 3),
       decoration: BoxDecoration(
-        color: color.withAlpha(30),
+        color: solid ? color : color.withAlpha(30),
         borderRadius: BorderRadius.circular(small ? 6 : 8),
-        border: Border.all(color: color.withAlpha(120)),
+        border: solid ? null : Border.all(color: color.withAlpha(120)),
       ),
       child: Text(label, style: TextStyle(
         fontSize: small ? 9 : 10.5,
         fontWeight: FontWeight.w700,
-        color: color,
+        color: solid ? Colors.white : color,
         letterSpacing: 0.3,
       )),
     );
@@ -941,20 +960,50 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             surface: ClayTokens.clayDarkSurfaceElevated,
             onSurface: ClayTokens.clayDarkTextPrimary,
           ),
-          // Glass calendar: translucent panel with a light rim, floating on a
-          // blurred live backdrop (matching the rest of the dashboard glass).
+          // Glass calendar: transparent surface so the notification-glass
+          // gradient behind it shows through — same liquid-glass system as
+          // the popups. Slightly higher alphas than the popup card because a
+          // calendar needs the contrast to stay readable.
           datePickerTheme: DatePickerThemeData(
-            backgroundColor: const Color(0xE614142A),
+            backgroundColor: Colors.transparent,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
-              side: BorderSide(color: Colors.white.withAlpha(38)),
+              side: BorderSide.none,
             ),
           ),
         ),
-        child: ClipRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-            child: child ?? const SizedBox.shrink(),
+        // The dialog's internal Align expands to whatever bounded box it is
+        // given, which stretched our gradient wrapper edge-to-edge. Letting it
+        // shrink-wrap (UnconstrainedBox) restores the normal dialog size; the
+        // gradient card hugs it and Center re-centers the whole panel.
+        child: Center(
+          child: UnconstrainedBox(
+            // Clip rather than paint outside the screen on very narrow devices
+            // (the dialog's natural width is 360 + insets).
+            clipBehavior: Clip.hardEdge,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        const Color(0xFF14142A).withAlpha(175),
+                        const Color(0xFF221A4A).withAlpha(145),
+                        const Color(0xFF14142A).withAlpha(185),
+                      ],
+                      stops: const [0.0, 0.55, 1.0],
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white.withAlpha(38)),
+                  ),
+                  child: child ?? const SizedBox.shrink(),
+                ),
+              ),
+            ),
           ),
         ),
       ),
@@ -1026,11 +1075,15 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   children: [
                     // Logo sits flush against the left edge, then the
                     // trainer's name with the greeting beneath it.
-                    Image.asset(
-                      'assets/logo.png',
-                      width: 34,
-                      height: 34,
-                      fit: BoxFit.contain,
+                    // Lowered ~2px so it reads optically with the name.
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Image.asset(
+                        'assets/logo.png',
+                        width: 34,
+                        height: 34,
+                        fit: BoxFit.contain,
+                      ),
                     ),
                     const SizedBox(width: 10),
                     Consumer(
@@ -1040,6 +1093,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                           data: (profile) {
                             final fullName = profile?.fullName ?? 'Trainer';
                             final name = fullName.split(' ').first;
+                            final isDay = DateTime.now().hour < 12;
                             return Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -1052,14 +1106,24 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                                     letterSpacing: -0.41,
                                   ),
                                 ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  greeting,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: ClayTokens.clayDarkTextTertiary,
-                                    fontWeight: FontWeight.w500,
-                                  ),
+                                const SizedBox(height: 1),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      isDay ? Icons.wb_sunny : Icons.nights_stay,
+                                      size: 16,
+                                      color: ClayTokens.clayDarkTextTertiary,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      greeting,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: ClayTokens.clayDarkTextTertiary,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             );
@@ -1121,23 +1185,14 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       key: _burgerKey,
       onTap: _isMenuOpen ? _closeBurgerMenu : _openBurgerMenu,
       behavior: HitTestBehavior.opaque,
-      child: Container(
+      // Same treatment as NotificationBell: tint the icon when active —
+      // never a filled purple box behind it.
+      child: Padding(
         padding: const EdgeInsets.all(6),
-        decoration: BoxDecoration(
-          color: _isMenuOpen
-              ? ClayTokens.clayPrimary.withAlpha(45)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: _isMenuOpen
-                ? ClayTokens.clayPrimary.withAlpha(120)
-                : Colors.transparent,
-          ),
-        ),
         child: Icon(
           Icons.menu,
           color: _isMenuOpen
-              ? ClayTokens.clayPrimaryLight
+              ? ClayTokens.clayPrimary
               : ClayTokens.clayDarkTextPrimary,
           size: 22,
         ),
@@ -1384,16 +1439,54 @@ class _BurgerMenuOverlay extends StatelessWidget {
           width: panelWidth,
           child: Material(
             color: Colors.transparent,
-            child: GlassPanel(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              borderRadius: BorderRadius.circular(14),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _menuRow(0, 'Daily Check-ins'),
-                  _menuRow(1, 'Member Overview'),
-                  _menuRow(2, 'Recent Activity'),
+            // Same liquid-glass recipe as NotificationPopup's card: blurred
+            // live backdrop + navy→indigo gradient, white rim, dual glow.
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(105),
+                    blurRadius: 24,
+                    offset: const Offset(0, 10),
+                  ),
+                  BoxShadow(
+                    color: ClayTokens.clayPrimary.withAlpha(36),
+                    blurRadius: 44,
+                    offset: const Offset(0, 4),
+                  ),
                 ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          const Color(0xFF14142A).withAlpha(150),
+                          const Color(0xFF221A4A).withAlpha(120),
+                          const Color(0xFF14142A).withAlpha(160),
+                        ],
+                        stops: const [0.0, 0.55, 1.0],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white.withAlpha(38)),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _menuRow(0, 'Daily Check-ins'),
+                        _menuRow(1, 'Member Overview'),
+                        _menuRow(2, 'Recent Activity'),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
@@ -1543,27 +1636,23 @@ class _DailyCheckinsViewState extends ConsumerState<_DailyCheckinsView> {
                       _KpiCard(
                         label: 'CHECK-INS',
                         value: '${data.total}',
-                        icon: CupertinoIcons.checkmark_circle_fill,
-                        glyphColor: const Color(0xFF30D158),
+                        icon: Icons.how_to_reg,
                       ),
                       _KpiCard(
                         label: 'MEMBERS SEEN',
                         value: '${data.uniqueMembers}',
-                        icon: CupertinoIcons.person_2_fill,
-                        glyphColor: ClayTokens.clayPrimary,
+                        icon: Icons.groups,
                       ),
                       _KpiCard(
                         label: 'TODAY',
                         value: '${data.todayCount}',
-                        icon: CupertinoIcons.bolt_fill,
-                        glyphColor: const Color(0xFF0A84FF),
+                        icon: Icons.today,
                       ),
                       _KpiCard(
                         label: 'AVG / DAY',
                         value: avg.toStringAsFixed(1),
                         sub: 'over $spanDays day${spanDays == 1 ? '' : 's'}',
-                        icon: CupertinoIcons.chart_bar_fill,
-                        glyphColor: const Color(0xFFFF9F0A),
+                        icon: Icons.speed,
                       ),
                     ],
                   ),
@@ -1857,6 +1946,19 @@ class _TrendCard extends StatelessWidget {
   }
 }
 
+/// Smallest human-friendly tick (1, 2, 5, 10, 20, 25, 50, 100…) ≥ raw, so the
+/// y-axis never shows ugly values like 23/46 or duplicate 1/1/1 labels.
+int _trendNiceStep(int raw) {
+  const steps = [
+    1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 2500,
+    5000, 10000, 20000, 25000, 50000, 100000,
+  ];
+  for (final s in steps) {
+    if (s >= raw) return s;
+  }
+  return raw;
+}
+
 class _TrendChart extends StatelessWidget {
   final List<ChartBucket> buckets;
 
@@ -1865,8 +1967,9 @@ class _TrendChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final maxCount = buckets.fold<int>(0, (p, b) => b.count > p ? b.count : p);
-    final maxY = (maxCount == 0 ? 1 : maxCount).toDouble() * 1.3;
-    final leftInterval = (maxY / 3).ceilToDouble().clamp(1.0, 100000.0);
+    final rawMaxY = (maxCount == 0 ? 1 : maxCount).toDouble() * 1.3;
+    final leftInterval = _trendNiceStep((rawMaxY / 3).ceil());
+    final maxY = (rawMaxY / leftInterval).ceilToDouble() * leftInterval;
     final perBar = buckets.length > 20 ? 16.0 : 26.0;
     final barWidth = (perBar - 8).clamp(4.0, 16.0);
 
@@ -1874,7 +1977,7 @@ class _TrendChart extends StatelessWidget {
       builder: (context, constraints) {
         final width = (buckets.length * perBar).clamp(constraints.maxWidth, 6000.0);
         return SizedBox(
-          height: 160,
+          height: 180,
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             physics: const ClampingScrollPhysics(),
@@ -1886,11 +1989,32 @@ class _TrendChart extends StatelessWidget {
                   maxY: maxY,
                   alignment: BarChartAlignment.spaceAround,
                   borderData: FlBorderData(show: false),
-                  barTouchData: BarTouchData(enabled: false),
+                  barTouchData: BarTouchData(
+                    enabled: true,
+                    touchTooltipData: BarTouchTooltipData(
+                      tooltipRoundedRadius: 10,
+                      // No chip behind the value: the count is drawn as plain
+                      // text, and a bucket of 0 returns null so fl_chart draws
+                      // nothing at all (empty bar = no number).
+                      getTooltipColor: (_) => Colors.transparent,
+                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                        final count = buckets[group.x].count;
+                        if (count == 0) return null;
+                        return BarTooltipItem(
+                          '$count',
+                          const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 11,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
                   gridData: FlGridData(
                     show: true,
                     drawVerticalLine: false,
-                    horizontalInterval: leftInterval,
+                    horizontalInterval: leftInterval.toDouble(),
                     getDrawingHorizontalLine: (v) => FlLine(
                       color: ClayTokens.clayDarkBorder.withAlpha(80),
                       strokeWidth: 1,
@@ -1904,27 +2028,15 @@ class _TrendChart extends StatelessWidget {
                     rightTitles: const AxisTitles(
                       sideTitles: SideTitles(showTitles: false),
                     ),
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 24,
-                        interval: leftInterval,
-                        getTitlesWidget: (value, meta) => Padding(
-                          padding: const EdgeInsets.only(right: 4),
-                          child: Text(
-                            value.toInt().toString(),
-                            style: TextStyle(
-                              fontSize: 9,
-                              color: ClayTokens.clayDarkTextTertiary,
-                            ),
-                          ),
-                        ),
-                      ),
+                    // Y-axis numbers are gone: every bar carries its own
+                    // value, so the left gutter was pure wasted width.
+                    leftTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
                     ),
                     bottomTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
-                        reservedSize: 22,
+                        reservedSize: 26,
                         getTitlesWidget: (value, meta) {
                           final i = value.toInt();
                           if (i < 0 || i >= buckets.length) {
@@ -1939,7 +2051,7 @@ class _TrendChart extends StatelessWidget {
                             child: Text(
                               buckets[i].label,
                               style: TextStyle(
-                                fontSize: 9,
+                                fontSize: 11,
                                 color: ClayTokens.clayDarkTextTertiary,
                               ),
                             ),
@@ -1952,11 +2064,22 @@ class _TrendChart extends StatelessWidget {
                     buckets.length,
                     (i) => BarChartGroupData(
                       x: i,
+                      // Value labels for every bucket, including long ranges
+                      // like All time; fl_chart skips null items, so zero
+                      // buckets stay blank.
+                      showingTooltipIndicators: const [0],
                       barRods: [
                         BarChartRodData(
                           toY: buckets[i].count.toDouble(),
-                          color: ClayTokens.clayPrimary,
                           width: barWidth,
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              ClayTokens.clayPrimaryLight,
+                              ClayTokens.clayPrimary,
+                            ],
+                          ),
                           borderRadius: const BorderRadius.vertical(
                             top: Radius.circular(4),
                           ),
@@ -2118,29 +2241,25 @@ class _MemberOverviewView extends ConsumerWidget {
                       _KpiCard(
                         label: 'TOTAL MEMBERS',
                         value: '${data.total}',
-                        icon: CupertinoIcons.person_2_fill,
-                        glyphColor: ClayTokens.clayPrimary,
+                        icon: Icons.people_alt,
                       ),
                       _KpiCard(
                         label: 'ACTIVE',
                         value: '${data.active}',
                         sub: 'checked in last 30 days',
-                        icon: CupertinoIcons.checkmark_circle_fill,
-                        glyphColor: const Color(0xFF30D158),
+                        icon: Icons.directions_run,
                       ),
                       _KpiCard(
                         label: 'INACTIVE',
                         value: '${data.inactive}',
                         sub: 'no visit in 30 days',
-                        icon: CupertinoIcons.xmark_circle_fill,
-                        glyphColor: const Color(0xFFFF9F0A),
+                        icon: Icons.person_off,
                       ),
                       _KpiCard(
                         label: 'NEW',
                         value: '$newCount',
                         sub: 'joined last 30 days',
-                        icon: CupertinoIcons.sparkles,
-                        glyphColor: const Color(0xFF0A84FF),
+                        icon: Icons.person_add,
                       ),
                     ],
                   ),
@@ -2164,50 +2283,53 @@ class _DistributionCard extends StatelessWidget {
 
   const _DistributionCard({required this.data});
 
-  static const _maleColor = Color(0xFF5B8DEF);
-  static const _femaleColor = Color(0xFFE879B9);
-  static const _unspecifiedColor = Color(0xFF7070A0);
-  static const _activeColor = Color(0xFF30D158);
-  static const _inactiveColor = Color(0xFFFF9F0A);
+  // Admin's SLICE_COLORS (TrendCharts.tsx): violet male, lilac female,
+  // green active, rose inactive. Rose rather than amber for Inactive so the
+  // two inner arcs separate at any size; lilac keeps both gender arcs in the
+  // same violet family the admin card uses.
+  static const _maleColor = Color(0xFF7C3AED);
+  static const _femaleColor = Color(0xFFC084FC);
+  static const _activeColor = Color(0xFF22C55E);
+  static const _inactiveColor = Color(0xFFF43F5E);
 
   @override
   Widget build(BuildContext context) {
+    // Female first: the admin card lists Gender as Female, Male — its slice
+    // order comes from its { Female, Male, Other } count object.
     final genderSections = <PieChartSectionData>[
-      if (data.male > 0)
-        PieChartSectionData(
-          value: data.male.toDouble(),
-          color: _maleColor,
-          radius: 24,
-          showTitle: false,
-        ),
       if (data.female > 0)
         PieChartSectionData(
           value: data.female.toDouble(),
           color: _femaleColor,
-          radius: 24,
+          radius: 22,
           showTitle: false,
         ),
-      if (data.unspecified > 0)
+      if (data.male > 0)
         PieChartSectionData(
-          value: data.unspecified.toDouble(),
-          color: _unspecifiedColor,
-          radius: 24,
+          value: data.male.toDouble(),
+          color: _maleColor,
+          radius: 22,
           showTitle: false,
         ),
+      // "Unspecified" is deliberately NOT a slice: an empty value is not a
+      // group. It is reported as a quiet "N not recorded" aside on the Gender
+      // label below, exactly like the admin card.
     ];
+    // Active before Inactive (admin order); zero counts are dropped from the
+    // ring so an empty slice never paints a stray arc.
     final statusSections = <PieChartSectionData>[
       if (data.active > 0)
         PieChartSectionData(
           value: data.active.toDouble(),
           color: _activeColor,
-          radius: 12,
+          radius: 15,
           showTitle: false,
         ),
       if (data.inactive > 0)
         PieChartSectionData(
           value: data.inactive.toDouble(),
           color: _inactiveColor,
-          radius: 12,
+          radius: 15,
           showTitle: false,
         ),
     ];
@@ -2224,44 +2346,49 @@ class _DistributionCard extends StatelessWidget {
       ),
       chartOrChild: Padding(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-        child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: SizedBox(
-              height: 190,
-              width: 190,
+        // Admin layout: donut on the LEFT, both breakdown groups stacked on
+        // the RIGHT, vertically centred against the ring.
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            SizedBox(
+              height: 150,
+              width: 150,
               child: Stack(
                 alignment: Alignment.center,
                 children: [
+                  // OUTER ring = gender, mirroring the admin radii (70%→100%):
+                  // the wider of the two bands, so it reads first.
                   PieChart(
                     PieChartData(
-                      sectionsSpace: 2,
-                      centerSpaceRadius: 60,
+                      sectionsSpace: 3,
+                      centerSpaceRadius: 53,
                       startDegreeOffset: -90,
                       sections: genderSections.isEmpty
                           ? [
                               PieChartSectionData(
                                 value: 1,
                                 color: ClayTokens.clayDarkBorder,
-                                radius: 24,
+                                radius: 22,
                                 showTitle: false,
                               ),
                             ]
                           : genderSections,
                     ),
                   ),
+                  // INNER ring = activity status (42%→62%), nested inside with
+                  // a visible gap so the two wholes never read as one ring.
                   PieChart(
                     PieChartData(
-                      sectionsSpace: 2,
-                      centerSpaceRadius: 44,
+                      sectionsSpace: 3,
+                      centerSpaceRadius: 32,
                       startDegreeOffset: -90,
                       sections: statusSections.isEmpty
                           ? [
                               PieChartSectionData(
                                 value: 1,
                                 color: ClayTokens.clayDarkBorder,
-                                radius: 12,
+                                radius: 15,
                                 showTitle: false,
                               ),
                             ]
@@ -2272,17 +2399,21 @@ class _DistributionCard extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        '${data.total}',
-                        style: ClayTokens.headlineMedium.copyWith(
-                          fontWeight: FontWeight.w700,
+                        '${data.total > 0 ? ((data.active / data.total) * 100).round() : 0}%',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          height: 1.0,
                           color: ClayTokens.clayDarkTextPrimary,
                         ),
                       ),
+                      const SizedBox(height: 3),
                       Text(
-                        'Members',
+                        'ACTIVE',
                         style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.2,
                           color: ClayTokens.clayDarkTextTertiary,
                         ),
                       ),
@@ -2291,57 +2422,89 @@ class _DistributionCard extends StatelessWidget {
                 ],
               ),
             ),
-          ),
-          const SizedBox(height: 18),
-          _LegendGroup(
-            title: 'Gender',
-            items: [
-              ('Male', data.male, _maleColor),
-              ('Female', data.female, _femaleColor),
-              if (data.unspecified > 0)
-                ('Unspecified', data.unspecified, _unspecifiedColor),
-            ],
-          ),
-          const SizedBox(height: 14),
-          _LegendGroup(
-            title: 'Activity Status',
-            items: [
-              ('Active', data.active, _activeColor),
-              ('Inactive', data.inactive, _inactiveColor),
-            ],
-          ),
-        ],
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _BreakdownGroup(
+                    title: 'Gender',
+                    aside: data.unspecified > 0
+                        ? '${data.unspecified} not recorded'
+                        : null,
+                    items: [
+                      if (data.female > 0)
+                        ('Female', data.female, _femaleColor),
+                      if (data.male > 0) ('Male', data.male, _maleColor),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _BreakdownGroup(
+                    title: 'Activity Status',
+                    items: [
+                      if (data.active > 0)
+                        ('Active', data.active, _activeColor),
+                      if (data.inactive > 0)
+                        ('Inactive', data.inactive, _inactiveColor),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _LegendGroup extends StatelessWidget {
+/// One breakdown group of the admin's Member Distribution card: an uppercase
+/// label (with an optional quiet aside like "3 not recorded"), one row per
+/// slice — dot, name, count, share — and a single stacked proportion bar
+/// closing the group. The bar carries the split as one whole, so "half and
+/// half" reads at a glance instead of row-by-row.
+class _BreakdownGroup extends StatelessWidget {
   final String title;
+  final String? aside;
   final List<(String, int, Color)> items;
 
-  const _LegendGroup({required this.title, required this.items});
+  const _BreakdownGroup({required this.title, this.aside, required this.items});
 
   @override
   Widget build(BuildContext context) {
     final sum = items.fold<int>(0, (p, e) => p + e.$2);
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          title.toUpperCase(),
-          style: TextStyle(
-            fontSize: 10,
-            letterSpacing: 0.6,
-            fontWeight: FontWeight.w600,
-            color: ClayTokens.clayDarkTextTertiary,
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                title.toUpperCase(),
+                style: TextStyle(
+                  fontSize: 10,
+                  letterSpacing: 0.6,
+                  fontWeight: FontWeight.w600,
+                  color: ClayTokens.clayDarkTextTertiary,
+                ),
+              ),
+            ),
+            if (aside != null)
+              Text(
+                aside!,
+                style: TextStyle(
+                  fontSize: 9.5,
+                  color: ClayTokens.clayDarkTextTertiary,
+                ),
+              ),
+          ],
         ),
-        const SizedBox(height: 8),
-        ...items.map(
-          (e) => Padding(
-            padding: const EdgeInsets.only(bottom: 6),
+        const SizedBox(height: 7),
+        for (final e in items)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
             child: Row(
               children: [
                 Container(
@@ -2357,7 +2520,7 @@ class _LegendGroup extends StatelessWidget {
                   child: Text(
                     e.$1,
                     style: TextStyle(
-                      fontSize: 12.5,
+                      fontSize: 12,
                       color: ClayTokens.clayDarkTextSecondary,
                     ),
                   ),
@@ -2365,16 +2528,16 @@ class _LegendGroup extends StatelessWidget {
                 Text(
                   '${e.$2}',
                   style: TextStyle(
-                    fontSize: 12.5,
+                    fontSize: 12,
                     fontWeight: FontWeight.w700,
                     color: ClayTokens.clayDarkTextPrimary,
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
                 SizedBox(
                   width: 34,
                   child: Text(
-                    '${sum > 0 ? ((e.$2 / sum) * 100).round() : 0}%',
+                    '${sum > 0 ? (e.$2 * 100 / sum).round() : 0}%',
                     textAlign: TextAlign.right,
                     style: TextStyle(
                       fontSize: 11,
@@ -2385,7 +2548,25 @@ class _LegendGroup extends StatelessWidget {
               ],
             ),
           ),
-        ),
+        // The stacked proportion bar: every slice of THIS group as one line.
+        if (sum > 0 && items.isNotEmpty)
+          Row(
+            children: [
+              for (var i = 0; i < items.length; i++) ...[
+                if (i > 0) const SizedBox(width: 2),
+                Expanded(
+                  flex: items[i].$2,
+                  child: Container(
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: items[i].$3,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
       ],
     );
   }
@@ -2481,26 +2662,22 @@ class _RecentActivityViewState extends ConsumerState<_RecentActivityView> {
                       _KpiCard(
                         label: 'ACTIVITIES',
                         value: '${entries.length}',
-                        icon: CupertinoIcons.bolt_horizontal_fill,
-                        glyphColor: ClayTokens.clayPrimary,
+                        icon: Icons.bolt,
                       ),
                       _KpiCard(
                         label: 'WORKOUTS',
                         value: '$workouts',
-                        icon: CupertinoIcons.flame_fill,
-                        glyphColor: const Color(0xFFFF9F0A),
+                        icon: Icons.fitness_center,
                       ),
                       _KpiCard(
                         label: 'FEEDBACK',
                         value: '$feedback',
-                        icon: CupertinoIcons.chat_bubble_text_fill,
-                        glyphColor: const Color(0xFF0A84FF),
+                        icon: Icons.rate_review,
                       ),
                       _KpiCard(
                         label: 'MEALS',
                         value: '$meals',
-                        icon: CupertinoIcons.leaf_arrow_circlepath,
-                        glyphColor: const Color(0xFF30D158),
+                        icon: Icons.restaurant,
                       ),
                     ],
                   ),
@@ -2583,15 +2760,18 @@ class _ActivityTile extends StatelessWidget {
   const _ActivityTile({required this.entry});
 
   (String, Color) get _typeMeta {
+    // Solid chips with white text. The tones are the 700-level shades of the
+    // same hues used elsewhere (green/amber/blue) so white text stays
+    // legible at 9px — the brighter tints only reach ~2:1 contrast.
     switch (entry.type) {
       case 'workout':
         return ('WORKOUT', ClayTokens.clayPrimary);
       case 'comment':
-        return ('COMMENT', const Color(0xFF0A84FF));
+        return ('COMMENT', const Color(0xFF1D4ED8));
       case 'rating':
-        return ('RATING', const Color(0xFFFF9F0A));
+        return ('RATING', const Color(0xFFB45309));
       case 'food':
-        return ('FOOD', const Color(0xFF30D158));
+        return ('FOOD', const Color(0xFF15803D));
       default:
         return (entry.type.toUpperCase(), ClayTokens.clayPrimaryLight);
     }
@@ -2612,7 +2792,7 @@ class _ActivityTile extends StatelessWidget {
         children: [
           SizedBox(
             width: 64,
-            child: _InlineBadge(label: label, color: color, small: true),
+            child: _InlineBadge(label: label, color: color, small: true, solid: true),
           ),
           const SizedBox(width: 10),
           Expanded(

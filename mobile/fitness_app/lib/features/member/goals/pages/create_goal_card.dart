@@ -45,7 +45,15 @@ const List<String> _timeframeValues = [
 class CreateGoalCard extends ConsumerStatefulWidget {
   final VoidCallback? onGoalAdded;
 
-  const CreateGoalCard({super.key, this.onGoalAdded});
+  /// True while another goal is still running. The form stays visible, but
+  /// _save() refuses the insert and shows the "complete that first" hint.
+  final bool hasActiveGoal;
+
+  const CreateGoalCard({
+    super.key,
+    this.onGoalAdded,
+    this.hasActiveGoal = false,
+  });
 
   @override
   ConsumerState<CreateGoalCard> createState() => _CreateGoalCardState();
@@ -118,6 +126,16 @@ class _CreateGoalCardState extends ConsumerState<CreateGoalCard> {
   }
 
   Future<void> _save() async {
+    // Only one running goal at a time: the form is shown alongside the
+    // active goal's card, but a second insert is rejected here with a clear
+    // hint instead of locking the whole page behind a padlock view.
+    if (widget.hasActiveGoal) {
+      setState(
+        () =>
+            _validationMessage = 'You currently have a goal, complete that first.',
+      );
+      return;
+    }
     final title = '${goalType ?? 'Fitness'} goal';
     final targetValue = double.tryParse(_targetController.text);
     if (targetValue == null || targetValue <= 0) {

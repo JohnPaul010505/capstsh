@@ -31,8 +31,9 @@ import '../../../shared/services/prediction_service.dart';
 // flashing e.g. the trainer's open attendance session as the member's ACTIVE
 // membership card. Throws when signed out / mismatched so callers show the
 // loading or error state rather than another user's data.
-final homeDataProvider =
-    FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+final homeDataProvider = FutureProvider.autoDispose<Map<String, dynamic>>((
+  ref,
+) async {
   final client = SupabaseClientService().client;
   final userId = ref.watch(activeUserIdProvider);
   final authUid = client.auth.currentUser?.id;
@@ -84,15 +85,32 @@ final homeDataProvider =
   final goals = results[2] as List;
   final assignment = results[3] as List;
 
-  // This Week counts the SAME attendance rows as the This Month chart and
-  // the Active-days card (QR check-ins), so every card on Home agrees.
+  // This Week counts COMPLETED workout sessions from `workout_logs` — one row
+  // per exercise, so a session is a distinct `workout_name` + local date.
+  // QR attendance is presence, not movement: never mix the two.
   // toLocal() keeps early-morning check-ins (e.g. 01:17 PH = 17:17 UTC the
   // day before) on the correct weekday.
   final weekCounts = List.generate(7, (i) => 0);
-  for (final a in yearList.cast<Map<String, dynamic>>()) {
-    final t = DateTime.tryParse(a['check_in_time'] as String? ?? '')?.toLocal();
-    if (t != null && !t.isBefore(weekStart) && t.isBefore(weekEnd)) {
-      weekCounts[t.weekday - 1]++;
+  final completedSessions = <String>{};
+  for (final row
+      in await client
+          .from('workout_logs')
+          .select('workout_name, logged_at')
+          .eq('member_id', userId)
+          .gte('logged_at', weekStart.toUtc().toIso8601String())
+          .lt('logged_at', weekEnd.toUtc().toIso8601String())
+          .order('logged_at', ascending: false)) {
+    final name = (row['workout_name'] as String?)?.trim() ?? '';
+    final loggedAt = DateTime.tryParse(row['logged_at'] as String? ?? '');
+    if (name.isEmpty || loggedAt == null) continue;
+    // A completed workout = a distinct (workout, local date) pair: a single
+    // session spans one or more exercise rows in `workout_logs`.
+    final sessionKey = '$name|${loggedAt.toLocal()}';
+    if (completedSessions.add(sessionKey)) {
+      final date = DateTime.parse(sessionKey.split('|')[1]);
+      if (date.isAfter(weekStart) && date.isBefore(weekEnd)) {
+        weekCounts[date.weekday - 1]++;
+      }
     }
   }
 
@@ -536,7 +554,8 @@ class _PredictionCardState extends State<_PredictionCard> {
           : _ForecastRow(
               icon: Icons.monitor_weight_outlined,
               label: 'Weight',
-              current: '${weight.currentValue.toStringAsFixed(1)} ${weight.unit}',
+              current:
+                  '${weight.currentValue.toStringAsFixed(1)} ${weight.unit}',
               predicted:
                   '${weight.predictedValue.toStringAsFixed(1)} ${weight.unit} in ${weight.daysAhead} days',
               confidence: weight.confidence,
@@ -809,66 +828,64 @@ class _GreetingRow extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Login-screen logo beside the name (left corner), with an
-              // errorBuilder fallback so a missing asset can never throw.
-              // The top padding drops the glyph a little so it sits optically
-              // level with the big name instead of riding high.
+              // Login-screen logo beside the name: sized to match the
+              // profile avatar (ClayAvatarSize.md = 44) and nudged down a
+              // little so it sits optically level with the name + greeting
+              // block instead of riding high. The errorBuilder fallback
+              // keeps a missing asset from ever throwing.
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
                     padding: const EdgeInsets.only(top: 6),
                     child: Image.asset(
                       'assets/logo.png',
-                      width: 38,
-                      height: 38,
+                      width: 44,
+                      height: 44,
                       fit: BoxFit.contain,
                       errorBuilder: (_, __, ___) => const Icon(
                         Icons.fitness_center,
                         color: Colors.white,
-                        size: 26,
+                        size: 30,
                       ),
                     ),
                   ),
                   const SizedBox(width: 8),
+                  // Name and greeting share one tight column: the greeting
+                  // sits directly under the name with no extra gap, and both
+                  // start at the same left edge (44 logo + 8 gap = 52px).
                   Expanded(
-                    child: Text(
-                      firstName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: ClayTokens.displaySmall.copyWith(
-                        letterSpacing: 0,
-                        color: Colors.white,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          firstName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: ClayTokens.displaySmall.copyWith(
+                            letterSpacing: 0,
+                            color: Colors.white,
+                            height: 1.0,
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            _timeOfDayIcon(),
+                            const SizedBox(width: 6),
+                            Text(
+                              greeting,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                 ],
-              ),
-              const SizedBox(height: 6),
-              // Greeting aligns with the NAME's left edge (38 logo + 8 gap
-              // = 46px) and sits a little lower than before.
-              Padding(
-                padding: const EdgeInsets.only(left: 46),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF22C55E),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      greeting,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
               ),
             ],
           ),
@@ -895,6 +912,23 @@ class _GreetingRow extends ConsumerWidget {
           ],
         ),
       ],
+    );
+  }
+
+  /// Time-of-day icon next to the greeting: sun while it's still daylight
+  /// (morning AND afternoon), moon only once the greeting turns to evening
+  /// at 17:00 — the same threshold as the greeting text, so an afternoon
+  /// screen never shows a night icon. Amber sun / violet moon instead of
+  /// plain white.
+  Widget _timeOfDayIcon() {
+    final hour = DateTime.now().hour;
+    final isEvening = hour >= 17;
+    return Icon(
+      isEvening ? Icons.nights_stay : Icons.wb_sunny,
+      size: 16,
+      color: isEvening
+          ? ClayTokens.clayPrimaryLight
+          : ClayTokens.clayWarning,
     );
   }
 }
@@ -1237,6 +1271,10 @@ class _MonthlyValues extends StatelessWidget {
         strokeColor: ClayTokens.clayPrimaryDark,
         showYAxis: false,
         showValueLabels: true,
+        // Purple dot with a matching ring (no white halo) so the point under
+        // each number reads purple, per the member-home design pass.
+        dotColor: ClayTokens.clayPrimary,
+        dotRingColor: ClayTokens.clayPrimaryDark,
       ),
     );
   }
@@ -1314,6 +1352,9 @@ class _GrowthChart extends StatelessWidget {
               strokeColor: ClayTokens.clayPrimaryDark,
               emptyMessage: 'No BMI data yet',
               showValueLabels: true,
+              // Match the "This Month" chart: purple dot, no white halo.
+              dotColor: ClayTokens.clayPrimary,
+              dotRingColor: ClayTokens.clayPrimaryDark,
             ),
           ),
         ],

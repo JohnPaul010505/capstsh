@@ -6,8 +6,10 @@ import 'package:shared/services/notification_service.dart';
 import 'package:shared/models/notification_model.dart';
 import 'package:shared/providers/auth_provider.dart';
 import '../../../../app/design_tokens.dart';
-import '../../member/notifications/providers/notifications_provider.dart';
-import '../../trainer/notifications/providers/notifications_provider.dart';
+import '../../member/notifications/providers/notifications_provider.dart'
+    as member_notif;
+import '../../trainer/notifications/providers/notifications_provider.dart'
+    as trainer_notif;
 
 class NotificationBell extends ConsumerWidget {
   final bool isMember;
@@ -24,8 +26,8 @@ class NotificationBell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final unreadAsync = isMember
-        ? ref.watch(memberUnreadCountStreamProvider)
-        : ref.watch(trainerUnreadCountStreamProvider);
+        ? ref.watch(member_notif.memberUnreadCountStreamProvider)
+        : ref.watch(trainer_notif.trainerUnreadCountStreamProvider);
 
     return unreadAsync.when(
       data: (count) => GestureDetector(

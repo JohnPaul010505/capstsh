@@ -8,6 +8,9 @@ Future<bool> showGlassSignOutDialog(BuildContext context) async {
   final result = await showDialog<bool>(
     context: context,
     barrierDismissible: false,
+    // Dim the page behind the dialog but keep it visible so the frosted
+    // glass card reads as glass over the app background.
+    barrierColor: Colors.black.withAlpha(110),
     builder: (ctx) => Dialog(
       backgroundColor: Colors.transparent,
       elevation: 0,
@@ -15,15 +18,32 @@ Future<bool> showGlassSignOutDialog(BuildContext context) async {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(20),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          // Heavy blur so the page behind genuinely frosts through the card.
+          filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
           child: Container(
             width: 320,
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
             decoration: BoxDecoration(
-              color: ClayTokens.clayDarkSurface.withAlpha(208),
+              // Liquid glass: translucent gradient tint instead of a flat
+              // opaque surface so the live background ghosts through.
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withAlpha(30),
+                  ClayTokens.clayPrimary.withAlpha(36),
+                  const Color(0xFF14142A).withAlpha(150),
+                ],
+                stops: const [0.0, 0.45, 1.0],
+              ),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withAlpha(30)),
+              border: Border.all(color: Colors.white.withAlpha(45)),
               boxShadow: [
+                BoxShadow(
+                  color: ClayTokens.clayPrimary.withAlpha(45),
+                  blurRadius: 40,
+                  offset: const Offset(0, 12),
+                ),
                 BoxShadow(
                   color: Colors.black.withAlpha(90),
                   blurRadius: 32,

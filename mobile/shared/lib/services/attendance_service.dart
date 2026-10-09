@@ -39,8 +39,15 @@ class AttendanceService {
           .cast<Map<String, dynamic>>()
           .firstOrNull;
 
-      // --- No open session: check in ---
+      // --- No open session: check in (one check-in + check-out per day) ---
       if (open == null) {
+        if (await _hasCompletedToday(client, memberId, today)) {
+          return AttendanceToggleResult(
+            at: now,
+            error:
+                'You have already checked in and out today. See you tomorrow!',
+          );
+        }
         await client.from('attendance').insert({
           'member_id': memberId,
           'check_in_time': nowIso,
@@ -86,6 +93,13 @@ class AttendanceService {
       // and treat this scan as a brand-new check-in.
       // (expiresAt is non-null here: isStale requires it.)
       final staleExpiry = expiresAt;
+      if (await _hasCompletedToday(client, memberId, today)) {
+        return AttendanceToggleResult(
+          at: now,
+          error:
+              'You have already checked in and out today. See you tomorrow!',
+        );
+      }
       await client
           .from('attendance')
           .update({'check_out_time': staleExpiry.toUtc().toIso8601String()})
@@ -106,5 +120,39 @@ class AttendanceService {
     } catch (e) {
       return AttendanceToggleResult(at: now, error: e.toString());
     }
+  }
+
+  /// True when the user already finished a full check-in + check-out session
+  /// dated today (local day). Enforces the one check-in + one check-out
+  /// per day rule.
+  Future<bool> _hasCompletedToday(
+    dynamic client,
+    String memberId,
+    String today,
+  ) async {
+    final rows = await client
+        .from('attendance')
+        .select('id')
+        .eq('member_id', memberId)
+        .eq('check_in_date', today)
+        .not('check_out_time', 'is', 'null')
+        .limit(1);
+    return (rows as List).isNotEmpty;
+  }
+
+  /// Today's sessions (local day), oldest first — feeds the In & Out
+  /// "Today" status card (check-in / check-out times).
+  Future<List<Map<String, dynamic>>> todaySessions({
+    required String memberId,
+  }) async {
+    final client = SupabaseClientService().client;
+    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final rows = await client
+        .from('attendance')
+        .select('check_in_time, check_out_time')
+        .eq('member_id', memberId)
+        .eq('check_in_date', today)
+        .order('check_in_time', ascending: true);
+    return (rows as List).cast<Map<String, dynamic>>();
   }
 }

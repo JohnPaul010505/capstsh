@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared/services/supabase_client.dart';
 import 'package:shared/services/notification_service.dart';
 import '../../../../app/design_tokens.dart';
+import '../../../shared/widgets/glass_card.dart';
 import '../../../../features/shared/widgets/clay/clay_card.dart';
 import '../../../shared/widgets/app_glow_background.dart';
 import '../../../shared/widgets/animations.dart'
@@ -14,7 +15,6 @@ import 'goal_card.dart';
 import 'empty_goals_state.dart';
 
 const bgDark = Color(0xFF0B0D1A);
-const textSecondary = Color(0xFFA0A4B8);
 
 final goalsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
   final userId = SupabaseClientService().client.auth.currentUser!.id;
@@ -26,6 +26,16 @@ final goalsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
   return response;
 });
 
+/// A goal is ongoing while its end date has not passed — regardless of DB
+/// status — so the member cannot accidentally add a second one while the
+/// window is still running. A missing/unparseable end date counts as ongoing
+/// (safe side: the Create tab stays guarded). The date comparison matches
+/// GoalCard's own isOverdue check so UI and predicate stay in sync.
+bool _ongoing(Map<String, dynamic> g) {
+  final end = DateTime.tryParse(g['end_date']?.toString() ?? '');
+  return end == null || !end.isBefore(DateTime.now());
+}
+
 class GoalsPage extends ConsumerStatefulWidget {
   const GoalsPage({super.key});
 
@@ -33,10 +43,29 @@ class GoalsPage extends ConsumerStatefulWidget {
   ConsumerState<GoalsPage> createState() => _GoalsPageState();
 }
 
-class _GoalsPageState extends ConsumerState<GoalsPage> {
+class _GoalsPageState extends ConsumerState<GoalsPage>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final goalsAsync = ref.watch(goalsProvider);
+    // Preserve the "one running goal at a time" rule: if any loaded goal is
+    // still ongoing, the Create tab's form refuses a second insert. Falls back
+    // to false while loading so the form stays usable on first paint.
+    final hasActiveGoal = goalsAsync.valueOrNull?.any(_ongoing) ?? false;
 
     return CupertinoPageScaffold(
       backgroundColor: bgDark,
@@ -46,70 +75,87 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildHeader('Goals'),
+              _buildTabBar(),
               Expanded(
-                child: goalsAsync.when(
-                  data: (goals) => _GoalsBody(
-                    goals: goals,
-                    onGoalAdded: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: const Text('Goal created'),
-                          backgroundColor: const Color(0xFF22C55E),
-                          duration: const Duration(seconds: 2),
-                        ),
-                      );
-                    },
-                    onToggleStatus: (g) async {
-                      final currentStatus = g['status'] as String? ?? 'active';
-                      final newStatus =
-                          currentStatus == 'active' ? 'completed' : 'active';
-                      await SupabaseClientService().client
-                          .from('goals')
-                          .update({'status': newStatus})
-                          .eq('id', g['id']);
-                      final userId = SupabaseClientService()
-                          .client
-                          .auth
-                          .currentUser!
-                          .id;
-                      if (newStatus == 'completed') {
-                        // Self-notifications are denied by the notifications insert policy
-                        // (user_id <> auth.uid()); a failed notification must never block
-                        // the status refresh below.
-                        try {
-                          await NotificationService().createNotification(
-                            userId: userId,
-                            title: 'Goal Completed',
-                            body:
-                                'Congratulations! You completed your ${g['goal_type'] ?? 'fitness'} goal.',
-                          );
-                        } catch (e) {
-                          debugPrint('GOAL NOTIFY failed: $e');
-                        }
-                      }
-                      ref.invalidate(goalsProvider);
-                    },
-                  ),
-                  loading: () => ListView(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                    children: [
-                      StaggeredFadeIn(
-                        index: 0,
-                        child: _GoalsSkeletonCard(),
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    // Tab 1 - Create a Goal: the form only.
+                    _CreateTab(
+                      hasActiveGoal: hasActiveGoal,
+                      onGoalAdded: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: const Text('Goal created'),
+                            backgroundColor: const Color(0xFF22C55E),
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                        ref.invalidate(goalsProvider);
+                        // Jump to the Goals tab so the new goal is visible.
+                        _tabController.animateTo(1);
+                      },
+                    ),
+                    // Tab 2 - Goals: the member's goals in glass-style cards.
+                    goalsAsync.when(
+                      data: (goals) => _GoalsTab(
+                        goals: goals,
+                        onToggleStatus: (g) async {
+                          final currentStatus =
+                              g['status'] as String? ?? 'active';
+                          final newStatus = currentStatus == 'active'
+                              ? 'completed'
+                              : 'active';
+                          await SupabaseClientService().client
+                              .from('goals')
+                              .update({'status': newStatus})
+                              .eq('id', g['id']);
+                          final userId = SupabaseClientService()
+                              .client
+                              .auth
+                              .currentUser!
+                              .id;
+                          if (newStatus == 'completed') {
+                            // Self-notifications are denied by the
+                            // notifications insert policy (user_id <>
+                            // auth.uid()); a failed notification must
+                            // never block the status refresh below.
+                            try {
+                              await NotificationService().createNotification(
+                                userId: userId,
+                                title: 'Goal Completed',
+                                body:
+                                    'Congratulations! You completed your ${g['goal_type'] ?? 'fitness'} goal.',
+                              );
+                            } catch (e) {
+                              debugPrint('GOAL NOTIFY failed: $e');
+                            }
+                          }
+                          ref.invalidate(goalsProvider);
+                        },
                       ),
-                    ],
-                  ),
-                  error: (e, _) => Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Text(
-                      'Error: $e',
-                      style: TextStyle(
-                        color: Colors.redAccent,
-                        fontSize: 14,
+                      loading: () => ListView(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 16),
+                        children: [
+                          StaggeredFadeIn(
+                            index: 0,
+                            child: _GoalsSkeletonCard(),
+                          ),
+                        ],
+                      ),
+                      error: (e, _) => Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Text(
+                          'Error: $e',
+                          style: TextStyle(
+                            color: Colors.redAccent,
+                            fontSize: 14,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ],
@@ -146,123 +192,116 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
       ),
     );
   }
+
+  /// Two-tab switcher: "Create a Goal" (the form) and "Goals" (the member's
+  /// goals). A segmented pill so it reads as one glass system with the cards
+  /// below it.
+  Widget _buildTabBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: ClayTokens.clayDarkSurface.withAlpha(120),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.white.withAlpha(18)),
+        ),
+        child: TabBar(
+          controller: _tabController,
+          isScrollable: false,
+          labelPadding: EdgeInsets.zero,
+          dividerColor: Colors.transparent,
+          indicator: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [ClayTokens.clayPrimaryLight, ClayTokens.clayPrimary],
+            ),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          indicatorSize: TabBarIndicatorSize.tab,
+          labelColor: Colors.white,
+          unselectedLabelColor: ClayTokens.clayDarkTextSecondary,
+          labelStyle: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+          ),
+          unselectedLabelStyle: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+          tabs: const [
+            Tab(text: 'Create a Goal'),
+            Tab(text: 'Goals'),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 
-/// Goals list body: while any goal's window is still running only the goals
-/// show; the Create card shows above the list only when every goal's end
-/// date has passed (or none exists yet).
-class _GoalsBody extends StatelessWidget {
-  final List<Map<String, dynamic>> goals;
+/// "Create a Goal" tab — shows the create-goal form only. Adding a goal
+/// refreshes the list and jumps to the Goals tab so the new goal is visible.
+class _CreateTab extends StatelessWidget {
+  final bool hasActiveGoal;
   final VoidCallback onGoalAdded;
-  final void Function(Map<String, dynamic> goal) onToggleStatus;
 
-  const _GoalsBody({
-    required this.goals,
-    required this.onGoalAdded,
-    required this.onToggleStatus,
-  });
-
-  /// A goal is ongoing while its end date has not passed — regardless of DB
-  /// status (active, in_progress, or completed-early) — so the member always
-  /// sees just their goal and cannot accidentally add a second one while the
-  /// window is still running. A missing/unparseable end date counts as
-  /// ongoing (safe side: the Create card stays hidden). The date comparison
-  /// matches GoalCard's own isOverdue check so UI and predicate stay in sync.
-  bool _ongoing(Map<String, dynamic> g) {
-    final end = DateTime.tryParse(g['end_date']?.toString() ?? '');
-    return end == null || !end.isBefore(DateTime.now());
-  }
+  const _CreateTab({required this.hasActiveGoal, required this.onGoalAdded});
 
   @override
   Widget build(BuildContext context) {
-    final hasActiveGoal = goals.any(_ongoing);
-    final activeCount = goals.where(_ongoing).length;
-
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       children: [
-        _GoalsSectionHeader(
-          hasActiveGoal: hasActiveGoal,
-          activeCount: activeCount,
+        StaggeredFadeIn(
+          index: 0,
+          child: CreateGoalCard(
+            hasActiveGoal: hasActiveGoal,
+            onGoalAdded: onGoalAdded,
+          ),
         ),
-        if (!hasActiveGoal) ...[
-          StaggeredFadeIn(
-            index: 0,
-            child: CreateGoalCard(onGoalAdded: onGoalAdded),
-          ),
-          const SizedBox(height: 16),
-        ],
-        if (goals.isEmpty)
-          const EmptyGoalsState()
-        else
-          StaggeredFadeIn(
-            index: hasActiveGoal ? 0 : 1,
-            child: ClayCard(
-              variant: ClayCardVariant.outlined,
-              backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
-              customPadding: const EdgeInsets.all(16),
-              padding: ClayCardPadding.none,
-              borderRadius: BorderRadius.circular(16),
-              child: Column(
-                children: goals
-                    .map((g) => GoalCard(
-                          goal: g,
-                          onToggleStatus: () => onToggleStatus(g),
-                        ))
-                    .toList(),
-              ),
-            ),
-          ),
       ],
     );
   }
 }
 
-/// Section header above the goal list: anchors the screen with one line of
-/// narrative so a single running goal no longer leaves the page feeling
-/// empty. Tight below the header, generous above the cards (spacing check).
-class _GoalsSectionHeader extends StatelessWidget {
-  final bool hasActiveGoal;
-  final int activeCount;
+/// "Goals" tab — the member's goals, each in a liquid-glass card. No create
+/// form lives here: the Create a Goal tab owns that.
+class _GoalsTab extends StatelessWidget {
+  final List<Map<String, dynamic>> goals;
+  final void Function(Map<String, dynamic> goal) onToggleStatus;
 
-  const _GoalsSectionHeader({
-    required this.hasActiveGoal,
-    required this.activeCount,
+  const _GoalsTab({
+    required this.goals,
+    required this.onToggleStatus,
   });
 
   @override
   Widget build(BuildContext context) {
-    final headline = !hasActiveGoal
-        ? 'Start your next goal'
-        : activeCount == 1
-            ? 'Your goal is on track'
-            : '$activeCount goals running';
-    final sub = !hasActiveGoal
-        ? 'Set a target and track it here.'
-        : 'Stay consistent — every check-in counts.';
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            headline,
-            style: ClayTokens.titleMedium.copyWith(
-              color: ClayTokens.clayDarkTextPrimary,
-              fontWeight: FontWeight.w700,
-            ),
+    if (goals.isEmpty) {
+      return const EmptyGoalsState();
+    }
+
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      children: [
+        StaggeredFadeIn(
+          index: 0,
+          child: Column(
+            children: goals
+                .map((g) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: GlassPanel(
+                        padding: const EdgeInsets.all(12),
+                        child: GoalCard(
+                          goal: g,
+                          onToggleStatus: () => onToggleStatus(g),
+                        ),
+                      ),
+                    ))
+                .toList(),
           ),
-          const SizedBox(height: 2),
-          Text(
-            sub,
-            style: const TextStyle(
-              fontSize: 13,
-              color: Color(0xFFA0A4B8),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

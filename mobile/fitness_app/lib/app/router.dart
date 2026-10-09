@@ -126,19 +126,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/member/checkin',
-                pageBuilder: (_, __) => _iosPush(
-                  const CheckinPage(
-                    showBack: false,
-                    returnRoute: '/member/home',
-                  ),
-                ),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
                 path: '/member/meals',
                 pageBuilder: (_, __) => _iosPush(const MealLogPage()),
               ),
@@ -172,6 +159,18 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/member/chat',
         pageBuilder: (_, __) => _iosPush(const ChatPage()),
       ),
+      // Full-screen QR check-in (pushed on the root navigator) so the member
+      // nav bar is hidden on the scanner and "<" pops back to the previous
+      // screen. Success returns to the member home.
+      GoRoute(
+        path: '/member/checkin',
+        pageBuilder: (_, __) => _iosPush(
+          const CheckinPage(
+            showBack: true,
+            returnRoute: '/member/home',
+          ),
+        ),
+      ),
       GoRoute(
         path: '/member/membership',
         pageBuilder: (_, __) => _iosPush(const MembershipPage()),
@@ -193,19 +192,6 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/trainer/members',
                 pageBuilder: (_, __) => _iosPush(const ProgressListPage()),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/trainer/checkin',
-                pageBuilder: (_, __) => _iosPush(
-                  const CheckinPage(
-                    showBack: false,
-                    returnRoute: '/trainer/dashboard',
-                  ),
-                ),
               ),
             ],
           ),
@@ -246,6 +232,18 @@ final routerProvider = Provider<GoRouter>((ref) {
             ],
           ),
         ],
+      ),
+      // Full-screen QR check-in (pushed on the root navigator) so the trainer
+      // nav bar is hidden on the scanner and "<" pops back to the previous
+      // screen. Success returns to the trainer dashboard.
+      GoRoute(
+        path: '/trainer/checkin',
+        pageBuilder: (_, __) => _iosPush(
+          const CheckinPage(
+            showBack: true,
+            returnRoute: '/trainer/dashboard',
+          ),
+        ),
       ),
       // Full-screen member progress pushed on the root navigator (same
       // pattern as /member/chat) so the trainer nav bar is hidden while
@@ -295,16 +293,38 @@ class MemberShell extends StatefulWidget {
 
 class _MemberShellState extends State<MemberShell> {
   void _onTap(int index) {
-    // Chat (index 4) is a full-screen pushed route, not a shell branch:
-    // the nav bar disappears and "<" on the chat header pops back here.
-    if (index == 4) {
-      context.push('/member/chat');
-      return;
+    // Nav tabs are fixed: 0 Home, 1 Workout, 2 In & Out (QR), 3 Food,
+    // 4 Chat. QR (2) and Chat (4) are full-screen pushes (nav bar hidden);
+    // the rest map onto shell branches — Food (3) is branch 2 because QR is
+    // no longer a branch.
+    switch (index) {
+      case 2:
+        context.push('/member/checkin');
+        return;
+      case 4:
+        context.push('/member/chat');
+        return;
+      case 0:
+      case 1:
+      case 3:
+        final branch = index == 3 ? 2 : index;
+        widget.navigationShell.goBranch(
+          branch,
+          initialLocation: branch == widget.navigationShell.currentIndex,
+        );
+        return;
     }
-    widget.navigationShell.goBranch(
-      index,
-      initialLocation: index == widget.navigationShell.currentIndex,
-    );
+  }
+
+  /// Shell branch → nav-bar tab index for the active highlight. Home=0,
+  /// Workout=1, Food=3 (QR=2 and Chat=4 are pushes, not branches).
+  int get _activeTab {
+    switch (widget.navigationShell.currentIndex) {
+      case 2:
+        return 3; // Food branch
+      default:
+        return widget.navigationShell.currentIndex; // Home / Workout
+    }
   }
 
   @override
@@ -316,7 +336,7 @@ class _MemberShellState extends State<MemberShell> {
       extendBody: true,
       body: widget.navigationShell,
       bottomNavigationBar: MemberNavBar(
-        currentIndex: widget.navigationShell.currentIndex,
+        currentIndex: _activeTab,
         onTap: _onTap,
       ),
     );
@@ -333,13 +353,38 @@ class TrainerShell extends StatefulWidget {
 
 class _TrainerShellState extends State<TrainerShell> {
   void _onTap(int index) {
-    // Detail/room pages live INSIDE their branch, so the nav bar stays and
-    // the branch keeps its scroll position; tapping the active tab pops back
-    // to the branch root (e.g. room list).
-    widget.navigationShell.goBranch(
-      index,
-      initialLocation: index == widget.navigationShell.currentIndex,
-    );
+    // Nav tabs are fixed: 0 Dashboard, 1 Members, 2 In & Out (QR), 3 Chat,
+    // 4 Profile. QR (2) is a full-screen push (nav bar hidden); the rest map
+    // onto shell branches — Chat (3) is branch 2 and Profile (4) is branch 3
+    // because QR is no longer a branch.
+    switch (index) {
+      case 2:
+        context.push('/trainer/checkin');
+        return;
+      case 0:
+      case 1:
+      case 3:
+      case 4:
+        final branch = index >= 3 ? index - 1 : index;
+        widget.navigationShell.goBranch(
+          branch,
+          initialLocation: branch == widget.navigationShell.currentIndex,
+        );
+        return;
+    }
+  }
+
+  /// Shell branch → nav-bar tab index for the active highlight. Dashboard=0,
+  /// Members=1, Chat=3, Profile=4 (QR=2 is a push, not a branch).
+  int get _activeTab {
+    switch (widget.navigationShell.currentIndex) {
+      case 2:
+        return 3; // Chat branch
+      case 3:
+        return 4; // Profile branch
+      default:
+        return widget.navigationShell.currentIndex; // Dashboard / Members
+    }
   }
 
   @override
@@ -351,7 +396,7 @@ class _TrainerShellState extends State<TrainerShell> {
       extendBody: true,
       body: widget.navigationShell,
       bottomNavigationBar: TrainerNavBar(
-        currentIndex: widget.navigationShell.currentIndex,
+        currentIndex: _activeTab,
         onTap: _onTap,
       ),
     );

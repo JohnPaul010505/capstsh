@@ -7,6 +7,7 @@ import '../../../shared/widgets/clay/clay_card.dart';
 import '../../../shared/widgets/clay/clay_button.dart';
 import '../../../shared/widgets/clay/clay_avatar.dart';
 import '../../../shared/widgets/app_glow_background.dart';
+import '../../../shared/widgets/glass_sign_out_dialog.dart';
 
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
@@ -73,7 +74,13 @@ class ProfilePage extends ConsumerWidget {
                     const SizedBox(height: 24),
                     ClayButton(
                       label: 'Sign Out',
-                      onPressed: () => ref.read(authProvider.notifier).signOut(),
+                      onPressed: () async {
+                        final confirm =
+                            await showGlassSignOutDialog(context);
+                        if (confirm) {
+                          await ref.read(authProvider.notifier).signOut();
+                        }
+                      },
                       style: ClayButtonStyle.destructive,
                       fullWidth: true,
                       size: ClayButtonSize.large,

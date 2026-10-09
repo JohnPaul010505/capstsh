@@ -1,4 +1,4 @@
-import 'package:flutter/cupertino.dart';
+﻿import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show Colors, ScaffoldMessenger, SnackBar;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -45,7 +45,9 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
         planName: result['plan_name'] as String,
         months: result['months'] as int,
         note: result['note'] as String?,
-        membershipId: state.current?.id,
+        membershipId: state.activeMembership?.id ?? state.current?.id,
+        startDate: result['start_date'] as DateTime?,
+        endDate: result['end_date'] as DateTime?,
       );
       if (!mounted) return;
       ref.invalidate(membershipProvider);
@@ -107,10 +109,13 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
   }
 
   Widget _buildContent(dynamic state) {
-    final current = state.current;
+    // The hero card shows the newest NON-expired plan. Expired plans drop out
+    // of the hero and move down into the HISTORY section instead.
+    final current = state.activeMembership as dynamic;
     final pending = state.pendingRequest;
     final canApply = state.canApplyForRenewal && pending == null;
     final lastDecision = state.lastDecision;
+    final expiredList = (state.expiredMemberships as List).cast<dynamic>();
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -190,14 +195,77 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
           ),
         ),
         const SizedBox(height: 8),
-        if (state.renewalRequests.isEmpty)
+        // Expired memberships sit at the top of HISTORY (most recent first),
+        // then the member's renewal requests below them.
+        if (expiredList.isNotEmpty) ...[
+          ...expiredList.map(_expiredMembershipTile),
+          const SizedBox(height: 8),
+        ],
+        if (expiredList.isEmpty && state.renewalRequests.isEmpty)
           const Text(
-            'No renewal requests yet.',
+            'No history yet.',
             style: TextStyle(fontSize: 12, color: Color(0xFF636366)),
           )
-        else
+        else if (state.renewalRequests.isNotEmpty)
           ...state.renewalRequests.map(_historyTile),
       ],
+    );
+  }
+
+  /// HISTORY row for a past (expired) membership.
+  Widget _expiredMembershipTile(dynamic membership) {
+    final endD = DateTime.tryParse(membership.endDate as String? ?? '');
+    final end = endD == null
+        ? '—'
+        : '${endD.year}-${endD.month.toString().padLeft(2, '0')}-${endD.day.toString().padLeft(2, '0')}';
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withAlpha(10),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white.withAlpha(24)),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            CupertinoIcons.clock,
+            size: 16,
+            color: Color(0xFF8E8E93),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${membership.planName} plan',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+                Text(
+                  'Expired $end',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF8E8E93),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Text(
+            'EXPIRED',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFFFF453A),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -244,6 +312,14 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
                     color: Color(0xFF8E8E93),
                   ),
                 ),
+                if (request.startDate != null && request.endDate != null)
+                  Text(
+                    'Custom window ${_fmtDate(request.startDate!)} – ${_fmtDate(request.endDate!)}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFFA78BFA),
+                    ),
+                  ),
               ],
             ),
           ),

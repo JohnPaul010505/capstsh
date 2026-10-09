@@ -51,14 +51,14 @@ class GiveFeedbackPage extends ConsumerStatefulWidget {
 }
 
 class _GiveFeedbackPageState extends ConsumerState<GiveFeedbackPage> {
-  static const _historyPageSize = 10;
+  static const _historyPageSize = 5;
   String? _selectedMemberId;
   String? _selectedMemberName;
   final _contentController = TextEditingController();
   bool _saving = false;
   String? _error;
 
-  // Feedback-history filter: which date window is shown and which page of 10.
+  // Feedback-history filter: which date window is shown and which page of 5.
   String _historyPreset = 'all';
   int _historyPage = 0;
 
@@ -87,10 +87,14 @@ class _GiveFeedbackPageState extends ConsumerState<GiveFeedbackPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: selected ? ClayTokens.clayPrimary : Colors.white.withAlpha(14),
+          color: selected
+              ? ClayTokens.clayPrimary
+              : ClayTokens.clayPrimary.withAlpha(28),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: selected ? ClayTokens.clayPrimary : Colors.white.withAlpha(30),
+            color: selected
+                ? ClayTokens.clayPrimary
+                : ClayTokens.clayPrimary.withAlpha(110),
           ),
         ),
         child: Text(
@@ -98,7 +102,7 @@ class _GiveFeedbackPageState extends ConsumerState<GiveFeedbackPage> {
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w600,
-            color: selected ? Colors.white : ClayTokens.clayDarkTextSecondary,
+            color: selected ? Colors.white : ClayTokens.clayPrimaryLight,
           ),
         ),
       ),
@@ -109,6 +113,36 @@ class _GiveFeedbackPageState extends ConsumerState<GiveFeedbackPage> {
   void dispose() {
     _contentController.dispose();
     super.dispose();
+  }
+
+  /// Create-plan-style member picker: a glass dialog with type-ahead search.
+  /// The dialog barrier is dismissible, so tapping the background outside the
+  /// card closes it — the same behaviour as the Create Plan screen.
+  Future<void> _openMemberPicker(List<Map<String, dynamic>> members) async {
+    final picked = await showDialog<String>(
+      context: context,
+      builder: (_) => _MemberPickerDialog(
+        members: members,
+        selected: _selectedMemberId,
+      ),
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _selectedMemberId = picked;
+      _selectedMemberName = (members
+                  .firstWhere((m) => m['member_id'] == picked)['profiles']
+              as Map<String, dynamic>?)?['full_name'] as String? ??
+          'Unknown';
+    });
+  }
+
+  /// Tap a feedback-history card to open its detail view: the full message,
+  /// the member's star rating, and their comment (or an explicit "not yet").
+  void _showFeedbackDetail(Map<String, dynamic> row) {
+    showDialog<void>(
+      context: context,
+      builder: (_) => _FeedbackDetailDialog(row: row),
+    );
   }
 
   Future<void> _submit() async {
@@ -232,38 +266,42 @@ class _GiveFeedbackPageState extends ConsumerState<GiveFeedbackPage> {
                         children: [
                           const Text('Member', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF8E8E93))),
                           const SizedBox(height: 6),
-                          SizedBox(
-                            width: double.infinity,
-                            child: GlassPanel(
-                              padding: const EdgeInsets.symmetric(horizontal: 14),
-                              borderRadius: BorderRadius.circular(12),
-                              child: DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                                isExpanded: true,
-                                value: _selectedMemberId,
-                                hint: const Text('Select a member', style: TextStyle(fontSize: 14, color: Color(0xFF8E8E93))),
-                                dropdownColor: ClayTokens.clayDarkSurface,
-                                icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF8E8E93), size: 22),
-                                items: members.map((m) {
-                                  final id = m['member_id'] as String;
-                                  final name = (m['profiles'] as Map<String, dynamic>?)?['full_name'] as String? ?? 'Unknown';
-                                  return DropdownMenuItem(
-                                    value: id,
-                                    child: Text(name, style: const TextStyle(fontSize: 14, color: Colors.white)),
-                                  );
-                                }).toList(),
-                                onChanged: (id) {
-                                  if (id == null) return;
-                                  setState(() {
-                                    _selectedMemberId = id;
-                                    _selectedMemberName = (members
-                                            .firstWhere((m) => m['member_id'] == id)['profiles']
-                                        as Map<String, dynamic>?)?['full_name'] as String? ?? 'Unknown';
-                                  });
-                                },
+                          GestureDetector(
+                            onTap: () => _openMemberPicker(members),
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withAlpha(14),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.white.withAlpha(30)),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    CupertinoIcons.search,
+                                    size: 16,
+                                    color: Color(0xFF8E8E93),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      _selectedMemberName ?? 'Search & select a member',
+                                      style: ClayTokens.bodyMedium.copyWith(
+                                        color: _selectedMemberId != null
+                                            ? ClayTokens.clayDarkTextPrimary
+                                            : ClayTokens.clayDarkTextTertiary,
+                                      ),
+                                    ),
+                                  ),
+                                  const Icon(
+                                    CupertinoIcons.chevron_down,
+                                    size: 16,
+                                    color: Color(0xFF8E8E93),
+                                  ),
+                                ],
                               ),
                             ),
-                          ),
                           ),
                         ],
                       ),
@@ -277,7 +315,10 @@ class _GiveFeedbackPageState extends ConsumerState<GiveFeedbackPage> {
                         style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF8E8E93)),
                       ),
                       const SizedBox(height: 6),
-                      Consumer(
+                      GlassPanel(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Consumer(
                         builder: (context, ref, _) {
                           final logsAsync = ref.watch(memberLogsPreviewProvider(_selectedMemberId!));
                           return logsAsync.when(
@@ -305,6 +346,7 @@ class _GiveFeedbackPageState extends ConsumerState<GiveFeedbackPage> {
                             error: (_, __) => const SizedBox.shrink(),
                           );
                         },
+                        ),
                       ),
                     ],
                     const SizedBox(height: 16),
@@ -336,7 +378,7 @@ class _GiveFeedbackPageState extends ConsumerState<GiveFeedbackPage> {
                       height: 46,
                       child: CupertinoButton(
                         padding: EdgeInsets.zero,
-                        color: const Color(0xFFBF5AF2),
+                        color: ClayTokens.clayPrimary,
                         borderRadius: BorderRadius.circular(12),
                         onPressed: (_saving || _selectedMemberId == null || _contentController.text.trim().isEmpty) ? null : _submit,
                         child: _saving
@@ -391,7 +433,9 @@ class _GiveFeedbackPageState extends ConsumerState<GiveFeedbackPage> {
                                     final memberComment = (row['member_comment'] as String? ?? '').trim();
                                     final created = DateTime.tryParse(row['created_at']?.toString() ?? '');
                                     final day = created == null ? '' : DateFormat('MMM d, yyyy').format(created.toLocal());
-                                    return Container(
+                                    return GestureDetector(
+                                      onTap: () => _showFeedbackDetail(row),
+                                      child: Container(
                                       width: double.infinity,
                                       margin: const EdgeInsets.only(bottom: 8),
                                       padding: const EdgeInsets.all(12),
@@ -460,6 +504,7 @@ class _GiveFeedbackPageState extends ConsumerState<GiveFeedbackPage> {
                                           ],
                                         ],
                                       ),
+                                      ),
                                     );
                                     }),
                                     _HistoryPager(
@@ -493,8 +538,328 @@ class _GiveFeedbackPageState extends ConsumerState<GiveFeedbackPage> {
   }
 }
 
+/// Create-plan-style member picker for the feedback screen: a glass dialog
+/// with type-ahead search over the trainer's assigned members. The dialog
+/// barrier is dismissible, so tapping the background (outside the card)
+/// closes it — same behaviour as the Create Plan screen's picker.
+class _MemberPickerDialog extends StatefulWidget {
+  final List<Map<String, dynamic>> members;
+  final String? selected;
+
+  const _MemberPickerDialog({required this.members, this.selected});
+
+  @override
+  State<_MemberPickerDialog> createState() => _MemberPickerDialogState();
+}
+
+class _MemberPickerDialogState extends State<_MemberPickerDialog> {
+  final _searchController = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = widget.members
+        .map((m) => MapEntry(
+              m['member_id'] as String,
+              (m['profiles'] as Map<String, dynamic>?)?['full_name'] as String? ??
+                  'Unknown',
+            ))
+        .toList()
+      ..sort((a, b) => a.value.toLowerCase().compareTo(b.value.toLowerCase()));
+
+    final q = _query.trim().toLowerCase();
+    final filtered = q.isEmpty
+        ? rows
+        : rows.where((e) => e.value.toLowerCase().contains(q)).toList();
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+      child: GlassPanel(
+        padding: const EdgeInsets.all(14),
+        borderRadius: BorderRadius.circular(18),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Select member',
+              style: ClayTokens.bodyMedium.copyWith(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _searchController,
+              autofocus: true,
+              onChanged: (v) => setState(() => _query = v),
+              cursorColor: ClayTokens.clayPrimary,
+              decoration: InputDecoration(
+                hintText: 'Search members…',
+                hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF7070A0)),
+                prefixIcon: const Icon(
+                  Icons.search,
+                  size: 18,
+                  color: Color(0xFF7070A0),
+                ),
+                filled: true,
+                fillColor: Colors.white.withAlpha(14),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.white.withAlpha(30)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFFA78BFA)),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
+              ),
+              style: const TextStyle(fontSize: 13, color: Colors.white),
+            ),
+            const SizedBox(height: 10),
+            if (filtered.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Text(
+                  'No members match "$_query"',
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF8E8E93)),
+                ),
+              )
+            else
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 300),
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: filtered.length,
+                  itemBuilder: (_, i) {
+                    final entry = filtered[i];
+                    final isSelected = entry.key == widget.selected;
+                    return InkWell(
+                      onTap: () => Navigator.pop(context, entry.key),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? ClayTokens.clayPrimary.withAlpha(35)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                entry.value,
+                                style: ClayTokens.bodyMedium.copyWith(
+                                  fontWeight: isSelected
+                                      ? FontWeight.w700
+                                      : FontWeight.w400,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : ClayTokens.clayDarkTextSecondary,
+                                ),
+                              ),
+                            ),
+                            if (isSelected)
+                              const Icon(
+                                CupertinoIcons.checkmark_circle_fill,
+                                size: 18,
+                                color: Color(0xFFA78BFA),
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerRight,
+              child: CupertinoButton(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                onPressed: () => Navigator.pop(context),
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(fontSize: 13, color: Color(0xFF8E8E93)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Full detail for one feedback record the trainer sent: the complete message,
+/// the member's star rating, and their comment (Figure 24) — or an explicit
+/// "not yet" state when only the feedback exists so far.
+class _FeedbackDetailDialog extends StatelessWidget {
+  final Map<String, dynamic> row;
+
+  const _FeedbackDetailDialog({required this.row});
+
+  @override
+  Widget build(BuildContext context) {
+    final member =
+        (row['member'] as Map<String, dynamic>?)?['full_name'] as String? ?? 'Member';
+    final content = row['content'] as String? ?? '';
+    final rating = row['rating'] as int?;
+    final comment = (row['member_comment'] as String? ?? '').trim();
+    final commentedAt = DateTime.tryParse(row['member_commented_at']?.toString() ?? '');
+    final created = DateTime.tryParse(row['created_at']?.toString() ?? '');
+    final day =
+        created == null ? '' : DateFormat('MMM d, yyyy').format(created.toLocal());
+
+    const labelStyle = TextStyle(
+      fontSize: 9.5,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0.5,
+      color: Color(0xFF8E8E93),
+    );
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+      child: GlassPanel(
+        padding: const EdgeInsets.all(16),
+        borderRadius: BorderRadius.circular(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              day.isEmpty ? member : '$member · $day',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text('YOUR FEEDBACK', style: labelStyle),
+            const SizedBox(height: 6),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withAlpha(10),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.white.withAlpha(24)),
+              ),
+              child: Text(
+                content,
+                style: const TextStyle(
+                  fontSize: 13,
+                  height: 1.4,
+                  color: Color(0xFFB4B4D0),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                for (int i = 1; i <= 5; i++)
+                  Icon(
+                    i <= (rating ?? 0)
+                        ? Icons.star_rounded
+                        : Icons.star_outline_rounded,
+                    size: 16,
+                    color: i <= (rating ?? 0)
+                        ? const Color(0xFFFFC107)
+                        : const Color(0xFF8E8E93),
+                  ),
+                const SizedBox(width: 6),
+                Text(
+                  rating == null ? 'Not rated yet' : '$rating / 5',
+                  style: const TextStyle(fontSize: 11, color: Color(0xFF8E8E93)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            const Text('MEMBER COMMENT', style: labelStyle),
+            const SizedBox(height: 6),
+            if (comment.isNotEmpty) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withAlpha(10),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.white.withAlpha(24)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      comment,
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        height: 1.4,
+                        color: Color(0xFFB4B4D0),
+                      ),
+                    ),
+                    if (commentedAt != null) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        'Commented ${DateFormat('MMM d, yyyy').format(commentedAt.toLocal())}',
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: Color(0xFF8E8E93),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ] else
+              const Text(
+                'The member has not commented on this feedback yet.',
+                style: TextStyle(fontSize: 12, color: Color(0xFF8E8E93)),
+              ),
+            const SizedBox(height: 14),
+            Align(
+              alignment: Alignment.centerRight,
+              child: CupertinoButton(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                color: ClayTokens.clayPrimary,
+                borderRadius: BorderRadius.circular(10),
+                onPressed: () => Navigator.pop(context),
+                child: const Text(
+                  'Done',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// Pagination footer for the feedback history: record range + Prev/Next glass
-/// chips, mirroring the dashboard activity-feed pager (10 rows per page).
+/// chips, mirroring the dashboard activity-feed pager (5 rows per page).
 class _HistoryPager extends StatelessWidget {
   final int start;
   final int shown;
@@ -566,10 +931,14 @@ class _HistoryPagerBtn extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: enabled ? Colors.white.withAlpha(16) : Colors.white.withAlpha(6),
+          color: enabled
+              ? ClayTokens.clayPrimary
+              : ClayTokens.clayPrimary.withAlpha(28),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: enabled ? Colors.white.withAlpha(40) : Colors.white.withAlpha(12),
+            color: enabled
+                ? ClayTokens.clayPrimary
+                : ClayTokens.clayPrimary.withAlpha(70),
           ),
         ),
         child: Text(
@@ -577,7 +946,7 @@ class _HistoryPagerBtn extends StatelessWidget {
           style: TextStyle(
             fontSize: 10.5,
             fontWeight: FontWeight.w600,
-            color: enabled ? Colors.white : const Color(0xFF8E8E93),
+            color: enabled ? Colors.white : ClayTokens.clayPrimaryLight,
           ),
         ),
       ),

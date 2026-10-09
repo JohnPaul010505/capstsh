@@ -21,6 +21,20 @@ class MemberMembershipState {
 
   Membership? get current => memberships.isNotEmpty ? memberships.first : null;
 
+  /// The plan shown on the hero card: the newest membership that has NOT
+  /// expired yet. Expired plans drop out of the hero and move to HISTORY.
+  Membership? get activeMembership {
+    for (final m in memberships) {
+      if (!m.isExpired) return m;
+    }
+    return null;
+  }
+
+  /// Expired memberships, newest first — rendered under the HISTORY section.
+  List<Membership> get expiredMemberships =>
+      memberships.where((m) => m.isExpired).toList();
+
+
   MembershipRenewalRequest? get pendingRequest {
     for (final r in renewalRequests) {
       if (r.isPending) return r;
@@ -125,7 +139,15 @@ Future<void> submitRenewalRequest({
   required int months,
   String? note,
   String? membershipId,
+  DateTime? startDate,
+  DateTime? endDate,
 }) async {
+  String? dateOnly(DateTime? d) => d == null
+      ? null
+      : '${d.year.toString().padLeft(4, '0')}-'
+            '${d.month.toString().padLeft(2, '0')}-'
+            '${d.day.toString().padLeft(2, '0')}';
+
   await SupabaseClientService().client
       .from('membership_renewal_requests')
       .insert({
@@ -135,5 +157,7 @@ Future<void> submitRenewalRequest({
         'months': months,
         'status': 'pending',
         if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+        if (dateOnly(startDate) != null) 'start_date': dateOnly(startDate),
+        if (dateOnly(endDate) != null) 'end_date': dateOnly(endDate),
       });
 }

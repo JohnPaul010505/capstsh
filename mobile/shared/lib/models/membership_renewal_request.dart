@@ -6,6 +6,10 @@ class MembershipRenewalRequest {
   final int months;
   final String status;
   final String? note;
+
+  /// Optional member-requested custom membership window (custom renewal).
+  final DateTime? startDate;
+  final DateTime? endDate;
   final DateTime requestedAt;
   final DateTime? decidedAt;
 
@@ -17,6 +21,8 @@ class MembershipRenewalRequest {
     required this.months,
     required this.status,
     this.note,
+    this.startDate,
+    this.endDate,
     required this.requestedAt,
     this.decidedAt,
   });
@@ -30,6 +36,8 @@ class MembershipRenewalRequest {
         months: (json['months'] as num?)?.toInt() ?? 1,
         status: json['status'] as String? ?? 'pending',
         note: json['note'] as String?,
+        startDate: DateTime.tryParse(json['start_date'] as String? ?? ''),
+        endDate: DateTime.tryParse(json['end_date'] as String? ?? ''),
         requestedAt:
             DateTime.tryParse(json['requested_at'] as String? ?? '') ??
                 DateTime.now(),

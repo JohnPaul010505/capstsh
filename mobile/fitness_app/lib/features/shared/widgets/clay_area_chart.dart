@@ -21,6 +21,14 @@ class ClayAreaChart extends StatelessWidget {
   /// When true, paints the exact value centered above each non-null dot.
   final bool showValueLabels;
 
+  /// Fill colour of each data dot. Defaults to [strokeColor] so existing
+  /// charts are unchanged; pass a distinct colour to recolour just the dots.
+  final Color? dotColor;
+
+  /// Ring colour drawn around each dot. Defaults to white. Pass a colour
+  /// matching [dotColor] (or transparent) to drop the white halo.
+  final Color? dotRingColor;
+
   const ClayAreaChart({
     super.key,
     required this.values,
@@ -31,6 +39,8 @@ class ClayAreaChart extends StatelessWidget {
     this.legendLabel,
     this.showYAxis = false,
     this.showValueLabels = false,
+    this.dotColor,
+    this.dotRingColor,
   });
 
   @override
@@ -79,6 +89,8 @@ class ClayAreaChart extends StatelessWidget {
                     maxY: nonNull.reduce(max),
                     showYAxis: showYAxis,
                     showValueLabels: showValueLabels,
+                    dotColor: dotColor,
+                    dotRingColor: dotRingColor,
                   ),
                 ),
         ),
@@ -96,6 +108,8 @@ class _AreaChartPainter extends CustomPainter {
   final double maxY;
   final bool showYAxis;
   final bool showValueLabels;
+  final Color? dotColor;
+  final Color? dotRingColor;
 
   _AreaChartPainter({
     required this.values,
@@ -105,6 +119,8 @@ class _AreaChartPainter extends CustomPainter {
     required this.maxY,
     this.showYAxis = false,
     this.showValueLabels = false,
+    this.dotColor,
+    this.dotRingColor,
   });
 
   static const double _gutter = 30;
@@ -195,17 +211,22 @@ class _AreaChartPainter extends CustomPainter {
     }
     canvas.drawPath(linePath, linePaint);
 
-    // Dots with white ring
+    // Dots. Fill defaults to the stroke colour; the ring defaults to white but
+    // can be recoloured (or matched to the fill) to drop the white halo.
+    final dotFill = dotColor ?? strokeColor;
+    final ring = dotRingColor ?? Colors.white;
     for (final p in pts) {
-      canvas.drawCircle(p, 3, Paint()..color = strokeColor);
-      canvas.drawCircle(
-        p,
-        3,
-        Paint()
-          ..color = Colors.white
-          ..strokeWidth = 1.5
-          ..style = PaintingStyle.stroke,
-      );
+      canvas.drawCircle(p, 3, Paint()..color = dotFill);
+      if (ring.a > 0) {
+        canvas.drawCircle(
+          p,
+          3,
+          Paint()
+            ..color = ring
+            ..strokeWidth = 1.5
+            ..style = PaintingStyle.stroke,
+        );
+      }
     }
 
     // Exact value labels. Colliding labels stagger upward (or drop below the
@@ -351,5 +372,7 @@ class _AreaChartPainter extends CustomPainter {
       old.minY != minY ||
       old.maxY != maxY ||
       old.showYAxis != showYAxis ||
-      old.showValueLabels != showValueLabels;
+      old.showValueLabels != showValueLabels ||
+      old.dotColor != dotColor ||
+      old.dotRingColor != dotRingColor;
 }
