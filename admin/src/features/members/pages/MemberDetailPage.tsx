@@ -2,7 +2,7 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { useMember } from '../hooks/useMembers'
+import { useMember, useUpdateMember } from '../hooks/useMembers'
 import { usePagedTable, useResetPageOnChange } from '@/lib/pagedTable'
 import { useFitRowHeight } from '@/hooks/useFitRows'
 import PeopleTable, { type PeopleColumn } from '@/components/PeopleTable'
@@ -40,6 +40,38 @@ export default function MemberDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { data: member, isLoading } = useMember(id!)
+  const updateMember = useUpdateMember()
+
+  /**
+   * Personal Information is editable. `editing` toggles the inputs; `form`
+   * is seeded from the member on entry so a half-typed edit can be discarded
+   * by toggling off without touching the server.
+   */
+  const [editing, setEditing] = useState(false)
+  const [form, setForm] = useState({
+    phone: '',
+    date_of_birth: '',
+    gender: '',
+    address: '',
+    emergency_contact_name: '',
+    emergency_contact_phone: '',
+  })
+  const startEdit = () => {
+    if (!member) return
+    setForm({
+      phone: member.phone ?? '',
+      date_of_birth: member.date_of_birth ?? '',
+      gender: member.gender ?? '',
+      address: member.address ?? '',
+      emergency_contact_name: member.emergency_contact_name ?? '',
+      emergency_contact_phone: member.emergency_contact_phone ?? '',
+    })
+    setEditing(true)
+  }
+  const saveEdit = () => {
+    if (!id) return
+    updateMember.mutate({ id, ...form }, { onSuccess: () => setEditing(false) })
+  }
 
   /**
    * One flat strip: Info plus the three progress windows — no intermediate
@@ -97,6 +129,29 @@ export default function MemberDetailPage() {
   })
 
   /**
+   * Every check-in day for this member inside Overview's window — the source
+   * for the This Month card, which counts check-ins (not workouts). `check_in_date`
+   * is already a local YYYY-MM-DD string, so it is bucketed as-is (no TZ shift).
+   */
+  const { data: checkinStamps } = useQuery({
+    queryKey: ['member-progress-checkins', id, overviewRange.start, overviewRange.end],
+    enabled: tab === 'overview' && !!id,
+    queryFn: async () => {
+      let q = supabase
+        .from('attendance')
+        .select('check_in_date')
+        .eq('member_id', id)
+      if (!overviewAll) {
+        q = q
+          .gte('check_in_date', overviewRange.start)
+          .lte('check_in_date', overviewRange.end)
+      }
+      const { data } = await q.order('check_in_date', { ascending: true }).limit(2000)
+      return (data ?? []) as { check_in_date: string }[]
+    },
+  })
+
+  /**
    * This week (7 daily bars), this month (daily bars), growth over time
    * (monthly totals) — each window clipped to Overview's picked range, so the
    * picker on the tab row filters all three cards. On All time the clips are
@@ -112,12 +167,19 @@ export default function MemberDetailPage() {
       const day = toDay(new Date(r.logged_at))
       counts.set(day, (counts.get(day) ?? 0) + 1)
     }
-    const daily = (days: string[]): TrendPoint[] =>
+    // Check-ins bucket by their own day string; a separate map so the workout
+    // week chart and the check-in month chart never share a counter.
+    const checkinCounts = new Map<string, number>()
+    for (const r of checkinStamps ?? []) {
+      const day = r.check_in_date
+      checkinCounts.set(day, (checkinCounts.get(day) ?? 0) + 1)
+    }
+    const daily = (days: string[], from: Map<string, number>): TrendPoint[] =>
       days.map(day => ({
         key: day,
         label: day.slice(8),
         full: new Date(`${day}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-        value: counts.get(day) ?? 0,
+        value: from.get(day) ?? 0,
       }))
     const range = overviewRange
     const endDay = parseDay(range.end)
@@ -131,11 +193,11 @@ export default function MemberDetailPage() {
       value: eachDay(b.start, b.end).reduce((s, d) => s + (counts.get(d) ?? 0), 0),
     }))
     return {
-      week: daily(eachDay(weekStart, range.end)),
-      month: daily(eachDay(monthStart, range.end)),
+      week: daily(eachDay(weekStart, range.end), counts),
+      month: daily(eachDay(monthStart, range.end), checkinCounts),
       growth,
     }
-  }, [progressStamps, overviewRange])
+  }, [progressStamps, checkinStamps, overviewRange])
 
   const { data: address } = useQuery({
     queryKey: ['member-address', id],
@@ -237,6 +299,18 @@ export default function MemberDetailPage() {
     { key: 'weight', header: 'Weight', render: w => { const v = workoutWeight(w); return <span className="tabular-nums">{v != null ? `${v} kg` : '—'}</span> } },
     { key: 'duration', header: 'Duration', render: w => { const v = workoutMinutes(w); return <span className="tabular-nums">{v != null ? `${v} min` : '—'}</span> } },
     {
+      key: 'total', header: 'Total',
+      // kcal when the session recorded it; otherwise a volume summary
+      // (sets x reps x weight) so a legacy row still shows something.
+      render: w => {
+        if (w.total_calories != null) return <span className="tabular-nums text-fg-strong">{w.total_calories} kcal</span>
+        const vol = w.sets != null && w.reps != null && workoutWeight(w) != null
+          ? w.sets * w.reps * (workoutWeight(w) as number)
+          : null
+        return <span className="tabular-nums text-fg-muted">{vol != null ? `${vol} kg·vol` : '—'}</span>
+      },
+    },
+    {
       key: 'proof', header: 'Proof',
       render: w => w.proof_url ? (
         <button type="button" onClick={() => setSelectedVideo(w)} className="inline-flex items-center gap-1.5 text-accent-purple hover:underline cursor-pointer">
@@ -250,17 +324,10 @@ export default function MemberDetailPage() {
     { key: 'date', header: 'Date', render: m => <span className="whitespace-nowrap">{new Date(m.meal_time).toLocaleDateString()}</span> },
     { key: 'meal', header: 'Meal', render: m => <span className="font-medium text-fg-strong capitalize">{m.meal_type}</span> },
     { key: 'food', header: 'Food', render: m => <span className="text-fg">{m.food_name}</span> },
-    {
-      key: 'nutrition', header: 'Nutrition',
-      render: m => (
-        <span>
-          <span className="tabular-nums text-fg-strong">{m.calories != null ? `${m.calories} kcal` : '—'}</span>
-          <span className="block text-xs text-fg-muted tabular-nums">
-            P{m.protein_g ?? '—'} · C{m.carbs_g ?? '—'} · F{m.fat_g ?? '—'}
-          </span>
-        </span>
-      ),
-    },
+    { key: 'kcal', header: 'Kcal', render: m => <span className="tabular-nums text-fg-strong">{m.calories != null ? m.calories : '—'}</span> },
+    { key: 'protein', header: 'Protein', render: m => <span className="tabular-nums">{m.protein_g != null ? `${m.protein_g} g` : '—'}</span> },
+    { key: 'carbs', header: 'Carbs', render: m => <span className="tabular-nums">{m.carbs_g != null ? `${m.carbs_g} g` : '—'}</span> },
+    { key: 'fat', header: 'Fat', render: m => <span className="tabular-nums">{m.fat_g != null ? `${m.fat_g} g` : '—'}</span> },
     {
       key: 'photo', header: 'Photo',
       render: m => m.photo_url ? (
@@ -354,7 +421,41 @@ export default function MemberDetailPage() {
       {/* Personal Info */}
       {tab === 'info' && (
       <div className="glass-card p-4 rounded-xl shrink-0">
-        <h2 className="text-base font-semibold mb-3 text-fg-strong">Personal Information</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-base font-semibold text-fg-strong">Personal Information</h2>
+          {editing ? (
+            <div className="flex gap-2">
+              <button onClick={() => setEditing(false)} className="px-3 py-1.5 text-xs rounded-lg border border-line text-fg-muted hover:text-fg-strong cursor-pointer transition-colors">Cancel</button>
+              <button onClick={saveEdit} disabled={updateMember.isPending} className="px-3 py-1.5 text-xs rounded-lg bg-[#7C3AED] text-white hover:bg-[#6D28D9] disabled:opacity-50 cursor-pointer transition-colors">
+                {updateMember.isPending ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          ) : (
+            <button onClick={startEdit} className="px-3 py-1.5 text-xs rounded-lg border border-line text-fg-muted hover:text-fg-strong hover:border-[#7C3AED]/50 cursor-pointer transition-colors">Edit</button>
+          )}
+        </div>
+        {editing ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {([
+              ['phone', 'Phone', 'text'],
+              ['date_of_birth', 'Date of Birth', 'date'],
+              ['gender', 'Gender', 'text'],
+              ['address', 'Address', 'text'],
+              ['emergency_contact_name', 'Emergency Contact Name', 'text'],
+              ['emergency_contact_phone', 'Emergency Contact Phone', 'text'],
+            ] as const).map(([key, label, type]) => (
+              <label key={key} className="block">
+                <span className="block text-xs text-fg-muted mb-1">{label}</span>
+                <input
+                  type={type}
+                  value={form[key]}
+                  onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                  className="w-full px-3 py-2 text-sm bg-page-deep border border-line rounded-lg text-fg-strong focus:outline-none focus:border-[#7C3AED]"
+                />
+              </label>
+            ))}
+          </div>
+        ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="flex items-center gap-3">
             <Phone className="w-4 h-4 text-fg-muted" />
@@ -387,6 +488,8 @@ export default function MemberDetailPage() {
             </div>
           </div>
         </div>
+        )}
+        {!editing && (
         <div className="border-t border-line mt-3 pt-3">
           <h3 className="text-sm font-semibold text-fg-strong mb-2">Emergency Contact</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -406,6 +509,7 @@ export default function MemberDetailPage() {
             </div>
           </div>
         </div>
+        )}
       </div>
       )}
 
@@ -420,9 +524,9 @@ export default function MemberDetailPage() {
             </div>
           </div>
           <div className="glass-card p-4 rounded-xl flex flex-col">
-            <h3 className="text-sm font-semibold text-fg-strong mb-2">This Month</h3>
+            <h3 className="text-sm font-semibold text-fg-strong mb-2">This Month — Check-ins</h3>
             <div className="flex-1 min-h-[8rem]">
-              <BarTrend points={overview.month} ariaLabel="Workouts this month" valueName="workouts" gradientId="memberMonthGrad" />
+              <BarTrend points={overview.month} ariaLabel="Check-ins this month" valueName="check-ins" gradientId="memberMonthGrad" />
             </div>
           </div>
           <div className="glass-card p-4 rounded-xl lg:col-span-2 flex flex-col">

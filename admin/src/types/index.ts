@@ -88,6 +88,8 @@ export interface WorkoutLog {
   duration_seconds?: number | null
   proof_url?: string | null
   proof_type?: string | null
+  /** Total kcal burned for the session, from migration 0018; null on legacy rows. */
+  total_calories?: number | null
 }
 
 export interface BodyMeasurement {
