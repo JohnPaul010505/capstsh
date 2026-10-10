@@ -70,6 +70,7 @@ type MemberOption = { id: string; full_name: string; email: string; code: string
 /** Glass-styled custom dropdown (native <select> popups render white and can't be themed). */
 function MemberSelect({ members, value, onChange }: { members: MemberOption[] | undefined; value: string; onChange: (id: string) => void }) {
   const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState('')
   const rootRef = useRef<HTMLDivElement>(null)
   const selected = members?.find(m => m.id === value)
 
@@ -89,6 +90,16 @@ function MemberSelect({ members, value, onChange }: { members: MemberOption[] | 
     }
   }, [open])
 
+  // Type-to-filter by name, code or email — a searchable combobox instead of
+  // scrolling the whole roster.
+  const term = search.trim().toLowerCase()
+  const filtered = (members ?? []).filter(m =>
+    term === '' ||
+    m.full_name?.toLowerCase().includes(term) ||
+    m.code?.toLowerCase().includes(term) ||
+    m.email?.toLowerCase().includes(term),
+  )
+
   return (
     <div ref={rootRef} className="relative">
       <button
@@ -103,6 +114,16 @@ function MemberSelect({ members, value, onChange }: { members: MemberOption[] | 
       </button>
       {open && (
         <div className="glass-card absolute left-0 right-0 top-full mt-1 z-20 max-h-56 overflow-y-auto rounded-lg border border-line py-1 shadow-xl">
+          <div className="px-2 pb-1 sticky top-0">
+            <input
+              type="text"
+              autoFocus
+              placeholder="Search name, code or email…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full px-2 py-1.5 text-sm bg-page-deep border border-line rounded-lg text-fg-strong placeholder-fg-muted focus:outline-none focus:border-[#7C3AED]"
+            />
+          </div>
           <button
             type="button"
             onClick={() => { onChange(''); setOpen(false) }}
@@ -112,7 +133,7 @@ function MemberSelect({ members, value, onChange }: { members: MemberOption[] | 
           >
             Select member...
           </button>
-          {members?.map(m => (
+          {filtered.map(m => (
             <button
               key={m.id}
               type="button"
@@ -124,6 +145,9 @@ function MemberSelect({ members, value, onChange }: { members: MemberOption[] | 
               {m.full_name} ({m.code ?? '—'}) — {m.email}
             </button>
           ))}
+          {filtered.length === 0 && (
+            <div className="text-center py-3 text-fg-muted text-sm">No members match “{search}”</div>
+          )}
         </div>
       )}
     </div>
