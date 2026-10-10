@@ -210,10 +210,10 @@ class _TrainerPlanWorkoutOverlayState extends ConsumerState<TrainerPlanWorkoutOv
               .select('exercise_name')
               .eq('member_id', memberId)
               .gte(
-                'created_at',
+                'logged_at',
                 startOfDay.toUtc().toIso8601String(),
               )
-              .lt('created_at', endOfDay.toUtc().toIso8601String())
+              .lt('logged_at', endOfDay.toUtc().toIso8601String())
               .limit(200);
       final logged =
           (rows as List)
