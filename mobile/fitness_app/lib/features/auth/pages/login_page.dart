@@ -330,7 +330,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
                                           child: _FloatingLabelInput(
                                             controller: _codeController,
                                             focusNode: _codeFocus,
-                                            label: 'Member Code',
+                                            label: 'User code',
                                             textInputAction:
                                                 TextInputAction.next,
                                           ),
@@ -627,7 +627,7 @@ class _FloatingLabelInputState extends State<_FloatingLabelInput> {
             duration: const Duration(milliseconds: 200),
             curve: Curves.easeInOut,
             left: 16,
-            top: floating ? 6 : 14,
+            top: 6,
             child: Container(
               padding: floating
                   ? const EdgeInsets.symmetric(horizontal: 4)
@@ -637,7 +637,7 @@ class _FloatingLabelInputState extends State<_FloatingLabelInput> {
                 curve: Curves.easeInOut,
                 style: _clean(
                   sfText(
-                    fontSize: floating ? 11 : 15,
+                    fontSize: 11,
                     color: focused
                         ? Colors.white
                         : CupertinoAppColors.textTertiary,
