@@ -10,6 +10,15 @@ class MembershipRenewalRequest {
   /// Optional member-requested custom membership window (custom renewal).
   final DateTime? startDate;
   final DateTime? endDate;
+
+  /// Amount the member says they were quoted when applying (optional;
+  /// migration 0041 — null on rows written before it).
+  final double? requestedPrice;
+
+  /// Amount the admin actually collected on approval (migration 0041).
+  /// Shown back to the member so the renewal receipt is honest.
+  final double? approvedPrice;
+
   final DateTime requestedAt;
   final DateTime? decidedAt;
 
@@ -23,6 +32,8 @@ class MembershipRenewalRequest {
     this.note,
     this.startDate,
     this.endDate,
+    this.requestedPrice,
+    this.approvedPrice,
     required this.requestedAt,
     this.decidedAt,
   });
@@ -38,6 +49,8 @@ class MembershipRenewalRequest {
         note: json['note'] as String?,
         startDate: DateTime.tryParse(json['start_date'] as String? ?? ''),
         endDate: DateTime.tryParse(json['end_date'] as String? ?? ''),
+        requestedPrice: (json['requested_price'] as num?)?.toDouble(),
+        approvedPrice: (json['approved_price'] as num?)?.toDouble(),
         requestedAt:
             DateTime.tryParse(json['requested_at'] as String? ?? '') ??
                 DateTime.now(),

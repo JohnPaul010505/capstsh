@@ -7,9 +7,9 @@ import 'package:intl/intl.dart';
 import '../../../../app/design_tokens.dart';
 
 /// Bottom sheet for applying for a (re)newal: plan + months (or a custom
-/// start/end window) + optional note.
-/// Returns a map {plan_name, months, note, start_date, end_date} when
-/// submitted, null otherwise.
+/// start/end window) + optional note + optional quoted amount.
+/// Returns a map {plan_name, months, note, start_date, end_date,
+/// requested_price} when submitted, null otherwise.
 class RenewalRequestSheet extends StatefulWidget {
   final String currentPlanName;
 
@@ -45,12 +45,14 @@ class _RenewalRequestSheetState extends State<RenewalRequestSheet> {
   DateTime _endDate = DateTime.now().add(const Duration(days: 30));
 
   final _noteController = TextEditingController();
+  final _quoteController = TextEditingController();
 
   static const List<int> _monthOptions = [1, 2, 3, 4, 5, 6];
 
   @override
   void dispose() {
     _noteController.dispose();
+    _quoteController.dispose();
     super.dispose();
   }
 
@@ -172,6 +174,8 @@ class _RenewalRequestSheetState extends State<RenewalRequestSheet> {
               ],
               const SizedBox(height: 18),
               _noteField(),
+              const SizedBox(height: 14),
+              _quoteField(),
               const SizedBox(height: 22),
               SizedBox(
                 width: double.infinity,
@@ -399,7 +403,48 @@ class _RenewalRequestSheetState extends State<RenewalRequestSheet> {
       'start_date':
           (_plan == 'Monthly' && _useCustomDates) ? _startDate : null,
       'end_date': (_plan == 'Monthly' && _useCustomDates) ? _endDate : null,
+      'requested_price': double.tryParse(_quoteController.text.trim()),
     });
+  }
+
+  /// "How much were you quoted?" — the amount the member says the plan costs.
+  /// Optional and glass-styled like the note field; the admin confirms the
+  /// real amount (approved_price) when they approve.
+  Widget _quoteField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'AMOUNT QUOTED (₱, OPTIONAL)',
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF8E8E93),
+          ),
+        ),
+        const SizedBox(height: 8),
+        CupertinoTextField(
+          controller: _quoteController,
+          placeholder: 'e.g. 1800',
+          style: const TextStyle(color: Colors.white, fontSize: 14),
+          placeholderStyle: const TextStyle(
+            color: Color(0xFF636366),
+            fontSize: 14,
+          ),
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          prefix: const Padding(
+            padding: EdgeInsets.only(left: 12),
+            child: Text('₱', style: TextStyle(color: Colors.white70, fontSize: 14)),
+          ),
+          decoration: BoxDecoration(
+            color: Colors.white.withAlpha(15),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.white.withAlpha(30)),
+          ),
+        ),
+      ],
+    );
   }
 }
 

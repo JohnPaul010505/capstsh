@@ -99,13 +99,41 @@ export function useRenewalRequests() {
   return useQuery({
     queryKey: ['membership_renewal_requests', 'pending'],
     queryFn: async () => {
-      const { data } = await supabase
+      // requested/approved price columns come with migration 0041; before it
+      // is applied the expanded select 400s, so fall back to the old shape and
+      // let the page treat "amount columns missing" as amount-not-tracked.
+      const expanded = await supabase
         .from('membership_renewal_requests')
         .select('*, profiles!membership_renewal_requests_member_id_fkey(full_name, code, email)')
         .eq('status', 'pending')
         .order('requested_at', { ascending: false })
-      return (data ?? []) as import('@/types').MembershipRenewalRequest[]
+      if (!expanded.error) {
+        // `*` already carries requested_price/approved_price/start_date/end_date
+        // when the migration exists; normalise legacy rows that lack them.
+        return (expanded.data ?? []).map(normalizeRenewalRequest) as import('@/types').MembershipRenewalRequest[]
+      }
+      const legacy = await supabase
+        .from('membership_renewal_requests')
+        .select('*, profiles!membership_renewal_requests_member_id_fkey(full_name, code, email)')
+        .eq('status', 'pending')
+        .order('requested_at', { ascending: false })
+      if (legacy.error) throw legacy.error
+      return (legacy.data ?? []).map(normalizeRenewalRequest) as import('@/types').MembershipRenewalRequest[]
     },
   })
+}
+
+/**
+ * Rows written before migration 0041 have no price/date columns on the wire;
+ * give them explicit nulls so every consumer can rely on the fields.
+ */
+function normalizeRenewalRequest(row: Record<string, unknown>) {
+  return {
+    ...row,
+    start_date: row.start_date ?? null,
+    end_date: row.end_date ?? null,
+    requested_price: row.requested_price == null ? null : Number(row.requested_price),
+    approved_price: row.approved_price == null ? null : Number(row.approved_price),
+  }
 }
 

@@ -48,6 +48,7 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
         membershipId: state.activeMembership?.id ?? state.current?.id,
         startDate: result['start_date'] as DateTime?,
         endDate: result['end_date'] as DateTime?,
+        requestedPrice: result['requested_price'] as double?,
       );
       if (!mounted) return;
       ref.invalidate(membershipProvider);
@@ -318,6 +319,15 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
                     style: const TextStyle(
                       fontSize: 11,
                       color: Color(0xFFA78BFA),
+                    ),
+                  ),
+                if (request.isApproved && request.approvedPrice != null)
+                  Text(
+                    'Paid ₱${request.approvedPrice!.toStringAsFixed(request.approvedPrice! % 1 == 0 ? 0 : 2)}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF30D158),
                     ),
                   ),
               ],

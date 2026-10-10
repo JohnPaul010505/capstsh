@@ -54,6 +54,13 @@ export interface MembershipRenewalRequest {
   months: number
   status: 'pending' | 'approved' | 'declined'
   note: string | null
+  // Optional member-requested custom window (migration 0040).
+  start_date: string | null
+  end_date: string | null
+  /** Amount the member says they were quoted (optional; migration 0041). */
+  requested_price: number | null
+  /** Amount the admin actually collected on approval (migration 0041). */
+  approved_price: number | null
   requested_at: string
   decided_at: string | null
   decided_by: string | null

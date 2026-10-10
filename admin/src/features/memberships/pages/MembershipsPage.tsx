@@ -420,31 +420,57 @@ export default function MembershipsPage() {
   }
 
   const [savingRequest, setSavingRequest] = useState<string | null>(null)
+  const [renewError, setRenewError] = useState<string | null>(null)
+  // Amount the member will actually pay, typed into the request panel. Keyed
+  // by request so switching between panels cannot leak one price into another.
+  const [renewAmount, setRenewAmount] = useState<Record<string, string>>({})
+
+  /**
+   * The price an approval would charge if the admin pressed Approve unchanged:
+   * first what the member said they were quoted, else the plan's list price,
+   * else whatever the member paid last time.
+   */
+  const suggestedRenewAmount = async (request: MembershipRenewalRequest): Promise<string> => {
+    if (request.requested_price != null) return String(request.requested_price)
+    const planKey = (request.plan_name || '').toLowerCase() as keyof typeof PLANS
+    const plan = PLANS[planKey] ?? PLANS.monthly
+    if (planKey !== 'daily') return String(plan.price)
+    const { data: existing } = await supabase
+      .from('memberships').select('price')
+      .eq('member_id', request.member_id).order('end_date', { ascending: false }).limit(1).maybeSingle()
+    return String(existing?.price ?? plan.price)
+  }
+
+  /** Prefill the editable amount (member quote > plan price > last price). */
+  const openRenewRequest = async (request: MembershipRenewalRequest) => {
+    setRenewRequestId(request.id)
+    setRenewError(null)
+    if (renewAmount[request.id] == null) {
+      try {
+        const suggested = await suggestedRenewAmount(request)
+        setRenewAmount(prev => ({ ...prev, [request.id]: suggested }))
+      } catch {
+        setRenewAmount(prev => ({ ...prev, [request.id]: String(PLANS.monthly.price) }))
+      }
+    }
+  }
 
   const handleApprove = async (request: MembershipRenewalRequest) => {
+    const amount = Number(renewAmount[request.id] ?? (await suggestedRenewAmount(request)))
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setRenewError('Enter the amount collected — a number above zero — before approving.')
+      return
+    }
+    setRenewError(null)
+    // Members on the current custom window asked for their own dates; honour
+    // them, else chain off the last membership like before.
+    const requestedStart = request.start_date && request.start_date >= todayStr()
+      ? request.start_date
+      : null
     if (request.id.startsWith('mock-')) {
-      if (!request.member_id.startsWith('mock-')) {
-        const { data: existing } = await supabase
-          .from('memberships').select('id, plan_name, price, end_date')
-          .eq('member_id', request.member_id).order('end_date', { ascending: false }).limit(1).single()
-        const lastEnd = existing?.end_date
-        const newStart = lastEnd && endOfDay(lastEnd).getTime() > Date.now()
-          ? addDays(lastEnd, 1) : todayStr()
-        const planKey = (request.plan_name || '').toLowerCase() as keyof typeof PLANS
-        const plan = PLANS[planKey] ?? PLANS.monthly
-        const durationDays = planKey === 'daily' ? 1 : request.months * 30
-        const samePlanPrice = existing && existing.plan_name === request.plan_name ? existing.price : null
-        await supabase.from('memberships').insert({
-          member_id: request.member_id,
-          plan_name: request.plan_name,
-          price: samePlanPrice ?? plan.price,
-          start_date: newStart,
-          end_date: addDays(newStart, durationDays),
-          status: 'active',
-        })
-        await qc.invalidateQueries({ queryKey: ['memberships'] })
-        setActiveTab(planKey === 'daily' ? 'daily' : 'monthly')
-      }
+      // No amount was ever captured for a mock row: a mock is a rendering stub,
+      // not a payable request, so there is nothing honest to charge here.
+      setRenewError('Mock rows cannot be approved for money — this one is a display stub.')
       return
     }
     setSavingRequest(request.id)
@@ -453,29 +479,51 @@ export default function MembershipsPage() {
         .from('memberships').select('id, plan_name, price, end_date')
         .eq('member_id', request.member_id).order('end_date', { ascending: false }).limit(1).single()
       const lastEnd = existing?.end_date
-      const newStart = lastEnd && endOfDay(lastEnd).getTime() > Date.now()
-        ? addDays(lastEnd, 1) : todayStr()
+      // The member's own requested window wins when it is not in the past;
+      // otherwise the new plan chains off the previous membership's end.
+      const newStart = requestedStart ??
+        (lastEnd && endOfDay(lastEnd).getTime() > Date.now() ? addDays(lastEnd, 1) : todayStr())
       const planKey = (request.plan_name || '').toLowerCase() as keyof typeof PLANS
-      const plan = PLANS[planKey] ?? PLANS.monthly
       const durationDays = planKey === 'daily' ? 1 : request.months * 30
-      const price = existing?.price ? existing.price : plan.price
-      await supabase.from('memberships').insert({
+      const newEnd = request.end_date && request.end_date > newStart
+        ? request.end_date
+        : addDays(newStart, durationDays)
+      // This is the money: the amount the admin typed is what the membership
+      // is created at — the Revenue tab sums membership prices by start_date,
+      // so Total Revenue moves with the approval instead of a guessed price.
+      const { error: insertError } = await supabase.from('memberships').insert({
         member_id: request.member_id,
         plan_name: request.plan_name,
-        price,
+        price: amount,
         start_date: newStart,
-        end_date: addDays(newStart, durationDays),
+        end_date: newEnd,
         status: 'active',
       })
-      await supabase
+      if (insertError) throw insertError
+      // approved_price comes with migration 0041; on a project where it is not
+      // applied yet this update 400s — fall back to the pre-amount shape so an
+      // approval never strands a paid member in "pending".
+      const decision = { status: 'approved', decided_at: new Date().toISOString(), decided_by: adminId }
+      const { error: decisionError } = await supabase
         .from('membership_renewal_requests')
-        .update({ status: 'approved', decided_at: new Date().toISOString(), decided_by: adminId })
+        .update({ ...decision, approved_price: amount })
         .eq('id', request.id)
+      if (decisionError) {
+        const { error: legacyDecisionError } = await supabase
+          .from('membership_renewal_requests')
+          .update(decision)
+          .eq('id', request.id)
+        if (legacyDecisionError) throw legacyDecisionError
+      }
       await qc.invalidateQueries({ queryKey: ['memberships'] })
       await qc.invalidateQueries({ queryKey: ['membership_renewal_requests'] })
+      await qc.invalidateQueries({ queryKey: ['dash-revenue'] })
+      await qc.invalidateQueries({ queryKey: ['member'] })
+      setRenewRequestId(null)
       setActiveTab(planKey === 'daily' ? 'daily' : 'monthly')
     } catch (err) {
       console.error('[ renewals ] approve:', err)
+      setRenewError(err instanceof Error ? err.message : 'Approve failed — nothing was written.')
     } finally {
       setSavingRequest(null)
     }
@@ -483,14 +531,18 @@ export default function MembershipsPage() {
 
   const handleDecline = async (request: MembershipRenewalRequest) => {
     setSavingRequest(request.id)
+    setRenewError(null)
     try {
-      await supabase
+      const { error } = await supabase
         .from('membership_renewal_requests')
         .update({ status: 'declined', decided_at: new Date().toISOString(), decided_by: adminId })
         .eq('id', request.id)
+      if (error) throw error
       await qc.invalidateQueries({ queryKey: ['membership_renewal_requests'] })
+      setRenewRequestId(null)
     } catch (err) {
       console.error('[ renewals ] decline:', err)
+      setRenewError(err instanceof Error ? err.message : 'Decline failed — the request is still pending.')
     } finally {
       setSavingRequest(null)
     }
@@ -546,12 +598,11 @@ export default function MembershipsPage() {
               thing in the row, so every pixel it is taller is a pixel the row
               cannot give back - and at 1366x768 the queue needs those pixels. */}
           <button
-            onClick={e => { e.stopPropagation(); void handleApprove(r) }}
-            disabled={savingRequest === r.id}
+            onClick={e => { e.stopPropagation(); void openRenewRequest(r) }}
             className="flex items-center gap-1 px-2.5 py-1 text-xs bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 cursor-pointer"
           >
             <CheckCircle className="w-3.5 h-3.5" />
-            {savingRequest === r.id ? 'Saving...' : 'Approve'}
+            Review
           </button>
           <button
             onClick={e => { e.stopPropagation(); void handleDecline(r) }}
@@ -621,7 +672,7 @@ export default function MembershipsPage() {
             rows={renewalRows}
             columns={renewalColumns}
             rowKey={r => r.id}
-            onRowClick={r => setRenewRequestId(r.id)}
+            onRowClick={r => { void openRenewRequest(r) }}
             emptyMessage={`No renewal requests match "${membershipSearch}"`}
             scrollRef={scrollRef}
             rowHeight={rowHeight}
@@ -862,6 +913,43 @@ export default function MembershipsPage() {
                     <span className="text-sm text-fg">{request.months} month{request.months === 1 ? '' : 's'}</span>
                   </div>
                 </div>
+                {(request.start_date || request.end_date) && (
+                  <div>
+                    <label className="block text-xs font-medium text-fg-muted uppercase tracking-wide mb-1">Requested Window</label>
+                    <p className="text-sm text-fg">
+                      {request.start_date ? new Date(request.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                      {' → '}
+                      {request.end_date ? new Date(request.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                    </p>
+                  </div>
+                )}
+                {request.requested_price != null && (
+                  <div>
+                    <label className="block text-xs font-medium text-fg-muted uppercase tracking-wide mb-1">Quoted by Member</label>
+                    <p className="text-sm text-fg">₱{request.requested_price.toLocaleString('en-PH')}</p>
+                  </div>
+                )}
+                {/* The money question lives here, not in a toast after the fact:
+                    the admin states what was actually collected, and the new
+                    membership — and with it the Revenue tab total — is created
+                    at that price. Prefilled from the member's quote, then the
+                    plan list price, so the common case is one tap. */}
+                <div>
+                  <label htmlFor="renew-amount" className="block text-xs font-medium text-fg-muted uppercase tracking-wide mb-1">
+                    Amount Collected (₱)
+                  </label>
+                  <input
+                    id="renew-amount"
+                    type="number"
+                    min={1}
+                    step="any"
+                    inputMode="decimal"
+                    value={renewAmount[request.id] ?? ''}
+                    onChange={e => setRenewAmount(prev => ({ ...prev, [request.id]: e.target.value }))}
+                    placeholder="How much did the member pay?"
+                    className="w-full px-3 py-2 text-sm bg-page-deep border border-line rounded-lg text-fg-strong placeholder-fg-muted focus:outline-none focus:border-[#7C3AED]"
+                  />
+                </div>
                 {request.note != null && request.note.trim() !== '' && (
                   <div>
                     <label className="block text-xs font-medium text-fg-muted uppercase tracking-wide mb-1">Note from Member</label>
@@ -876,8 +964,13 @@ export default function MembershipsPage() {
                     {new Date(request.requested_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
+                {renewError && (
+                  <p role="alert" className="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded-lg px-3 py-2">
+                    {renewError}
+                  </p>
+                )}
                 <div className="bg-overlay-5 rounded-xl border border-line p-4 space-y-2">
-                  <p className="text-xs text-fg-muted text-center">Approve creates a new active membership for this member. Decline marks the request as declined.</p>
+                  <p className="text-xs text-fg-muted text-center">Approve creates a new active membership for this member at the amount above. Decline marks the request as declined.</p>
                   <div className="flex gap-3">
                     <button
                       onClick={() => handleApprove(request)}

@@ -141,6 +141,7 @@ Future<void> submitRenewalRequest({
   String? membershipId,
   DateTime? startDate,
   DateTime? endDate,
+  double? requestedPrice,
 }) async {
   String? dateOnly(DateTime? d) => d == null
       ? null
@@ -148,7 +149,7 @@ Future<void> submitRenewalRequest({
             '${d.month.toString().padLeft(2, '0')}-'
             '${d.day.toString().padLeft(2, '0')}';
 
-  await SupabaseClientService().client
+  final row = await SupabaseClientService().client
       .from('membership_renewal_requests')
       .insert({
         'member_id': memberId,
@@ -159,5 +160,23 @@ Future<void> submitRenewalRequest({
         if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
         if (dateOnly(startDate) != null) 'start_date': dateOnly(startDate),
         if (dateOnly(endDate) != null) 'end_date': dateOnly(endDate),
-      });
+      })
+      .select('id')
+      .single();
+
+  // What the member says they were quoted. Best-effort on purpose: the column
+  // arrives with migration 0041, and on a project where it is not applied yet
+  // one unknown key would fail the whole insert above — so the quote goes in
+  // its own update and is allowed to no-op. The admin confirms the real amount
+  // into approved_price at approval time either way.
+  if (requestedPrice != null && requestedPrice > 0) {
+    try {
+      await SupabaseClientService().client
+          .from('membership_renewal_requests')
+          .update({'requested_price': requestedPrice})
+          .eq('id', row['id'] as String);
+    } catch (_) {
+      // Pre-migration project: the request itself is already saved above.
+    }
+  }
 }
