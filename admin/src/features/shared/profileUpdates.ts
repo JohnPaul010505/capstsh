@@ -76,6 +76,37 @@ export function validateProfileUpdates(
   return null
 }
 
+/**
+ * Mirrors an email edit into `auth.users`.
+ *
+ * The app resolves a member/trainer by `profiles.email` (lookup by code) and
+ * then calls signInWithPassword with that address. Editing email in the admin
+ * used to touch only `profiles`, leaving `auth.users` on the old address —
+ * login then failed with "Invalid login credentials", which the app shows as
+ * "Wrong password". profiles.email is the lookup source, so it wins: this
+ * endpoint pushes it into GoTrue via the service-role key.
+ *
+ * Called by the member/trainer update hooks BEFORE the profiles write, so a
+ * rejected change (e.g. address already taken by another auth user) blocks the
+ * whole save instead of creating a fresh mismatch.
+ */
+export async function syncAuthEmail(userId: string, email: string): Promise<void> {
+  const res = await fetch('/api/update-email', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, email }),
+  })
+  if (!res.ok) {
+    let detail = ''
+    try {
+      detail = ((await res.json()) as { error?: string })?.error ?? ''
+    } catch {
+      // Non-JSON body (proxy error page) — fall through to the status message.
+    }
+    throw new Error(detail || `Could not sync the login email (${res.status}).`)
+  }
+}
+
 /** PostgREST/Postgres error -> one readable sentence for an inline banner. */
 export function describeError(err: unknown): string {
   if (err && typeof err === 'object') {

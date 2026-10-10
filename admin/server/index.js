@@ -27,7 +27,7 @@ const adminClient = createClient(supabaseUrl, serviceRoleKey, {
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8001'
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', routes: ['enroll', 'users', 'delete-user', 'assign-trainer', 'unassign-trainer', 'backfill-auth', 'backfill-codes', 'ai/predictions', 'plans/check-daily-completions', 'plans/check-weekly-completions'] })
+  res.json({ status: 'ok', routes: ['enroll', 'users', 'update-email', 'delete-user', 'assign-trainer', 'unassign-trainer', 'backfill-auth', 'backfill-codes', 'ai/predictions', 'plans/check-daily-completions', 'plans/check-weekly-completions'] })
 })
 
 app.post('/api/enroll', async (req, res) => {
@@ -155,6 +155,31 @@ app.post('/api/delete-user', async (req, res) => {
     res.json({ success: true })
   } catch (err) {
     console.error('Delete user error:', err)
+    const message = err?.message || JSON.stringify(err)
+    res.status(500).json({ error: message })
+  }
+})
+
+app.post('/api/update-email', async (req, res) => {
+  const { userId, email } = req.body
+
+  if (!userId || !email) {
+    return res.status(400).json({ error: 'Missing userId or email' })
+  }
+
+  try {
+    // profiles.email is what the app's login lookup reads, so the caller has
+    // already decided this is the address; write it into auth.users too.
+    // Password is untouched, so the member's existing password keeps working.
+    const { error } = await adminClient.auth.admin.updateUserById(userId, {
+      email,
+      email_confirm: true,
+    })
+    if (error) throw error
+
+    res.json({ success: true })
+  } catch (err) {
+    console.error('Update email error:', err)
     const message = err?.message || JSON.stringify(err)
     res.status(500).json({ error: message })
   }

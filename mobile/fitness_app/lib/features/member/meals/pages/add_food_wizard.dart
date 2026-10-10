@@ -101,6 +101,15 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
   final _gramsController = TextEditingController(text: '100');
   final _searchController = TextEditingController();
 
+  // Manual mode: the member skips the FNRI table and types the food name
+  // plus its per-100 g nutrition instead.
+  bool _manual = false;
+  final _manualNameController = TextEditingController();
+  final _manualKcalController = TextEditingController();
+  final _manualProteinController = TextEditingController();
+  final _manualCarbsController = TextEditingController();
+  final _manualFatController = TextEditingController();
+
   List<NutritionFood> _results = [];
   bool _searching = false;
   String? _searchError;
@@ -113,6 +122,11 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
   void dispose() {
     _gramsController.dispose();
     _searchController.dispose();
+    _manualNameController.dispose();
+    _manualKcalController.dispose();
+    _manualProteinController.dispose();
+    _manualCarbsController.dispose();
+    _manualFatController.dispose();
     super.dispose();
   }
 
@@ -127,10 +141,38 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
   /// FNRI rows are per 100 g, so the entered weight scales the reference values.
   double get _factor => _grams / 100;
 
-  double get _calories => (_selectedFood?.caloriesKcal ?? 0) * _factor;
-  double get _protein => (_selectedFood?.proteinG ?? 0) * _factor;
-  double get _carbs => (_selectedFood?.carbsG ?? 0) * _factor;
-  double get _fat => (_selectedFood?.fatG ?? 0) * _factor;
+  /// Name shown on step 4 (quantity) in manual mode.
+  String get _foodNameForQuantity => _manualNameController.text.trim();
+
+  /// Base values per 100 g: the FNRI row, or what the member typed in manual
+  /// mode. Grams scaling (and therefore the auto-calculated card) is shared.
+  double get _baseKcal => _manual
+      ? (double.tryParse(_manualKcalController.text.trim()) ?? 0)
+      : (_selectedFood?.caloriesKcal ?? 0);
+  double get _baseProtein => _manual
+      ? (double.tryParse(_manualProteinController.text.trim()) ?? 0)
+      : (_selectedFood?.proteinG ?? 0);
+  double get _baseCarbs => _manual
+      ? (double.tryParse(_manualCarbsController.text.trim()) ?? 0)
+      : (_selectedFood?.carbsG ?? 0);
+  double get _baseFat => _manual
+      ? (double.tryParse(_manualFatController.text.trim()) ?? 0)
+      : (_selectedFood?.fatG ?? 0);
+
+  double get _calories => _baseKcal * _factor;
+  double get _protein => _baseProtein * _factor;
+  double get _carbs => _baseCarbs * _factor;
+  double get _fat => _baseFat * _factor;
+
+  bool get _manualMacroInputsValid =>
+      _manualKcalController.text.trim().isNotEmpty &&
+      _manualProteinController.text.trim().isNotEmpty &&
+      _manualCarbsController.text.trim().isNotEmpty &&
+      _manualFatController.text.trim().isNotEmpty &&
+      double.tryParse(_manualKcalController.text.trim()) != null &&
+      double.tryParse(_manualProteinController.text.trim()) != null &&
+      double.tryParse(_manualCarbsController.text.trim()) != null &&
+      double.tryParse(_manualFatController.text.trim()) != null;
 
   bool get _canContinue {
     switch (_step) {
@@ -139,9 +181,12 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
       case _WizardStep.mealType:
         return _mealType != null;
       case _WizardStep.search:
-        return _selectedFood != null;
+        return _manual
+            ? _manualNameController.text.trim().isNotEmpty
+            : _selectedFood != null;
       case _WizardStep.quantity:
-        return _grams > 0;
+        if (_grams <= 0) return false;
+        return !_manual || _manualMacroInputsValid;
       case _WizardStep.review:
         return !_saving;
     }
@@ -228,7 +273,11 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
   Future<void> _save() async {
     final food = _selectedFood;
     final mealType = _mealType;
-    if (food == null || mealType == null || _grams <= 0) return;
+    final foodName =
+        _manual ? _manualNameController.text.trim() : (food?.foodName ?? '');
+    if (foodName.isEmpty || mealType == null || _grams <= 0) {
+      return;
+    }
 
     setState(() {
       _saving = true;
@@ -258,7 +307,7 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
       await client.from('meal_logs').insert({
         'member_id': userId,
         'meal_type': mealType,
-        'food_name': food.foodName,
+        'food_name': foodName,
         'calories': _calories.round(),
         'protein_g': double.parse(_protein.toStringAsFixed(1)),
         'carbs_g': double.parse(_carbs.toStringAsFixed(1)),
@@ -544,16 +593,42 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const _StepHeading(
-          title: 'Search & select food',
+          title: 'Choose food source',
           subtitle:
               'Search the DOST-FNRI Philippine Food Composition Table '
-              '(1,542 foods, with Filipino names).',
+              '(1,542 foods, with Filipino names) — or enter it manually.',
+        ),
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            Expanded(
+              child: _SourceChoice(
+                icon: CupertinoIcons.book,
+                label: 'FNRI list',
+                selected: !_manual,
+                onTap: () => setState(() => _manual = false),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _SourceChoice(
+                icon: CupertinoIcons.pencil,
+                label: 'Manual',
+                selected: _manual,
+                onTap: () => setState(() {
+                  _manual = true;
+                  _selectedFood = null;
+                }),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 16),
-        TextField(
-          controller: _searchController,
-          autofocus: true,
-          onChanged: _search,
+        if (!_manual) ...[
+          TextField(
+            controller: _searchController,
+            autofocus: true,
+            onChanged: _search,
           style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 14),
           decoration: InputDecoration(
             filled: true,
@@ -596,9 +671,23 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
             ),
           ),
         ),
-        const SizedBox(height: 12),
-        if (_searching)
-          const LinearProgressIndicator(
+        ] else ...[
+          _GlassTextField(
+            controller: _manualNameController,
+            hintText: 'Food name (e.g. Tapsilog)',
+            textCapitalization: TextCapitalization.words,
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'You will enter its kcal, protein, carbs and fat in the next step.',
+            style: TextStyle(color: Color(0xFFB4B4D0), fontSize: 12, height: 1.4),
+          ),
+        ],
+        if (!_manual) ...[
+          const SizedBox(height: 12),
+          if (_searching)
+            const LinearProgressIndicator(
             color: Color(0xFF7C3AED),
             minHeight: 2,
             backgroundColor: Color(0xFF1C1C35),
@@ -611,7 +700,8 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
               style: const TextStyle(color: Color(0xFFFF453A), fontSize: 12),
             ),
           ),
-        if (_searchController.text.trim().length >= 2 &&
+        if (!_manual &&
+            _searchController.text.trim().length >= 2 &&
             !_searching &&
             _results.isEmpty)
           Padding(
@@ -626,39 +716,117 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
               ),
             ),
           ),
-        const SizedBox(height: 8),
-        ..._results.map(
-          (food) => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: _FoodResultTile(
-              food: food,
-              selected: _selectedFood?.id == food.id,
-              onTap: () => setState(() {
-                _selectedFood = food;
-                _gramsController.text = '100';
-              }),
+        if (!_manual) const SizedBox(height: 8),
+        if (!_manual)
+          ..._results.map(
+            (food) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _FoodResultTile(
+                food: food,
+                selected: _selectedFood?.id == food.id,
+                onTap: () => setState(() {
+                  _selectedFood = food;
+                  _gramsController.text = '100';
+                }),
+              ),
             ),
           ),
-        ),
+        ],
       ],
     );
   }
 
   Widget _quantityStep() {
     final food = _selectedFood;
-    if (food == null) return const SizedBox.shrink();
+    if (_manual) {
+      final name = _manualNameController.text.trim();
+      if (name.isEmpty) return const SizedBox.shrink();
+    } else if (food == null) {
+      return const SizedBox.shrink();
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _StepHeading(
+        _StepHeading(
           title: 'Enter quantity',
-          subtitle:
-              'FNRI values are per 100 g. Enter how much you ate and the '
-              'nutrition updates automatically.',
+          subtitle: _manual
+              ? 'Enter the nutrition per 100 g for "$_foodNameForQuantity", then how much you ate — the total updates automatically.'
+              : 'FNRI values are per 100 g. Enter how much you ate and the '
+                  'nutrition updates automatically.',
         ),
         const SizedBox(height: 16),
-        _SelectedFoodCard(food: food),
+        if (_manual)
+          _ManualFoodCard(name: _manualNameController.text.trim())
+        else
+          _SelectedFoodCard(food: food!),
         const SizedBox(height: 18),
+        if (_manual) ...[
+          const Text(
+            'Nutrition per 100 g',
+            style: TextStyle(
+              color: Color(0xFFB4B4D0),
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _GlassTextField(
+                  controller: _manualKcalController,
+                  label: 'kcal',
+                  hintText: '0',
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _GlassTextField(
+                  controller: _manualProteinController,
+                  label: 'Protein (g)',
+                  hintText: '0',
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _GlassTextField(
+                  controller: _manualCarbsController,
+                  label: 'Carbs (g)',
+                  hintText: '0',
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _GlassTextField(
+                  controller: _manualFatController,
+                  label: 'Fat (g)',
+                  hintText: '0',
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+        ],
         const Text(
           'Quantity (grams)',
           style: TextStyle(
@@ -742,7 +910,9 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
   }
 
   Widget _reviewStep() {
-    final food = _selectedFood!;
+    final food = _selectedFood;
+    final foodName =
+        _manual ? _manualNameController.text.trim() : (food?.foodName ?? '');
     final (mealLabel, _, mealIcon, mealColor) = _mealTypeOptions[_mealType]!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -777,10 +947,12 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
           icon: CupertinoIcons.leaf_arrow_circlepath,
           color: const Color(0xFF30D158),
           label: 'Food',
-          value: food.foodName,
-          subtitle: food.aliases.isNotEmpty
-              ? 'aka ${food.aliases.join(', ')}'
-              : food.category,
+          value: foodName,
+          subtitle: _manual
+              ? 'Entered manually'
+              : food!.aliases.isNotEmpty
+                  ? 'aka ${food.aliases.join(', ')}'
+                  : food.category,
           onEdit: () => setState(() => _step = _WizardStep.search),
         ),
         _ReviewRow(
@@ -788,9 +960,10 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
           color: const Color(0xFF0A84FF),
           label: 'Quantity',
           value: '${_grams.toStringAsFixed(0)} g',
-          subtitle:
-              '${food.caloriesKcal.toStringAsFixed(0)} kcal per 100 g · '
-              '${food.source.isEmpty ? 'FNRI' : food.source}',
+          subtitle: _manual
+              ? '${_baseKcal.toStringAsFixed(0)} kcal per 100 g · Manual'
+              : '${food!.caloriesKcal.toStringAsFixed(0)} kcal per 100 g · '
+                  '${food.source.isEmpty ? 'FNRI' : food.source}',
           onEdit: () => setState(() => _step = _WizardStep.quantity),
         ),
         _ReviewRow(
@@ -1575,6 +1748,191 @@ class _BottomBar extends StatelessWidget {
                       ],
                     ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Step 3 source toggle: FNRI table vs manual entry. Mirrors the glass tiles
+/// used elsewhere in the wizard (same fill, border, radius).
+class _SourceChoice extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _SourceChoice({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+        decoration: BoxDecoration(
+          color: selected
+              ? const Color(0xFF7C3AED).withValues(alpha: 0.22)
+              : _glassFill,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: selected
+                ? const Color(0xFF7C3AED)
+                : const Color(0x26FFFFFF),
+            width: selected ? 1.6 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 18,
+              color: selected
+                  ? const Color(0xFFB79CFF)
+                  : const Color(0xFFB4B4D0),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: selected
+                    ? const Color(0xFFECECFC)
+                    : const Color(0xFFB4B4D0),
+                fontSize: 13.5,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A single-line glass text field matching the wizard's search-field styling
+/// (translucent fill, hairline border, purple focus ring, 16px radius).
+class _GlassTextField extends StatelessWidget {
+  final TextEditingController controller;
+  final String? label;
+  final String hintText;
+  final TextInputType? keyboardType;
+  final TextCapitalization textCapitalization;
+  final ValueChanged<String>? onChanged;
+
+  const _GlassTextField({
+    required this.controller,
+    required this.hintText,
+    this.label,
+    this.keyboardType,
+    this.textCapitalization = TextCapitalization.none,
+    this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (label != null) ...[
+          Text(
+            label!,
+            style: const TextStyle(
+              color: Color(0xFF7070A0),
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 5),
+        ],
+        TextField(
+          controller: controller,
+          keyboardType: keyboardType,
+          textCapitalization: textCapitalization,
+          onChanged: onChanged,
+          style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 14),
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: _glassFill,
+            hintText: hintText,
+            hintStyle: const TextStyle(
+              color: Color(0xFF7070A0),
+              fontSize: 14,
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              vertical: 13,
+              horizontal: 14,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: _glassBorder),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: _glassBorder),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(
+                color: Color(0xFF7C3AED),
+                width: 1.6,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Step 4 summary card for manual mode — same glass surface, inner spacing
+/// and per-100 row layout as [_SelectedFoodCard].
+class _ManualFoodCard extends StatelessWidget {
+  final String name;
+
+  const _ManualFoodCard({required this.name});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: _glassDecoration(borderRadius: BorderRadius.circular(18)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            name,
+            style: const TextStyle(
+              color: Color(0xFFECECFC),
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 2),
+          const Text(
+            'Entered manually · values per 100 g below',
+            style: TextStyle(color: Color(0xFFB4B4D0), fontSize: 11),
+          ),
+          const SizedBox(height: 8),
+          const Row(
+            children: [
+              _Per100(
+                label: 'source',
+                value: 'Manual',
+                color: Color(0xFF7C3AED),
+              ),
+              _Per100(
+                label: 'per',
+                value: '100 g',
+                color: Color(0xFF0A84FF),
+              ),
+            ],
           ),
         ],
       ),

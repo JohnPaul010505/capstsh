@@ -9,11 +9,16 @@ class PlanRepository {
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day).toIso8601String();
 
+      // Active = today falls anywhere inside the plan window [start, end],
+      // NOT just the start date. The old `start_date >= today` filter made
+      // the plan "active" only on Day 1, which hid the floating logo for
+      // days 2-7.
       final response = await client
           .from('member_goal_plans')
           .select()
           .eq('member_id', memberId)
-          .gte('start_date', today.split('T').first)
+          .lte('start_date', today.split('T').first)
+          .gte('end_date', today.split('T').first)
           .order('start_date', ascending: false)
           .limit(1)
           .maybeSingle();
@@ -183,7 +188,9 @@ class PlanRepository {
     try {
       final plansResponse = await _supabase.client
           .from('member_goal_plans')
-          .select('id, member_id, start_date, end_date, notes, created_at, profiles(full_name)')
+          .select(
+            'id, member_id, start_date, end_date, food_plan, exercise_plan, notes, created_at, profiles!member_id(full_name)',
+          )
           .eq('trainer_id', trainerId)
           .order('start_date', ascending: false);
 

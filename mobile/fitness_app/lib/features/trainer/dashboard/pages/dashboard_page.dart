@@ -16,6 +16,8 @@ import '../../../shared/widgets/notification_popup.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../../../shared/widgets/pressable.dart';
 import '../../../shared/widgets/skeleton.dart';
+import '../../insight/pages/member_insight_overview_page.dart'
+    show MemberInsightOverviewView;
 
 // ---------------------------------------------------------------------------
 // Shared glass surface — same liquid-glass recipe as the trainer nav bar
@@ -1073,53 +1075,64 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 ),
                 child: Row(
                   children: [
-                    // Logo sits flush against the left edge, then the
-                    // trainer's name with the greeting beneath it.
-                    // Lowered ~2px so it reads optically with the name.
+                    // Member-home header format: 44px logo nudged down to sit
+                    // optically with the name, first name in displaySmall, and
+                    // the greeting line beneath — sun (amber) before 17:00,
+                    // moon (violet) after, same thresholds as member Home.
                     Padding(
-                      padding: const EdgeInsets.only(top: 2),
+                      padding: const EdgeInsets.only(top: 6),
                       child: Image.asset(
                         'assets/logo.png',
-                        width: 34,
-                        height: 34,
+                        width: 44,
+                        height: 44,
                         fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => const Icon(
+                          Icons.fitness_center,
+                          color: Colors.white,
+                          size: 30,
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    Consumer(
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Consumer(
                       builder: (context, ref, _) {
                         final authAsync = ref.watch(authProvider);
                         return authAsync.when(
                           data: (profile) {
                             final fullName = profile?.fullName ?? 'Trainer';
                             final name = fullName.split(' ').first;
-                            final isDay = DateTime.now().hour < 12;
+                            final isEvening = DateTime.now().hour >= 17;
                             return Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   name,
-                                  style: ClayTokens.titleLarge.copyWith(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w600,
-                                    color: ClayTokens.clayDarkTextPrimary,
-                                    letterSpacing: -0.41,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: ClayTokens.displaySmall.copyWith(
+                                    letterSpacing: 0,
+                                    color: Colors.white,
+                                    height: 1.0,
                                   ),
                                 ),
-                                const SizedBox(height: 1),
                                 Row(
                                   children: [
                                     Icon(
-                                      isDay ? Icons.wb_sunny : Icons.nights_stay,
+                                      isEvening
+                                          ? Icons.nights_stay
+                                          : Icons.wb_sunny,
                                       size: 16,
-                                      color: ClayTokens.clayDarkTextTertiary,
+                                      color: isEvening
+                                          ? ClayTokens.clayPrimaryLight
+                                          : ClayTokens.clayWarning,
                                     ),
                                     const SizedBox(width: 6),
                                     Text(
                                       greeting,
-                                      style: TextStyle(
+                                      style: const TextStyle(
                                         fontSize: 11,
-                                        color: ClayTokens.clayDarkTextTertiary,
+                                        color: Colors.white,
                                         fontWeight: FontWeight.w500,
                                       ),
                                     ),
@@ -1147,14 +1160,31 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                           error: (_, __) => Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Trainer', style: ClayTokens.titleLarge),
-                              Text(greeting, style: ClayTokens.bodySmall),
+                              Text(
+                                'Trainer',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: ClayTokens.displaySmall.copyWith(
+                                  letterSpacing: 0,
+                                  color: Colors.white,
+                                  height: 1.0,
+                                ),
+                              ),
+                              Text(
+                                greeting,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
                             ],
                           ),
                         );
                       },
+                      ),
                     ),
-                    const Spacer(),
+                    const SizedBox(width: 4),
                     NotificationBell(
                       key: _bellKey,
                       isMember: false,
@@ -1245,6 +1275,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           onPickStart: () => _pickDate(isStart: true, screen: 1),
           onPickEnd: () => _pickDate(isStart: false, screen: 1),
         );
+      case 3:
+        return const MemberInsightOverviewView();
       case 0:
       default:
         return _DailyCheckinsView(
@@ -1483,6 +1515,7 @@ class _BurgerMenuOverlay extends StatelessWidget {
                         _menuRow(0, 'Daily Check-ins'),
                         _menuRow(1, 'Member Overview'),
                         _menuRow(2, 'Recent Activity'),
+                        _menuRow(3, 'Member Insight'),
                       ],
                     ),
                   ),

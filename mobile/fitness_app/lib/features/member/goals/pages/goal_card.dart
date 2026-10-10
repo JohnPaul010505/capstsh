@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:shared/providers/body_measurement_provider.dart';
+import '../../../shared/utils/goal_progress.dart';
 import '../../../shared/widgets/animations.dart' show AnimatedPulseDot;
 
 const bgDark = Color(0xFF0B0D1A);
@@ -39,40 +40,21 @@ class GoalCard extends ConsumerWidget {
     // Figure 21: live progress reads from the latest body measurement when the
     // goal has an explicit goal_type (all goals created after the feature); old
     // / seeded rows keep the stored current_value so their numbers do not move.
+    // The math itself lives in computeGoalProgress — the SAME formula the
+    // trainer's Member Insight screen uses, so member and trainer can never
+    // disagree (the86% vs 20% bug).
     final latest = ref.watch(latestBodyMeasurementProvider).valueOrNull;
     final liveWeight = (latest?['weight_kg'] as double?);
     final baselineWeight = currentValue;
 
-    double progressPct;
-    double? remaining;
-    if (targetValue == null || targetValue <= 0) {
-      progressPct = 0.0;
-    } else if (goalType.isNotEmpty &&
-        liveWeight != null &&
-        baselineWeight != null) {
-      final low = baselineWeight < targetValue ? baselineWeight : targetValue;
-      final high = baselineWeight < targetValue ? targetValue : baselineWeight;
-      if (high == low) {
-        progressPct = 0.0;
-      } else {
-        final current = goalType.toLowerCase() == 'lose weight'
-            ? high - liveWeight
-            : liveWeight - low;
-        progressPct = (current / (high - low) * 100.0).clamp(0.0, 100.0);
-      }
-      if (goalType.toLowerCase() == 'gain muscle') {
-        remaining = (targetValue - liveWeight).clamp(0.0, double.infinity);
-      } else if (goalType.toLowerCase() == 'lose weight') {
-        remaining = (liveWeight - targetValue).clamp(0.0, double.infinity);
-      } else {
-        remaining = (targetValue - liveWeight).abs();
-      }
-    } else {
-      // Legacy / seeded goals: stored current_value is authoritative.
-      progressPct = (currentValue ?? 0) / targetValue * 100.0;
-      if (progressPct > 100.0) progressPct = 100.0;
-      remaining = targetValue - (currentValue ?? 0);
-    }
+    final goalProgress = computeGoalProgress(
+      baseline: baselineWeight,
+      target: targetValue,
+      live: liveWeight,
+      goalType: goalType,
+    );
+    final progressPct = goalProgress.pct;
+    final remaining = goalProgress.remaining;
 
     final daysRemaining = ((endDate.difference(DateTime.now()).inHours) / 24)
         .ceil();

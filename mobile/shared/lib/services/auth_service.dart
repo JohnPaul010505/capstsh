@@ -25,12 +25,12 @@ class AuthService {
           .eq('code', code)
           .maybeSingle();
       if (result == null || result.isEmpty) {
-        throw Exception('No profile found with code "$code"');
+        throw Exception('Invalid member code');
       }
       email = result['email'] as String;
     } catch (e) {
-      if (e is Exception && e.toString().contains('No profile found')) rethrow;
-      throw Exception('Could not look up code "$code"');
+      if (e is Exception && e.toString().contains('Invalid member code')) rethrow;
+      throw Exception('Could not look up member code');
     }
 
     try {
@@ -45,7 +45,7 @@ class AuthService {
     } catch (e) {
       final msg = e.toString();
       if (msg.contains('Invalid login credentials')) {
-        throw Exception('Invalid code or password. Please try again.');
+        throw Exception('Wrong password. Please try again.');
       }
       rethrow;
     }

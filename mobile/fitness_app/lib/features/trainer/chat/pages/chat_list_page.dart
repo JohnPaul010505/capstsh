@@ -73,6 +73,15 @@ class ChatListPage extends ConsumerStatefulWidget {
 }
 
 class _ChatListPageState extends ConsumerState<ChatListPage> {
+  final _searchController = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final roomsAsync = ref.watch(trainerConversationsProvider);
@@ -85,22 +94,99 @@ class _ChatListPageState extends ConsumerState<ChatListPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildTrainerNavBar('Conversations'),
+              // Search box (name filter) — mirrors the Member Progress list's
+              // search field so both trainer tabs feel identical.
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
+                child: GlassPanel(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 3,
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: (v) =>
+                        setState(() => _query = v.trim().toLowerCase()),
+                    style: ClayTokens.bodyLarge.copyWith(
+                      color: ClayTokens.clayDarkTextPrimary,
+                      fontSize: 14,
+                    ),
+                    cursorColor: ClayTokens.clayPrimary,
+                    decoration: InputDecoration(
+                      hintText: 'Search conversations',
+                      hintStyle: ClayTokens.bodySmall.copyWith(
+                        color: ClayTokens.clayDarkTextTertiary,
+                      ),
+                      prefixIcon: Icon(
+                        Icons.search,
+                        color: ClayTokens.clayDarkTextTertiary,
+                        size: 18,
+                      ),
+                      suffixIcon: _query.isEmpty
+                          ? null
+                          : IconButton(
+                              icon: Icon(
+                                Icons.clear,
+                                color: ClayTokens.clayDarkTextTertiary,
+                                size: 18,
+                              ),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() => _query = '');
+                              },
+                            ),
+                      isDense: true,
+                      filled: true,
+                      fillColor: Colors.transparent,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: Colors.white.withAlpha(24),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: ClayTokens.clayPrimary,
+                          width: 1.5,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
               Expanded(
                 child: roomsAsync.when(
                   data: (rooms) {
-                    if (rooms.isEmpty) {
+                    final filtered = _query.isEmpty
+                        ? rooms
+                        : rooms
+                            .where((r) => (r['full_name'] as String? ?? '')
+                                .toLowerCase()
+                                .contains(_query))
+                            .toList();
+                    if (filtered.isEmpty) {
                       return Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              CupertinoIcons.bubble_left,
+                              _query.isEmpty
+                                  ? CupertinoIcons.bubble_left
+                                  : Icons.search_off,
                               color: ClayTokens.clayDarkTextTertiary,
                               size: 48,
                             ),
                             const SizedBox(height: 12),
                             Text(
-                              'No conversations yet',
+                              _query.isEmpty
+                                  ? 'No conversations yet'
+                                  : 'No members match "$_query"',
                               style: ClayTokens.bodySmall.copyWith(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w400,
@@ -114,9 +200,9 @@ class _ChatListPageState extends ConsumerState<ChatListPage> {
                     }
                     return ListView.builder(
                       padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
-                      itemCount: rooms.length,
+                      itemCount: filtered.length,
                       itemBuilder: (_, i) {
-                        final r = rooms[i];
+                        final r = filtered[i];
                         final name = r['full_name'] as String? ?? 'Unknown';
                         final initials = name
                             .split(' ')

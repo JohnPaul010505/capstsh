@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { normalizeProfileUpdates } from '@/features/shared/profileUpdates'
+import { normalizeProfileUpdates, syncAuthEmail } from '@/features/shared/profileUpdates'
 import type { Profile } from '@/types'
 
 export function useMembers(search?: string) {
@@ -71,9 +71,26 @@ export function useUpdateMember() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<Profile> & { id: string }) => {
+      const normalized = normalizeProfileUpdates(updates)
+      // Login looks up profiles.email and signs in against auth.users.email —
+      // both must move together or the member cannot log in. Sync auth first:
+      // if it rejects (address taken, API down) the whole save fails loudly
+      // instead of silently recreating the mismatch. Skip when unchanged so a
+      // phone-number edit doesn't require the API server.
+      const newEmail = typeof normalized.email === 'string' ? normalized.email : null
+      if (newEmail) {
+        const { data: current } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('id', id)
+          .single()
+        if ((current?.email ?? '').toLowerCase() !== newEmail.toLowerCase()) {
+          await syncAuthEmail(id, newEmail)
+        }
+      }
       const { data, error } = await supabase
         .from('profiles')
-        .update(normalizeProfileUpdates(updates))
+        .update(normalized)
         .eq('id', id)
         .select()
         .single()

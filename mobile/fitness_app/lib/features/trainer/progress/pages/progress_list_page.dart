@@ -9,15 +9,17 @@ import '../../../shared/widgets/app_glow_background.dart';
 import '../../../shared/widgets/pressable.dart';
 import '../../../shared/widgets/clay/clay_avatar.dart';
 import '../../../shared/widgets/glass_card.dart';
-import '../../../shared/services/prediction_service.dart';
+import '../../../shared/utils/goal_progress.dart';
 
-/// Assigned members with their progress overview - latest weight + trend,
-/// running goal, last check-in, and retention risk - fetched in FOUR parallel
-/// queries (profiles + measurements + goals + attendance) plus the per-member
-/// retention forecast. Keep-alive (not autoDispose): the indexed-stack shell
-/// keeps this page alive, so revisits render cached rows instantly while the
+/// Assigned members for the trainer Members list - deliberately SLIM: name,
+/// avatar, member code and last check-in only. Weight, goal progress,
+/// retention risk and check-in history all live on the Member Progress
+/// screen (/trainer/members/:id) this row opens. Two fast parallel DB
+/// queries (profiles + attendance); no per-row AI forecast ever touches the
+/// list path. Keep-alive (not autoDispose): the indexed-stack shell keeps
+/// this page alive, so revisits render cached rows instantly while the
 /// router listener below refetches in the background.
-final assignedMembersWithStatsProvider =
+final assignedMembersProvider =
     FutureProvider<List<Map<String, dynamic>>>((ref) async {
       final client = SupabaseClientService().client;
       final userId = client.auth.currentUser!.id;
@@ -40,47 +42,35 @@ final assignedMembersWithStatsProvider =
             .from('profiles')
             .select('id, full_name, avatar_url, code')
             .inFilter('id', memberIds),
-        // Newest-first: the first two rows per member give latest weight + delta.
-        client
-            .from('body_measurements')
-            .select('member_id, weight_kg')
-            .inFilter('member_id', memberIds)
-            .order('measured_at', ascending: false),
-        // Members create goals as 'in_progress' while seeds use 'active'; a
-        // running goal is either.
-        client
-            .from('goals')
-            .select('member_id, title, target_value, current_value')
-            .inFilter('member_id', memberIds)
-            .inFilter('status', ['active', 'in_progress'])
-            .order('created_at', ascending: false),
         client
             .from('attendance')
             .select('member_id, check_in_time')
             .inFilter('member_id', memberIds)
             .gte('check_in_time', ninetyDaysAgo.toIso8601String()),
+        // Latest two measurements per member (newest first) → current weight +
+        // the delta vs the previous reading for the "↗ 2.0kg" badge.
+        client
+            .from('body_measurements')
+            .select('member_id, weight_kg, measured_at')
+            .inFilter('member_id', memberIds)
+            .not('weight_kg', 'is', null)
+            .order('measured_at', ascending: false),
+        // Running goals (newest first) → goal_type + target for the journey bar.
+        client
+            .from('goals')
+            .select(
+              'member_id, title, goal_type, target_value, current_value, status',
+            )
+            .inFilter('member_id', memberIds)
+            .inFilter('status', ['active', 'in_progress'])
+            .order('created_at', ascending: false),
       ]);
 
       final profileList = (results[0] as List).cast<Map<String, dynamic>>();
 
-      // Latest two measurements per member (rows arrive newest-first).
-      final measByMember = <String, List<Map<String, dynamic>>>{};
-      for (final m in (results[1] as List).cast<Map<String, dynamic>>()) {
-        final mid = m['member_id'] as String?;
-        if (mid == null) continue;
-        final bucket = measByMember.putIfAbsent(mid, () => []);
-        if (bucket.length < 2) bucket.add(m);
-      }
-
-      // Newest running goal per member.
-      final goalByMember = <String, Map<String, dynamic>>{};
-      for (final g in (results[2] as List).cast<Map<String, dynamic>>()) {
-        final mid = g['member_id'] as String?;
-        if (mid != null) goalByMember.putIfAbsent(mid, () => g);
-      }
-
+      // Most recent check-in per member.
       final lastCheckIn = <String, DateTime>{};
-      for (final a in (results[3] as List).cast<Map<String, dynamic>>()) {
+      for (final a in (results[1] as List).cast<Map<String, dynamic>>()) {
         final mid = a['member_id'] as String?;
         final t = DateTime.tryParse(a['check_in_time'] as String? ?? '');
         if (mid == null || t == null) continue;
@@ -88,34 +78,54 @@ final assignedMembersWithStatsProvider =
         if (prev == null || t.isAfter(prev)) lastCheckIn[mid] = t;
       }
 
-      // Retention risk is intentionally NOT fetched here: it round-trips
-      // through the AI service and used to hold the whole list behind a
-      // skeleton for seconds. Rows render from the four fast DB queries;
-      // badges fill in from memberRetentionRiskProvider (watched below).
+      // Latest + previous weight per member (rows are newest-first, so the
+      // first sighting is the current weight and the second is the prior one).
+      final latestWeight = <String, double>{};
+      final prevWeight = <String, double>{};
+      for (final m in (results[2] as List).cast<Map<String, dynamic>>()) {
+        final mid = m['member_id'] as String?;
+        final w = (m['weight_kg'] as num?)?.toDouble();
+        if (mid == null || w == null) continue;
+        if (latestWeight.containsKey(mid)) {
+          prevWeight.putIfAbsent(mid, () => w);
+        } else {
+          latestWeight[mid] = w;
+        }
+      }
+
+      // Newest running goal per member.
+      final goalByMember = <String, Map<String, dynamic>>{};
+      for (final g in (results[3] as List).cast<Map<String, dynamic>>()) {
+        final mid = g['member_id'] as String?;
+        if (mid == null) continue;
+        goalByMember.putIfAbsent(mid, () => g);
+      }
+
       final rows = profileList.map((p) {
         final mid = p['id'] as String;
-        final meas = measByMember[mid] ?? const <Map<String, dynamic>>[];
-        final latest = meas.isNotEmpty ? meas.first : null;
-        final prevM = meas.length > 1 ? meas[1] : null;
-        final latestWeight = (latest?['weight_kg'] as num?)?.toDouble();
-        final prevWeight = (prevM?['weight_kg'] as num?)?.toDouble();
         final goal = goalByMember[mid];
-        final target = (goal?['target_value'] as num?)?.toDouble();
-        final current = (goal?['current_value'] as num?)?.toDouble();
+        final goalType = (goal?['goal_type'] as String?) ?? '';
+        final live = latestWeight[mid];
+        final goalPct = goal == null
+            ? null
+            : computeGoalProgress(
+                baseline: (goal['current_value'] as num?)?.toDouble(),
+                target: (goal['target_value'] as num?)?.toDouble(),
+                live: live,
+                goalType: goalType,
+              ).pct;
         return <String, dynamic>{
           'id': mid,
           'full_name': p['full_name'] as String? ?? 'Unknown',
           'avatar_url': p['avatar_url'] as String?,
           'code': p['code'] as String?,
-          'weight': latestWeight,
-          'weightDelta': (latestWeight != null && prevWeight != null)
-              ? latestWeight - prevWeight
-              : null,
-          'goal_title': goal?['title'] as String?,
-          'goal_pct': (target != null && target > 0 && current != null)
-              ? (current / target).clamp(0.0, 1.0)
-              : null,
           'last_checkin': lastCheckIn[mid],
+          'weight': live,
+          'weight_delta':
+              (live != null && prevWeight[mid] != null && prevWeight[mid] != live)
+              ? live - prevWeight[mid]!
+              : null,
+          'goal_pct': goalPct,
         };
       }).toList();
 
@@ -129,50 +139,6 @@ final assignedMembersWithStatsProvider =
         return lb.compareTo(la);
       });
       return rows;
-    });
-
-/// Retention risk badges, fetched OFF the list's critical path. The AI
-/// service sits behind the dev tunnel/LAN and used to hold the member list
-/// behind a skeleton for seconds; rows now render from the fast DB queries
-/// and the badges pop in when these forecasts land. Keep-alive (like the
-/// list itself) so the AI is hit once per session, not on every visit.
-final memberRetentionRiskProvider =
-    FutureProvider<Map<String, String>>((ref) async {
-      final client = SupabaseClientService().client;
-      final userId = client.auth.currentUser!.id;
-      final assignments = await client
-          .from('trainer_assignments')
-          .select('member_id')
-          .eq('trainer_id', userId)
-          .eq('status', 'active');
-      final memberIds = (assignments as List)
-          .map((a) => a['member_id'] as String)
-          .toList();
-      if (memberIds.isEmpty) return const {};
-
-      final service = PredictionService();
-      final out = <String, String>{};
-      // Per-member 5s cap: one slow host never delays the rest, and a
-      // failure just drops that badge (the list is already on screen).
-      final forecasts = await Future.wait(
-        memberIds.take(30).map((id) async {
-          try {
-            return await service
-                .getForecast(id)
-                .timeout(const Duration(seconds: 5));
-          } catch (_) {
-            return null;
-          }
-        }),
-      );
-      for (var i = 0; i < forecasts.length; i++) {
-        final forecast = forecasts[i];
-        if (forecast == null) continue;
-        final risk = forecast.retention;
-        if (risk == null) continue;
-        out[memberIds[i]] = risk.riskLabel;
-      }
-      return out;
     });
 
 class ProgressListPage extends ConsumerStatefulWidget {
@@ -202,7 +168,7 @@ class _ProgressListPageState extends ConsumerState<ProgressListPage> {
         _router!.routerDelegate.currentConfiguration.uri.path ==
         '/trainer/members';
     if (isMembers && !_wasMembers && mounted) {
-      ref.invalidate(assignedMembersWithStatsProvider);
+      ref.invalidate(assignedMembersProvider);
     }
     _wasMembers = isMembers;
   }
@@ -216,12 +182,7 @@ class _ProgressListPageState extends ConsumerState<ProgressListPage> {
 
   @override
   Widget build(BuildContext context) {
-    final membersAsync = ref.watch(assignedMembersWithStatsProvider);
-    // Retention badges arrive after the rows — they must never gate the
-    // first paint or re-skeletonize cached data on refresh.
-    final risks =
-        ref.watch(memberRetentionRiskProvider).valueOrNull ??
-        const <String, String>{};
+    final membersAsync = ref.watch(assignedMembersProvider);
 
     return Scaffold(
       backgroundColor: ClayTokens.clayDarkBase,
@@ -230,7 +191,7 @@ class _ProgressListPageState extends ConsumerState<ProgressListPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildTrainerNavBar('Members'),
+              _buildTrainerNavBar('Member Progress'),
               Padding(
                 padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
                 child: GlassPanel(
@@ -358,10 +319,8 @@ class _ProgressListPageState extends ConsumerState<ProgressListPage> {
                         final m = filtered[i];
                         final name = m['full_name'] as String? ?? 'Unknown';
                         return Semantics(
-                          label: 'View $name progress',
-                          child: _MemberProgressCard(
-                            data: {...m, 'risk_label': risks[m['id']]},
-                          ),
+                          label: 'View $name insights',
+                          child: _MemberRow(data: m),
                         );
                       },
                     );
@@ -397,13 +356,13 @@ class _ProgressListPageState extends ConsumerState<ProgressListPage> {
   }
 }
 
-/// Glass progress card for one assigned member (Profile Features-card style):
-/// avatar, latest weight + trend, goal progress, and last check-in. Taps
-/// through to the member's full progress page.
-class _MemberProgressCard extends StatelessWidget {
+/// Slim glass row for one assigned member: avatar, name and last check-in.
+/// Everything else (goal progress, retention risk, measurements, check-in
+/// history) lives on the Member Insight screen this row opens.
+class _MemberRow extends StatelessWidget {
   final Map<String, dynamic> data;
 
-  const _MemberProgressCard({required this.data});
+  const _MemberRow({required this.data});
 
   String _lastCheckinLabel(DateTime? t) {
     if (t == null) return 'No check-ins yet';
@@ -426,18 +385,9 @@ class _MemberProgressCard extends StatelessWidget {
         .map((n) => n.isNotEmpty ? n[0] : '')
         .take(2)
         .join();
-    final weight = (data['weight'] as num?)?.toDouble();
-    final delta = (data['weightDelta'] as num?)?.toDouble();
-    final goalTitle = data['goal_title'] as String?;
-    final goalPct = (data['goal_pct'] as num?)?.toDouble();
     final lastCheckin = data['last_checkin'] as DateTime?;
-    final riskLabel = data['risk_label'] as String?;
-
-    final riskColor = riskLabel == 'high'
-        ? const Color(0xFFFF453A)
-        : riskLabel == 'medium'
-        ? const Color(0xFFFF9500)
-        : const Color(0xFF30D158);
+    final weight = (data['weight'] as num?)?.toDouble();
+    final delta = (data['weight_delta'] as num?)?.toDouble();
 
     return PressableCard(
       onTap: () => context.push('/trainer/members/${data['id']}'),
@@ -458,117 +408,31 @@ class _MemberProgressCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    if (riskLabel != null)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: riskColor.withAlpha(25),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          riskLabel.toUpperCase(),
-                          style: TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w700,
-                            color: riskColor,
-                          ),
-                        ),
-                      ),
-                  ],
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 5),
                 if (weight != null)
-                  Row(
-                    children: [
-                      Text(
-                        '${weight.toStringAsFixed(1)} kg',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: ClayTokens.clayPrimaryLight,
-                        ),
-                      ),
-                      if (delta != null && delta.abs() >= 0.05) ...[
-                        const SizedBox(width: 5),
-                        Icon(
-                          delta > 0
-                              ? CupertinoIcons.arrow_up_right
-                              : CupertinoIcons.arrow_down_right,
-                          size: 12,
-                          color: delta > 0
-                              ? ClayTokens.clayWarning
-                              : ClayTokens.clayAccent,
-                        ),
-                        Text(
-                          '${delta.toStringAsFixed(1)} kg',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: delta > 0
-                                ? ClayTokens.clayWarning
-                                : ClayTokens.clayAccent,
-                          ),
-                        ),
-                      ],
-                    ],
-                  )
+                  _WeightLine(weight: weight, delta: delta)
                 else
                   Text(
                     'No measurements yet',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w500,
                       color: ClayTokens.clayDarkTextTertiary,
                     ),
                   ),
-                if (goalTitle != null) ...[
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(3),
-                          child: LinearProgressIndicator(
-                            value: goalPct ?? 0,
-                            minHeight: 5,
-                            backgroundColor: Colors.white.withAlpha(25),
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              ClayTokens.clayPrimaryLight,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        goalPct != null
-                            ? '${(goalPct * 100).round()}%'
-                            : goalTitle,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: ClayTokens.clayDarkTextPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-                const SizedBox(height: 5),
+                const SizedBox(height: 6),
                 Row(
                   children: [
                     Icon(
@@ -604,6 +468,54 @@ class _MemberProgressCard extends StatelessWidget {
   }
 }
 
+/// "62.0 kg ↗ 2.0kg" — weight plus the delta vs the previous reading. The
+/// journey bar and "20% of target" label were removed per trainer feedback;
+/// the progress list stays a compact at-a-glance row.
+class _WeightLine extends StatelessWidget {
+  final double weight;
+  final double? delta;
+
+  const _WeightLine({required this.weight, this.delta});
+
+  @override
+  Widget build(BuildContext context) {
+    final hasDelta = delta != null && delta != 0;
+    final rising = (delta ?? 0) > 0;
+    final deltaColor = rising
+        ? const Color(0xFF30D158)
+        : const Color(0xFFFF9F0A);
+
+    return Row(
+      children: [
+        Text(
+          '${weight.toStringAsFixed(1)} kg',
+          style: const TextStyle(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w800,
+            color: Colors.white,
+          ),
+        ),
+        if (hasDelta) ...[
+          const SizedBox(width: 5),
+          Icon(
+            rising ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+            size: 12,
+            color: deltaColor,
+          ),
+          const SizedBox(width: 2),
+          Text(
+            '${delta!.abs().toStringAsFixed(1)}kg',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: deltaColor,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
 Widget _buildTrainerNavBar(String title) {
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
