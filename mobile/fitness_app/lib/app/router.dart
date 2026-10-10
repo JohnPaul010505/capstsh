@@ -16,13 +16,17 @@ import '../features/member/notifications/pages/notifications_page.dart';
 import '../features/trainer/notifications/pages/notifications_page.dart';
 import '../features/trainer/dashboard/pages/dashboard_page.dart' as trainer;
 import '../features/trainer/progress/pages/progress_list_page.dart';
-import '../features/trainer/progress/pages/member_progress_page.dart';
+import '../features/trainer/progress/pages/member_progress_tabs.dart';
+import '../features/trainer/insight/pages/member_insight_page.dart';
+import '../features/trainer/insight/pages/member_insight_overview_page.dart';
+import '../features/trainer/insight/pages/member_insight_search_page.dart';
 import '../features/trainer/chat/pages/chat_list_page.dart';
 import '../features/trainer/chat/pages/chat_room_page.dart';
 import '../features/trainer/profile/pages/profile_page.dart' as trainer_profile;
 import '../features/trainer/feedback/pages/give_feedback_page.dart';
 import 'package:fitness_app/features/trainer/set_plan/pages/create_plan_screen.dart';
 import 'package:fitness_app/features/trainer/set_plan/pages/record_screen.dart';
+import 'package:fitness_app/features/trainer/set_plan/pages/record_detail_screen.dart';
 import '../features/shared/checkin/checkin_page.dart';
 import '../features/shared/widgets/member_nav_bar.dart';
 import '../features/member/onboarding/pages/onboarding_splash_screen.dart';
@@ -245,13 +249,34 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
         ),
       ),
-      // Full-screen member progress pushed on the root navigator (same
-      // pattern as /member/chat) so the trainer nav bar is hidden while
-      // reviewing a member and "<" pops back to the Members list branch.
+      // Full-screen Member Progress (4 tabs: Overview / Workouts / Nutrition /
+      // Check-ins) pushed on the root navigator so the trainer nav bar is
+      // hidden while reviewing a member and "<" pops back to wherever the
+      // trainer came from (Members list, dashboard attention rows, …).
       GoRoute(
         path: '/trainer/members/:id',
         pageBuilder: (_, state) => _iosPush(
-          MemberProgressPage(id: state.pathParameters['id']!),
+          MemberProgressTabsPage(id: state.pathParameters['id']!),
+        ),
+      ),
+      // Member Insight overview (date-filtered roster). Reachable directly;
+      // the dashboard also embeds it as the 4th burger-menu screen.
+      GoRoute(
+        path: '/trainer/insight/overview',
+        pageBuilder: (_, __) => _iosPush(const MemberInsightOverviewPage()),
+      ),
+      // Member Insight: dashboard search → pick a member → goal progress,
+      // retention risk, check-ins and weight on one screen. Both pushed on
+      // the root navigator so the trainer nav bar hides and "<" pops back
+      // to wherever the trainer came from (dashboard or Members list).
+      GoRoute(
+        path: '/trainer/insight',
+        pageBuilder: (_, __) => _iosPush(const MemberInsightSearchPage()),
+      ),
+      GoRoute(
+        path: '/trainer/insight/:id',
+        pageBuilder: (_, state) => _iosPush(
+          MemberInsightPage(id: state.pathParameters['id']!),
         ),
       ),
       GoRoute(
@@ -269,6 +294,18 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/trainer/record',
         pageBuilder: (_, __) => _iosPush(const RecordScreen()),
+      ),
+      // One member's plan, split into Workout / Foods tabs with per-day
+      // completion crossing. Pushed on the root navigator so "<" pops back to
+      // the records list.
+      GoRoute(
+        path: '/trainer/records/:memberId',
+        pageBuilder: (_, state) => _iosPush(
+          RecordDetailScreen(
+            memberId: state.pathParameters['memberId']!,
+            memberName: state.uri.queryParameters['name'] ?? 'Member',
+          ),
+        ),
       ),
       // Full-screen conversation pushed on the root navigator (same pattern
       // as /member/chat) so the trainer nav bar is hidden while chatting and

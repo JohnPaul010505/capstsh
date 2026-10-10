@@ -15,70 +15,6 @@ final trainerPlanRecordsProvider = FutureProvider.autoDispose<List<Map<String, d
   );
 });
 
-String _normPlanName(String s) =>
-    s.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
-
-/// Loads the member's logged exercise/food names within the plan window so
-/// the record sheet can cross out completed tasks. RLS already lets a
-/// trainer read assigned members' workout_logs and meal_logs; any failure
-/// degrades to "nothing crossed out" instead of breaking the sheet.
-Future<(Set<String>, Set<String>)> _fetchCompletedNames(
-  String memberId,
-  String startDate,
-  String endDate,
-) async {
-  try {
-    final start = DateTime.parse(startDate).toUtc();
-    final end = DateTime.parse(endDate)
-        .add(const Duration(days: 1))
-        .toUtc();
-    final client = SupabaseClientService().client;
-    final workouts = await client
-        .from('workout_logs')
-        .select('exercise_name')
-        .eq('member_id', memberId)
-        .gte('logged_at', start.toIso8601String())
-        .lt('logged_at', end.toIso8601String());
-    final meals = await client
-        .from('meal_logs')
-        .select('food_name')
-        .eq('member_id', memberId)
-        .gte('meal_time', start.toIso8601String())
-        .lt('meal_time', end.toIso8601String());
-    final workoutNames = {
-      for (final r in workouts as List)
-        if (((r as Map)['exercise_name'] ?? '').toString().isNotEmpty)
-          _normPlanName(r['exercise_name'].toString()),
-    };
-    final foodNames = {
-      for (final r in meals as List)
-        if (((r as Map)['food_name'] ?? '').toString().isNotEmpty)
-          _normPlanName(r['food_name'].toString()),
-    };
-    return (workoutNames, foodNames);
-  } catch (_) {
-    return (<String>{}, <String>{});
-  }
-}
-
-/// Formats one exercise entry as "Name — 3 sets · 12 reps · 60kg" plus its
-/// done state (the member logged that exercise name within the plan window).
-({String text, bool done}) _exerciseItem(Map m, Set<String> workoutNames) {
-  final name = (m['name'] ?? '').toString();
-  final sets = (m['sets'] ?? '').toString();
-  final reps = (m['reps'] ?? '').toString();
-  final weight = (m['weight'] ?? '').toString();
-  final detail = [
-    if (sets.isNotEmpty) '$sets sets',
-    if (reps.isNotEmpty) '$reps reps',
-    if (weight.isNotEmpty) '${weight}kg',
-  ].join(' · ');
-  return (
-    text: detail.isEmpty ? name : '$name — $detail',
-    done: workoutNames.contains(_normPlanName(name)),
-  );
-}
-
 class RecordScreen extends ConsumerWidget {
   const RecordScreen({super.key});
 
@@ -112,6 +48,7 @@ class RecordScreen extends ConsumerWidget {
                         final plan = record['plan'] as Map<String, dynamic>;
                         final memberProfile = plan['profiles'] as Map<String, dynamic>? ?? {};
                         final memberName = memberProfile['full_name'] as String? ?? 'Unknown Member';
+                        final memberId = plan['member_id'] as String? ?? '';
                         final completedDays = record['completed_days'] as int? ?? 0;
                         final totalDays = record['total_days'] as int? ?? 7;
                         final startDate = plan['start_date'] as String? ?? '';
@@ -125,9 +62,12 @@ class RecordScreen extends ConsumerWidget {
                             color: Colors.transparent,
                             child: InkWell(
                               borderRadius: BorderRadius.circular(16),
-                              onTap: () {
-                                _showPlanDetails(context, record);
-                              },
+                              onTap: memberId.isEmpty
+                                  ? null
+                                  : () => context.push(
+                                        '/trainer/records/$memberId'
+                                        '?name=${Uri.encodeComponent(memberName)}',
+                                      ),
                               child: Padding(
                                 padding: const EdgeInsets.all(16),
                                 child: Column(
@@ -230,193 +170,6 @@ class RecordScreen extends ConsumerWidget {
     );
   }
 
-  void _showPlanDetails(BuildContext context, Map<String, dynamic> record) {
-    final plan = record['plan'] as Map<String, dynamic>;
-    final memberProfile = plan['profiles'] as Map<String, dynamic>? ?? {};
-    final memberName = memberProfile['full_name'] as String? ?? 'Unknown Member';
-    final completedDays = record['completed_days'] as int? ?? 0;
-    final totalDays = record['total_days'] as int? ?? 7;
-    final startDate = plan['start_date'] as String? ?? '';
-    final endDate = plan['end_date'] as String? ?? '';
-    final notes = plan['notes'] as String?;
-    final memberId = plan['member_id'] as String?;
-    // The assigned plan itself (what the trainer built on Create Plan):
-    // food_plan = [{day, foods: [{name, meal_type, ...}]}], same shape for
-    // exercise_plan. Older rows may predate these columns — guard for null.
-    final foodPlan = (plan['food_plan'] as List<dynamic>?) ?? const [];
-    final exercisePlan = (plan['exercise_plan'] as List<dynamic>?) ?? const [];
-
-    final completedFuture = memberId == null
-        ? Future.value((<String>{}, <String>{}))
-        : _fetchCompletedNames(memberId, startDate, endDate);
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return GlassSheetShell(
-          child: FutureBuilder<(Set<String>, Set<String>)>(
-            future: completedFuture,
-            builder: (context, snap) {
-              final workoutNames = snap.data?.$1 ?? const <String>{};
-              final foodNames = snap.data?.$2 ?? const <String>{};
-              return SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(
-                  20,
-                  20,
-                  20,
-                  32 + MediaQuery.of(ctx).padding.bottom,
-                ),
-                child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(40),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    memberName,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: completedDays >= totalDays
-                          ? const Color(0xFF30D158).withAlpha(25)
-                          : ClayTokens.clayPrimary.withAlpha(25),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      '$completedDays/$totalDays days',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: completedDays >= totalDays
-                            ? const Color(0xFF30D158)
-                            : ClayTokens.clayPrimaryLight,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Schedule: $startDate — $endDate',
-                style: const TextStyle(fontSize: 13, color: Color(0xFF8E8E93)),
-              ),
-              if (notes != null && notes.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(10),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    notes,
-                    style: const TextStyle(fontSize: 13, color: Color(0xFFECECFC)),
-                  ),
-                ),
-              ],
-              // Assigned plan breakdown — the same food/exercise data the
-              // trainer built on the Create Plan screen, grouped by day.
-              if (foodPlan.isNotEmpty || exercisePlan.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                const Text(
-                  'Assigned Plan',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    for (final Map dayEntry in foodPlan)
-                      _PlanDaySection(
-                        day: dayEntry['day'],
-                        title: 'Meals',
-                        items: [
-                          for (final Map f
-                              in (dayEntry['foods'] as List<dynamic>? ??
-                                  const []))
-                            if (((f['name'] ?? '').toString()).isNotEmpty)
-                              (
-                                text: (f['name'] ?? '').toString(),
-                                done: foodNames.contains(
-                                    _normPlanName((f['name'] ?? '').toString())),
-                              ),
-                        ],
-                      ),
-                    for (final Map dayEntry in exercisePlan)
-                      _PlanDaySection(
-                        day: dayEntry['day'],
-                        title: 'Exercises',
-                        items: [
-                          for (final Map e
-                              in (dayEntry['exercises'] as List<dynamic>? ??
-                                  const []))
-                            if (((e['name'] ?? '').toString()).isNotEmpty)
-                              _exerciseItem(e, workoutNames),
-                        ],
-                      ),
-                  ],
-                ),
-              ],
-              const SizedBox(height: 20),
-              if (memberId != null)
-                SizedBox(
-                  width: double.infinity,
-                  height: 46,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: ClayTokens.clayPrimary,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      context.push('/trainer/members/$memberId');
-                    },
-                    child: const Text(
-                      'View Member Progress',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-                ),
-              );
-            },
-          ),
-        );
-      },
-    );
-  }
-
   Widget _buildHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
@@ -444,98 +197,6 @@ class RecordScreen extends ConsumerWidget {
           ),
           const SizedBox(width: 32),
         ],
-      ),
-    );
-  }
-}
-
-/// One day's block of the assigned plan ("Day 1 Â· Meals" / "Day 1 Â·
-/// Exercises") inside the plan-details sheet. Items the member has logged
-/// render crossed out with a green check, so the trainer sees progress.
-class _PlanDaySection extends StatelessWidget {
-  final dynamic day;
-  final String title;
-  final List<({String text, bool done})> items;
-
-  const _PlanDaySection({
-    required this.day,
-    required this.title,
-    required this.items,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (items.isEmpty) return const SizedBox.shrink();
-    final doneCount = items.where((i) => i.done).length;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white.withAlpha(10),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Day $day Â· $title',
-                  style: const TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF7C3AED),
-                  ),
-                ),
-                if (doneCount > 0)
-                  Text(
-                    '$doneCount/${items.length} done',
-                    style: const TextStyle(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF30D158),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            for (final item in items)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Row(
-                  children: [
-                    Icon(
-                      item.done
-                          ? Icons.check_circle
-                          : Icons.radio_button_unchecked,
-                      size: 13,
-                      color: item.done
-                          ? const Color(0xFF30D158)
-                          : const Color(0xFF8E8E93),
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        item.text,
-                        style: TextStyle(
-                          fontSize: 13,
-                          decoration: item.done
-                              ? TextDecoration.lineThrough
-                              : TextDecoration.none,
-                          color: item.done
-                              ? const Color(0xFF8E8E93)
-                              : const Color(0xFFECECFC),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-        ),
       ),
     );
   }
