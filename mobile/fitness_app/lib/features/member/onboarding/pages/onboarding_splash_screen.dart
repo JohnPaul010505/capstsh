@@ -508,51 +508,99 @@ enum _BmiCategory {
 
 /// Numbered step header with names (Profile / Stats / Gender / Avatar), the
 /// same labelled-step pattern the add-food wizard uses.
+/// Numbered step indicator matching the Add Food wizard: filled purple circles
+/// with a check when done, connector segments between them, and a label under
+/// each. Four steps: Profile / Stats / Gender / Avatar.
 class _NamedStepHeader extends StatelessWidget {
   final int currentStep;
   final int totalSteps;
 
   const _NamedStepHeader({required this.currentStep, required this.totalSteps});
 
+  static const _purple = Color(0xFF7C3AED);
+  static const _pending = Color(0xFF353555);
   static const _names = ['Profile', 'Stats', 'Gender', 'Avatar'];
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: List.generate(totalSteps, (index) {
-        final done = index < currentStep;
-        final active = index == currentStep;
-        final color = done || active ? ClayTokens.clayPrimary : ClayTokens.clayBorder;
-        return Expanded(
-          child: Column(
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 6, 20, 4),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final cellW = constraints.maxWidth / totalSteps;
+          return Stack(
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: color,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
+              for (int i = 0; i < totalSteps - 1; i++)
+                Positioned(
+                  left: (i + 0.5) * cellW + 17,
+                  top: 13,
+                  width: cellW - 34,
+                  height: 3,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: i < currentStep ? _purple : _pending,
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  if (index < totalSteps - 1) const SizedBox(width: 6),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Text(
-                _names[index],
-                textAlign: TextAlign.center,
-                style: ClayTokens.darkLabelSmall.copyWith(
-                  color: active ? ClayTokens.clayPrimary : ClayTokens.clayDarkTextTertiary,
-                  fontWeight: active ? FontWeight.w700 : FontWeight.w500,
                 ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: List.generate(totalSteps, (i) {
+                  final done = i < currentStep;
+                  final active = i == currentStep;
+                  return Expanded(
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 30,
+                            height: 30,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: done || active ? _purple : Colors.transparent,
+                              border: Border.all(
+                                color: done || active ? _purple : _pending,
+                                width: 1.6,
+                              ),
+                            ),
+                            child: done
+                                ? const Icon(Icons.check,
+                                    size: 16, color: Color(0xFFFFFFFF))
+                                : Text(
+                                    '${i + 1}',
+                                    style: TextStyle(
+                                      color: active
+                                          ? const Color(0xFFFFFFFF)
+                                          : const Color(0xFF7070A0),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            _names[i],
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: active
+                                  ? const Color(0xFFECECFC)
+                                  : const Color(0xFF7070A0),
+                              fontSize: 10,
+                              fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
               ),
             ],
-          ),
-        );
-      }),
+          );
+        },
+      ),
     );
   }
 }

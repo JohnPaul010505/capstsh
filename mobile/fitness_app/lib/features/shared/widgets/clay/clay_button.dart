@@ -119,13 +119,40 @@ class _ClayButtonState extends State<ClayButton> with SingleTickerProviderStateM
   List<BoxShadow> _getShadows(bool isDark, bool isPressed) {
     if (widget.style == ClayButtonStyle.ghost) return [];
 
-    if (isDark) {
-      if (isPressed) return ClayTokens.darkLevel0;
-      return widget.style == ClayButtonStyle.primary ? ClayTokens.darkLevel2 : ClayTokens.darkLevel1;
+    // Plain purple glow — deliberately NO white highlight. The shared clay
+    // elevation tokens (darkLevel1/2) bake in a white top-rim shadow, which
+    // reads as a white halo around every button; buttons get their own,
+    // all-purple shadow instead so the glow matches the button fill.
+    final purple = ClayTokens.clayPrimary;
+    if (isPressed) {
+      return [
+        BoxShadow(
+          color: purple.withAlpha(60),
+          offset: const Offset(0, 2),
+          blurRadius: 6,
+          spreadRadius: 0,
+        ),
+      ];
     }
-
-    if (isPressed) return ClayTokens.level0;
-    return widget.style == ClayButtonStyle.primary ? ClayTokens.level2 : ClayTokens.level1;
+    if (widget.style == ClayButtonStyle.primary) {
+      return [
+        BoxShadow(
+          color: purple.withAlpha(120),
+          offset: const Offset(0, 6),
+          blurRadius: 18,
+          spreadRadius: 0,
+        ),
+      ];
+    }
+    // Secondary / outlined: a soft dark drop, still no white.
+    return [
+      BoxShadow(
+        color: Colors.black.withAlpha(60),
+        offset: const Offset(0, 3),
+        blurRadius: 10,
+        spreadRadius: 0,
+      ),
+    ];
   }
 
   EdgeInsetsGeometry _getPadding() {
