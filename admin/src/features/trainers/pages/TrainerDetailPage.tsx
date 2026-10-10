@@ -7,6 +7,7 @@ import { useFitRowHeight } from '@/hooks/useFitRows'
 import PeopleTable, { type PeopleColumn } from '@/components/PeopleTable'
 import PaginationFooter from '@/components/PaginationFooter'
 import { ArrowLeft, Mail, Phone, Users, UserPlus, X, Search, Trash2 } from 'lucide-react'
+import { useUpdateTrainer } from '../hooks/useTrainers'
 
 /**
  * TEN rows a page, not the app-wide fifteen.
@@ -28,8 +29,25 @@ export default function TrainerDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const updateTrainer = useUpdateTrainer()
   const [showAssignModal, setShowAssignModal] = useState(false)
   const [memberSearch, setMemberSearch] = useState('')
+
+  /**
+   * Editable contact + specialty. `editing` toggles inputs; `form` is seeded
+   * from the trainer on entry so a cancelled edit never touches the server.
+   */
+  const [editing, setEditing] = useState(false)
+  const [form, setForm] = useState({ email: '', phone: '', specialty: '' })
+  const startEdit = () => {
+    if (!trainer) return
+    setForm({ email: trainer.email ?? '', phone: trainer.phone ?? '', specialty: trainer.specialty ?? '' })
+    setEditing(true)
+  }
+  const saveEdit = () => {
+    if (!id) return
+    updateTrainer.mutate({ id, ...form }, { onSuccess: () => setEditing(false) })
+  }
   /**
    * "Assigned Members" and "Recent Feedback" used to be two cards stacked on one
    * page. Twelve assigned members is a dozen rows of table, and every one of
@@ -312,30 +330,65 @@ export default function TrainerDetailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 shrink-0">
-        <div className="glass-card p-4 rounded-xl">
-          <div className="flex items-center gap-2 text-sm text-fg-muted mb-1">
-            <Mail className="w-4 h-4" />
-            <span>Email</span>
+      <div className="flex items-center justify-between shrink-0">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 flex-1">
+          <div className="glass-card p-4 rounded-xl">
+            <div className="flex items-center gap-2 text-sm text-fg-muted mb-1">
+              <Mail className="w-4 h-4" />
+              <span>Email</span>
+            </div>
+            {editing ? (
+              <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                className="w-full px-2 py-1.5 text-sm bg-page-deep border border-line rounded-lg text-fg-strong focus:outline-none focus:border-[#7C3AED]" />
+            ) : (
+              <p className="text-sm text-fg-strong break-all">{trainer.email}</p>
+            )}
           </div>
-          <p className="text-sm text-fg-strong">{trainer.email}</p>
-        </div>
-        <div className="glass-card p-4 rounded-xl">
-          <div className="flex items-center gap-2 text-sm text-fg-muted mb-1">
-            <Phone className="w-4 h-4" />
-            <span>Phone</span>
+          <div className="glass-card p-4 rounded-xl">
+            <div className="flex items-center gap-2 text-sm text-fg-muted mb-1">
+              <Phone className="w-4 h-4" />
+              <span>Phone</span>
+            </div>
+            {editing ? (
+              <input type="text" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                className="w-full px-2 py-1.5 text-sm bg-page-deep border border-line rounded-lg text-fg-strong focus:outline-none focus:border-[#7C3AED]" />
+            ) : (
+              <p className="text-sm text-fg-strong">{trainer.phone || '—'}</p>
+            )}
           </div>
-          <p className="text-sm text-fg-strong">{trainer.phone || '—'}</p>
-        </div>
-        <div className="glass-card p-4 rounded-xl">
-          <div className="flex items-center gap-2 text-sm text-fg-muted mb-1">
-            <Users className="w-4 h-4" />
-            <span>Assigned Members</span>
+          <div className="glass-card p-4 rounded-xl">
+            <div className="flex items-center gap-2 text-sm text-fg-muted mb-1">
+              <span className="text-xs font-bold">S</span>
+              <span>Specialty</span>
+            </div>
+            {editing ? (
+              <input type="text" value={form.specialty} onChange={e => setForm(f => ({ ...f, specialty: e.target.value }))}
+                placeholder="e.g. Strength training"
+                className="w-full px-2 py-1.5 text-sm bg-page-deep border border-line rounded-lg text-fg-strong placeholder-fg-muted focus:outline-none focus:border-[#7C3AED]" />
+            ) : (
+              <p className="text-sm text-fg-strong">{trainer.specialty || '—'}</p>
+            )}
           </div>
-          {/* The paged TOTAL, not the visible rows: the stat has to match the
-              badge and the footer whether page 1 or page 3 is on screen. */}
-          <p className="text-xl font-bold text-fg-strong">{assignedTotal}</p>
+          <div className="glass-card p-4 rounded-xl">
+            <div className="flex items-center gap-2 text-sm text-fg-muted mb-1">
+              <Users className="w-4 h-4" />
+              <span>Assigned Members</span>
+            </div>
+            {/* The paged TOTAL, not the visible rows: the stat has to match the
+                badge and the footer whether page 1 or page 3 is on screen. */}
+            <p className="text-xl font-bold text-fg-strong">{assignedTotal}</p>
+          </div>
         </div>
+        {editing ? (
+          <div className="flex gap-2 ml-3 shrink-0">
+            <button onClick={() => setEditing(false)} className="px-3 py-1.5 text-xs rounded-lg border border-line text-fg-muted hover:text-fg-strong cursor-pointer transition-colors">Cancel</button>
+            <button onClick={saveEdit} disabled={updateTrainer.isPending} className="px-3 py-1.5 text-xs rounded-lg bg-[#7C3AED] text-white hover:bg-[#6D28D9] disabled:opacity-50 cursor-pointer transition-colors">
+              {updateTrainer.isPending ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+        ) : (
+          <button onClick={startEdit} className="px-3 py-1.5 text-xs rounded-lg border border-line text-fg-muted hover:text-fg-strong hover:border-[#7C3AED]/50 cursor-pointer transition-colors ml-3 shrink-0">Edit</button>
+        )}
       </div>
 
       {/* The tab strip is the same shape Memberships uses (glass pill, active tab

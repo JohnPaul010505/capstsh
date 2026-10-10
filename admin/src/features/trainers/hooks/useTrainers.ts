@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import type { Profile } from '@/types'
 
@@ -33,6 +33,26 @@ export function useTrainer(id: string) {
         .eq('status', 'active')
 
       return { profile: profile as Profile | null, members: (assignments ?? []) as any[] }
+    },
+  })
+}
+
+/** Persists editable trainer contact fields + specialty; refreshes the detail. */
+export function useUpdateTrainer() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: Partial<Profile> & { id: string }) => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single()
+      if (error) throw error
+      return data as Profile
+    },
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ['trainer', vars.id] })
     },
   })
 }
