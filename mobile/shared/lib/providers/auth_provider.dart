@@ -23,6 +23,18 @@ class AuthNotifier extends StateNotifier<AsyncValue<Profile?>> {
   final AuthService _authService;
   StreamSubscription<AuthState>? _authSubscription;
 
+  /// One live channel on the signed-in user's own `profiles` row. An admin
+  /// editing this member in the panel (or a profile edit from a second device)
+  /// re-fetches the row into [state], so every widget reading [authProvider] —
+  /// the home greeting, the profile page, the trainer header — follows without
+  /// a pull-to-refresh. The row's RLS allows the owner to read it, so no new
+  /// policy is needed; migration 0041 is what puts `profiles` in the realtime
+  /// publication. Before that migration is applied the subscription never
+  /// fires and auth events (above) still carry sign-in — nothing breaks, the
+  /// row is just stale until the next resume instead of live.
+  RealtimeChannel? _profileChannel;
+  String? _profileChannelUserId;
+
   AuthNotifier(this._authService) : super(const AsyncValue.loading()) {
     _init();
   }
@@ -34,6 +46,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<Profile?>> {
       try {
         final profile = await _authService.refreshProfile();
         state = AsyncValue.data(profile);
+        _watchOwnProfileRow(currentUser.id);
       } catch (e) {
         state = const AsyncValue.data(null);
       }
@@ -49,16 +62,52 @@ class AuthNotifier extends StateNotifier<AsyncValue<Profile?>> {
           try {
             final profile = await _authService.refreshProfile();
             state = AsyncValue.data(profile);
+            _watchOwnProfileRow(user.id);
           } catch (_) {}
         }
       } else if (event == AuthChangeEvent.signedOut) {
+        _dropProfileChannel();
         state = const AsyncValue.data(null);
       }
     });
   }
 
+  /// (Re)subscribes the live profile channel for [userId]; a no-op when it is
+  /// already the subscribed user. Called after every successful sign-in and
+  /// profile load so a sign-out -> sign-in-as-someone-else can never leave the
+  /// previous user's row watched.
+  void _watchOwnProfileRow(String userId) {
+    if (_profileChannelUserId == userId) return;
+    _dropProfileChannel();
+    _profileChannelUserId = userId;
+    final client = SupabaseClientService().client;
+    _profileChannel = client.channel('own_profile_$userId')
+      ..onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: 'profiles',
+        filter: PostgresChangeFilter(
+          type: PostgresChangeFilterType.eq,
+          column: 'id',
+          value: userId,
+        ),
+        callback: (_) => refreshProfile(),
+      )
+      ..subscribe();
+  }
+
+  void _dropProfileChannel() {
+    final channel = _profileChannel;
+    _profileChannel = null;
+    _profileChannelUserId = null;
+    if (channel != null) {
+      SupabaseClientService().client.removeChannel(channel);
+    }
+  }
+
   @override
   void dispose() {
+    _dropProfileChannel();
     _authSubscription?.cancel();
     super.dispose();
   }
@@ -68,6 +117,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<Profile?>> {
     try {
       final profile = await _authService.signIn(email: email, password: password);
       state = AsyncValue.data(profile);
+      if (profile != null) _watchOwnProfileRow(profile.id);
     } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
     }
@@ -81,6 +131,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<Profile?>> {
         password: password,
       );
       state = AsyncValue.data(profile);
+      if (profile != null) _watchOwnProfileRow(profile.id);
     } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
     }
@@ -88,6 +139,11 @@ class AuthNotifier extends StateNotifier<AsyncValue<Profile?>> {
 
   void setProfile(Profile? profile) {
     state = AsyncValue.data(profile);
+    if (profile != null) {
+      _watchOwnProfileRow(profile.id);
+    } else {
+      _dropProfileChannel();
+    }
   }
 
   Future<void> refreshProfile() async {
@@ -101,6 +157,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<Profile?>> {
   }
 
   Future<void> signOut() async {
+    _dropProfileChannel();
     await _authService.signOut();
     state = const AsyncValue.data(null);
   }
