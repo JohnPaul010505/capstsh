@@ -105,6 +105,11 @@ class _OnboardingSplashScreenState extends ConsumerState<OnboardingSplashScreen>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // The step rail leads, the logo follows: the member reads
+                    // "where am I" before "whose app is this", and the card
+                    // stays the visual anchor underneath both.
+                    _NamedStepHeader(currentStep: _step, totalSteps: 4),
+                    const SizedBox(height: 18),
                     _buildLogoHero(),
                     const SizedBox(height: 24),
                     ClayCard(
@@ -126,8 +131,6 @@ class _OnboardingSplashScreenState extends ConsumerState<OnboardingSplashScreen>
                         ],
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    _NamedStepHeader(currentStep: _step, totalSteps: 4),
                   ],
                 ),
               ),
