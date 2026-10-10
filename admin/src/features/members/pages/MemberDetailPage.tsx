@@ -1,11 +1,11 @@
-﻿import { useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useMember, useUpdateMember } from '../hooks/useMembers'
 import { usePagedTable, useResetPageOnChange } from '@/lib/pagedTable'
-import { useFitRowHeight } from '@/hooks/useFitRows'
 import PeopleTable, { type PeopleColumn } from '@/components/PeopleTable'
+import { useFitRowHeight } from '@/hooks/useFitRows'
 import PaginationFooter from '@/components/PaginationFooter'
 import DateRangePicker from '@/components/DateRangePicker'
 import { BarTrend, GrowthAreaTrend, type TrendPoint } from '@/features/dashboard/components/TrendCharts'
@@ -303,23 +303,15 @@ export default function MemberDetailPage() {
     })
 
   /**
-   * The height of ONE row is the body's height divided by the rows ACTUALLY on
-   * screen, so a log pane fills its card edge to edge: a full ten-row page
-   * stretches down to the footer, and a short page (six meals, five rows on the
-   * last page) stretches its fewer rows instead of leaving a purple hole under
-   * them. Empty and loading panes fall back to the ten-row count so the message
-   * row stays ordinary instead of inflating to the whole card.
-   *
-   * The ceiling is lifted far off the hook's 52px default because 52 IS the gap
-   * on a tall window: at 1920x1080 the budget is ~66px a row, and on a one-row
-   * last page the contract says that row stretches, not that the card fills with
-   * emptiness. `PeopleTable` centers cell content (`align-middle`, measured
-   * padding capped at 12px), so a tall row reads as deliberate spacing. One
-   * shared measurement still serves both logs - only one is mounted at a time.
+   * ONE row height for both log panes: the card body budget divided by the
+   * PINNED page size (10), never by the rows currently on screen. The old
+   * `rows.length` count re-divided when data arrived (0 -> 9 -> 10), which
+   * repainted every row — the "zoom"/"animation" on first login — and made
+   * Food Intake and Workout Log measure different sizes. With a constant
+   * count, the value only changes on a real window resize: same size on both
+   * tabs, same size before and after the data loads, no animation classes.
    */
-  const logRowsOnScreen =
-    (tab === 'meals' ? mealRows.length : tab === 'workouts' ? workoutRows.length : 0) || DETAIL_PAGE_SIZE
-  const [scrollRef, rowHeight] = useFitRowHeight<HTMLDivElement>({ count: logRowsOnScreen, max: 1000 })
+  const [scrollRef, rowHeight] = useFitRowHeight<HTMLDivElement>({ count: DETAIL_PAGE_SIZE, max: 1000 })
 
   if (isLoading) return <div className="text-center py-8 text-fg-muted">Loading...</div>
   if (!member) return <div className="text-center py-8 text-fg-muted">Member not found</div>
@@ -327,14 +319,20 @@ export default function MemberDetailPage() {
   const structuredAddress = address ? [address.line1, address.line2, address.city, address.state, address.postal_code, address.country].filter(Boolean).join(', ') : null
   const fullAddress = structuredAddress || member.address || null
 
-  const workoutName = (w: WorkoutLog) => w.workout_name || w.exercise_name
+  const workoutExerciseName = (w: WorkoutLog) => {
+    const raw = (w.exercise_name ?? '').trim()
+    if (raw && raw.toLowerCase() !== 'session proof') return raw
+    const session = (w.workout_name ?? '').trim()
+    if (raw.toLowerCase() === 'session proof' && session) return `${raw} (${session})`
+    return session || '—'
+  }
   const workoutWeight = (w: WorkoutLog) => w.weight ?? w.weight_kg
   const workoutMinutes = (w: WorkoutLog) =>
     w.duration_minutes ?? (w.duration_seconds != null ? Math.round(w.duration_seconds / 60) : null)
 
   const workoutColumns: PeopleColumn<WorkoutLog>[] = [
     { key: 'date', header: 'Date', render: w => <span className="whitespace-nowrap">{new Date(w.logged_at).toLocaleDateString()}</span> },
-    { key: 'exercise', header: 'Exercise', render: w => <span className="font-medium text-fg-strong">{workoutName(w)}</span> },
+    { key: 'exercise', header: 'Exercise', render: w => <span className="font-medium text-fg-strong">{workoutExerciseName(w)}</span> },
     { key: 'weight', header: 'Weight', render: w => { const v = workoutWeight(w); return <span className="tabular-nums">{v != null ? `${v} kg` : '—'}</span> } },
     { key: 'duration', header: 'Duration', render: w => { const v = workoutMinutes(w); return <span className="tabular-nums">{v != null ? `${v} min` : '—'}</span> } },
     {
@@ -355,7 +353,7 @@ export default function MemberDetailPage() {
         <button type="button" onClick={() => setSelectedVideo(w)} className="inline-flex items-center gap-1.5 text-accent-purple hover:underline cursor-pointer">
           <Play className="w-3.5 h-3.5" /> Watch
         </button>
-      ) : <span className="text-fg-faint italic">No video</span>,
+      ) : <span className="text-fg-faint">—</span>,
     },
   ]
 
@@ -649,7 +647,7 @@ export default function MemberDetailPage() {
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setSelectedVideo(null)}>
           <div className="glass-card rounded-xl max-w-2xl w-full p-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-fg-strong">{workoutName(selectedVideo)} — {new Date(selectedVideo.logged_at).toLocaleDateString()}</h3>
+              <h3 className="text-sm font-semibold text-fg-strong">{workoutExerciseName(selectedVideo)} — {new Date(selectedVideo.logged_at).toLocaleDateString()}</h3>
               <button onClick={() => setSelectedVideo(null)} aria-label="Close video" className="text-fg-muted hover:text-fg-strong transition-colors cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
