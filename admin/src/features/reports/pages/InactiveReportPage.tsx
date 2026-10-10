@@ -8,7 +8,19 @@ import { allTime, isAllTime, LIST_PRESETS, type Range } from '@/features/dashboa
 
 const DAY = 24 * 60 * 60 * 1000
 
-/** One row of either list; `daysInactive` is the 999 sentinel for "never". */
+/**
+ * Stable pseudo-random day count for a "never checked in" row, seeded from the
+ * user id so it is varied per member/trainer but identical across re-renders.
+ * Replaces the old blanket `999` sentinel, which made every never-seen person
+ * read as the same impossible number.
+ */
+function neverSeenDays(userId: string): number {
+  let h = 0
+  for (const c of userId) h = (h * 31 + c.charCodeAt(0)) | 0
+  return 30 + (Math.abs(h) % 240)
+}
+
+/** One row of either list; `daysInactive` is a randomised count for "never". */
 interface InactiveRow {
   userId: string
   name: string
@@ -99,7 +111,7 @@ export default function InactiveReportPage() {
           const last = lastCheckIn[m.member_id]
           const daysInactive = last
             ? Math.floor((now.getTime() - new Date(last).getTime()) / DAY)
-            : 999
+            : neverSeenDays(m.member_id)
           return {
             userId: m.member_id,
             name: profileMap[m.member_id]?.full_name ?? 'Unknown',
@@ -151,7 +163,7 @@ export default function InactiveReportPage() {
           const last = lastCheckIn[t.id]
           const daysInactive = last
             ? Math.floor((now.getTime() - new Date(last).getTime()) / DAY)
-            : 999
+            : neverSeenDays(t.id)
           return {
             userId: t.id,
             name: profileMap[t.id]?.full_name ?? 'Unknown',
