@@ -9,7 +9,6 @@ import '../../../shared/widgets/clay/clay_input.dart';
 import '../../../shared/widgets/animations.dart';
 import '../../../../app/design_tokens.dart';
 import '../providers/onboarding_provider.dart';
-import '../../../shared/widgets/step_indicator.dart';
 
 class OnboardingSplashScreen extends ConsumerStatefulWidget {
   const OnboardingSplashScreen({super.key});
@@ -128,7 +127,7 @@ class _OnboardingSplashScreenState extends ConsumerState<OnboardingSplashScreen>
                       ),
                     ),
                     const SizedBox(height: 16),
-                    StepIndicator(currentStep: _step, totalSteps: 4),
+                    _NamedStepHeader(currentStep: _step, totalSteps: 4),
                   ],
                 ),
               ),
@@ -140,65 +139,14 @@ class _OnboardingSplashScreenState extends ConsumerState<OnboardingSplashScreen>
   }
 
   Widget _buildLogoHero() {
+    // Plain logo, no background ring or glow — the same mark the login shows.
     return StaggeredFadeIn(
       index: 0,
-      child: Column(
-        children: [
-          Container(
-            width: 132,
-            height: 132,
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: const SweepGradient(
-                colors: [
-                  Color(0xFF7C3AED),
-                  Color(0xFFDB2777),
-                  Color(0xFFA78BFA),
-                  Color(0xFF7C3AED),
-                ],
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: ClayTokens.clayPrimary.withAlpha(90),
-                  blurRadius: 34,
-                  spreadRadius: 2,
-                  offset: const Offset(0, 8),
-                ),
-                BoxShadow(
-                  color: ClayTokens.clayDarkShadowDark,
-                  blurRadius: 16,
-                  spreadRadius: 1,
-                  offset: const Offset(0, 6),
-                ),
-                BoxShadow(
-                  color: ClayTokens.clayDarkShadowLight,
-                  blurRadius: 10,
-                  offset: const Offset(0, -3),
-                ),
-              ],
-            ),
-            child: Container(
-              decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF0D0D1A)),
-              child: ClipOval(
-                child: Image.asset(
-                  'assets/logo.png',
-                  width: 118,
-                  height: 118,
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 18),
-          ShaderMask(
-            shaderCallback: (bounds) => const LinearGradient(
-              colors: [Color(0xFFA78BFA), Color(0xFFF0ABFC)],
-            ).createShader(bounds),
-            blendMode: BlendMode.srcIn,
-            child: Text('Triple J', style: ClayTokens.darkHeadlineLarge.copyWith(letterSpacing: 6, fontWeight: FontWeight.w900)),
-          ),
-        ],
+      child: Image.asset(
+        'assets/logo.png',
+        width: 108,
+        height: 108,
+        fit: BoxFit.contain,
       ),
     );
   }
@@ -207,11 +155,11 @@ class _OnboardingSplashScreenState extends ConsumerState<OnboardingSplashScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Text('Welcome to FitSight', style: ClayTokens.darkDisplaySmall, textAlign: TextAlign.center),
+        Text('Triple j', style: ClayTokens.darkDisplaySmall, textAlign: TextAlign.center),
         const SizedBox(height: 8),
         Text(
-          "Let's set up your profile — just 4 quick steps.",
-          style: ClayTokens.darkBodyMedium.copyWith(color: ClayTokens.clayDarkTextTertiary),
+          "Your fitness journey starts here. Track your workouts, monitor your progress, and stay motivated as you work toward your fitness goals. Let's personalize your experience and build a healthier, stronger you one step at a time!",
+          style: ClayTokens.darkBodyMedium.copyWith(color: ClayTokens.clayDarkTextTertiary, height: 1.4),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 24),
@@ -498,7 +446,7 @@ class _OnboardingSplashScreenState extends ConsumerState<OnboardingSplashScreen>
               'assets/profiles/$gifAsset',
               height: 100,
               width: double.infinity,
-              fit: BoxFit.cover,
+              fit: BoxFit.contain,
               errorBuilder: (_, __, ___) => Container(
                 height: 100,
                 color: ClayTokens.clayDarkSurfaceElevated,
@@ -557,3 +505,55 @@ enum _BmiCategory {
   final String label;
   const _BmiCategory(this.label);
 }
+
+/// Numbered step header with names (Profile / Stats / Gender / Avatar), the
+/// same labelled-step pattern the add-food wizard uses.
+class _NamedStepHeader extends StatelessWidget {
+  final int currentStep;
+  final int totalSteps;
+
+  const _NamedStepHeader({required this.currentStep, required this.totalSteps});
+
+  static const _names = ['Profile', 'Stats', 'Gender', 'Avatar'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: List.generate(totalSteps, (index) {
+        final done = index < currentStep;
+        final active = index == currentStep;
+        final color = done || active ? ClayTokens.clayPrimary : ClayTokens.clayBorder;
+        return Expanded(
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: color,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  if (index < totalSteps - 1) const SizedBox(width: 6),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                _names[index],
+                textAlign: TextAlign.center,
+                style: ClayTokens.darkLabelSmall.copyWith(
+                  color: active ? ClayTokens.clayPrimary : ClayTokens.clayDarkTextTertiary,
+                  fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        );
+      }),
+    );
+  }
+}
+
