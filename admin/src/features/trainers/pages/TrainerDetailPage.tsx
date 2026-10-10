@@ -8,6 +8,13 @@ import PeopleTable, { type PeopleColumn } from '@/components/PeopleTable'
 import PaginationFooter from '@/components/PaginationFooter'
 import { ArrowLeft, Mail, Phone, Users, UserPlus, X, Search, Trash2 } from 'lucide-react'
 import { useUpdateTrainer } from '../hooks/useTrainers'
+import {
+  describeError,
+  normalizeProfileUpdates,
+  validateProfileUpdates,
+  type TrainerEditableFields,
+} from '@/features/shared/profileUpdates'
+import { useRealtimeProfiles } from '@/hooks/useRealtimeProfiles'
 
 /**
  * TEN rows a page, not the app-wide fifteen.
@@ -32,21 +39,45 @@ export default function TrainerDetailPage() {
   const updateTrainer = useUpdateTrainer()
   const [showAssignModal, setShowAssignModal] = useState(false)
   const [memberSearch, setMemberSearch] = useState('')
+  // The member page shares this hook: the trainer row follows edits made in
+  // another tab or on the app without a reload.
+  useRealtimeProfiles(id ? [id] : [])
 
   /**
    * Editable contact + specialty. `editing` toggles inputs; `form` is seeded
    * from the trainer on entry so a cancelled edit never touches the server.
+   *
+   * Same normaliser as the member page, so '' can never reach Postgres and a
+   * failed save gets an on-screen message instead of a silent no-op.
    */
   const [editing, setEditing] = useState(false)
-  const [form, setForm] = useState({ email: '', phone: '', specialty: '' })
+  const [form, setForm] = useState<TrainerEditableFields & Record<string, string>>({
+    email: '',
+    phone: '',
+    specialty: '',
+  })
+  const [saveError, setSaveError] = useState<string | null>(null)
   const startEdit = () => {
     if (!trainer) return
+    setSaveError(null)
     setForm({ email: trainer.email ?? '', phone: trainer.phone ?? '', specialty: trainer.specialty ?? '' })
     setEditing(true)
   }
   const saveEdit = () => {
     if (!id) return
-    updateTrainer.mutate({ id, ...form }, { onSuccess: () => setEditing(false) })
+    const invalid = validateProfileUpdates(form)
+    if (invalid) {
+      setSaveError(invalid)
+      return
+    }
+    setSaveError(null)
+    updateTrainer.mutate(
+      { id, ...normalizeProfileUpdates(form) },
+      {
+        onSuccess: () => setEditing(false),
+        onError: err => setSaveError(describeError(err)),
+      },
+    )
   }
   /**
    * "Assigned Members" and "Recent Feedback" used to be two cards stacked on one
@@ -379,6 +410,11 @@ export default function TrainerDetailPage() {
             <p className="text-xl font-bold text-fg-strong">{assignedTotal}</p>
           </div>
         </div>
+        {saveError && (
+          <p role="alert" className="mt-3 text-xs text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded-lg px-3 py-2 shrink-0">
+            {saveError}
+          </p>
+        )}
         {editing ? (
           <div className="flex gap-2 ml-3 shrink-0">
             <button onClick={() => setEditing(false)} className="px-3 py-1.5 text-xs rounded-lg border border-line text-fg-muted hover:text-fg-strong cursor-pointer transition-colors">Cancel</button>

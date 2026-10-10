@@ -15,6 +15,13 @@ import {
 } from '@/features/dashboard/lib/dateRange'
 import type { MealLog, WorkoutLog } from '@/types'
 import { ArrowLeft, Phone, Calendar, MapPin, PhoneCall, Play, X } from 'lucide-react'
+import {
+  describeError,
+  normalizeProfileUpdates,
+  validateProfileUpdates,
+  type MemberEditableFields,
+} from '@/features/shared/profileUpdates'
+import { useRealtimeProfiles } from '@/hooks/useRealtimeProfiles'
 
 /**
  * TEN rows a page, the same contract as the trainer detail tabs: one member's
@@ -40,15 +47,24 @@ export default function MemberDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { data: member, isLoading } = useMember(id!)
+  // Live off other tabs: an edit made here, in a second admin tab, or from
+  // the mobile app re-renders this row without a reload.
+  useRealtimeProfiles(id ? [id] : [])
   const updateMember = useUpdateMember()
 
   /**
    * Personal Information is editable. `editing` toggles the inputs; `form`
    * is seeded from the member on entry so a half-typed edit can be discarded
    * by toggling off without touching the server.
+   *
+   * `email` and `full_name` are in here too: they live in the same `profiles`
+   * row, the admin update policy already covers them, and an admin fixing a
+   * typo in a member's email should not have to be told "that is not editable".
    */
   const [editing, setEditing] = useState(false)
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<MemberEditableFields & Record<string, string>>({
+    full_name: '',
+    email: '',
     phone: '',
     date_of_birth: '',
     gender: '',
@@ -56,9 +72,18 @@ export default function MemberDetailPage() {
     emergency_contact_name: '',
     emergency_contact_phone: '',
   })
+  /**
+   * The save used to fail silently: `date_of_birth: ''` is illegal for a `date`
+   * column, Postgres rejected the whole statement, and nothing told the admin.
+   * The error now has somewhere to land.
+   */
+  const [saveError, setSaveError] = useState<string | null>(null)
   const startEdit = () => {
     if (!member) return
+    setSaveError(null)
     setForm({
+      full_name: member.full_name ?? '',
+      email: member.email ?? '',
       phone: member.phone ?? '',
       date_of_birth: member.date_of_birth ?? '',
       gender: member.gender ?? '',
@@ -70,7 +95,21 @@ export default function MemberDetailPage() {
   }
   const saveEdit = () => {
     if (!id) return
-    updateMember.mutate({ id, ...form }, { onSuccess: () => setEditing(false) })
+    const invalid = validateProfileUpdates(form)
+    if (invalid) {
+      setSaveError(invalid)
+      return
+    }
+    setSaveError(null)
+    // Trim + empty->null: '' would 400 the date column and write nothing.
+    const updates = normalizeProfileUpdates(form)
+    updateMember.mutate(
+      { id, ...updates },
+      {
+        onSuccess: () => setEditing(false),
+        onError: err => setSaveError(describeError(err)),
+      },
+    )
   }
 
   /**
@@ -434,21 +473,28 @@ export default function MemberDetailPage() {
             <button onClick={startEdit} className="px-3 py-1.5 text-xs rounded-lg border border-line text-fg-muted hover:text-fg-strong hover:border-[#7C3AED]/50 cursor-pointer transition-colors">Edit</button>
           )}
         </div>
+        {saveError && (
+          <p role="alert" className="mb-3 text-xs text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded-lg px-3 py-2">
+            {saveError}
+          </p>
+        )}
         {editing ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {([
-              ['phone', 'Phone', 'text'],
+              ['full_name', 'Full Name', 'text'],
+              ['email', 'Email', 'email'],
+              ['phone', 'Phone', 'tel'],
               ['date_of_birth', 'Date of Birth', 'date'],
               ['gender', 'Gender', 'text'],
               ['address', 'Address', 'text'],
               ['emergency_contact_name', 'Emergency Contact Name', 'text'],
-              ['emergency_contact_phone', 'Emergency Contact Phone', 'text'],
+              ['emergency_contact_phone', 'Emergency Contact Phone', 'tel'],
             ] as const).map(([key, label, type]) => (
               <label key={key} className="block">
                 <span className="block text-xs text-fg-muted mb-1">{label}</span>
                 <input
                   type={type}
-                  value={form[key]}
+                  value={form[key] ?? ''}
                   onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
                   className="w-full px-3 py-2 text-sm bg-page-deep border border-line rounded-lg text-fg-strong focus:outline-none focus:border-[#7C3AED]"
                 />

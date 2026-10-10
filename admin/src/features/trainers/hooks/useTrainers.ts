@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { normalizeProfileUpdates } from '@/features/shared/profileUpdates'
 import type { Profile } from '@/types'
 
 export function useTrainers() {
@@ -37,14 +38,19 @@ export function useTrainer(id: string) {
   })
 }
 
-/** Persists editable trainer contact fields + specialty; refreshes the detail. */
+/**
+ * Persists editable trainer contact fields + specialty; refreshes the detail
+ * and the trainers roster. Runs the same normaliser as the member hook: only
+ * trimmed values go to Postgres (never ''), so a cleared field becomes `null`
+ * instead of a 400 from a typed column.
+ */
 export function useUpdateTrainer() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<Profile> & { id: string }) => {
       const { data, error } = await supabase
         .from('profiles')
-        .update(updates)
+        .update(normalizeProfileUpdates(updates))
         .eq('id', id)
         .select()
         .single()
@@ -53,6 +59,7 @@ export function useUpdateTrainer() {
     },
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['trainer', vars.id] })
+      qc.invalidateQueries({ queryKey: ['trainers'] })
     },
   })
 }
