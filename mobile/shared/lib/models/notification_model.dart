@@ -3,6 +3,7 @@ class AppNotification {
   final String userId;
   final String title;
   final String? body;
+  final String? senderName;
   final bool read;
   final DateTime createdAt;
 
@@ -11,6 +12,7 @@ class AppNotification {
     required this.userId,
     required this.title,
     this.body,
+    this.senderName,
     required this.read,
     required this.createdAt,
   });
@@ -20,6 +22,7 @@ class AppNotification {
     userId: json['user_id'] as String,
     title: json['title'] as String,
     body: json['body'] as String?,
+    senderName: json['sender_name'] as String?,
     read: json['read'] as bool? ?? false,
     createdAt: DateTime.parse(json['created_at'] as String),
   );
@@ -28,6 +31,7 @@ class AppNotification {
     'user_id': userId,
     'title': title,
     'body': body,
+    'sender_name': senderName,
     'read': read,
   };
 
@@ -36,6 +40,7 @@ class AppNotification {
     String? userId,
     String? title,
     String? body,
+    String? senderName,
     bool? read,
     DateTime? createdAt,
   }) {
@@ -44,6 +49,7 @@ class AppNotification {
       userId: userId ?? this.userId,
       title: title ?? this.title,
       body: body ?? this.body,
+      senderName: senderName ?? this.senderName,
       read: read ?? this.read,
       createdAt: createdAt ?? this.createdAt,
     );

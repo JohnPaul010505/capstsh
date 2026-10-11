@@ -102,11 +102,43 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
   _RecordTab _tab = _RecordTab.workout;
   String? _pendingCancellationPlanId;
   bool _requestingCancellation = false;
+  late Future<Map<String, dynamic>?> _planFuture;
+  Future<(Map<String, Set<String>>, Map<String, Set<String>>)>? _completionFuture;
+  String? _completionKey;
 
   @override
   void initState() {
     super.initState();
+    _planFuture = PlanRepository().getPlanByMember(widget.memberId);
     _loadCancellationRequest();
+  }
+
+  @override
+  void didUpdateWidget(covariant RecordDetailScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.memberId != widget.memberId) {
+      _planFuture = PlanRepository().getPlanByMember(widget.memberId);
+      _completionFuture = null;
+      _completionKey = null;
+      _pendingCancellationPlanId = null;
+      _loadCancellationRequest();
+    }
+  }
+
+  Future<(Map<String, Set<String>>, Map<String, Set<String>>)> _completionFor(
+    String startDate,
+    String endDate,
+  ) {
+    final key = '${widget.memberId}|$startDate|$endDate';
+    if (_completionKey != key || _completionFuture == null) {
+      _completionKey = key;
+      _completionFuture = _fetchCompletedByDay(
+        widget.memberId,
+        startDate,
+        endDate,
+      );
+    }
+    return _completionFuture!;
   }
 
   Future<void> _loadCancellationRequest() async {
@@ -175,7 +207,7 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
       body: AppGlowBackground(
         child: SafeArea(
           child: FutureBuilder<Map<String, dynamic>?>(
-            future: PlanRepository().getPlanByMember(widget.memberId),
+            future: _planFuture,
             builder: (context, snap) {
               if (snap.connectionState == ConnectionState.waiting) {
                 return const Center(
@@ -212,11 +244,7 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
               return FutureBuilder<
                 (Map<String, Set<String>>, Map<String, Set<String>>)
               >(
-                future: _fetchCompletedByDay(
-                  widget.memberId,
-                  startDate,
-                  endDate,
-                ),
+                future: _completionFor(startDate, endDate),
                 builder: (context, doneSnap) {
                   final workoutByDay =
                       doneSnap.data?.$1 ?? const <String, Set<String>>{};
@@ -260,6 +288,14 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
                           duration: const Duration(milliseconds: 280),
                           switchInCurve: Curves.easeOutCubic,
                           switchOutCurve: Curves.easeInCubic,
+                          layoutBuilder: (currentChild, previousChildren) =>
+                              Stack(
+                                alignment: Alignment.topCenter,
+                                children: [
+                                  ...previousChildren,
+                                  if (currentChild != null) currentChild,
+                                ],
+                              ),
                           transitionBuilder: (child, animation) =>
                               FadeTransition(
                                 opacity: animation,

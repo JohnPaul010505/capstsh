@@ -197,7 +197,9 @@ class GoalCard extends ConsumerWidget {
                       ],
                     ),
                   ),
-                  if (onToggleStatus != null && !isCancelled) ...[
+                  // Active goals are completed by progress/time rules, not by
+                  // a manual button. Keep only the history-side Reopen action.
+                  if (onToggleStatus != null && isCompleted && !isCancelled) ...[
                     const SizedBox(height: 8),
                     Semantics(
                       button: true,

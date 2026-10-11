@@ -21,15 +21,15 @@ final assignedMembersProvider = FutureProvider.family<List<Map<String, dynamic>>
   return (response as List).cast<Map<String, dynamic>>();
 });
 
-final memberLogsPreviewProvider = FutureProvider.family<List<Map<String, dynamic>>, String>((ref, memberId) async {
-  final response = await SupabaseClientService()
+final memberLogsPreviewProvider = StreamProvider.family<List<Map<String, dynamic>>, String>((ref, memberId) {
+  return SupabaseClientService()
       .client
       .from('workout_logs')
-      .select('*')
+      .stream(primaryKey: ['id'])
       .eq('member_id', memberId)
       .order('logged_at', ascending: false)
-      .limit(5);
-  return (response as List).cast<Map<String, dynamic>>();
+      .limit(10)
+      .map((logs) => logs.cast<Map<String, dynamic>>());
 });
 
 /// Average star rating this trainer has received (relocated from the

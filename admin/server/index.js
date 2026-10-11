@@ -486,7 +486,7 @@ app.post('/api/backfill-codes', async (req, res) => {
       for (const profile of missing) {
         counter++
         const marker = role === 'member' ? 'M' : 'T'
-        const width = role === 'member' ? 3 : 4
+        const width = 3
         const parts = new Intl.DateTimeFormat('en-CA', {
           timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit',
         }).formatToParts(new Date(profile.created_at))
@@ -549,7 +549,25 @@ app.post('/api/ai/predictions', async (req, res) => {
       // no screen in the system captures it.
       const pred = forecastTrend(weights, measurements.map((m) => m.measured_at), days_ahead)
       if (!pred.sufficient) {
-        notes.push(`Weight: ${pred.reason}`)
+        if (pred.data_points === 1 && pred.current_value > 0) {
+          results.push({
+            prediction_type: 'weight',
+            current_value: pred.current_value,
+            predicted_value: pred.current_value,
+            unit: 'kg',
+            days_ahead,
+            confidence: 0,
+            data_points: 1,
+            span_days: 0,
+            date_from: pred.date_from,
+            date_to: pred.date_to,
+            method: 'baseline-only',
+            sufficient: false,
+            note: 'Starting weight only — this is the member’s baseline, not a trend forecast. A trend needs 3 weigh-ins spanning at least 7 days.',
+          })
+        } else {
+          notes.push(`Weight: ${pred.reason}`)
+        }
       } else {
         results.push({
           prediction_type: 'weight',
@@ -576,27 +594,38 @@ app.post('/api/ai/predictions', async (req, res) => {
     .select('check_in_time')
     .eq('member_id', member_id)
     .order('check_in_time', { ascending: false })
-    .limit(30)
+    .order('check_in_time', { ascending: true })
 
-  if (attendance && attendance.length > 0) {
-    // Chronological order by earliest check-in: week numbers restart in January,
-    // so sorting by week number would read the "is attendance falling?" trend
-    // backwards across a year boundary.
-    const weekStats = new Map()
-    for (const a of attendance) {
-      const d = new Date(a.check_in_time)
-      const key = getWeekNumber(d)
-      const slot = weekStats.get(key)
-      if (!slot) weekStats.set(key, { count: 1, first: d })
-      else {
-        slot.count += 1
-        if (d < slot.first) slot.first = d
-      }
-    }
-    const ordered = [...weekStats.values()].sort((a, b) => a.first - b.first)
-    const rates = ordered.map((s) => Math.min(1, s.count / 7))
-    const last = new Date(attendance[0].check_in_time)
-    const daysSince = Math.floor((Date.now() - last.getTime()) / 86400000)
+  const visits = (attendance ?? [])
+    .map((a) => new Date(a.check_in_time))
+    .filter((d) => Number.isFinite(d.getTime()))
+  const now = Date.now()
+  const first = visits.length ? new Date(Math.min(...visits.map((d) => d.getTime()))) : null
+  const last = visits.length ? new Date(Math.max(...visits.map((d) => d.getTime()))) : null
+  const completedWeeks = first ? Math.max(0, Math.floor((now - first.getTime()) / 604800000)) : 0
+  const counts = Array(completedWeeks).fill(0)
+  for (const visit of visits) {
+    const week = first ? Math.floor((visit.getTime() - first.getTime()) / 604800000) : -1
+    if (week >= 0 && week < completedWeeks) counts[week] += 1
+  }
+  const rates = counts.map((count) => Math.min(1, count / 7))
+  if (completedWeeks < 4) {
+    results.push({
+      prediction_type: 'retention_risk',
+      current_value: 0,
+      predicted_value: 0,
+      unit: 'risk score (0-1)',
+      days_ahead: 30,
+      confidence: 0,
+      data_points: completedWeeks,
+      method: 'insufficient-history',
+      sufficient: false,
+      note: first
+        ? `Not enough attendance history yet: ${completedWeeks} of 4 completed weeks. Retention risk will appear after 4 full weeks.`
+        : 'No check-ins recorded yet. Retention estimates start after the first check-in and 4 completed weeks.',
+    })
+  } else {
+    const daysSince = Math.max(0, Math.floor((now - last.getTime()) / 86400000))
     const risk = retentionForecast(rates, daysSince)
     results.push({
       prediction_type: 'retention_risk',
@@ -610,6 +639,7 @@ app.post('/api/ai/predictions', async (req, res) => {
       data_points: rates.length,
       daily_rate: risk.weekly_rate,
       method: 'weighted-heuristic',
+      sufficient: true,
       note:
         `60% check-in frequency + 20% falling trend + 20% recency ` +
         `(last visit ${daysSince}d ago) - risk level ${risk.risk}`,
@@ -626,6 +656,7 @@ app.post('/api/ai/predictions', async (req, res) => {
   // dashboard count and Recent Predictions then reflect every successful run.
   const predictedDate = new Date(Date.now() + Number(days_ahead) * 86400000).toISOString().slice(0, 10)
   for (const result of results) {
+    if (result.sufficient === false || result.method === 'baseline-only') continue
     const row = {
       member_id,
       metric_name: result.prediction_type,

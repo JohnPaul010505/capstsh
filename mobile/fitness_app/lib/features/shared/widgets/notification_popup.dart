@@ -511,6 +511,16 @@ class _NotificationDetail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final body = notification.body ?? '';
+    final legacyTrainerSignature = notification.title == 'Trainer Set a Plan'
+        ? RegExp(r'\n-\s*(.+)\s*$').firstMatch(body)
+        : null;
+    final displayBody = legacyTrainerSignature == null
+        ? body
+        : body.substring(0, legacyTrainerSignature.start).trimRight();
+    final senderName = notification.senderName?.trim().isNotEmpty == true
+        ? notification.senderName!.trim()
+        : legacyTrainerSignature?.group(1)?.trim();
     return Container(
       color: Colors.transparent,
       padding: const EdgeInsets.all(16),
@@ -537,7 +547,7 @@ class _NotificationDetail extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            notification.body ?? '',
+            displayBody,
             style: TextStyle(
               fontSize: 14,
               height: 1.5,
@@ -548,7 +558,7 @@ class _NotificationDetail extends StatelessWidget {
           Align(
             alignment: Alignment.centerRight,
             child: Text(
-              '- Admin',
+              '- ${senderName?.isNotEmpty == true ? senderName : 'Admin'}',
               style: TextStyle(
                 fontSize: 12,
                 color: ClayTokens.clayDarkTextTertiary,

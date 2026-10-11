@@ -28,6 +28,7 @@ interface Forecast {
   clamped?: boolean | null
   method?: string | null
   note?: string | null
+  sufficient?: boolean | null
 }
 
 const METRIC_LABELS: Record<string, string> = {
@@ -37,6 +38,8 @@ const METRIC_LABELS: Record<string, string> = {
 }
 
 const isRisk = (f: Forecast) => f.prediction_type === 'retention_risk'
+const riskHistoryInsufficient = (f: Forecast) =>
+  isRisk(f) && (f.sufficient === false || (f.data_points != null && f.data_points < 4))
 
 /** Risk bands match services/ml.py retention_risk() thresholds. */
 function riskLevel(score: number): 'low' | 'medium' | 'high' {
@@ -104,6 +107,9 @@ function toForecast(p: any): Forecast {
     daily_rate: p.daily_rate,
     change: p.change,
     clamped: p.clamped,
+    method: p.method,
+    note: p.note,
+    sufficient: p.sufficient,
   }
 }
 
@@ -207,7 +213,7 @@ export default function PredictionsPage() {
       header: 'Predicted',
       render: p => (
         <span className="text-fg whitespace-nowrap leading-5">
-          {p.predicted_value} {p.unit ?? ''}
+          {riskHistoryInsufficient(toForecast(p)) ? 'Not enough history' : `${p.predicted_value} ${p.unit ?? ''}`}
           {!isRisk(toForecast(p)) && p.current_value != null && (
             <span className="text-fg-muted text-xs"> (from {p.current_value})</span>
           )}
@@ -236,7 +242,11 @@ export default function PredictionsPage() {
     {
       key: 'confidence',
       header: 'Confidence',
-      render: p => (isRisk(toForecast(p)) ? (
+      render: p => (riskHistoryInsufficient(toForecast(p)) ? (
+        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#7C3AED]/15 text-[#C4B5FD]">
+          insufficient history
+        </span>
+      ) : isRisk(toForecast(p)) ? (
         /* No `leading-5` here, deliberately. `py-0.5` already makes the badge
            20px (16px line + 4px), which is the row budget; adding a 20px line
            box on top of 4px of padding makes it 24px, every row becomes 47px
@@ -400,7 +410,27 @@ export default function PredictionsPage() {
                       <div key={i} className="bg-[#111840]/90 backdrop-blur-lg p-4 rounded-lg border border-line shadow-sm">
                         <p className="text-base font-semibold text-fg-strong">{METRIC_LABELS[r.prediction_type] ?? r.prediction_type}</p>
 
-                        {isRisk(r) ? (
+                        {r.method === 'baseline-only' ? (
+                          <>
+                            <p className="text-xl font-bold text-fg-strong mt-1">
+                              Starting weight: {r.current_value} {r.unit}
+                            </p>
+                            <p className="text-sm leading-6 text-fg mt-1">
+                              {r.note ?? 'This is a baseline only. More weigh-ins are needed before a trend can be forecast.'}
+                            </p>
+                            <span className="inline-flex mt-2 px-2 py-0.5 rounded-full text-xs font-medium bg-[#7C3AED]/15 text-[#C4B5FD]">
+                              Baseline only · not saved as a forecast
+                            </span>
+                          </>
+                        ) : isRisk(r) && r.sufficient === false ? (
+                          <>
+                            <p className="text-base font-semibold text-fg-strong mt-2">Not enough attendance history</p>
+                            <p className="text-sm leading-6 text-fg mt-1">{r.note}</p>
+                            <span className="inline-flex mt-2 px-2 py-0.5 rounded-full text-xs font-medium bg-[#7C3AED]/15 text-[#C4B5FD]">
+                              Status only · not saved as a risk forecast
+                            </span>
+                          </>
+                        ) : isRisk(r) ? (
                           <>
                             <p className="text-xl font-bold text-fg-strong mt-1">
                               {r.predicted_value.toFixed(2)}
@@ -415,6 +445,11 @@ export default function PredictionsPage() {
                               </span>
                               <span className="text-[11px] text-fg-muted">data confidence {pct(r.confidence)}</span>
                             </div>
+                          </>
+                        ) : r.sufficient === false ? (
+                          <>
+                            <p className="text-base font-semibold text-fg-strong mt-2">Not enough weigh-in history</p>
+                            <p className="text-sm leading-6 text-fg mt-1">{r.note}</p>
                           </>
                         ) : (
                           <>
@@ -446,11 +481,11 @@ export default function PredictionsPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3 text-sm text-fg">
                       <div>
                         <p className="font-semibold text-fg-strong">Body weight</p>
-                        <p className="mt-1 leading-6">Uses dated weigh-ins to fit a straight-line trend, then projects it {aiResults.find(r => !isRisk(r))?.days_ahead ?? 30} days ahead. At least 3 readings over 7 days are needed. The change is capped at 5% over 30 days; confidence reflects the fit and the amount of history.</p>
+                        <p className="mt-1 leading-6">A first weigh-in gives a starting weight only. A trend needs at least 3 dated weigh-ins over 7 days. The change is capped at 5% over 30 days; confidence reflects the fit and the amount of history.</p>
                       </div>
                       <div>
                         <p className="font-semibold text-fg-strong">Retention risk</p>
-                        <p className="mt-1 leading-6">A 0–1 score combining check-in frequency (60%), whether attendance is falling (20%), and days since the last visit (20%). Higher means more signs the member may stop attending. Data confidence describes the amount of attendance history, not the risk level.</p>
+                        <p className="mt-1 leading-6">A 0–1 score combining check-in frequency (60%), whether attendance is falling (20%), and days since the last visit (20%). It appears only after 4 full weeks of attendance history; newer members show a status instead of an inferred risk score.</p>
                       </div>
                     </div>
                   </section>

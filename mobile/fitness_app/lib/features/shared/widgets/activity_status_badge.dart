@@ -12,6 +12,7 @@ class _ImageAssetLoader extends StatefulWidget {
   final bool isActive;
 
   const _ImageAssetLoader({
+    super.key,
     required this.assetPath,
     required this.size,
     required this.isActive,
@@ -112,6 +113,7 @@ class ActivityStatusBadge extends ConsumerWidget {
 
     return activityAsync.when(
       data: (isActive) => _ImageAssetLoader(
+        key: ValueKey(isActive),
         assetPath: isActive ? 'assets/animations/fire.gif' : 'assets/animations/unfire.png',
         size: size,
         isActive: isActive,
@@ -144,6 +146,7 @@ class ActivityStatusBadgeCompact extends ConsumerWidget {
 
     return activityAsync.when(
       data: (isActive) => _ImageAssetLoader(
+        key: ValueKey(isActive),
         assetPath: isActive ? 'assets/animations/fire.gif' : 'assets/animations/unfire.png',
         size: size,
         isActive: isActive,
@@ -176,6 +179,7 @@ class ActivityStatusBadgeSmall extends ConsumerWidget {
 
     return activityAsync.when(
       data: (isActive) => _ImageAssetLoader(
+        key: ValueKey(isActive),
         assetPath: isActive ? 'assets/animations/fire.gif' : 'assets/animations/unfire.png',
         size: size,
         isActive: isActive,

@@ -23,3 +23,4 @@ class PredictionResult(BaseModel):
     clamped: Optional[bool] = None         # trend was capped to a safe range
     method: Optional[str] = None           # "ols-linear-regression" | "weighted-heuristic"
     note: Optional[str] = None             # why no forecast was produced
+    sufficient: Optional[bool] = None       # false means status/baseline only; not an actionable forecast

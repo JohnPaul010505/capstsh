@@ -239,11 +239,11 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
           'Your $dayCount-day plan starts ${_fmtDate(_startDate)}.',
         );
         if (notes.isNotEmpty) body.write(' $notes');
-        body.write('\n- $trainerName');
         await NotificationService().createNotification(
           userId: selectedClient!,
           title: 'Trainer Set a Plan',
           body: body.toString(),
+          senderName: trainerName,
         );
       }
       if (!mounted) return;

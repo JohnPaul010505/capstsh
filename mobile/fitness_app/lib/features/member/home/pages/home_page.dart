@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared/providers/activity_status_provider.dart';
 import 'package:shared/providers/auth_provider.dart';
 import 'package:shared/services/supabase_client.dart'
     show SupabaseClientService;
@@ -238,7 +239,10 @@ class _HomePageState extends ConsumerState<HomePage>
         .stream(primaryKey: ['id'])
         .eq('member_id', userId)
         .listen((_) {
-          if (mounted) _invalidateHomeData();
+          if (mounted) {
+            _invalidateHomeData();
+            ref.invalidate(memberActivityStatusProvider(userId));
+          }
         });
 
     // Workout logs realtime listener
@@ -458,7 +462,13 @@ class _HomeContentState extends State<HomeContent> {
           bellKey: _bellKey,
         ),
         const SizedBox(height: 12),
-        StaggeredFadeIn(index: 0, child: _PredictionCard(memberId: memberId)),
+        StaggeredFadeIn(
+          index: 0,
+          child: _PredictionCard(
+            key: ValueKey('prediction-$memberId'),
+            memberId: memberId,
+          ),
+        ),
         const SizedBox(height: 8),
         StaggeredFadeIn(
           index: 1,
@@ -497,7 +507,7 @@ class _HomeContentState extends State<HomeContent> {
 class _PredictionCard extends StatefulWidget {
   final String memberId;
 
-  const _PredictionCard({required this.memberId});
+  const _PredictionCard({super.key, required this.memberId});
 
   @override
   State<_PredictionCard> createState() => _PredictionCardState();
@@ -515,6 +525,35 @@ class _PredictionCardState extends State<_PredictionCard> {
   Future<void> _load() async {
     final forecast = await PredictionService().getForecast(widget.memberId);
     if (mounted) setState(() => _forecast = forecast);
+  }
+
+  Widget _buildMoreWeightDataPrompt(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'A weigh-in means saving your current weight in BMI. Your setup weight is the first entry. Add 2 more entries, with the first and last at least 7 days apart, to unlock a weight trend forecast.',
+          style: TextStyle(fontSize: 12, color: Color(0xFFB9B9C2)),
+        ),
+        const SizedBox(height: 6),
+        TextButton.icon(
+          style: TextButton.styleFrom(
+            foregroundColor: const Color(0xFFD6A5FF),
+            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+            visualDensity: VisualDensity.compact,
+          ),
+          onPressed: () async {
+            await context.push('/member/bmi');
+            if (!mounted) return;
+            PredictionService.clearMemberCache(widget.memberId);
+            setState(() => _forecast = null);
+            _load();
+          },
+          icon: const Icon(Icons.monitor_weight_outlined, size: 16),
+          label: const Text('Log weight in BMI'),
+        ),
+      ],
+    );
   }
 
   @override
@@ -543,10 +582,7 @@ class _PredictionCardState extends State<_PredictionCard> {
         ],
       );
     } else if (forecast.notEnoughData) {
-      body = const Text(
-        'Log body measurements and check in a few times to unlock your AI progress forecast.',
-        style: TextStyle(fontSize: 12, color: Color(0xFFB9B9C2)),
-      );
+      body = _buildMoreWeightDataPrompt(context);
     } else if (forecast.error != null || forecast.results.isEmpty) {
       body = Text(
         forecast.error ?? 'No forecast available right now.',
@@ -556,11 +592,29 @@ class _PredictionCardState extends State<_PredictionCard> {
       final weight = forecast.byType('weight');
       // Weight only: body fat is not forecast because no screen records it.
       body = weight == null
-          ? Text(
-              'Keep logging weigh-ins — a forecast needs at least 3 readings over 7+ days.',
-              style: const TextStyle(fontSize: 12, color: Color(0xFFB9B9C2)),
-            )
-          : _ForecastRow(
+          ? _buildMoreWeightDataPrompt(context)
+          : weight.method == 'baseline-only'
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Starting weight: ${weight.currentValue.toStringAsFixed(1)} ${weight.unit}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'This is your starting point, not a trend forecast yet.',
+                      style: TextStyle(fontSize: 12, color: Color(0xFFB9B9C2)),
+                    ),
+                    const SizedBox(height: 4),
+                    _buildMoreWeightDataPrompt(context),
+                  ],
+                )
+              : _ForecastRow(
               icon: Icons.monitor_weight_outlined,
               label: 'Weight',
               current:

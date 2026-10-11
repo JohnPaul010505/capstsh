@@ -16,9 +16,13 @@ final assignedMembersProvider = FutureProvider<List<Profile>>((ref) async {
       .select('profiles!trainer_assignments_member_id_fkey(*)')
       .eq('trainer_id', userId)
       .eq('status', 'active');
-  return (response as List)
+  final members = (response as List)
       .map((e) => Profile.fromJson(e['profiles'] as Map<String, dynamic>))
       .toList();
+  members.sort(
+    (a, b) => a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase()),
+  );
+  return members;
 });
 
 class MembersListPage extends ConsumerWidget {

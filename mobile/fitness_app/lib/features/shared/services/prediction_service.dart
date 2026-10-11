@@ -14,6 +14,9 @@ class PredictionResult {
   final String unit;
   final int daysAhead;
   final double confidence;
+  final String? method;
+  final String? note;
+  final bool? sufficient;
 
   const PredictionResult({
     required this.predictionType,
@@ -22,6 +25,9 @@ class PredictionResult {
     required this.unit,
     required this.daysAhead,
     required this.confidence,
+    this.method,
+    this.note,
+    this.sufficient,
   });
 
   factory PredictionResult.fromJson(Map<String, dynamic> json) =>
@@ -32,6 +38,9 @@ class PredictionResult {
         unit: json['unit'] as String? ?? '',
         daysAhead: (json['days_ahead'] as num?)?.toInt() ?? 30,
         confidence: (json['confidence'] as num?)?.toDouble() ?? 0,
+        method: json['method'] as String?,
+        note: json['note'] as String?,
+        sufficient: json['sufficient'] as bool?,
       );
 
   bool get isRetention => predictionType == 'retention_risk';
@@ -96,6 +105,9 @@ class PredictionService {
   /// members list fires up to 30 forecasts in parallel; without this every
   /// tab visit re-hammers all hosts and spams logcat with timeouts.
   static final Map<String, _CachedForecast> _cache = {};
+
+  /// Drop a member's short-lived result after a new measurement is saved.
+  static void clearMemberCache(String memberId) => _cache.remove(memberId);
 
   /// Probe order: `localhost` first (instant win over the `adb reverse` USB
   /// tunnel, instant refusal without it), then the URL from `.env`, then every

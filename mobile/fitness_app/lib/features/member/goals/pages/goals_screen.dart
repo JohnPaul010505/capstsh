@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared/providers/auth_provider.dart';
 import 'package:shared/services/supabase_client.dart';
 import 'package:shared/services/notification_service.dart';
 import '../../../../app/design_tokens.dart';
@@ -16,12 +17,20 @@ import 'empty_goals_state.dart';
 
 const bgDark = Color(0xFF0B0D1A);
 
-final goalsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
-  final userId = SupabaseClientService().client.auth.currentUser!.id;
-  final response = await SupabaseClientService().client
+final goalsProvider = FutureProvider.autoDispose
+    .family<List<Map<String, dynamic>>, String>((ref, requestedUserId) async {
+  final client = SupabaseClientService().client;
+  final activeUserId = ref.watch(activeUserIdProvider);
+  final authUserId = client.auth.currentUser?.id;
+  if (requestedUserId.isEmpty ||
+      requestedUserId != activeUserId ||
+      requestedUserId != authUserId) {
+    throw Exception('Signed out — please log in again.');
+  }
+  final response = await client
       .from('goals')
       .select()
-      .eq('member_id', userId)
+      .eq('member_id', requestedUserId)
       .order('created_at', ascending: false);
   return response;
 });
@@ -68,7 +77,10 @@ class _GoalsPageState extends ConsumerState<GoalsPage>
 
   @override
   Widget build(BuildContext context) {
-    final goalsAsync = ref.watch(goalsProvider);
+    final memberId = ref.watch(activeUserIdProvider);
+    final goalsAsync = memberId == null
+        ? const AsyncValue<List<Map<String, dynamic>>>.data([])
+        : ref.watch(goalsProvider(memberId));
     // Preserve the "one running goal at a time" rule: if any loaded goal is
     // still ongoing, the Create tab's form refuses a second insert. Falls back
     // to false while loading so the form stays usable on first paint.
@@ -98,7 +110,9 @@ class _GoalsPageState extends ConsumerState<GoalsPage>
                             duration: const Duration(seconds: 2),
                           ),
                         );
-                        ref.invalidate(goalsProvider);
+                        if (memberId != null) {
+                          ref.invalidate(goalsProvider(memberId));
+                        }
                         // Jump to the Goals tab so the new goal is visible.
                         _tabController.animateTo(1);
                       },
@@ -123,7 +137,9 @@ class _GoalsPageState extends ConsumerState<GoalsPage>
                                 .from('goals')
                                 .update({'status': 'cancelled'})
                                 .eq('id', g['id']);
-                            ref.invalidate(goalsProvider);
+                            if (memberId != null) {
+                              ref.invalidate(goalsProvider(memberId));
+                            }
                             _tabController.animateTo(2);
                           }
                         },
@@ -158,7 +174,9 @@ class _GoalsPageState extends ConsumerState<GoalsPage>
                               debugPrint('GOAL NOTIFY failed: $e');
                             }
                           }
-                          ref.invalidate(goalsProvider);
+                          if (memberId != null) {
+                            ref.invalidate(goalsProvider(memberId));
+                          }
                           _tabController.animateTo(
                             newStatus == 'completed' ? 2 : 1,
                           );
@@ -199,7 +217,9 @@ class _GoalsPageState extends ConsumerState<GoalsPage>
                               .from('goals')
                               .update({'status': 'active'})
                               .eq('id', g['id']);
-                          ref.invalidate(goalsProvider);
+                          if (memberId != null) {
+                            ref.invalidate(goalsProvider(memberId));
+                          }
                           _tabController.animateTo(1);
                         },
                       ),

@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared/models/membership_renewal_request.dart';
 import 'package:shared/providers/auth_provider.dart';
+import 'package:shared/services/supabase_client.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../shared/widgets/app_glow_background.dart';
 import '../providers/membership_provider.dart';
@@ -20,6 +22,53 @@ class MembershipPage extends ConsumerStatefulWidget {
 
 class _MembershipPageState extends ConsumerState<MembershipPage> {
   bool _submitting = false;
+  RealtimeChannel? _membershipChannel;
+
+  @override
+  void initState() {
+    super.initState();
+    final client = SupabaseClientService().client;
+    final memberId = client.auth.currentUser?.id;
+    if (memberId == null) return;
+    _membershipChannel = client
+        .channel('member_membership_updates_$memberId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'membership_renewal_requests',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'member_id',
+            value: memberId,
+          ),
+          callback: (_) {
+            if (mounted) ref.invalidate(membershipProvider);
+          },
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'memberships',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'member_id',
+            value: memberId,
+          ),
+          callback: (_) {
+            if (mounted) ref.invalidate(membershipProvider);
+          },
+        )
+        .subscribe();
+  }
+
+  @override
+  void dispose() {
+    final channel = _membershipChannel;
+    if (channel != null) {
+      SupabaseClientService().client.removeChannel(channel);
+    }
+    super.dispose();
+  }
 
   /// Daily passes are re-bought daily rather than renewed, so the page needs to
   /// know which case it is showing. `plan_name` is free text in the database,
@@ -49,7 +98,6 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
         membershipId: state.activeMembership?.id ?? state.current?.id,
         startDate: result['start_date'] as DateTime?,
         endDate: result['end_date'] as DateTime?,
-        requestedPrice: result['requested_price'] as double?,
       );
       if (!mounted) return;
       ref.invalidate(membershipProvider);

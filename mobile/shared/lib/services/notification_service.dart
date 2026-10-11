@@ -96,12 +96,31 @@ class NotificationService {
     required String userId,
     required String title,
     String? body,
+    String? senderName,
   }) async {
+    var resolvedSenderName = senderName?.trim();
+    final senderId = _client.auth.currentUser?.id;
+    if ((resolvedSenderName == null || resolvedSenderName.isEmpty) &&
+        senderId != null) {
+      try {
+        final profile = await _client
+            .from('profiles')
+            .select('full_name')
+            .eq('id', senderId)
+            .maybeSingle();
+        resolvedSenderName = (profile?['full_name'] as String?)?.trim();
+      } catch (_) {
+        // Saving the notification must not depend on a profile lookup.
+      }
+    }
+
     await _client.from('notifications').insert({
       'user_id': userId,
       'title': title,
       'body': body,
       'read': false,
+      if (resolvedSenderName != null && resolvedSenderName.isNotEmpty)
+        'sender_name': resolvedSenderName,
     });
   }
 }

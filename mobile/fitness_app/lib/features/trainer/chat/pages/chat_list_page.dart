@@ -60,7 +60,9 @@ final trainerConversationsProvider = FutureProvider<List<Map<String, dynamic>>>(
     });
   }
   rows.sort(
-    (x, y) => (x['full_name'] as String).compareTo(y['full_name'] as String),
+    (x, y) => (x['full_name'] as String)
+        .toLowerCase()
+        .compareTo((y['full_name'] as String).toLowerCase()),
   );
   return rows;
 });

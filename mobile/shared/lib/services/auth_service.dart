@@ -22,7 +22,7 @@ class AuthService {
       final result = await _client
           .from('profiles')
           .select('email')
-          .eq('code', code)
+          .eq('code', code.trim().toUpperCase())
           .maybeSingle();
       if (result == null || result.isEmpty) {
         throw Exception('Invalid member code');

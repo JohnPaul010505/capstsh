@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:shared/models/attendance_toggle_result.dart';
 import 'package:shared/providers/auth_provider.dart';
+import 'package:shared/providers/activity_status_provider.dart';
 import 'package:shared/services/attendance_service.dart';
 import '../../../app/design_tokens.dart';
 import '../../../features/shared/widgets/app_glow_background.dart';
@@ -94,6 +95,10 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
         _isSuccess = false;
       });
     } else {
+      // Refresh the member's recent-activity badge as soon as the attendance
+      // write succeeds. The home route may be kept alive behind this page, so
+      // it cannot depend on a later rebuild to re-query the fire status.
+      ref.invalidate(memberActivityStatusProvider(profile.id));
       // Full-screen confirmation for 3 seconds, then back to the status
       // page with the fresh check-in / check-out times — same flow for
       // member and trainer, check-in and check-out.

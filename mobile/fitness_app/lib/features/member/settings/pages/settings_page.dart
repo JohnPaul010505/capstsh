@@ -215,7 +215,6 @@ class _SettingsContent extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const SizedBox(height: 12),
                           Text(
                             name,
                             style: const TextStyle(
@@ -234,8 +233,14 @@ class _SettingsContent extends ConsumerWidget {
                                 decoration: TextDecoration.none,
                               ),
                             ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 2),
                           TextButton(
+                            style: TextButton.styleFrom(
+                              padding: EdgeInsets.zero,
+                              minimumSize: const Size(0, 36),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              alignment: Alignment.centerLeft,
+                            ),
                             onPressed: () => _showAvatarPicker(context, ref),
                             child: const Text(
                               'Change Profile',

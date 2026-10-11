@@ -75,8 +75,26 @@ async def get_predictions(req: PredictionRequest):
             # a dev seed script's random numbers.
             pred = predict_trend(weights, req.days_ahead, dates=[m.get("measured_at") for m in mdata])  # type: ignore[arg-type]
             if not pred.get("sufficient"):
-                # No invented number: tell the caller exactly what is missing.
-                notes.append(f"Weight: {pred.get('reason')}")
+                # A first reading is useful as a baseline, but cannot establish
+                # a direction. Return it for display only; never save it as a forecast.
+                if pred.get("data_points") == 1 and pred.get("current_value", 0) > 0:
+                    results.append(PredictionResult(
+                        prediction_type="weight",
+                        current_value=pred["current_value"],
+                        predicted_value=pred["current_value"],
+                        unit="kg",
+                        days_ahead=req.days_ahead,
+                        confidence=0,
+                        data_points=1,
+                        span_days=0,
+                        date_from=pred.get("date_from"),
+                        date_to=pred.get("date_to"),
+                        method="baseline-only",
+                        sufficient=False,
+                        note="Starting weight only — this is your baseline, not a trend forecast. Add 2 more weigh-ins spanning at least 7 days to see a forecast.",
+                    ))
+                else:
+                    notes.append(f"Weight: {pred.get('reason')}")
             else:
                 result = PredictionResult(
                     prediction_type="weight",
@@ -97,37 +115,49 @@ async def get_predictions(req: PredictionRequest):
                 results.append(result)
                 _persist(req.member_id, result)
     try:
-        att_data = db.select("attendance", "check_in_time", member_id=req.member_id, order="check_in_time.desc", limit=30)  # type: ignore[assignment]
+        att_data = db.select("attendance", "check_in_time", member_id=req.member_id, order="check_in_time.asc")  # type: ignore[assignment]
     except Exception as exc:
         logger.warning("attendance unavailable for %s: %s", req.member_id, exc)
         att_data = []
-    if att_data:
-        weeks: dict[int, list] = {}  # ISO week -> [check-ins, earliest check-in]
-        for a in att_data:
-            t = a.get("check_in_time", "")
-            if not t:
-                continue
-            try:
-                dt = datetime.fromisoformat(t.replace("Z", "+00:00"))
-            except Exception:
-                continue
-            slot = weeks.setdefault(dt.isocalendar()[1], [0, dt])
-            slot[0] += 1
-            if dt < slot[1]:
-                slot[1] = dt
-        # Chronological order, not ISO week number: week numbers restart every
-        # January, so week 1 of next year would otherwise sort before week 52 and
-        # the "is attendance falling?" trend would read the series backwards.
-        ordered = sorted(weeks.values(), key=lambda slot: slot[1])
-        weekly_rates = [min(1, count / 7) for count, _ in ordered] if ordered else []
-        last_seen = att_data[0].get("check_in_time", "")
-        days_since = 999
-        if last_seen:
-            try:
-                last = datetime.fromisoformat(last_seen.replace("Z", "+00:00"))
-                days_since = (datetime.now(timezone.utc) - last).days
-            except Exception:
-                pass
+    valid_visits: list[datetime] = []
+    for a in att_data:
+        try:
+            stamp = a.get("check_in_time")
+            if stamp:
+                dt = datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+                valid_visits.append(dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt)
+        except Exception:
+            continue
+    now = datetime.now(timezone.utc)
+    if valid_visits:
+        first_visit, last = min(valid_visits), max(valid_visits)
+        completed_weeks = max(0, int((now - first_visit).total_seconds() // 604800))
+        weekly_counts = [0] * completed_weeks
+        for visit in valid_visits:
+            week_index = int((visit - first_visit).total_seconds() // 604800)
+            if 0 <= week_index < completed_weeks:
+                weekly_counts[week_index] += 1
+        weekly_rates = [min(1, count / 7) for count in weekly_counts]
+        days_since = max(0, (now - last).days)
+    else:
+        first_visit = last = None
+        completed_weeks = 0
+        weekly_rates = []
+        days_since = 0
+
+    if completed_weeks < 4:
+        note = (
+            "No check-ins recorded yet. Retention estimates start after the first check-in and 4 completed weeks."
+            if first_visit is None else
+            f"Not enough attendance history yet: {completed_weeks} of 4 completed weeks. Retention risk will appear after 4 full weeks."
+        )
+        results.append(PredictionResult(
+            prediction_type="retention_risk", current_value=0, predicted_value=0,
+            unit="risk score (0-1)", days_ahead=30, confidence=0,
+            data_points=completed_weeks, method="insufficient-history",
+            sufficient=False, note=note,
+        ))
+    else:
         ret = retention_risk(weekly_rates, days_since)  # type: ignore[arg-type]
         risk_result = PredictionResult(
             prediction_type="retention_risk",
@@ -141,6 +171,7 @@ async def get_predictions(req: PredictionRequest):
             data_points=ret.get("data_points"),
             daily_rate=ret.get("weekly_rate"),
             method=ret.get("method"),
+            sufficient=True,
             note=(
                 f"60% check-in frequency + 20% falling trend + 20% recency "
                 f"(last visit {days_since}d ago) - risk level {ret['risk']}"
