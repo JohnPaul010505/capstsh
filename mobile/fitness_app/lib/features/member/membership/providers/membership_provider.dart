@@ -8,6 +8,7 @@ import 'package:shared/services/supabase_client.dart';
 class MemberMembershipState {
   final List<Membership> memberships;
   final List<MembershipRenewalRequest> renewalRequests;
+  final List<Map<String, dynamic>> cancellationRequests;
 
   /// Today's open check-in row (null when the member is not checked in).
   /// Drives the Daily ACTIVE/INACTIVE badge on the Membership screen.
@@ -16,6 +17,7 @@ class MemberMembershipState {
   const MemberMembershipState({
     required this.memberships,
     required this.renewalRequests,
+    required this.cancellationRequests,
     this.openSession,
   });
 
@@ -25,19 +27,25 @@ class MemberMembershipState {
   /// expired yet. Expired plans drop out of the hero and move to HISTORY.
   Membership? get activeMembership {
     for (final m in memberships) {
-      if (!m.isExpired) return m;
+      if (m.status == 'active' && !m.isExpired) return m;
     }
     return null;
   }
 
   /// Expired memberships, newest first — rendered under the HISTORY section.
   List<Membership> get expiredMemberships =>
-      memberships.where((m) => m.isExpired).toList();
-
+      memberships.where((m) => m.status == 'cancelled' || m.isExpired).toList();
 
   MembershipRenewalRequest? get pendingRequest {
     for (final r in renewalRequests) {
       if (r.isPending) return r;
+    }
+    return null;
+  }
+
+  Map<String, dynamic>? get pendingCancellation {
+    for (final request in cancellationRequests) {
+      if (request['status'] == 'pending') return request;
     }
     return null;
   }
@@ -51,7 +59,7 @@ class MemberMembershipState {
   /// them apply, because at that point they are buying membership again rather
   /// than renewing one, and blocking it would strand them with no way back in.
   bool get canApplyForRenewal {
-    final m = current;
+    final m = activeMembership;
     if (m == null) return true;
     if (m.isExpired) return true;
     if (m.planName.trim().toLowerCase() == 'daily') return false;
@@ -105,6 +113,11 @@ final membershipProvider = FutureProvider.autoDispose<MemberMembershipState>((
         .isFilter('check_out_time', null)
         .order('check_in_time', ascending: false)
         .limit(1),
+    client
+        .from('membership_cancellation_requests')
+        .select()
+        .eq('member_id', userId)
+        .order('requested_at', ascending: false),
   ]);
 
   // Fresh session only: an unchecked-out row whose 12h expiry already passed
@@ -128,9 +141,25 @@ final membershipProvider = FutureProvider.autoDispose<MemberMembershipState>((
         .cast<Map<String, dynamic>>()
         .map(MembershipRenewalRequest.fromJson)
         .toList(),
+    cancellationRequests: (results[3] as List).cast<Map<String, dynamic>>(),
     openSession: openSession,
   );
 });
+
+Future<void> submitMembershipCancellation({
+  required String memberId,
+  required String membershipId,
+  String? note,
+}) async {
+  await SupabaseClientService().client
+      .from('membership_cancellation_requests')
+      .insert({
+        'member_id': memberId,
+        'membership_id': membershipId,
+        'status': 'pending',
+        if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+      });
+}
 
 /// Submits a renewal application. Throws on failure.
 Future<void> submitRenewalRequest({

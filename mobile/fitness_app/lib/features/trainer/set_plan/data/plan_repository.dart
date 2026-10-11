@@ -17,6 +17,7 @@ class PlanRepository {
           .from('member_goal_plans')
           .select()
           .eq('member_id', memberId)
+          .eq('status', 'active')
           .lte('start_date', today.split('T').first)
           .gte('end_date', today.split('T').first)
           .order('start_date', ascending: false)
@@ -53,6 +54,7 @@ class PlanRepository {
       'start_date': startDate.toIso8601String().split('T').first,
       'end_date': endDate.toIso8601String().split('T').first,
       'timeframe': '7_days',
+      'status': 'active',
       'food_plan': foodPlan,
       'exercise_plan': exercisePlan,
       'updated_at': now.toIso8601String(),
@@ -92,7 +94,9 @@ class PlanRepository {
       final exercisePlan = (response['exercise_plan'] as List<dynamic>? ?? [])
           .cast<Map<String, dynamic>>();
 
-      return [{'food_plan': foodPlan, 'exercise_plan': exercisePlan}];
+      return [
+        {'food_plan': foodPlan, 'exercise_plan': exercisePlan},
+      ];
     } catch (_) {
       return [];
     }
@@ -116,7 +120,11 @@ class PlanRepository {
 
     final startDateStr = plan['start_date'] as String;
     final startDate = DateTime.parse(startDateStr);
-    final date = DateTime(startDate.year, startDate.month, startDate.day + (dayNumber - 1));
+    final date = DateTime(
+      startDate.year,
+      startDate.month,
+      startDate.day + (dayNumber - 1),
+    );
 
     final payload = <String, dynamic>{
       'plan_id': planId,
@@ -148,12 +156,13 @@ class PlanRepository {
             ((existing['completed_exercises'] as List?) ?? const [])
                 .whereType<String>()
                 .toSet();
-        final prevFoods =
-            ((existing['completed_foods'] as List?) ?? const [])
-                .whereType<String>()
-                .toSet();
-        payload['completed_exercises'] =
-            {...prevExercises, ...completedExercises}.toList();
+        final prevFoods = ((existing['completed_foods'] as List?) ?? const [])
+            .whereType<String>()
+            .toSet();
+        payload['completed_exercises'] = {
+          ...prevExercises,
+          ...completedExercises,
+        }.toList();
         payload['completed_foods'] = {...prevFoods, ...completedFoods}.toList();
         payload['is_complete'] = existing['is_complete'] == true || isComplete;
         await client
@@ -169,7 +178,9 @@ class PlanRepository {
     }
   }
 
-  Future<List<Map<String, dynamic>>> getMemberCompletions(String memberId) async {
+  Future<List<Map<String, dynamic>>> getMemberCompletions(
+    String memberId,
+  ) async {
     try {
       final response = await _supabase.client
           .from('plan_day_completions')
@@ -177,43 +188,97 @@ class PlanRepository {
           .eq('member_id', memberId)
           .order('day_number', ascending: true);
 
-      return (response as List<dynamic>)
-          .cast<Map<String, dynamic>>();
+      return (response as List<dynamic>).cast<Map<String, dynamic>>();
     } catch (_) {
       return [];
     }
   }
 
-  Future<List<Map<String, dynamic>>> getTrainerPlanRecords(String trainerId) async {
+  Future<List<Map<String, dynamic>>> getTrainerPlanRecords(
+    String trainerId,
+  ) async {
     try {
       final plansResponse = await _supabase.client
           .from('member_goal_plans')
           .select(
-            'id, member_id, start_date, end_date, food_plan, exercise_plan, notes, created_at, profiles!member_id(full_name)',
+            'id, member_id, start_date, end_date, food_plan, exercise_plan, notes, created_at, status, profiles!member_id(full_name)',
           )
           .eq('trainer_id', trainerId)
           .order('start_date', ascending: false);
 
-      final plans = (plansResponse as List<dynamic>).cast<Map<String, dynamic>>();
+      final plans = (plansResponse as List<dynamic>)
+          .cast<Map<String, dynamic>>();
 
       final result = <Map<String, dynamic>>[];
       for (final plan in plans) {
         final completions = await _supabase.client
             .from('plan_day_completions')
-            .select('day_number, is_complete')
+            .select('day_number, completed_exercises, completed_foods')
             .eq('plan_id', plan['id'] as String)
             .order('day_number', ascending: true);
-
-        final completedDays = (completions as List<dynamic>?)
-                ?.where((c) => (c as Map)['is_complete'] == true)
-                .length ??
-            0;
+        final foodPlan = (plan['food_plan'] as List?) ?? const [];
+        final exercisePlan = (plan['exercise_plan'] as List?) ?? const [];
+        final totalDays = foodPlan.length > exercisePlan.length
+            ? foodPlan.length
+            : exercisePlan.length;
+        final start = DateTime.tryParse(plan['start_date']?.toString() ?? '');
+        final now = DateTime.now();
+        final today = DateTime(now.year, now.month, now.day);
+        final completedByDay = <int, Map>{
+          for (final row in completions) (row['day_number'] as int): row,
+        };
+        var completedDays = 0;
+        for (var day = 1; day <= totalDays; day++) {
+          if (start == null ||
+              DateTime(
+                start.year,
+                start.month,
+                start.day,
+              ).add(Duration(days: day - 1)).isAfter(today)) {
+            continue;
+          }
+          final foodGroup = foodPlan
+              .whereType<Map>()
+              .cast<Map>()
+              .where((g) => g['day'] == day)
+              .firstOrNull;
+          final exerciseGroup = exercisePlan
+              .whereType<Map>()
+              .cast<Map>()
+              .where((g) => g['day'] == day)
+              .firstOrNull;
+          final plannedFoods = (foodGroup?['foods'] as List? ?? const [])
+              .whereType<Map>()
+              .toList();
+          final plannedExercises =
+              (exerciseGroup?['exercises'] as List? ?? const [])
+                  .whereType<Map>()
+                  .toList();
+          final completion = completedByDay[day];
+          if (completion == null ||
+              plannedFoods.isEmpty ||
+              plannedExercises.isEmpty) {
+            continue;
+          }
+          final doneFoods =
+              ((completion['completed_foods'] as List?) ?? const [])
+                  .whereType<String>()
+                  .toList();
+          final doneExercises =
+              ((completion['completed_exercises'] as List?) ?? const [])
+                  .whereType<String>()
+                  .toList();
+          if (_allPlannedItemsDone(plannedFoods, doneFoods) &&
+              _allPlannedItemsDone(plannedExercises, doneExercises)) {
+            completedDays++;
+          }
+        }
 
         result.add({
           'plan': plan,
           'completed_days': completedDays,
-          'total_days': 7,
-          'completion_pct': completedDays / 7,
+          'total_days': totalDays.clamp(1, 7),
+          'completion_pct': completedDays / totalDays.clamp(1, 7),
         });
       }
 
@@ -223,12 +288,27 @@ class PlanRepository {
     }
   }
 
+  bool _allPlannedItemsDone(List<Map> planned, List<String> completed) {
+    String normalize(String value) =>
+        value.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+    final done = completed.map(normalize).toList();
+    return planned.every((item) {
+      final name = normalize(item['name']?.toString() ?? '');
+      return name.isNotEmpty &&
+          done.any(
+            (entry) =>
+                entry == name || entry.contains(name) || name.contains(entry),
+          );
+    });
+  }
+
   Future<Map<String, dynamic>?> getPlanByMember(String memberId) async {
     try {
       final response = await _supabase.client
           .from('member_goal_plans')
           .select()
           .eq('member_id', memberId)
+          .eq('status', 'active')
           .order('start_date', ascending: false)
           .limit(1)
           .maybeSingle();
@@ -240,7 +320,10 @@ class PlanRepository {
     }
   }
 
-  Future<List<Map<String, dynamic>>> getPlanCompletionDays(String planId, String memberId) async {
+  Future<List<Map<String, dynamic>>> getPlanCompletionDays(
+    String planId,
+    String memberId,
+  ) async {
     try {
       final response = await _supabase.client
           .from('plan_day_completions')
@@ -253,5 +336,15 @@ class PlanRepository {
     } catch (_) {
       return [];
     }
+  }
+
+  Future<void> cancelPlan(String planId) async {
+    await _supabase.client
+        .from('member_goal_plans')
+        .update({
+          'status': 'cancelled',
+          'updated_at': DateTime.now().toIso8601String(),
+        })
+        .eq('id', planId);
   }
 }

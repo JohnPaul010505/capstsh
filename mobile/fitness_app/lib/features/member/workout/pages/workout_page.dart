@@ -6,6 +6,7 @@ import '../../calendar/providers/month_entries_provider.dart';
 import '../../home/pages/home_page.dart';
 import '../workout_constants.dart';
 import 'package:shared/services/supabase_client.dart';
+import 'package:shared/providers/auth_provider.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../shared/widgets/app_glow_background.dart';
 import '../../../shared/widgets/proof_video_viewer.dart';
@@ -33,16 +34,28 @@ class WorkoutPage extends ConsumerStatefulWidget {
   ConsumerState<WorkoutPage> createState() => _WorkoutPageState();
 }
 
-class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingObserver {
+class _WorkoutPageState extends ConsumerState<WorkoutPage>
+    with WidgetsBindingObserver {
   bool _showPrevCards = false;
   bool _showCompletionMessage = false;
-  String? _accountId;
+  late final _totalWorkoutsProvider = FutureProvider.autoDispose
+      .family<int, String>((ref, memberId) async {
+        final activeId = ref.watch(activeUserIdProvider);
+        final authUid = SupabaseClientService().client.auth.currentUser?.id;
+        if (memberId.isEmpty || memberId != activeId || memberId != authUid) {
+          return 0;
+        }
+        final rows = await SupabaseClientService().client
+            .from('workout_logs')
+            .select('id')
+            .eq('member_id', memberId);
+        return (rows as List).length;
+      });
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _accountId = SupabaseClientService().client.auth.currentUser?.id;
     // New calendar day starts blank: yesterday's in-progress input is dropped
     // here (history stays in workout_logs / calendar views).
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -61,7 +74,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
       setState(() {
         _showPrevCards = true;
         final session = ref.read(workoutSessionProvider);
-        if (session.completedSessionCount >= WorkoutConstants.minSessionsPerDay) {
+        if (session.completedSessionCount >=
+            WorkoutConstants.minSessionsPerDay) {
           _showCompletionMessage = true;
         }
       });
@@ -70,7 +84,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
       // App going to background — persist any in-progress exercises.
       ref.read(workoutSessionProvider.notifier).persistSession().then((_) {});
     } else if (state == AppLifecycleState.resumed) {
@@ -85,10 +100,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
   /// nobody is watching hands back an unresolved `AsyncValue` whose `.value`
   /// is null — the old code returned right there, which is why tapping the
   /// logo did nothing at all. Awaiting `.future` loads it on demand.
-  Future<void> _openDayOnePlanSheet(
-    BuildContext context,
-    WidgetRef ref,
-  ) async {
+  Future<void> _openDayOnePlanSheet(BuildContext context, WidgetRef ref) async {
     final overlay = ref.read(planOverlayControllerProvider);
     if (overlay.isOpen) {
       overlay.close();
@@ -125,7 +137,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
     final monthStart = DateTime(now.year, now.month, 1);
     final userId = SupabaseClientService().client.auth.currentUser!.id;
     ref.invalidate(monthEntriesProvider((userId, monthStart)));
-    ref.invalidate(homeDataProvider);
+    if (userId.isNotEmpty) ref.invalidate(_totalWorkoutsProvider(userId));
+    ref.invalidate(homeDataProvider(userId));
   }
 
   void _showMinSessionsWarning() {
@@ -136,8 +149,13 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
       builder: (ctx) => AlertDialog(
         backgroundColor: ClayTokens.clayDarkSurface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Minimum 3 Sessions Required',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFFF2F5F7)),
+        title: const Text(
+          'Minimum 3 Sessions Required',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFFF2F5F7),
+          ),
         ),
         content: Text(
           'You\'ve completed ${session.sessionCount} session${session.sessionCount == 1 ? '' : 's'} today. '
@@ -147,14 +165,20 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Continue Working Out', style: TextStyle(color: Color(0xFFD6A5FF))),
+            child: const Text(
+              'Continue Working Out',
+              style: TextStyle(color: Color(0xFFD6A5FF)),
+            ),
           ),
           TextButton(
             onPressed: () {
               Navigator.of(ctx).pop();
               Navigator.of(context).pop();
             },
-            child: const Text('Leave Anyway', style: TextStyle(color: Color(0xFF636366))),
+            child: const Text(
+              'Leave Anyway',
+              style: TextStyle(color: Color(0xFF636366)),
+            ),
           ),
         ],
       ),
@@ -163,18 +187,10 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
 
   @override
   Widget build(BuildContext context) {
-    // Account changed (trainer -> member on the same device): drop the
-    // previous user's in-progress input. DB history is untouched.
-    final currentId = SupabaseClientService().client.auth.currentUser?.id;
-    if (currentId != null && currentId != _accountId) {
-      _accountId = currentId;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          ref.read(workoutSessionProvider.notifier).clearOnAccountSwitch();
-        }
-      });
-    }
+    final currentId = ref.watch(activeUserIdProvider) ?? '';
     final session = ref.watch(workoutSessionProvider);
+    final totalWorkouts =
+        ref.watch(_totalWorkoutsProvider(currentId)).valueOrNull ?? 0;
     final notifier = ref.read(workoutSessionProvider.notifier);
     final isRunning = session.isRunning;
     final ended = session.sessionEnded;
@@ -184,7 +200,9 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
       if (next.lastPersistSuccess == false && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Failed to save workout. Please check your connection.'),
+            content: Text(
+              'Failed to save workout. Please check your connection.',
+            ),
             backgroundColor: Color(0xFFFF453A),
             duration: Duration(seconds: 3),
           ),
@@ -192,7 +210,9 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
       }
       // Reactive invalidation: when a session completes and persists successfully,
       // refresh home and calendar data.
-      if (prev?.sessionEnded == false && next.sessionEnded == true && next.lastPersistSuccess == true) {
+      if (prev?.sessionEnded == false &&
+          next.sessionEnded == true &&
+          next.lastPersistSuccess == true) {
         _invalidateProviders();
       }
     });
@@ -219,94 +239,98 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage> with WidgetsBindingOb
             // makes it impossible to drag the logo underneath the nav bar.
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final bounds =
-                    Size(constraints.maxWidth, constraints.maxHeight);
+                final bounds = Size(
+                  constraints.maxWidth,
+                  constraints.maxHeight,
+                );
                 return Stack(
                   children: [
-                ListView(
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  physics: const ClampingScrollPhysics(),
-                  children: [
-                    const SizedBox(height: 14),
-                    WorkoutHeader(
-                      session: session,
-                      onDateTap: () => showCalendarFlipSheet(
-                        context,
-                        selected: DateTime.now(),
-                        today: DateTime.now(),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    WorkoutClockCard(session: session, notifier: notifier),
-                    const SizedBox(height: 8),
-                    if (ended) ...[
-                      if (_showPrevCards && session.completedSessions.length > 1) ...[
-                        _PreviousSessionCards(
+                    ListView(
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      physics: const ClampingScrollPhysics(),
+                      children: [
+                        const SizedBox(height: 14),
+                        WorkoutHeader(
                           session: session,
-                          showCompletionMessage: _showCompletionMessage,
-                          onViewProof: (s) {
-                            final url = s.exerciseProofUrls.firstWhere(
-                              (u) => u != null && u.isNotEmpty,
-                              orElse: () => '',
-                            );
-                            if (url != null && url.isNotEmpty) {
-                              showProofVideoDialog(context, url);
-                            }
-                          },
+                          totalWorkouts: totalWorkouts,
+                          onDateTap: () => showCalendarFlipSheet(
+                            context,
+                            selected: DateTime.now(),
+                            today: DateTime.now(),
+                          ),
                         ),
-                        const SizedBox(height: 16),
-                      ],
-                      WorkoutSummary(
-                        session: session,
-                        notifier: notifier,
-                        showPrevCards: _showPrevCards,
-                        onShowPrevCards: _showPreviousCards,
-                        onInvalidateProviders: _invalidateProviders,
-                      ),
-                    ]
-                    else ...[
-                      if (!isRunning) ...[
-                        WorkoutAddForm(notifier: notifier),
                         const SizedBox(height: 8),
+                        WorkoutClockCard(session: session, notifier: notifier),
+                        const SizedBox(height: 8),
+                        if (ended) ...[
+                          if (_showPrevCards &&
+                              session.completedSessions.length > 1) ...[
+                            _PreviousSessionCards(
+                              session: session,
+                              showCompletionMessage: _showCompletionMessage,
+                              onViewProof: (s) {
+                                final url = s.exerciseProofUrls.firstWhere(
+                                  (u) => u != null && u.isNotEmpty,
+                                  orElse: () => '',
+                                );
+                                if (url != null && url.isNotEmpty) {
+                                  showProofVideoDialog(context, url);
+                                }
+                              },
+                            ),
+                            const SizedBox(height: 16),
+                          ],
+                          WorkoutSummary(
+                            session: session,
+                            notifier: notifier,
+                            showPrevCards: _showPrevCards,
+                            onShowPrevCards: _showPreviousCards,
+                            onInvalidateProviders: _invalidateProviders,
+                          ),
+                        ] else ...[
+                          if (!isRunning) ...[
+                            WorkoutAddForm(notifier: notifier),
+                            const SizedBox(height: 8),
+                          ],
+                          WorkoutExerciseList(
+                            session: session,
+                            notifier: notifier,
+                          ),
+                        ],
+                        const SizedBox(height: 96),
                       ],
-                      WorkoutExerciseList(session: session, notifier: notifier),
-                    ],
-                    const SizedBox(height: 96),
-                  ],
-                ),
-                if (session.idleWarning)
-                  WorkoutIdleOverlay(session: session, notifier: notifier),
-                // No Positioned.fill wrapper: it would swallow touches over
-                // the whole screen. The logo positions itself, so only its
-                // own pixels hit-test — drags start on the logo directly.
-                Consumer(
-                  builder: (context, ref, _) {
-                      if (!(ref.watch(hasActivePlanProvider).value ??
-                          false)) {
-                        return const SizedBox.shrink();
-                      }
-                      final logoPos =
-                          ref.watch(floatingLogoPositionProvider);
-                      final f = logoPos.clampedFraction(bounds);
-                      return Positioned(
-                        left: f.dx * bounds.width,
-                        top: f.dy * bounds.height,
-                        child: PlanFloatingLogo(
-                          memberId: SupabaseClientService()
-                              .client
-                              .auth
-                              .currentUser!
-                              .id,
-                          isExpanded: ref
-                              .watch(planOverlayControllerProvider)
-                              .isOpen,
-                          bounds: bounds,
-                          onTap: () =>
-                              _openDayOnePlanSheet(context, ref),
-                        ),
-                      );
-                    },
-                  ),
+                    ),
+                    if (session.idleWarning)
+                      WorkoutIdleOverlay(session: session, notifier: notifier),
+                    // No Positioned.fill wrapper: it would swallow touches over
+                    // the whole screen. The logo positions itself, so only its
+                    // own pixels hit-test — drags start on the logo directly.
+                    Consumer(
+                      builder: (context, ref, _) {
+                        if (!(ref.watch(hasActivePlanProvider).value ??
+                            false)) {
+                          return const SizedBox.shrink();
+                        }
+                        final logoPos = ref.watch(floatingLogoPositionProvider);
+                        final f = logoPos.clampedFraction(bounds);
+                        return Positioned(
+                          left: f.dx * bounds.width,
+                          top: f.dy * bounds.height,
+                          child: PlanFloatingLogo(
+                            memberId: SupabaseClientService()
+                                .client
+                                .auth
+                                .currentUser!
+                                .id,
+                            isExpanded: ref
+                                .watch(planOverlayControllerProvider)
+                                .isOpen,
+                            bounds: bounds,
+                            onTap: () => _openDayOnePlanSheet(context, ref),
+                          ),
+                        );
+                      },
+                    ),
                   ],
                 );
               },
@@ -332,198 +356,273 @@ class _PreviousSessionCards extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final previous = session.completedSessions.length > 1
-        ? session.completedSessions.sublist(0, session.completedSessions.length - 1)
+        ? session.completedSessions.sublist(
+            0,
+            session.completedSessions.length - 1,
+          )
         : <CompletedSession>[];
     final widgets = <Widget>[];
     if (showCompletionMessage) {
-      widgets.add(_buildCongratsBanner('Congratulations for Completing all the Workouts'));
+      widgets.add(
+        _buildCongratsBanner('Congratulations for Completing all the Workouts'),
+      );
     }
-    widgets.addAll(previous.map((s) {
-      return Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1C1C2E),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFF2A2A45)),
-          gradient: RadialGradient(
-            center: Alignment(0.9, -0.9),
-            radius: 1.2,
-            colors: [
-              Color(0xFF7C3AED).withAlpha(60),
-              Color(0xFF1C1C2E),
-            ],
+    widgets.addAll(
+      previous.map((s) {
+        return Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1C1C2E),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFF2A2A45)),
+            gradient: RadialGradient(
+              center: Alignment(0.9, -0.9),
+              radius: 1.2,
+              colors: [Color(0xFF7C3AED).withAlpha(60), Color(0xFF1C1C2E)],
+            ),
           ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Text(
-                  'Workout Complete',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFFFFFFFF)),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: ClayTokens.clayAccent.withAlpha(25),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    s.workoutName,
-                    style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: ClayTokens.clayAccentLight),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 3),
-            const Text(
-              'Great job! Here\'s your session summary.',
-              style: TextStyle(fontSize: 10, color: Color(0xFFB4B4D0)),
-            ),
-            const SizedBox(height: 12),
-            Container(height: 1, color: const Color(0xFF2A2A45)),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white.withAlpha(8),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withAlpha(12)),
-              ),
-              child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
-                  const Icon(Icons.timer_outlined, size: 16, color: Color(0xFFD6A5FF)),
-                  const SizedBox(width: 8),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Session Duration', style: TextStyle(
-                        fontSize: 10, color: Color(0xFF8E8E93),
-                      )),
-                      Text(
-                        _format(s.elapsedSeconds),
-                        style: const TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFFFFFFFF),
-                        ),
-                      ),
-                    ],
+                  const Text(
+                    'Workout Complete',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFFFFFFFF),
+                    ),
                   ),
-                  const Spacer(),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      const Text('Total Calories', style: TextStyle(
-                        fontSize: 10, color: Color(0xFF8E8E93),
-                      )),
-                      Text(
-                        '${s.totalCalories} kcal',
-                        style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFFFF9F0A),
-                        ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: ClayTokens.clayAccent.withAlpha(25),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      s.workoutName,
+                      style: TextStyle(
+                        fontSize: 8,
+                        fontWeight: FontWeight.w700,
+                        color: ClayTokens.clayAccentLight,
                       ),
-                    ],
+                    ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 12),
-            ...List.generate(s.exerciseNames.length, (i) {
-              final name = s.exerciseNames[i];
-              final kcal = i < s.exerciseCalories.length ? s.exerciseCalories[i] : null;
-              final proofUrl = i < s.exerciseProofUrls.length ? s.exerciseProofUrls[i] : null;
-              final hasVideo = proofUrl != null;
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(6),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.white.withAlpha(10)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 20, height: 20,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: hasVideo
-                                  ? const LinearGradient(colors: [Color(0xFF7C3AED), Color(0xFFC56BF0)])
-                                  : null,
-                              color: hasVideo ? null : const Color(0xFF3A3A4A),
-                            ),
-                            child: Icon(
-                              hasVideo ? Icons.check : Icons.close,
-                              size: 12,
-                              color: hasVideo ? Colors.white : const Color(0xFF8E8E93),
-                            ),
+              const SizedBox(height: 3),
+              const Text(
+                'Great job! Here\'s your session summary.',
+                style: TextStyle(fontSize: 10, color: Color(0xFFB4B4D0)),
+              ),
+              const SizedBox(height: 12),
+              Container(height: 1, color: const Color(0xFF2A2A45)),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withAlpha(8),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white.withAlpha(12)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.timer_outlined,
+                      size: 16,
+                      color: Color(0xFFD6A5FF),
+                    ),
+                    const SizedBox(width: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Session Duration',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Color(0xFF8E8E93),
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(name, style: const TextStyle(
-                                  fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFFF2F5F7),
-                                )),
-                                if (i < s.exerciseCategories.length && s.exerciseCategories[i].isNotEmpty)
-                                  Text(s.exerciseCategories[i], style: const TextStyle(
-                                    fontSize: 10, color: Color(0xFF8E8E93),
-                                  )),
-                              ],
-                            ),
+                        ),
+                        Text(
+                          _format(s.elapsedSeconds),
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFFFFFFFF),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          _summaryStat(icon: Icons.local_fire_department_outlined, value: '${kcal ?? 0} kcal', color: const Color(0xFFFF9F0A)),
-                          const Spacer(),
-                          if (hasVideo)
-                            GestureDetector(
-                              onTap: () => onViewProof(s),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      const Color(0xFF7C3AED).withAlpha(50),
-                                      const Color(0xFFC56BF0).withAlpha(30),
-                                    ],
-                                  ),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: const Color(0xFF7C3AED).withAlpha(100)),
-                                ),
-                                child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.play_circle_outline, size: 12, color: Color(0xFFD6A5FF)),
-                                    SizedBox(width: 3),
-                                    Text('View', style: TextStyle(
-                                      fontSize: 9, fontWeight: FontWeight.w600, color: Color(0xFFD6A5FF),
-                                    )),
-                                  ],
-                                ),
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        const Text(
+                          'Total Calories',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Color(0xFF8E8E93),
+                          ),
+                        ),
+                        Text(
+                          '${s.totalCalories} kcal',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFFFF9F0A),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              ...List.generate(s.exerciseNames.length, (i) {
+                final name = s.exerciseNames[i];
+                final kcal = i < s.exerciseCalories.length
+                    ? s.exerciseCalories[i]
+                    : null;
+                final proofUrl = i < s.exerciseProofUrls.length
+                    ? s.exerciseProofUrls[i]
+                    : null;
+                final hasVideo = proofUrl != null;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withAlpha(6),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white.withAlpha(10)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 20,
+                              height: 20,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: hasVideo
+                                    ? const LinearGradient(
+                                        colors: [
+                                          Color(0xFF7C3AED),
+                                          Color(0xFFC56BF0),
+                                        ],
+                                      )
+                                    : null,
+                                color: hasVideo
+                                    ? null
+                                    : const Color(0xFF3A3A4A),
+                              ),
+                              child: Icon(
+                                hasVideo ? Icons.check : Icons.close,
+                                size: 12,
+                                color: hasVideo
+                                    ? Colors.white
+                                    : const Color(0xFF8E8E93),
                               ),
                             ),
-                        ],
-                      ),
-                    ],
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    name,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFFF2F5F7),
+                                    ),
+                                  ),
+                                  if (i < s.exerciseCategories.length &&
+                                      s.exerciseCategories[i].isNotEmpty)
+                                    Text(
+                                      s.exerciseCategories[i],
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                        color: Color(0xFF8E8E93),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            _summaryStat(
+                              icon: Icons.local_fire_department_outlined,
+                              value: '${kcal ?? 0} kcal',
+                              color: const Color(0xFFFF9F0A),
+                            ),
+                            const Spacer(),
+                            if (hasVideo)
+                              GestureDetector(
+                                onTap: () => onViewProof(s),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        const Color(0xFF7C3AED).withAlpha(50),
+                                        const Color(0xFFC56BF0).withAlpha(30),
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: const Color(
+                                        0xFF7C3AED,
+                                      ).withAlpha(100),
+                                    ),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.play_circle_outline,
+                                        size: 12,
+                                        color: Color(0xFFD6A5FF),
+                                      ),
+                                      SizedBox(width: 3),
+                                      Text(
+                                        'View',
+                                        style: TextStyle(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFFD6A5FF),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              );
-            }),
-          ],
-        ),
-      );
-    }).toList());
+                );
+              }),
+            ],
+          ),
+        );
+      }).toList(),
+    );
     return Column(children: widgets);
   }
 
@@ -533,15 +632,24 @@ class _PreviousSessionCards extends StatelessWidget {
     return m > 0 ? '${m}m ${sec}s' : '${sec}s';
   }
 
-  Widget _summaryStat({required IconData icon, required String value, required Color color}) {
+  Widget _summaryStat({
+    required IconData icon,
+    required String value,
+    required Color color,
+  }) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, size: 12, color: color),
         const SizedBox(width: 3),
-        Text(value, style: TextStyle(
-          fontSize: 11, fontWeight: FontWeight.w600, color: color,
-        )),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: color,
+          ),
+        ),
       ],
     );
   }

@@ -6,6 +6,7 @@ import 'package:shared/services/supabase_client.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../../features/shared/widgets/app_glow_background.dart';
 import '../../../../features/shared/widgets/glass_card.dart';
+import '../../../../features/shared/widgets/glass_confirm_dialog.dart';
 import '../data/plan_repository.dart';
 
 String _normPlanName(String s) =>
@@ -29,11 +30,8 @@ bool _planNameLogged(String name, Set<String> logged) {
 /// they happened, inside the plan window [startDate, endDate]. Crossing is
 /// per-day: Day N only crosses items logged on Day N's date, so two days that
 /// both list "Bench Press" no longer cross together.
-Future<(Map<String, Set<String>>, Map<String, Set<String>>)> _fetchCompletedByDay(
-  String memberId,
-  String startDate,
-  String endDate,
-) async {
+Future<(Map<String, Set<String>>, Map<String, Set<String>>)>
+_fetchCompletedByDay(String memberId, String startDate, String endDate) async {
   try {
     final start = DateTime.parse(startDate).toUtc();
     final end = DateTime.parse(endDate).add(const Duration(days: 1)).toUtc();
@@ -53,22 +51,27 @@ Future<(Map<String, Set<String>>, Map<String, Set<String>>)> _fetchCompletedByDa
         .lt('meal_time', end.toIso8601String())
         .limit(2000);
 
-    String dayOf(dynamic stamp) =>
-        DateTime.parse(stamp.toString()).toLocal().toIso8601String().split('T').first;
+    String dayOf(dynamic stamp) => DateTime.parse(
+      stamp.toString(),
+    ).toLocal().toIso8601String().split('T').first;
 
     final workoutByDay = <String, Set<String>>{};
     for (final r in workouts as List) {
       final m = r as Map;
       final name = (m['exercise_name'] ?? '').toString();
       if (name.isEmpty) continue;
-      workoutByDay.putIfAbsent(dayOf(m['logged_at']), () => <String>{}).add(_normPlanName(name));
+      workoutByDay
+          .putIfAbsent(dayOf(m['logged_at']), () => <String>{})
+          .add(_normPlanName(name));
     }
     final foodByDay = <String, Set<String>>{};
     for (final r in meals as List) {
       final m = r as Map;
       final name = (m['food_name'] ?? '').toString();
       if (name.isEmpty) continue;
-      foodByDay.putIfAbsent(dayOf(m['meal_time']), () => <String>{}).add(_normPlanName(name));
+      foodByDay
+          .putIfAbsent(dayOf(m['meal_time']), () => <String>{})
+          .add(_normPlanName(name));
     }
     return (workoutByDay, foodByDay);
   } catch (_) {
@@ -97,6 +100,73 @@ class RecordDetailScreen extends ConsumerStatefulWidget {
 
 class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
   _RecordTab _tab = _RecordTab.workout;
+  String? _pendingCancellationPlanId;
+  bool _requestingCancellation = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCancellationRequest();
+  }
+
+  Future<void> _loadCancellationRequest() async {
+    final client = SupabaseClientService().client;
+    final memberId = client.auth.currentUser?.id;
+    if (memberId == null || memberId != widget.memberId) return;
+    try {
+      final request = await client
+          .from('trainer_plan_cancellation_requests')
+          .select('plan_id')
+          .eq('member_id', memberId)
+          .eq('status', 'pending')
+          .limit(1)
+          .maybeSingle();
+      if (mounted && request != null) {
+        setState(
+          () => _pendingCancellationPlanId = request['plan_id'] as String?,
+        );
+      }
+    } catch (_) {
+      // The plan remains readable if the request migration is not deployed.
+    }
+  }
+
+  Future<void> _requestPlanCancellation(Map<String, dynamic> plan) async {
+    final confirmed = await showGlassConfirmDialog(
+      context,
+      title: 'Request plan cancellation?',
+      message: 'Your trainer will be notified and review your request.',
+      keepLabel: 'Keep plan',
+      confirmLabel: 'Send request',
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _requestingCancellation = true);
+    try {
+      final client = SupabaseClientService().client;
+      final memberId = client.auth.currentUser!.id;
+      final trainerId = plan['trainer_id'] as String;
+      await client.from('trainer_plan_cancellation_requests').insert({
+        'plan_id': plan['id'],
+        'member_id': memberId,
+        'trainer_id': trainerId,
+        'status': 'pending',
+      });
+      if (!mounted) return;
+      setState(() => _pendingCancellationPlanId = plan['id'] as String);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cancellation request sent to your trainer.'),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not send cancellation request: $error')),
+      );
+    } finally {
+      if (mounted) setState(() => _requestingCancellation = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -121,7 +191,10 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
                       child: Center(
                         child: Text(
                           'No plan assigned yet',
-                          style: TextStyle(fontSize: 14, color: Color(0xFF8E8E93)),
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF8E8E93),
+                          ),
                         ),
                       ),
                     ),
@@ -131,38 +204,49 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
 
               final startDate = plan['start_date'] as String? ?? '';
               final endDate = plan['end_date'] as String? ?? '';
-              final notes = plan['notes'] as String?;
-              final foodPlan = (plan['food_plan'] as List<dynamic>?) ?? const [];
-              final exercisePlan = (plan['exercise_plan'] as List<dynamic>?) ?? const [];
+              final foodPlan =
+                  (plan['food_plan'] as List<dynamic>?) ?? const [];
+              final exercisePlan =
+                  (plan['exercise_plan'] as List<dynamic>?) ?? const [];
 
-              return FutureBuilder<(Map<String, Set<String>>, Map<String, Set<String>>)>(
-                future: _fetchCompletedByDay(widget.memberId, startDate, endDate),
+              return FutureBuilder<
+                (Map<String, Set<String>>, Map<String, Set<String>>)
+              >(
+                future: _fetchCompletedByDay(
+                  widget.memberId,
+                  startDate,
+                  endDate,
+                ),
                 builder: (context, doneSnap) {
-                  final workoutByDay = doneSnap.data?.$1 ?? const <String, Set<String>>{};
-                  final foodByDay = doneSnap.data?.$2 ?? const <String, Set<String>>{};
+                  final workoutByDay =
+                      doneSnap.data?.$1 ?? const <String, Set<String>>{};
+                  final foodByDay =
+                      doneSnap.data?.$2 ?? const <String, Set<String>>{};
                   final base = _safeParse(startDate);
 
                   final workoutSections = _buildSections(
                     exercisePlan,
                     'exercises',
                     base,
-                    (row, dayKey) => _exerciseItem(row, workoutByDay[dayKey] ?? const {}),
+                    (row, dayKey) =>
+                        _exerciseItem(row, workoutByDay[dayKey] ?? const {}),
                   );
-                  final foodSections = _buildSections(
-                    foodPlan,
-                    'foods',
-                    base,
-                    (row, dayKey) {
-                      final name = (row['name'] ?? '').toString();
-                      return (
-                        text: name,
-                        done: name.isNotEmpty &&
-                            _planNameLogged(name, foodByDay[dayKey] ?? const {}),
-                      );
-                    },
-                  );
+                  final foodSections = _buildSections(foodPlan, 'foods', base, (
+                    row,
+                    dayKey,
+                  ) {
+                    final name = (row['name'] ?? '').toString();
+                    return (
+                      text: name,
+                      done:
+                          name.isNotEmpty &&
+                          _planNameLogged(name, foodByDay[dayKey] ?? const {}),
+                    );
+                  });
 
-                  final sections = _tab == _RecordTab.workout ? workoutSections : foodSections;
+                  final sections = _tab == _RecordTab.workout
+                      ? workoutSections
+                      : foodSections;
                   final doneCount = sections.fold<int>(
                     0,
                     (s, x) => s + x.items.where((i) => i.done).length,
@@ -172,44 +256,121 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
                     children: [
                       _buildHeader(days: doneCount, total: sections.length),
                       Expanded(
-                        child: SingleChildScrollView(
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _tabPill(),
-                              const SizedBox(height: 12),
-                              Text(
-                                'Schedule: $startDate — $endDate',
-                                style: const TextStyle(fontSize: 13, color: Color(0xFF8E8E93)),
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 280),
+                          switchInCurve: Curves.easeOutCubic,
+                          switchOutCurve: Curves.easeInCubic,
+                          transitionBuilder: (child, animation) =>
+                              FadeTransition(
+                                opacity: animation,
+                                child: SlideTransition(
+                                  position: Tween<Offset>(
+                                    begin: const Offset(0.025, 0),
+                                    end: Offset.zero,
+                                  ).animate(animation),
+                                  child: child,
+                                ),
                               ),
-                              if (notes != null && notes.trim().isNotEmpty) ...[
+                          child: SingleChildScrollView(
+                            key: ValueKey(_tab),
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _tabPill(),
                                 const SizedBox(height: 12),
-                                GlassPanel(
-                                  padding: const EdgeInsets.all(12),
-                                  child: Text(
-                                    notes,
-                                    style: const TextStyle(fontSize: 13, color: Color(0xFFECECFC)),
+                                Text(
+                                  'Schedule: $startDate — $endDate',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Color(0xFF8E8E93),
                                   ),
                                 ),
-                              ],
-                              const SizedBox(height: 16),
-                              if (sections.isEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 24),
-                                  child: Center(
-                                    child: Text(
-                                      _tab == _RecordTab.workout
-                                          ? 'No exercises planned'
-                                          : 'No meals planned',
-                                      style: const TextStyle(fontSize: 14, color: Color(0xFF8E8E93)),
+                                if (SupabaseClientService()
+                                        .client
+                                        .auth
+                                        .currentUser
+                                        ?.id ==
+                                    widget.memberId) ...[
+                                  const SizedBox(height: 12),
+                                  GlassPanel(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 8,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            _pendingCancellationPlanId ==
+                                                    plan['id']
+                                                ? 'Cancellation request sent. Your plan stays active until reviewed.'
+                                                : 'Need to stop this plan? Request cancellation from your trainer.',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        if (_pendingCancellationPlanId !=
+                                            plan['id'])
+                                          CupertinoButton(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                              vertical: 6,
+                                            ),
+                                            color: const Color(0xFFDC2626),
+                                            onPressed: _requestingCancellation
+                                                ? null
+                                                : () =>
+                                                      _requestPlanCancellation(
+                                                        plan,
+                                                      ),
+                                            child: _requestingCancellation
+                                                ? const CupertinoActivityIndicator(
+                                                    color: Colors.white,
+                                                  )
+                                                : const Text(
+                                                    'Request',
+                                                    style: TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 12,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                    ),
+                                                  ),
+                                          ),
+                                      ],
                                     ),
                                   ),
-                                )
-                              else
-                                for (final s in sections)
-                                  _PlanDaySection(day: s.day, title: s.title, items: s.items),
-                            ],
+                                ],
+                                const SizedBox(height: 16),
+                                if (sections.isEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 24),
+                                    child: Center(
+                                      child: Text(
+                                        _tab == _RecordTab.workout
+                                            ? 'No exercises planned'
+                                            : 'No meals planned',
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          color: Color(0xFF8E8E93),
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  for (final s in sections)
+                                    _PlanDaySection(
+                                      day: s.day,
+                                      title: s.title,
+                                      items: s.items,
+                                      notes: s.notes,
+                                    ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -223,7 +384,6 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
       ),
     );
   }
-
 
   Widget _tabPill() {
     return Container(
@@ -253,7 +413,9 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             gradient: active
-                ? const LinearGradient(colors: [Color(0xFF7C3AED), Color(0xFF8B5CF6)])
+                ? const LinearGradient(
+                    colors: [Color(0xFF7C3AED), Color(0xFF8B5CF6)],
+                  )
                 : null,
             color: active ? null : Colors.transparent,
             borderRadius: BorderRadius.circular(11),
@@ -335,7 +497,6 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
     }
   }
 
-
   /// Groups a per-day plan column (`[{day, exercises|foods: [...]}, ...]`) into
   /// day sections. `doneFor` computes each row's done state from that day's
   /// bucketed log set (per-day crossing). Tolerates a legacy flat shape.
@@ -346,10 +507,13 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
     ({String text, bool done}) Function(Map, String) doneFor,
   ) {
     final byDayNum = <int, List<Map>>{};
+    final notesByDay = <int, String>{};
     for (final group in planColumn) {
       if (group is! Map) continue;
       final dayNum = group['day'];
       if (dayNum is! int) continue;
+      final notes = group['notes']?.toString().trim() ?? '';
+      if (notes.isNotEmpty) notesByDay[dayNum] = notes;
       final nested = group[nestedKey];
       final rows = <Map>[];
       if (nested is List) {
@@ -370,17 +534,24 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
         if (item.text.trim().isNotEmpty) items.add(item);
       }
       if (items.isEmpty) continue;
-      sections.add(_SectionData(
-        day: dayNum,
-        title: nestedKey == 'foods' ? 'Meals' : 'Exercises',
-        items: items,
-      ));
+      sections.add(
+        _SectionData(
+          day: dayNum,
+          title: nestedKey == 'foods' ? 'Meals' : 'Exercises',
+          items: items,
+          notes: notesByDay[dayNum] ?? '',
+        ),
+      );
     }
     return sections;
   }
 
   String _dayKeyFor(DateTime base, int dayNum) {
-    final d = DateTime(base.year, base.month, base.day).add(Duration(days: dayNum - 1));
+    final d = DateTime(
+      base.year,
+      base.month,
+      base.day,
+    ).add(Duration(days: dayNum - 1));
     final y = d.year.toString().padLeft(4, '0');
     final m = d.month.toString().padLeft(2, '0');
     final day = d.day.toString().padLeft(2, '0');
@@ -392,7 +563,13 @@ class _SectionData {
   final int day;
   final String title;
   final List<({String text, bool done})> items;
-  _SectionData({required this.day, required this.title, required this.items});
+  final String notes;
+  _SectionData({
+    required this.day,
+    required this.title,
+    required this.items,
+    this.notes = '',
+  });
 }
 
 ({String text, bool done}) _exerciseItem(Map m, Set<String> workoutNames) {
@@ -411,18 +588,19 @@ class _SectionData {
   );
 }
 
-
 /// One day's block ("Day 1 · Exercises" / "Day 1 · Meals"). Items the member
 /// logged on that specific day render crossed out with a green check.
 class _PlanDaySection extends StatelessWidget {
   final int day;
   final String title;
   final List<({String text, bool done})> items;
+  final String notes;
 
   const _PlanDaySection({
     required this.day,
     required this.title,
     required this.items,
+    required this.notes,
   });
 
   @override
@@ -458,6 +636,13 @@ class _PlanDaySection extends StatelessWidget {
                   ),
               ],
             ),
+            if (notes.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Notes: $notes',
+                style: const TextStyle(fontSize: 12, color: Color(0xFFECECFC)),
+              ),
+            ],
             const SizedBox(height: 6),
             for (final item in items)
               Padding(
@@ -465,9 +650,13 @@ class _PlanDaySection extends StatelessWidget {
                 child: Row(
                   children: [
                     Icon(
-                      item.done ? Icons.check_circle : Icons.radio_button_unchecked,
+                      item.done
+                          ? Icons.check_circle
+                          : Icons.radio_button_unchecked,
                       size: 13,
-                      color: item.done ? const Color(0xFF30D158) : const Color(0xFF8E8E93),
+                      color: item.done
+                          ? const Color(0xFF30D158)
+                          : const Color(0xFF8E8E93),
                     ),
                     const SizedBox(width: 6),
                     Expanded(
@@ -475,8 +664,12 @@ class _PlanDaySection extends StatelessWidget {
                         item.text,
                         style: TextStyle(
                           fontSize: 13,
-                          decoration: item.done ? TextDecoration.lineThrough : TextDecoration.none,
-                          color: item.done ? const Color(0xFF8E8E93) : const Color(0xFFECECFC),
+                          decoration: item.done
+                              ? TextDecoration.lineThrough
+                              : TextDecoration.none,
+                          color: item.done
+                              ? const Color(0xFF8E8E93)
+                              : const Color(0xFFECECFC),
                         ),
                       ),
                     ),
@@ -489,4 +682,3 @@ class _PlanDaySection extends StatelessWidget {
     );
   }
 }
-

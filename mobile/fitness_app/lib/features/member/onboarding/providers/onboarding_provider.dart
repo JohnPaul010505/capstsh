@@ -7,19 +7,13 @@ final needsOnboardingProvider = FutureProvider<bool>((ref) async {
   if (profile == null || profile.role != 'member') return false;
 
   final client = SupabaseClientService().client;
-  final profileRow = await client
-      .from('profiles')
-      .select('gender')
-      .eq('id', profile.id)
-      .maybeSingle();
-  final gender = profileRow?['gender'] as String?;
-  if (gender != null && gender.trim().isNotEmpty) return false;
-
   final measurements = await client
       .from('body_measurements')
       .select('id')
       .eq('member_id', profile.id)
       .limit(1);
+  // Admin-created accounts may already have a gender value. Onboarding is
+  // complete only after the member has supplied their first measurements.
   return (measurements as List).isEmpty;
 });
 
@@ -34,10 +28,10 @@ class OnboardingService {
   }) async {
     final client = SupabaseClientService().client;
     final userId = client.auth.currentUser!.id;
-    await client.from('profiles').update({
-      'gender': gender,
-      'avatar_url': profileAsset,
-    }).eq('id', userId);
+    await client
+        .from('profiles')
+        .update({'gender': gender, 'avatar_url': profileAsset})
+        .eq('id', userId);
     await client.from('body_measurements').insert({
       'member_id': userId,
       'weight_kg': weightKg,

@@ -17,7 +17,6 @@
 /** Columns an admin may edit on a member from the detail page. */
 export type MemberEditableFields = {
   full_name?: string
-  email?: string
   phone?: string
   date_of_birth?: string
   gender?: string
@@ -29,7 +28,6 @@ export type MemberEditableFields = {
 /** Columns an admin may edit on a trainer from the detail page. */
 export type TrainerEditableFields = {
   full_name?: string
-  email?: string
   phone?: string
   specialty?: string
 }
@@ -60,51 +58,6 @@ export function normalizeProfileUpdates<T extends Record<string, unknown>>(
     out[key] = value
   }
   return out as Partial<T>
-}
-
-/**
- * Client-side guard so an obviously invalid edit never costs a round trip:
- * email is what the app logs in against, so it must at least look like one.
- */
-export function validateProfileUpdates(
-  updates: Record<string, unknown>,
-): string | null {
-  const email = updates.email
-  if (typeof email === 'string' && email.trim() !== '' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-    return 'Enter a valid email address.'
-  }
-  return null
-}
-
-/**
- * Mirrors an email edit into `auth.users`.
- *
- * The app resolves a member/trainer by `profiles.email` (lookup by code) and
- * then calls signInWithPassword with that address. Editing email in the admin
- * used to touch only `profiles`, leaving `auth.users` on the old address —
- * login then failed with "Invalid login credentials", which the app shows as
- * "Wrong password". profiles.email is the lookup source, so it wins: this
- * endpoint pushes it into GoTrue via the service-role key.
- *
- * Called by the member/trainer update hooks BEFORE the profiles write, so a
- * rejected change (e.g. address already taken by another auth user) blocks the
- * whole save instead of creating a fresh mismatch.
- */
-export async function syncAuthEmail(userId: string, email: string): Promise<void> {
-  const res = await fetch('/api/update-email', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId, email }),
-  })
-  if (!res.ok) {
-    let detail = ''
-    try {
-      detail = ((await res.json()) as { error?: string })?.error ?? ''
-    } catch {
-      // Non-JSON body (proxy error page) — fall through to the status message.
-    }
-    throw new Error(detail || `Could not sync the login email (${res.status}).`)
-  }
 }
 
 /** PostgREST/Postgres error -> one readable sentence for an inline banner. */

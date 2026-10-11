@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/providers/auth_provider.dart';
+import 'package:shared/services/supabase_client.dart';
 import '../features/auth/pages/login_page.dart';
 import '../features/member/home/pages/home_page.dart';
 import '../features/member/meals/pages/meal_log_page.dart';
@@ -9,6 +10,7 @@ import '../features/member/workout/pages/workout_page.dart';
 import '../features/member/chat/pages/chat_page.dart';
 import '../features/member/settings/pages/settings_page.dart';
 import '../features/member/membership/pages/membership_page.dart';
+import '../features/member/membership/pages/membership_cancellation_page.dart';
 import '../features/member/bmi/pages/bmi_page.dart';
 import '../features/member/goals/pages/goals_page.dart';
 import '../features/member/feedback/pages/feedback_page.dart';
@@ -30,6 +32,7 @@ import 'package:fitness_app/features/trainer/set_plan/pages/record_detail_screen
 import '../features/shared/checkin/checkin_page.dart';
 import '../features/shared/widgets/member_nav_bar.dart';
 import '../features/member/onboarding/pages/onboarding_splash_screen.dart';
+import '../features/member/onboarding/providers/onboarding_provider.dart';
 import '../features/shared/widgets/trainer_nav_bar.dart';
 
 Page<dynamic> _iosPush(Widget child) => CustomTransitionPage(
@@ -52,16 +55,15 @@ Page<dynamic> _iosPush(Widget child) => CustomTransitionPage(
   reverseTransitionDuration: const Duration(milliseconds: 250),
 );
 
-final needsOnboardingSyncProvider = Provider<bool>((ref) {
-  final profile = ref.watch(authProvider).valueOrNull;
-  if (profile == null || profile.role != 'member') return false;
-  final gender = profile.gender;
-  return gender == null || gender.trim().isEmpty;
-});
-
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
-  final needsOnboarding = ref.watch(needsOnboardingSyncProvider);
+  final onboardingState = ref.watch(needsOnboardingProvider);
+  final profile = authState.valueOrNull;
+  final needsOnboarding =
+      profile != null &&
+      profile.role == 'member' &&
+      (onboardingState.valueOrNull ??
+          (profile.gender == null || profile.gender!.trim().isEmpty));
 
   return GoRouter(
     initialLocation: '/login',
@@ -79,6 +81,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
       if (isLoggedIn && profile != null) {
         final loc = state.matchedLocation;
+        if (profile.role == 'member' &&
+            loc == '/member/onboarding' &&
+            !onboardingState.isLoading &&
+            onboardingState.valueOrNull == false) {
+          return '/member/home';
+        }
         if (needsOnboarding && loc != '/member/onboarding') {
           return '/member/onboarding';
         }
@@ -169,15 +177,30 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/member/checkin',
         pageBuilder: (_, __) => _iosPush(
-          const CheckinPage(
-            showBack: true,
-            returnRoute: '/member/home',
-          ),
+          const CheckinPage(showBack: true, returnRoute: '/member/home'),
         ),
       ),
       GoRoute(
         path: '/member/membership',
         pageBuilder: (_, __) => _iosPush(const MembershipPage()),
+      ),
+      GoRoute(
+        path: '/member/membership/cancel',
+        pageBuilder: (_, __) => _iosPush(const MembershipCancellationPage()),
+      ),
+      GoRoute(
+        path: '/member/trainer-plan',
+        pageBuilder: (_, __) {
+          final user = SupabaseClientService().client.auth.currentUser;
+          return _iosPush(
+            RecordDetailScreen(
+              memberId: user?.id ?? '',
+              memberName:
+                  user?.userMetadata?['full_name']?.toString() ??
+                  'My Trainer Plan',
+            ),
+          );
+        },
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
@@ -243,10 +266,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/trainer/checkin',
         pageBuilder: (_, __) => _iosPush(
-          const CheckinPage(
-            showBack: true,
-            returnRoute: '/trainer/dashboard',
-          ),
+          const CheckinPage(showBack: true, returnRoute: '/trainer/dashboard'),
         ),
       ),
       // Full-screen Member Progress (4 tabs: Overview / Workouts / Nutrition /
@@ -255,9 +275,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       // trainer came from (Members list, dashboard attention rows, …).
       GoRoute(
         path: '/trainer/members/:id',
-        pageBuilder: (_, state) => _iosPush(
-          MemberProgressTabsPage(id: state.pathParameters['id']!),
-        ),
+        pageBuilder: (_, state) =>
+            _iosPush(MemberProgressTabsPage(id: state.pathParameters['id']!)),
       ),
       // Member Insight overview (date-filtered roster). Reachable directly;
       // the dashboard also embeds it as the 4th burger-menu screen.
@@ -275,9 +294,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/trainer/insight/:id',
-        pageBuilder: (_, state) => _iosPush(
-          MemberInsightPage(id: state.pathParameters['id']!),
-        ),
+        pageBuilder: (_, state) =>
+            _iosPush(MemberInsightPage(id: state.pathParameters['id']!)),
       ),
       GoRoute(
         path: '/trainer/set-plan',
@@ -312,9 +330,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       // "<" pops back to the conversation list in the shell branch.
       GoRoute(
         path: '/trainer/chat/:roomId',
-        pageBuilder: (_, state) => _iosPush(
-          ChatRoomPage(roomId: state.pathParameters['roomId']!),
-        ),
+        pageBuilder: (_, state) =>
+            _iosPush(ChatRoomPage(roomId: state.pathParameters['roomId']!)),
       ),
     ],
   );

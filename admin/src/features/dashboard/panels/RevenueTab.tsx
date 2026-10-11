@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Banknote, CalendarRange, Receipt, TrendingUp } from 'lucide-react'
+import { Banknote, CalendarRange, Receipt, TrendingUp, Undo2 } from 'lucide-react'
 import KpiCard from '@/components/KpiCard'
 import RecordsTable, { type RecordsColumn } from '@/components/RecordsTable'
 import Badge from '@/components/Badge'
@@ -24,7 +24,7 @@ const peso = (n: number) => `₱${n.toLocaleString()}`
 
 export default function RevenueTab(props: TabPanelProps) {
   const { range, onRangeChange, plan, onPlanChange, grain, onGrainChange, grainOptions } = props
-  const { total, avg, days, transactions, peakDay, peakAmount, points, records, isLoading } =
+  const { total, refunds, net, avg, days, transactions, peakDay, peakAmount, points, records, isLoading } =
     useRevenueTab(range, plan, grain)
   const [search, setSearch] = useState('')
 
@@ -58,8 +58,10 @@ export default function RevenueTab(props: TabPanelProps) {
         }}
       />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
         <KpiCard isLoading={isLoading} title="Total Revenue" value={peso(total)} sub={formatRangeLabel(range)} icon={Banknote} tone="green" />
+        <KpiCard isLoading={isLoading} title="Approved Refunds" value={peso(refunds)} sub="Recorded cancellations" icon={Undo2} tone="amber" />
+        <KpiCard isLoading={isLoading} title="Net Revenue" value={peso(net)} sub="Revenue minus refunds" icon={Banknote} tone="purple" />
         <KpiCard isLoading={isLoading} title="Daily Revenue" value={peso(Math.round(avg))} sub={`${days} day${days === 1 ? '' : 's'} in range`} icon={TrendingUp} tone="blue" />
         <KpiCard isLoading={isLoading} title="Total Transactions" value={transactions.toLocaleString()} sub="Memberships started in range" icon={Receipt} tone="purple" />
         <KpiCard isLoading={isLoading}

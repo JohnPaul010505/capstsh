@@ -193,14 +193,26 @@ app.post('/api/assign-trainer', async (req, res) => {
   }
 
   try {
-    // End any other active assignment for this member first, so exactly one
-    // active row per member survives. Old rows stay for history.
-    const { error: endError } = await adminClient
+    const [{ data: trainer, error: trainerError }, { data: member, error: memberError }, { data: activeAssignments, error: assignmentsError }] = await Promise.all([
+      adminClient.from('profiles').select('id, role').eq('id', trainer_id).maybeSingle(),
+      adminClient.from('profiles').select('id, role').eq('id', member_id).maybeSingle(),
+      adminClient.from('trainer_assignments').select('id').eq('trainer_id', trainer_id).eq('status', 'active'),
+    ])
+    if (trainerError) throw trainerError
+    if (memberError) throw memberError
+    if (assignmentsError) throw assignmentsError
+    if (!trainer || trainer.role !== 'trainer') return res.status(404).json({ error: 'Trainer not found' })
+    if (!member || member.role !== 'member') return res.status(404).json({ error: 'Member not found' })
+    if ((activeAssignments ?? []).length >= 15) return res.status(409).json({ error: 'This trainer already has the maximum of 15 members.' })
+
+    const { data: existing, error: existingError } = await adminClient
       .from('trainer_assignments')
-      .update({ status: 'ended', ended_at: new Date().toISOString() })
+      .select('id')
       .eq('member_id', member_id)
       .eq('status', 'active')
-    if (endError) throw endError
+      .limit(1)
+    if (existingError) throw existingError
+    if (existing?.length) return res.status(409).json({ error: 'This member already has a trainer.' })
 
     const { data, error } = await adminClient
       .from('trainer_assignments')
@@ -212,7 +224,7 @@ app.post('/api/assign-trainer', async (req, res) => {
     res.json({ success: true, assignment: data })
   } catch (err) {
     console.error('Assign trainer error:', err)
-    res.status(500).json({ error: err?.message || 'Failed to assign trainer' })
+    res.status(err?.status || 500).json({ error: err?.message || 'Failed to assign trainer' })
   }
 })
 
@@ -455,35 +467,42 @@ app.post('/api/backfill-auth', async (req, res) => {
 
 app.post('/api/backfill-codes', async (req, res) => {
   try {
-    let mCounter = 1
-    const { data: members } = await adminClient
+    const { data: members, error: memberReadError } = await adminClient
       .from('profiles')
-      .select('id')
+      .select('id, code, created_at')
       .eq('role', 'member')
-      .is('code', null)
       .order('created_at', { ascending: true })
-
-    for (const m of members) {
-      const code = `M${String(mCounter).padStart(3, '0')}`
-      await adminClient.from('profiles').update({ code }).eq('id', m.id)
-      mCounter++
-    }
-
-    let tCounter = 1
-    const { data: trainers } = await adminClient
+    if (memberReadError) throw memberReadError
+    const { data: trainers, error: trainerReadError } = await adminClient
       .from('profiles')
-      .select('id')
+      .select('id, code, created_at')
       .eq('role', 'trainer')
-      .is('code', null)
       .order('created_at', { ascending: true })
+    if (trainerReadError) throw trainerReadError
 
-    for (const t of trainers) {
-      const code = `T${String(tCounter).padStart(3, '0')}`
-      await adminClient.from('profiles').update({ code }).eq('id', t.id)
-      tCounter++
+    const backfill = async (profiles, role) => {
+      let counter = Math.max(0, ...profiles.map(profile => Number(profile.code?.match(/(\d+)$/)?.[1] ?? 0)))
+      const missing = profiles.filter(item => !item.code)
+      for (const profile of missing) {
+        counter++
+        const marker = role === 'member' ? 'M' : 'T'
+        const width = role === 'member' ? 3 : 4
+        const parts = new Intl.DateTimeFormat('en-CA', {
+          timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit',
+        }).formatToParts(new Date(profile.created_at))
+        const year = parts.find(part => part.type === 'year')?.value
+        const month = parts.find(part => part.type === 'month')?.value
+        const code = `${month}-${marker}${String(counter).padStart(width, '0')}`
+        const { error } = await adminClient.from('profiles').update({ code }).eq('id', profile.id)
+        if (error) throw error
+      }
+      return missing.length
     }
 
-    res.json({ success: true, membersBackfilled: members.length, trainersBackfilled: trainers.length })
+    const membersBackfilled = await backfill(members, 'member')
+    const trainersBackfilled = await backfill(trainers, 'trainer')
+
+    res.json({ success: true, membersBackfilled, trainersBackfilled })
   } catch (err) {
     console.error('Backfill error:', err)
     res.status(500).json({ error: err?.message || 'Failed to backfill codes' })
@@ -512,8 +531,7 @@ app.post('/api/ai/predictions', async (req, res) => {
     /* AI service not running — use inline fallback */
   }
 
-  // Everything below is the offline fallback: same maths, same guardrails, but
-  // nothing is persisted (the client badges it "not persisted").
+  // The offline fallback uses the same maths and guardrails as the AI service.
   res.setHeader('x-forecast-source', 'fallback')
   const results = []
   const notes = []
@@ -602,6 +620,41 @@ app.post('/api/ai/predictions', async (req, res) => {
     return res.status(404).json({
       detail: 'Not enough data for predictions. ' + (notes.length ? notes.join(' ') : 'Log measurements and attendance first.'),
     })
+  }
+
+  // Keep offline estimates in the same history as AI-service results. The
+  // dashboard count and Recent Predictions then reflect every successful run.
+  const predictedDate = new Date(Date.now() + Number(days_ahead) * 86400000).toISOString().slice(0, 10)
+  for (const result of results) {
+    const row = {
+      member_id,
+      metric_name: result.prediction_type,
+      predicted_value: result.predicted_value,
+      predicted_date: predictedDate,
+      confidence: result.confidence,
+    }
+    const basis = {
+      current_value: result.current_value,
+      unit: result.unit,
+      data_points: result.data_points,
+      span_days: result.span_days,
+      date_from: result.date_from || null,
+      date_to: result.date_to || null,
+      daily_rate: result.daily_rate,
+      change: result.change,
+      clamped: result.clamped,
+      method: result.method,
+      note: result.note,
+    }
+    let { error } = await adminClient.from('predictions').insert({ ...row, ...basis })
+    if (error && (error.code === 'PGRST204' || /column .* not found|schema cache/i.test(error.message ?? ''))) {
+      const retry = await adminClient.from('predictions').insert(row)
+      error = retry.error
+    }
+    if (error) {
+      console.error('Could not save local prediction:', error)
+      return res.status(500).json({ error: 'Forecast was calculated but could not be saved to Recent Predictions.' })
+    }
   }
 
   res.json(results)

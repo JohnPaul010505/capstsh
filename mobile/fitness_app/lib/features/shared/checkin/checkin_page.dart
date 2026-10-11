@@ -19,11 +19,7 @@ class CheckinPage extends ConsumerStatefulWidget {
   /// Where the success screen returns to. Defaults to the home screen of the
   /// logged-in role (member home / trainer dashboard).
   final String? returnRoute;
-  const CheckinPage({
-    super.key,
-    this.showBack = true,
-    this.returnRoute,
-  });
+  const CheckinPage({super.key, this.showBack = true, this.returnRoute});
 
   @override
   ConsumerState<CheckinPage> createState() => _CheckinPageState();
@@ -35,7 +31,7 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
     detectionSpeed: DetectionSpeed.normal,
   );
   bool _processing = false;
-  bool _showScanner = true;
+  bool _showScanner = false;
   DateTime? _lastScanAt;
   bool _showSuccess = false;
   AttendanceToggleResult? _lastResult;
@@ -56,8 +52,9 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
     final profile = ref.read(authProvider).valueOrNull;
     if (profile == null) return;
     try {
-      final sessions =
-          await AttendanceService().todaySessions(memberId: profile.id);
+      final sessions = await AttendanceService().todaySessions(
+        memberId: profile.id,
+      );
       if (mounted) {
         setState(() {
           _todaySessions = sessions;
@@ -84,8 +81,9 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
       _statusMessage = null;
     });
 
-    final result =
-        await AttendanceService().toggleAttendance(memberId: profile.id);
+    final result = await AttendanceService().toggleAttendance(
+      memberId: profile.id,
+    );
 
     if (!mounted) return;
     if (!result.isSuccess) {
@@ -152,173 +150,187 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
       child: AppGlowBackground(
         child: SafeArea(
           child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(
-              'In & Out',
-              showBack: widget.showBack,
-            ),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-                children: [
-                  if (_showScanner)
-                    // Glass frame — purple-tinted ring with a soft glow so
-                    // the scanner reads as liquid glass over the camera feed.
-                    Container(
-                      height: 250,
-                      padding: const EdgeInsets.all(2.5),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Colors.white.withAlpha(120),
-                            ClayTokens.clayPrimary.withAlpha(150),
-                            Colors.white.withAlpha(60),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeader('In & Out', showBack: widget.showBack),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 24,
+                  ),
+                  children: [
+                    if (_showScanner)
+                      // Glass frame — purple-tinted ring with a soft glow so
+                      // the scanner reads as liquid glass over the camera feed.
+                      Container(
+                        height: 250,
+                        padding: const EdgeInsets.all(2.5),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Colors.white.withAlpha(120),
+                              ClayTokens.clayPrimary.withAlpha(150),
+                              Colors.white.withAlpha(60),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(18),
+                          boxShadow: [
+                            BoxShadow(
+                              color: ClayTokens.clayPrimary.withAlpha(60),
+                              blurRadius: 24,
+                              offset: const Offset(0, 8),
+                            ),
                           ],
                         ),
-                        borderRadius: BorderRadius.circular(18),
-                        boxShadow: [
-                          BoxShadow(
-                            color: ClayTokens.clayPrimary.withAlpha(60),
-                            blurRadius: 24,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(15.5),
-                        child: Container(
-                          color: Colors.black,
-                          child: MobileScanner(
-                            onDetect: _onDetect,
-                            controller: _scannerController,
-                          ),
-                        ),
-                      ),
-                    ),
-                  if (!_showScanner)
-                    GestureDetector(
-                      onTap: () => setState(() => _showScanner = true),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(15.5),
                           child: Container(
-                            height: 250,
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  Colors.white.withAlpha(21),
-                                  ClayTokens.clayPrimaryLight.withAlpha(20),
-                                  ClayTokens.clayPrimary.withAlpha(24),
-                                ],
-                              ),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Colors.white.withAlpha(38)),
+                            color: Colors.black,
+                            child: MobileScanner(
+                              onDetect: _onDetect,
+                              controller: _scannerController,
                             ),
-                            child: Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    CupertinoIcons.qrcode_viewfinder,
-                                    size: 64,
-                                    color: ClayTokens.clayPrimary,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'Tap to open scanner',
-                                    style: ClayTokens.bodyMedium.copyWith(color: ClayTokens.clayDarkTextPrimary),
-                                  ),
-                                ],
+                          ),
+                        ),
+                      ),
+                    if (!_showScanner)
+                      GestureDetector(
+                        onTap: () {
+                          setState(() => _showScanner = true);
+                        },
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                            child: Container(
+                              height: 250,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Colors.white.withAlpha(21),
+                                    ClayTokens.clayPrimaryLight.withAlpha(20),
+                                    ClayTokens.clayPrimary.withAlpha(24),
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: Colors.white.withAlpha(38),
+                                ),
+                              ),
+                              child: Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      CupertinoIcons.qrcode_viewfinder,
+                                      size: 64,
+                                      color: ClayTokens.clayPrimary,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Tap to open scanner',
+                                      style: ClayTokens.bodyMedium.copyWith(
+                                        color: ClayTokens.clayDarkTextPrimary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  if (_showScanner)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          CupertinoButton(
-                            onPressed: () {
-                              // Close Scanner shuts the camera off right away
-                              // (unmount would stop it anyway — explicit so
-                              // the intent survives refactors).
-                              unawaited(_scannerController.stop());
-                              setState(() => _showScanner = false);
-                            },
-                            child: Text(
-                              'Close Scanner',
-                              style: ClayTokens.bodyMedium.copyWith(color: ClayTokens.clayPrimary),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  const SizedBox(height: 20),
-                  _buildStatusCard(),
-                  if (_statusMessage != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 16),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: _isSuccess
-                              ? ClayTokens.clayAccent.withAlpha(26)
-                              : ClayTokens.clayError.withAlpha(26),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+                    if (_showScanner)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
                         child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(
-                              _isSuccess
-                                  ? CupertinoIcons.checkmark_circle_fill
-                                  : CupertinoIcons.xmark_circle_fill,
-                              color: _isSuccess
-                                  ? ClayTokens.clayAccent
-                                  : ClayTokens.clayError,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
+                            CupertinoButton(
+                              onPressed: () {
+                                // Close Scanner shuts the camera off right away
+                                // (unmount would stop it anyway — explicit so
+                                // the intent survives refactors).
+                                unawaited(_scannerController.stop());
+                                setState(() => _showScanner = false);
+                              },
                               child: Text(
-                                _statusMessage!,
-                                style: ClayTokens.titleLarge.copyWith(
-                                  fontSize: 15,
-                                  color: _isSuccess
-                                      ? ClayTokens.clayAccent
-                                      : ClayTokens.clayError,
-                                  letterSpacing: -0.24,
+                                'Close Scanner',
+                                style: ClayTokens.bodyMedium.copyWith(
+                                  color: ClayTokens.clayPrimary,
                                 ),
                               ),
                             ),
                           ],
                         ),
                       ),
+                    const SizedBox(height: 20),
+                    _buildStatusCard(),
+                    if (_statusMessage != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 16),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _isSuccess
+                                ? ClayTokens.clayAccent.withAlpha(26)
+                                : ClayTokens.clayError.withAlpha(26),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                _isSuccess
+                                    ? CupertinoIcons.checkmark_circle_fill
+                                    : CupertinoIcons.xmark_circle_fill,
+                                color: _isSuccess
+                                    ? ClayTokens.clayAccent
+                                    : ClayTokens.clayError,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  _statusMessage!,
+                                  style: ClayTokens.titleLarge.copyWith(
+                                    fontSize: 15,
+                                    color: _isSuccess
+                                        ? ClayTokens.clayAccent
+                                        : ClayTokens.clayError,
+                                    letterSpacing: -0.24,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Scan the gym QR code to check in or out. You get one check-in and one check-out per day.',
+                      style: ClayTokens.bodySmall.copyWith(
+                        color: ClayTokens.clayDarkTextTertiary,
+                        fontSize: 13,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Scan the gym QR code to check in or out. You get one check-in and one check-out per day.',
-                    style: ClayTokens.bodySmall.copyWith(color: ClayTokens.clayDarkTextTertiary, fontSize: 13),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
-  );
+    );
   }
 
   /// Glass card showing today's check-in / check-out times so the trainer
@@ -486,20 +498,26 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
               const SizedBox(height: 8),
               Text(
                 'You checked $verb at $localTime',
-                style: ClayTokens.darkBodyMedium.copyWith(color: ClayTokens.clayDarkTextSecondary),
+                style: ClayTokens.darkBodyMedium.copyWith(
+                  color: ClayTokens.clayDarkTextSecondary,
+                ),
               ),
               if (duration != null) ...[
                 const SizedBox(height: 6),
                 Text(
                   'Session length: $duration',
-                  style: ClayTokens.darkBodySmall.copyWith(color: ClayTokens.clayDarkTextSecondary),
+                  style: ClayTokens.darkBodySmall.copyWith(
+                    color: ClayTokens.clayDarkTextSecondary,
+                  ),
                 ),
               ],
               if (result.autoClosedStaleSession) ...[
                 const SizedBox(height: 6),
                 Text(
                   'Your previous open session was auto-closed.',
-                  style: ClayTokens.darkBodySmall.copyWith(color: ClayTokens.clayDarkTextTertiary),
+                  style: ClayTokens.darkBodySmall.copyWith(
+                    color: ClayTokens.clayDarkTextTertiary,
+                  ),
                 ),
               ],
               const SizedBox(height: 16),
@@ -507,12 +525,16 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
                 isCheckedOut
                     ? "You're done for today. See you tomorrow!"
                     : 'Scan the QR again when you leave to check out.',
-                style: ClayTokens.darkBodySmall.copyWith(color: ClayTokens.clayDarkTextTertiary),
+                style: ClayTokens.darkBodySmall.copyWith(
+                  color: ClayTokens.clayDarkTextTertiary,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
                 'Returning...',
-                style: ClayTokens.darkBodySmall.copyWith(color: ClayTokens.clayDarkTextTertiary),
+                style: ClayTokens.darkBodySmall.copyWith(
+                  color: ClayTokens.clayDarkTextTertiary,
+                ),
               ),
             ],
           ),
@@ -545,8 +567,7 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
                     if (context.canPop()) {
                       context.pop();
                     } else {
-                      final role =
-                          ref.read(authProvider).valueOrNull?.role;
+                      final role = ref.read(authProvider).valueOrNull?.role;
                       context.go(
                         widget.returnRoute ??
                             (role == 'trainer'
@@ -555,10 +576,7 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
                       );
                     }
                   },
-                  child: const Icon(
-                    CupertinoIcons.back,
-                    color: Colors.white,
-                  ),
+                  child: const Icon(CupertinoIcons.back, color: Colors.white),
                 )
               : const SizedBox(width: 32),
           Expanded(

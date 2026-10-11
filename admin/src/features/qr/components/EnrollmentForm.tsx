@@ -75,11 +75,11 @@ export default function EnrollmentForm({ data, onChange, includePassword, passwo
         </div>
         <div>
           <label className={labelCls}>Gender</label>
-          <select value={data.gender} onChange={set('gender')} className={inputCls}>
-            <option className="bg-overlay-8" value="">Select</option>
-            <option className="bg-overlay-8" value="male">Male</option>
-            <option className="bg-overlay-8" value="female">Female</option>
-            <option className="bg-overlay-8" value="other">Other</option>
+          <select value={data.gender} onChange={set('gender')} className={inputCls} style={{ colorScheme: 'dark' }}>
+            <option style={{ backgroundColor: '#11152F', color: '#FFFFFF' }} value="">Select</option>
+            <option style={{ backgroundColor: '#11152F', color: '#FFFFFF' }} value="male">Male</option>
+            <option style={{ backgroundColor: '#11152F', color: '#FFFFFF' }} value="female">Female</option>
+            <option style={{ backgroundColor: '#11152F', color: '#FFFFFF' }} value="prefer_not_to_say">Prefer not to say</option>
           </select>
         </div>
         <div className="md:col-span-2">

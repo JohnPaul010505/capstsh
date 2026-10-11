@@ -22,7 +22,8 @@ Future<DateTime> showCalendarFlipSheet(
     backgroundColor: Colors.transparent,
     isScrollControlled: true,
     isDismissible: false,
-    builder: (_) => CalendarFlipSheet(selected: selected, today: today, memberId: memberId),
+    builder: (_) =>
+        CalendarFlipSheet(selected: selected, today: today, memberId: memberId),
   ).then((value) => value ?? selected);
 }
 
@@ -33,7 +34,12 @@ class CalendarFlipSheet extends ConsumerStatefulWidget {
   final DateTime today;
   final String? memberId;
 
-  const CalendarFlipSheet({super.key, required this.selected, required this.today, this.memberId});
+  const CalendarFlipSheet({
+    super.key,
+    required this.selected,
+    required this.today,
+    this.memberId,
+  });
 
   @override
   ConsumerState<CalendarFlipSheet> createState() => _CalendarFlipSheetState();
@@ -53,7 +59,11 @@ class _CalendarFlipSheetState extends ConsumerState<CalendarFlipSheet> {
 
   void _shiftMonth(int delta) {
     setState(() {
-      final month = DateTime(_visibleMonth.year, _visibleMonth.month + delta, 1);
+      final month = DateTime(
+        _visibleMonth.year,
+        _visibleMonth.month + delta,
+        1,
+      );
       _visibleMonth = month;
     });
   }
@@ -65,31 +75,34 @@ class _CalendarFlipSheetState extends ConsumerState<CalendarFlipSheet> {
     });
   }
 
-  List<Map<String, dynamic>> _workoutsFor(List<Map<String, dynamic>> workouts, DateTime day) {
-    return workouts
-        .where((w) {
-          final t = DateTime.tryParse(w['logged_at'] as String? ?? '')?.toLocal();
-          return t != null && t.year == day.year && t.month == day.month && t.day == day.day;
-        })
-        .toList();
+  List<Map<String, dynamic>> _workoutsFor(
+    List<Map<String, dynamic>> workouts,
+    DateTime day,
+  ) {
+    return workouts.where((w) {
+      final t = DateTime.tryParse(w['logged_at'] as String? ?? '')?.toLocal();
+      return t != null &&
+          t.year == day.year &&
+          t.month == day.month &&
+          t.day == day.day;
+    }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    final effectiveMemberId = widget.memberId ?? SupabaseClientService().client.auth.currentUser!.id;
-    final entriesAsync = ref.watch(monthEntriesProvider((effectiveMemberId, _visibleMonth)));
+    final effectiveMemberId =
+        widget.memberId ?? SupabaseClientService().client.auth.currentUser!.id;
+    final entriesAsync = ref.watch(
+      monthEntriesProvider((effectiveMemberId, _visibleMonth)),
+    );
     final entries = entriesAsync.valueOrNull;
-    final workouts =
-        entries == null
-            ? <Map<String, dynamic>>[]
-            : (entries['workouts'] as List).cast<Map<String, dynamic>>();
-    final meals =
-        entries == null
-            ? <Map<String, dynamic>>[]
-            : (entries['meals'] as List).cast<Map<String, dynamic>>();
+    final workouts = entries == null
+        ? <Map<String, dynamic>>[]
+        : (entries['workouts'] as List).cast<Map<String, dynamic>>();
     final syncing = entriesAsync.isLoading;
     final failed = entriesAsync.hasError;
-    final isToday = _selectedDate.year == widget.today.year &&
+    final isToday =
+        _selectedDate.year == widget.today.year &&
         _selectedDate.month == widget.today.month &&
         _selectedDate.day == widget.today.day;
     return Container(
@@ -116,32 +129,58 @@ class _CalendarFlipSheetState extends ConsumerState<CalendarFlipSheet> {
                       padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
                       child: Row(
                         children: [
-                          const Text('CALENDAR', style: TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFFF2F2F7),
-                          )),
+                          const Text(
+                            'CALENDAR WORKOUT LOG',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFFF2F2F7),
+                            ),
+                          ),
                           const Spacer(),
                           if (syncing) ...[
                             const SizedBox(
-                              width: 10, height: 10,
+                              width: 10,
+                              height: 10,
                               child: CircularProgressIndicator(
-                                strokeWidth: 1.5, color: Color(0xFF8E8E93),
+                                strokeWidth: 1.5,
+                                color: Color(0xFF8E8E93),
                               ),
                             ),
                             const SizedBox(width: 5),
-                            const Text('syncingâ€¦', style: TextStyle(fontSize: 10, color: Color(0xFF8E8E93))),
+                            const Text(
+                              'syncingâ€¦',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Color(0xFF8E8E93),
+                              ),
+                            ),
                           ] else if (failed)
-                            const Text("couldn't sync", style: TextStyle(fontSize: 10, color: Color(0xFFFF6B61))),
+                            const Text(
+                              "couldn't sync",
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Color(0xFFFF6B61),
+                              ),
+                            ),
                           const SizedBox(width: 8),
                           GestureDetector(
-                            onTap: () => Navigator.of(context).pop(_selectedDate),
+                            onTap: () =>
+                                Navigator.of(context).pop(_selectedDate),
                             child: Container(
                               padding: const EdgeInsets.all(5),
                               decoration: BoxDecoration(
                                 color: Colors.white.withAlpha(12),
                                 borderRadius: BorderRadius.circular(999),
-                                border: Border.all(color: Colors.white.withAlpha(20)),
+                                border: Border.all(
+                                  color: Colors.white.withAlpha(20),
+                                ),
                               ),
-                              child: const Icon(Icons.close, color: Color(0xFFB4B4D0), size: 15),
+                              child: const Icon(
+                                Icons.close,
+                                color: Color(0xFFB4B4D0),
+                                size: 15,
+                              ),
                             ),
                           ),
                         ],
@@ -161,7 +200,8 @@ class _CalendarFlipSheetState extends ConsumerState<CalendarFlipSheet> {
                               today: widget.today,
                               visibleMonth: _visibleMonth,
                               workouts: workouts,
-                              meals: meals,
+                              meals: const [],
+                              showMealIndicators: false,
                               onDayTap: _selectDay,
                               onShiftMonth: _shiftMonth,
                               onFlip: () => setState(() => _flipped = true),
@@ -194,6 +234,7 @@ class _FrontFace extends StatelessWidget {
   final DateTime visibleMonth;
   final List<Map<String, dynamic>> workouts;
   final List<Map<String, dynamic>> meals;
+  final bool showMealIndicators;
   final ValueChanged<DateTime> onDayTap;
   final ValueChanged<int> onShiftMonth;
   final VoidCallback onFlip;
@@ -204,6 +245,7 @@ class _FrontFace extends StatelessWidget {
     required this.visibleMonth,
     required this.workouts,
     required this.meals,
+    this.showMealIndicators = true,
     required this.onDayTap,
     required this.onShiftMonth,
     required this.onFlip,
@@ -220,6 +262,7 @@ class _FrontFace extends StatelessWidget {
             today: today,
             workouts: workouts,
             meals: meals,
+            showMealIndicators: showMealIndicators,
             onDayTap: onDayTap,
             onShiftMonth: onShiftMonth,
           ),
@@ -227,10 +270,7 @@ class _FrontFace extends StatelessWidget {
         const SizedBox(height: 8),
         SizedBox(
           width: double.infinity,
-          child: _GlassPillButton(
-            label: 'View Workout',
-            onPressed: onFlip,
-          ),
+          child: _GlassPillButton(label: 'View Workout', onPressed: onFlip),
         ),
       ],
     );
@@ -271,15 +311,28 @@ class _BackFace extends StatelessWidget {
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(color: Colors.white.withAlpha(12)),
                         ),
-                        child: const Icon(Icons.fitness_center, size: 28, color: Color(0xFF636366)),
+                        child: const Icon(
+                          Icons.fitness_center,
+                          size: 28,
+                          color: Color(0xFF636366),
+                        ),
                       ),
                       const SizedBox(height: 12),
-                      const Text('No workouts recorded',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF8E8E93)),
+                      const Text(
+                        'No workouts recorded',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF8E8E93),
+                        ),
                       ),
                       const SizedBox(height: 4),
-                      const Text('Complete a workout to see it here',
-                        style: TextStyle(fontSize: 11, color: Color(0xFF636366)),
+                      const Text(
+                        'Complete a workout to see it here',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF636366),
+                        ),
                       ),
                     ],
                   ),
@@ -292,16 +345,17 @@ class _BackFace extends StatelessWidget {
         const SizedBox(height: 8),
         SizedBox(
           width: double.infinity,
-          child: _GlassPillButton(
-            label: 'Back to Calendar',
-            onPressed: onFlip,
-          ),
+          child: _GlassPillButton(label: 'Back to Calendar', onPressed: onFlip),
         ),
       ],
     );
   }
 
-  List<Widget> _buildSessionGroups(BuildContext context, List<Map<String, dynamic>> workouts, bool isToday) {
+  List<Widget> _buildSessionGroups(
+    BuildContext context,
+    List<Map<String, dynamic>> workouts,
+    bool isToday,
+  ) {
     final groups = <String, List<Map<String, dynamic>>>{};
     for (final w in workouts) {
       final name = w['workout_name'] as String? ?? 'Workout';
@@ -310,11 +364,20 @@ class _BackFace extends StatelessWidget {
 
     final widgets = <Widget>[];
     var groupIndex = 0;
-    final sortedEntries = groups.entries.toList()..sort((a, b) {
-      final numA = int.tryParse(RegExp(r'S(\d+)').firstMatch(a.key)?.group(1) ?? '0') ?? 0;
-      final numB = int.tryParse(RegExp(r'S(\d+)').firstMatch(b.key)?.group(1) ?? '0') ?? 0;
-      return numA.compareTo(numB);
-    });
+    final sortedEntries = groups.entries.toList()
+      ..sort((a, b) {
+        final numA =
+            int.tryParse(
+              RegExp(r'S(\d+)').firstMatch(a.key)?.group(1) ?? '0',
+            ) ??
+            0;
+        final numB =
+            int.tryParse(
+              RegExp(r'S(\d+)').firstMatch(b.key)?.group(1) ?? '0',
+            ) ??
+            0;
+        return numA.compareTo(numB);
+      });
 
     for (final entry in sortedEntries) {
       if (groupIndex > 0) {
@@ -349,7 +412,9 @@ class _BackFace extends StatelessWidget {
                 width: 8,
                 height: 8,
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [Color(0xFF7C3AED), Color(0xFFC56BF0)]),
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF7C3AED), Color(0xFFC56BF0)],
+                  ),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -394,7 +459,8 @@ class _BackFace extends StatelessWidget {
         final sets = w['sets'] as int?;
         final reps = w['reps'] as int?;
         final durationSeconds = w['duration_seconds'] as int?;
-        final exerciseCalories = (w['exercise_calories'] as int?) ?? (w['total_calories'] as int?);
+        final exerciseCalories =
+            (w['exercise_calories'] as int?) ?? (w['total_calories'] as int?);
         final hasVideo = w['proof_url'] != null;
         final missing = !hasVideo && isToday;
         widgets.add(
@@ -453,10 +519,13 @@ class _WorkoutCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 24, height: 24,
+                width: 24,
+                height: 24,
                 decoration: BoxDecoration(
                   gradient: hasVideo
-                      ? const LinearGradient(colors: [Color(0xFF7C3AED), Color(0xFFC56BF0)])
+                      ? const LinearGradient(
+                          colors: [Color(0xFF7C3AED), Color(0xFFC56BF0)],
+                        )
                       : null,
                   color: hasVideo ? null : const Color(0xFF3A3A4A),
                   borderRadius: BorderRadius.circular(8),
@@ -469,9 +538,14 @@ class _WorkoutCard extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: Text(name, style: const TextStyle(
-                  fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFFF2F5F7),
-                )),
+                child: Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFFF2F5F7),
+                  ),
+                ),
               ),
               if (durationSeconds != null)
                 _DurationChip(seconds: durationSeconds!),
@@ -479,49 +553,73 @@ class _WorkoutCard extends StatelessWidget {
                 const SizedBox(width: 6),
               if (calories != null)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFF9F0A).withAlpha(25),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Text('$calories kcal', style: TextStyle(
-                    fontSize: 10, fontWeight: FontWeight.w700, color: const Color(0xFFFF9F0A),
-                  )),
+                  child: Text(
+                    '$calories kcal',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFFFF9F0A),
+                    ),
+                  ),
                 ),
               if (durationSeconds != null && calories == null)
                 const SizedBox(width: 6),
               if (hasVideo)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: ClayTokens.clayAccent.withAlpha(25),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Text('DONE', style: TextStyle(
-                    fontSize: 8, fontWeight: FontWeight.w700, color: ClayTokens.clayAccentLight,
-                  )),
+                  child: Text(
+                    'DONE',
+                    style: TextStyle(
+                      fontSize: 8,
+                      fontWeight: FontWeight.w700,
+                      color: ClayTokens.clayAccentLight,
+                    ),
+                  ),
                 )
               else if (missing)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFF453A).withAlpha(25),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Text('NO PROOF', style: TextStyle(
-                    fontSize: 8, fontWeight: FontWeight.w700, color: Color(0xFFFF6B61),
-                  )),
+                  child: const Text(
+                    'NO PROOF',
+                    style: TextStyle(
+                      fontSize: 8,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFFFF6B61),
+                    ),
+                  ),
                 ),
             ],
           ),
           const SizedBox(height: 8),
-           Row(
-             children: [
-               if (sets != null) _StatChip(label: '$sets', unit: 'sets'),
-               if (sets != null && reps != null) const SizedBox(width: 6),
-               if (reps != null) _StatChip(label: '$reps', unit: 'reps'),
-             ],
-           ),
+          Row(
+            children: [
+              if (sets != null) _StatChip(label: '$sets', unit: 'sets'),
+              if (sets != null && reps != null) const SizedBox(width: 6),
+              if (reps != null) _StatChip(label: '$reps', unit: 'reps'),
+            ],
+          ),
           if (hasVideo) ...[
             const SizedBox(height: 10),
             GestureDetector(
@@ -529,7 +627,10 @@ class _WorkoutCard extends StatelessWidget {
                 if (proofUrl != null) showProofVideoDialog(context, proofUrl!);
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
@@ -538,16 +639,27 @@ class _WorkoutCard extends StatelessWidget {
                     ],
                   ),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFF7C3AED).withAlpha(100)),
+                  border: Border.all(
+                    color: const Color(0xFF7C3AED).withAlpha(100),
+                  ),
                 ),
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.play_circle_outline, size: 14, color: Color(0xFFD6A5FF)),
+                    Icon(
+                      Icons.play_circle_outline,
+                      size: 14,
+                      color: Color(0xFFD6A5FF),
+                    ),
                     SizedBox(width: 4),
-                    Text('Watch video proof', style: TextStyle(
-                      fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFFD6A5FF),
-                    )),
+                    Text(
+                      'Watch video proof',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFFD6A5FF),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -578,13 +690,23 @@ class _StatChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label, style: const TextStyle(
-            fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFFF2F5F7),
-          )),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFFF2F5F7),
+            ),
+          ),
           const SizedBox(width: 3),
-          Text(unit, style: const TextStyle(
-            fontSize: 10, fontWeight: FontWeight.w500, color: Color(0xFF8E8E93),
-          )),
+          Text(
+            unit,
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF8E8E93),
+            ),
+          ),
         ],
       ),
     );
@@ -614,14 +736,20 @@ class _DurationChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label, style: const TextStyle(
-            fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFFF2F5F7),
-          )),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFFF2F5F7),
+            ),
+          ),
         ],
       ),
     );
   }
-  }
+}
+
 class _GlassPillButton extends StatelessWidget {
   final String label;
   final VoidCallback onPressed;
@@ -650,9 +778,14 @@ class _GlassPillButton extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 11),
           child: Center(
-            child: Text(label, style: const TextStyle(
-              fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white,
-            )),
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
           ),
         ),
       ),

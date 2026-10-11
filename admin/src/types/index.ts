@@ -67,6 +67,22 @@ export interface MembershipRenewalRequest {
   profiles?: { full_name: string; code: string | null; email: string }
 }
 
+export interface MembershipCancellationRequest {
+  id: string
+  member_id: string
+  membership_id: string
+  status: 'pending' | 'approved' | 'declined'
+  note: string | null
+  requested_at: string
+  decided_at: string | null
+  decided_by: string | null
+  attendance_days: number | null
+  refund_amount: number | null
+  membership_price: number | null
+  profiles?: { full_name: string; code: string | null; email: string }
+  memberships?: { plan_name: string; price: number; start_date: string; end_date: string }
+}
+
 export interface Attendance {
   id: string
   member_id: string

@@ -12,17 +12,24 @@ import '../../../shared/widgets/plan_floating_logo.dart';
 import '../../../shared/providers/plan_providers.dart';
 import '../../../shared/widgets/trainer_plan_overlay.dart';
 import '../../../../app/design_tokens.dart';
+import '../../calendar/providers/month_entries_provider.dart';
+import '../../calendar/widgets/month_day_grid.dart';
+import '../../calendar/widgets/flip_card.dart';
+import '../../calendar/widgets/glow_card.dart';
 
 import 'add_food_wizard.dart';
 
 /// Member Food Intake screen: today's macro ring + logged meals. Adding a meal
 /// opens the photo -> meal type -> FNRI search -> grams -> review wizard
 /// (see docs/superpowers/specs/2026-09-25-food-intake-philfct-wizard-design.md).
-final todayMealsProvider =
-    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
-      final userId = SupabaseClientService().client.auth.currentUser!.id;
-      final now = DateTime.now();
-      final startOfDay = DateTime(now.year, now.month, now.day);
+final mealsForDateProvider = FutureProvider.autoDispose
+    .family<List<Map<String, dynamic>>, (String, DateTime)>((
+      ref,
+      params,
+    ) async {
+      final userId = params.$1;
+      final day = params.$2;
+      final startOfDay = DateTime(day.year, day.month, day.day);
       final endOfDay = startOfDay.add(const Duration(days: 1));
       final response = await SupabaseClientService().client
           .from('meal_logs')
@@ -54,10 +61,7 @@ const mealIconColors = {
 /// nobody is watching hands back an unresolved `AsyncValue` whose `.value`
 /// is null — the old code returned right there, which is why tapping the
 /// logo did nothing at all. Awaiting `.future` loads it on demand.
-Future<void> _openDayOnePlanSheet(
-  BuildContext context,
-  WidgetRef ref,
-) async {
+Future<void> _openDayOnePlanSheet(BuildContext context, WidgetRef ref) async {
   final overlay = ref.read(planOverlayControllerProvider);
   if (overlay.isOpen) {
     overlay.close();
@@ -89,12 +93,45 @@ Future<void> _openDayOnePlanSheet(
   });
 }
 
-class MealLogPage extends ConsumerWidget {
+class MealLogPage extends ConsumerStatefulWidget {
   const MealLogPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final mealsAsync = ref.watch(todayMealsProvider);
+  ConsumerState<MealLogPage> createState() => _MealLogPageState();
+}
+
+class _MealLogPageState extends ConsumerState<MealLogPage> {
+  late DateTime _selectedDate;
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    _selectedDate = DateTime(now.year, now.month, now.day);
+  }
+
+  Future<void> _openCalendar(String memberId) async {
+    final picked = await showModalBottomSheet<DateTime>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => Align(
+        alignment: const Alignment(0, 0.15),
+        child: _FoodHistoryCalendar(
+          selected: _selectedDate,
+          memberId: memberId,
+        ),
+      ),
+    );
+    if (picked != null && mounted) setState(() => _selectedDate = picked);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final memberId = SupabaseClientService().client.auth.currentUser!.id;
+    final mealsAsync = ref.watch(
+      mealsForDateProvider((memberId, _selectedDate)),
+    );
     return Scaffold(
       backgroundColor: ClayTokens.clayDarkBase,
       body: AppGlowBackground(
@@ -107,179 +144,208 @@ class MealLogPage extends ConsumerWidget {
           // makes it impossible to drag the logo underneath the nav bar.
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final bounds =
-                  Size(constraints.maxWidth, constraints.maxHeight);
+              final bounds = Size(constraints.maxWidth, constraints.maxHeight);
               return Stack(
                 children: [
-              ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                physics: const ClampingScrollPhysics(),
-                children: [
-                  const SizedBox(height: 14),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  ListView(
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    physics: const ClampingScrollPhysics(),
                     children: [
-                      const Text(
-                        'FOOD INTAKE',
-                        style: TextStyle(
-                          fontSize: 21,
-                          fontWeight: FontWeight.w900,
-                          color: Color(0xFFFFFFFF),
-                        ),
-                      ),
+                      const SizedBox(height: 14),
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF7C3AED).withAlpha(140),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: const Color(0xFF7C3AED).withAlpha(180),
-                              ),
-                            ),
-                            child: Text(
-                              DateFormat('MMM d').format(DateTime.now()),
-                              style: const TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFFFFFFFF),
-                              ),
+                          const Text(
+                            'FOOD INTAKE',
+                            style: TextStyle(
+                              fontSize: 21,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFFFFFFFF),
                             ),
                           ),
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF7C3AED).withAlpha(140),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: const Color(0xFF7C3AED).withAlpha(180),
-                              ),
-                            ),
-                            child: mealsAsync.when(
-                              data: (meals) => Text(
-                                '${meals.length} meal${meals.length == 1 ? '' : 's'}',
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFFFFFFFF),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF7C3AED).withAlpha(140),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: const Color(
+                                      0xFF7C3AED,
+                                    ).withAlpha(180),
+                                  ),
+                                ),
+                                child: mealsAsync.when(
+                                  data: (meals) => Text(
+                                    '${meals.length} meal${meals.length == 1 ? '' : 's'}',
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFFFFFFFF),
+                                    ),
+                                  ),
+                                  loading: () => const Text(
+                                    '...',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFFFFFFFF),
+                                    ),
+                                  ),
+                                  error: (_, __) => const Text(
+                                    '0 meals',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFFFFFFFF),
+                                    ),
+                                  ),
                                 ),
                               ),
-                              loading: () => const Text(
-                                '...',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFFFFFFFF),
+                              const SizedBox(width: 6),
+                              GestureDetector(
+                                onTap: () => _openCalendar(memberId),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 9,
+                                    vertical: 5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(
+                                      0xFF7C3AED,
+                                    ).withAlpha(140),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: const Color(
+                                        0xFF7C3AED,
+                                      ).withAlpha(180),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.calendar_month_rounded,
+                                        size: 12,
+                                        color: Colors.white,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        DateFormat(
+                                          'MMM d',
+                                        ).format(_selectedDate),
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
-                              error: (_, __) => const Text(
-                                '0 meals',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFFFFFFFF),
-                                ),
-                              ),
-                            ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  mealsAsync.when(
-                    data: (meals) => _TodayMacroRing(meals: meals),
-                    loading: () => const _TodayMacroRing(meals: []),
-                    error: (_, __) => const _TodayMacroRing(meals: []),
-                  ),
-                  const SizedBox(height: 18),
-                  Text(
-                    'MEALS TODAY',
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: const Color(0xFF8E8E93),
-                      letterSpacing: 0,
-                    ),
-                  ),
-                  const SizedBox(height: 9),
-                  mealsAsync.when(
-                    data: (meals) => Column(
-                      children: [
-                        ...meals.asMap().entries.map(
-                          (entry) => StaggeredFadeIn(
-                            index: entry.key,
-                            child: _MealCard(meal: entry.value),
-                          ),
+                      const SizedBox(height: 12),
+                      mealsAsync.when(
+                        data: (meals) =>
+                            _TodayMacroRing(meals: meals, date: _selectedDate),
+                        loading: () => _TodayMacroRing(
+                          meals: const [],
+                          date: _selectedDate,
                         ),
-                        if (meals.isEmpty)
-                          const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 24),
-                            child: Text(
-                              'No meals logged today',
-                              style: TextStyle(
-                                color: Color(0xFF636366),
-                                fontSize: 12,
+                        error: (_, __) => _TodayMacroRing(
+                          meals: const [],
+                          date: _selectedDate,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      Text(
+                        _selectedDate.year == DateTime.now().year &&
+                                _selectedDate.month == DateTime.now().month &&
+                                _selectedDate.day == DateTime.now().day
+                            ? 'MEALS TODAY'
+                            : 'MEALS ON ${DateFormat('MMM d').format(_selectedDate).toUpperCase()}',
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: const Color(0xFF8E8E93),
+                          letterSpacing: 0,
+                        ),
+                      ),
+                      const SizedBox(height: 9),
+                      mealsAsync.when(
+                        data: (meals) => Column(
+                          children: [
+                            ...meals.asMap().entries.map(
+                              (entry) => StaggeredFadeIn(
+                                index: entry.key,
+                                child: _MealCard(meal: entry.value),
                               ),
                             ),
+                            if (meals.isEmpty)
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 24),
+                                child: Text(
+                                  'No meals logged for this date',
+                                  style: TextStyle(
+                                    color: Color(0xFF636366),
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        loading: () => const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(24),
+                            child: CircularProgressIndicator(
+                              color: Color(0xFFD6A5FF),
+                            ),
                           ),
-                      ],
-                    ),
-                    loading: () => const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(24),
-                        child: CircularProgressIndicator(
-                          color: Color(0xFFD6A5FF),
+                        ),
+                        error: (e, _) => Text(
+                          'Error: $e',
+                          style: const TextStyle(color: Color(0xFF636366)),
                         ),
                       ),
-                    ),
-                    error: (e, _) => Text(
-                      'Error: $e',
-                      style: const TextStyle(color: Color(0xFF636366)),
-                    ),
+                      const SizedBox(height: 8),
+                      _addFoodButton(context, ref),
+                      const SizedBox(height: 16),
+                    ],
                   ),
-                  const SizedBox(height: 8),
-                  _addFoodButton(context, ref),
-                  const SizedBox(height: 16),
-                ],
-              ),
-              // No Positioned.fill wrapper: it would swallow touches over
-              // the whole screen. The logo positions itself, so only its
-              // own pixels hit-test — drags start on the logo directly.
-              Consumer(
-                builder: (context, ref, _) {
-                    if (!(ref.watch(hasActivePlanProvider).value ??
-                        false)) {
-                      return const SizedBox.shrink();
-                    }
-                    final logoPos =
-                        ref.watch(floatingLogoPositionProvider);
-                    final f = logoPos.clampedFraction(bounds);
-                    return Positioned(
-                      left: f.dx * bounds.width,
-                      top: f.dy * bounds.height,
-                      child: PlanFloatingLogo(
-                        memberId: SupabaseClientService()
-                            .client
-                            .auth
-                            .currentUser!
-                            .id,
-                        isExpanded: ref
-                            .watch(planOverlayControllerProvider)
-                            .isOpen,
-                        bounds: bounds,
-                        onTap: () =>
-                            _openDayOnePlanSheet(context, ref),
-                      ),
-                    );
-                  },
-                ),
+                  // No Positioned.fill wrapper: it would swallow touches over
+                  // the whole screen. The logo positions itself, so only its
+                  // own pixels hit-test — drags start on the logo directly.
+                  Consumer(
+                    builder: (context, ref, _) {
+                      if (!(ref.watch(hasActivePlanProvider).value ?? false)) {
+                        return const SizedBox.shrink();
+                      }
+                      final logoPos = ref.watch(floatingLogoPositionProvider);
+                      final f = logoPos.clampedFraction(bounds);
+                      return Positioned(
+                        left: f.dx * bounds.width,
+                        top: f.dy * bounds.height,
+                        child: PlanFloatingLogo(
+                          memberId: SupabaseClientService()
+                              .client
+                              .auth
+                              .currentUser!
+                              .id,
+                          isExpanded: ref
+                              .watch(planOverlayControllerProvider)
+                              .isOpen,
+                          bounds: bounds,
+                          onTap: () => _openDayOnePlanSheet(context, ref),
+                        ),
+                      );
+                    },
+                  ),
                 ],
               );
             },
@@ -296,7 +362,12 @@ class MealLogPage extends ConsumerWidget {
           context,
           rootNavigator: true,
         ).push(MaterialPageRoute(builder: (_) => const AddFoodWizard()));
-        ref.invalidate(todayMealsProvider);
+        ref.invalidate(
+          mealsForDateProvider((
+            SupabaseClientService().client.auth.currentUser!.id,
+            _selectedDate,
+          )),
+        );
       },
       child: Container(
         width: double.infinity,
@@ -324,10 +395,278 @@ class MealLogPage extends ConsumerWidget {
   }
 }
 
+class _FoodHistoryCalendar extends ConsumerStatefulWidget {
+  final DateTime selected;
+  final String memberId;
+
+  const _FoodHistoryCalendar({required this.selected, required this.memberId});
+
+  @override
+  ConsumerState<_FoodHistoryCalendar> createState() =>
+      _FoodHistoryCalendarState();
+}
+
+class _FoodHistoryCalendarState extends ConsumerState<_FoodHistoryCalendar> {
+  late DateTime _selected;
+  late DateTime _month;
+  bool _flipped = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _selected = widget.selected;
+    _month = DateTime(_selected.year, _selected.month, 1);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final entries = ref
+        .watch(monthEntriesProvider((widget.memberId, _month)))
+        .valueOrNull;
+    final meals = entries == null
+        ? <Map<String, dynamic>>[]
+        : (entries['meals'] as List).cast<Map<String, dynamic>>();
+    final today = DateTime.now();
+    return SafeArea(
+      child: Container(
+        height: 500,
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+        decoration: BoxDecoration(
+          color: ClayTokens.clayDarkSurface.withAlpha(245),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: Colors.white.withAlpha(25)),
+        ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'CALENDAR FOOD INTAKE',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context, _selected),
+                  icon: const Icon(
+                    Icons.close,
+                    color: Color(0xFFB4B4D0),
+                    size: 18,
+                  ),
+                ),
+              ],
+            ),
+            Expanded(
+              child: GlowCard(
+                borderRadius: 16,
+                borderWidth: 1.6,
+                child: FlipCard(
+                  flipped: _flipped,
+                  front: Column(
+                    children: [
+                      Expanded(
+                        child: MonthDayGrid(
+                          visibleMonth: _month,
+                          selected: _selected,
+                          today: today,
+                          workouts: const [],
+                          meals: meals,
+                          showWorkoutIndicators: false,
+                          showGoalIndicators: false,
+                          onDayTap: (day) => setState(() => _selected = day),
+                          onShiftMonth: (delta) => setState(
+                            () => _month = DateTime(
+                              _month.year,
+                              _month.month + delta,
+                              1,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: _FoodHistoryButton(
+                          label: 'View Meals',
+                          onPressed: () => setState(() => _flipped = true),
+                        ),
+                      ),
+                    ],
+                  ),
+                  back: _FoodHistoryBack(
+                    memberId: widget.memberId,
+                    date: _selected,
+                    onFlip: () => setState(() => _flipped = false),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FoodHistoryBack extends ConsumerWidget {
+  final String memberId;
+  final DateTime date;
+  final VoidCallback onFlip;
+
+  const _FoodHistoryBack({
+    required this.memberId,
+    required this.date,
+    required this.onFlip,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final mealsAsync = ref.watch(mealsForDateProvider((memberId, date)));
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          child: Text(
+            DateFormat('EEEE, MMM d').format(date),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        Expanded(
+          child: mealsAsync.when(
+            loading: () => const Center(
+              child: CircularProgressIndicator(color: Color(0xFFA78BFA)),
+            ),
+            error: (_, __) => const Center(
+              child: Text(
+                'Could not load meals for this date.',
+                style: TextStyle(color: Color(0xFFB4B4D0)),
+              ),
+            ),
+            data: (meals) => meals.isEmpty
+                ? const Center(
+                    child: Text(
+                      'No meals recorded for this date.',
+                      style: TextStyle(color: Color(0xFFB4B4D0)),
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: meals.length,
+                    itemBuilder: (context, index) {
+                      final meal = meals[index];
+                      final name = meal['food_name'] as String? ?? 'Food';
+                      final type = meal['meal_type'] as String? ?? 'Meal';
+                      final calories = meal['calories'] as int? ?? 0;
+                      final protein = meal['protein_g'] ?? 0;
+                      final carbs = meal['carbs_g'] ?? 0;
+                      final fat = meal['fat_g'] ?? 0;
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withAlpha(10),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white.withAlpha(18)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    name,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  '$calories kcal',
+                                  style: const TextStyle(
+                                    color: Color(0xFFD6A5FF),
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              '${type[0].toUpperCase()}${type.substring(1)} ? ${DateFormat('h:mm a').format(DateTime.tryParse(meal['meal_time'] as String? ?? '')?.toLocal() ?? date)}',
+                              style: const TextStyle(
+                                color: Color(0xFFB4B4D0),
+                                fontSize: 11,
+                              ),
+                            ),
+                            const SizedBox(height: 7),
+                            Text(
+                              'Protein ${protein}g   Carbs ${carbs}g   Fat ${fat}g',
+                              style: const TextStyle(
+                                color: Color(0xFFCEB9EE),
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: double.infinity,
+          child: _FoodHistoryButton(
+            label: 'Back to Calendar',
+            onPressed: onFlip,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _FoodHistoryButton extends StatelessWidget {
+  final String label;
+  final VoidCallback onPressed;
+  const _FoodHistoryButton({required this.label, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    height: 44,
+    child: DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF7C3AED), Color(0xFFC56BF0)],
+        ),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: TextButton(
+        onPressed: onPressed,
+        style: TextButton.styleFrom(foregroundColor: Colors.white),
+        child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+      ),
+    ),
+  );
+}
+
 class _TodayMacroRing extends ConsumerWidget {
   final List<Map<String, dynamic>> meals;
+  final DateTime date;
 
-  const _TodayMacroRing({required this.meals});
+  const _TodayMacroRing({required this.meals, required this.date});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -462,9 +801,9 @@ class _TodayMacroRing extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Daily Intake',
-                  style: TextStyle(
+                Text(
+                  '${date.year == DateTime.now().year && date.month == DateTime.now().month && date.day == DateTime.now().day ? 'Daily' : DateFormat('MMM d').format(date)} Intake',
+                  style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                     color: Color(0xFFFFFFFF),

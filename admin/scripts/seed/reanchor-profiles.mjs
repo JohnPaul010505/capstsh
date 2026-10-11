@@ -12,9 +12,8 @@
 // six weeks late".
 //
 // So the dates are moved in place with explicit UPDATEs. Nothing is deleted and
-// no code is renumbered: M001 stays M001, and because the roster is ordered BY
-// CODE, the "codes rise with seniority" invariant that `ensureProfiles` relies on
-// is preserved.
+// no sequence is renumbered: the month section follows the new join date, while
+// the role marker and sequence preserve each member/trainer's identity.
 //
 // The three places that must agree are all updated here:
 //   * `profiles.created_at` in the database
@@ -49,7 +48,7 @@ if (!dryRun && !confirmed) {
 }
 
 const codeNum = (code) => {
-  const m = /^([MT])(\d+)$/.exec(code ?? '')
+  const m = /^\d{4}-\d{2}-([MT])(\d+)$/.exec(code ?? '')
   return m ? { role: m[1], n: Number(m[2]) } : null
 }
 
@@ -69,6 +68,12 @@ async function loadProfiles() {
 }
 
 const monthOf = (iso) => String(iso).slice(0, 7)
+const codeFor = (profile, joinedAt) => {
+  const parsed = codeNum(profile.code)
+  if (!parsed) return profile.code
+  const width = parsed.role === 'M' ? 3 : 4
+  return `${monthOf(joinedAt)}-${parsed.role}${String(parsed.n).padStart(width, '0')}`
+}
 
 async function main() {
   console.log(`=== RE-ANCHOR PROFILES (${dryRun ? 'DRY RUN - nothing written' : 'LIVE'}) ===`)
@@ -128,7 +133,7 @@ async function main() {
   for (const [id, joinedAt] of plan) {
     const { error } = await client
       .from('profiles')
-      .update({ created_at: joinedAt, updated_at: joinedAt })
+      .update({ created_at: joinedAt, updated_at: joinedAt, code: codeFor(profiles.find(profile => profile.id === id), joinedAt) })
       .eq('id', id)
     if (error) throw new Error(`update ${id} failed: ${error.message}`)
     if (++done % 200 === 0) console.log(`  ${done}/${plan.size}`)
@@ -149,6 +154,7 @@ async function main() {
       const next = plan.get(r.id)
       if (next) {
         r.created_at = next
+        r.code = codeFor(r, next)
         touched++
       }
     }

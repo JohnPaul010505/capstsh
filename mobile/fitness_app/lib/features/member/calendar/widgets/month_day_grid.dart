@@ -11,6 +11,9 @@ class MonthDayGrid extends StatelessWidget {
   final List<Map<String, dynamic>> workouts;
   final List<Map<String, dynamic>> meals;
   final List<Map<String, dynamic>>? goals;
+  final bool showWorkoutIndicators;
+  final bool showMealIndicators;
+  final bool showGoalIndicators;
   final ValueChanged<DateTime> onDayTap;
   final ValueChanged<int> onShiftMonth;
 
@@ -22,6 +25,9 @@ class MonthDayGrid extends StatelessWidget {
     required this.workouts,
     required this.meals,
     this.goals,
+    this.showWorkoutIndicators = true,
+    this.showMealIndicators = true,
+    this.showGoalIndicators = true,
     required this.onDayTap,
     required this.onShiftMonth,
   });
@@ -60,6 +66,13 @@ class MonthDayGrid extends StatelessWidget {
       final t = DateTime.tryParse(w['logged_at'] as String? ?? '')?.toLocal();
       if (t != null) (workoutByDay[t.day] ??= []).add(w);
     }
+    final mealByDay = <int, List<Map<String, dynamic>>>{};
+    for (final meal in meals) {
+      final t = DateTime.tryParse(
+        meal['meal_time'] as String? ?? '',
+      )?.toLocal();
+      if (t != null) (mealByDay[t.day] ??= []).add(meal);
+    }
     final goalByDay = <int, List<Map<String, dynamic>>>{};
     for (final g in goals ?? const <Map<String, dynamic>>[]) {
       final startRaw = g['start_date']?.toString() ?? '';
@@ -92,6 +105,7 @@ class MonthDayGrid extends StatelessWidget {
           selected.month == visibleMonth.month &&
           d == selected.day;
       final ws = workoutByDay[d] ?? [];
+      final ms = mealByDay[d] ?? [];
       final gs = goalByDay[d] ?? [];
       cells.add(
         Expanded(
@@ -137,11 +151,13 @@ class MonthDayGrid extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 3),
-                  if (ws.isNotEmpty || gs.isNotEmpty)
+                  if ((showWorkoutIndicators && ws.isNotEmpty) ||
+                      (showMealIndicators && ms.isNotEmpty) ||
+                      (showGoalIndicators && gs.isNotEmpty))
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        if (ws.isNotEmpty)
+                        if (showWorkoutIndicators && ws.isNotEmpty)
                           Container(
                             width: 4,
                             height: 4,
@@ -150,9 +166,11 @@ class MonthDayGrid extends StatelessWidget {
                               shape: BoxShape.circle,
                             ),
                           ),
-                        if (ws.any((w) => w['proof_url'] != null))
+                        if (showWorkoutIndicators &&
+                            ws.any((w) => w['proof_url'] != null))
                           const SizedBox(width: 2),
-                        if (ws.any((w) => w['proof_url'] != null))
+                        if (showWorkoutIndicators &&
+                            ws.any((w) => w['proof_url'] != null))
                           Container(
                             width: 4,
                             height: 4,
@@ -161,9 +179,26 @@ class MonthDayGrid extends StatelessWidget {
                               shape: BoxShape.circle,
                             ),
                           ),
-                        if (ws.isNotEmpty && gs.isNotEmpty)
+                        if (showWorkoutIndicators &&
+                            ws.isNotEmpty &&
+                            showMealIndicators &&
+                            ms.isNotEmpty)
                           const SizedBox(width: 2),
-                        if (gs.isNotEmpty)
+                        if (showMealIndicators && ms.isNotEmpty)
+                          Container(
+                            width: 4,
+                            height: 4,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFFF9500),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        if (((showWorkoutIndicators && ws.isNotEmpty) ||
+                                (showMealIndicators && ms.isNotEmpty)) &&
+                            showGoalIndicators &&
+                            gs.isNotEmpty)
+                          const SizedBox(width: 2),
+                        if (showGoalIndicators && gs.isNotEmpty)
                           Container(
                             width: 4,
                             height: 4,
@@ -204,12 +239,12 @@ class MonthDayGrid extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(8),
+                    color: ClayTokens.clayPrimary.withAlpha(190),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
                     Icons.chevron_left,
-                    color: ClayTokens.clayDarkTextTertiary,
+                    color: Colors.white,
                     size: 20,
                   ),
                 ),
@@ -227,12 +262,12 @@ class MonthDayGrid extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(8),
+                    color: ClayTokens.clayPrimary.withAlpha(190),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
                     Icons.chevron_right,
-                    color: ClayTokens.clayDarkTextTertiary,
+                    color: Colors.white,
                     size: 20,
                   ),
                 ),

@@ -33,7 +33,7 @@ async function main() {
   const { data: profile, error: profileError } = await client
     .from('profiles')
     .select('id, full_name, code, gender')
-    .eq('code', 'M002')
+    .eq('code', '2023-01-M002')
     .maybeSingle()
   if (profileError) throw profileError
   if (!profile) {

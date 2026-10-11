@@ -123,6 +123,20 @@ export function useRenewalRequests() {
   })
 }
 
+export function useCancellationRequests() {
+  return useQuery({
+    queryKey: ['membership_cancellation_requests'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('membership_cancellation_requests')
+        .select('*, profiles!membership_cancellation_requests_member_id_fkey(full_name, code, email), memberships!membership_cancellation_requests_membership_id_fkey(plan_name, price, start_date, end_date)')
+        .order('requested_at', { ascending: false })
+      if (error) throw error
+      return data ?? []
+    },
+  })
+}
+
 /**
  * Rows written before migration 0041 have no price/date columns on the wire;
  * give them explicit nulls so every consumer can rely on the fields.

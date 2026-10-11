@@ -1,5 +1,6 @@
-﻿import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart' show Colors, ScaffoldMessenger, SnackBar;
+import 'dart:ui' show ImageFilter;
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared/models/membership_renewal_request.dart';
@@ -73,6 +74,80 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
     }
   }
 
+  Future<void> _requestCancellation() async {
+    final state = ref.read(membershipProvider).valueOrNull;
+    if (state?.activeMembership == null || state?.pendingCancellation != null) {
+      return;
+    }
+    final proceed = await showDialog<bool>(
+      context: context,
+      barrierColor: Colors.black.withAlpha(150),
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(22),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+            child: Container(
+              padding: const EdgeInsets.all(22),
+              decoration: BoxDecoration(
+                color: ClayTokens.clayDarkSurface.withAlpha(238),
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: Colors.white.withAlpha(35)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Cancel membership?',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 19,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Your membership remains active until the admin reviews your request. Continue to the cancellation details?',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white, fontSize: 14),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: CupertinoButton(
+                          color: const Color(0xFF7C3AED),
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text(
+                            'No',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: CupertinoButton(
+                          color: const Color(0xFFDC2626),
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text(
+                            'Yes',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    if (proceed == true && mounted) context.push('/member/membership/cancel');
+  }
+
   @override
   Widget build(BuildContext context) {
     final stateAsync = ref.watch(membershipProvider);
@@ -117,6 +192,8 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
     final canApply = state.canApplyForRenewal && pending == null;
     final lastDecision = state.lastDecision;
     final expiredList = (state.expiredMemberships as List).cast<dynamic>();
+    final cancellationRequests = (state.cancellationRequests as List)
+        .cast<Map<String, dynamic>>();
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -134,6 +211,15 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
             text:
                 'Your ${pending.planName} renewal request is waiting for '
                 'admin approval. You will get a notification once it is decided.',
+          ),
+        ],
+        if (state.pendingCancellation != null) ...[
+          const SizedBox(height: 12),
+          _infoBanner(
+            icon: CupertinoIcons.hourglass,
+            color: const Color(0xFFFF9F0A),
+            text:
+                'Your cancellation request is waiting for admin approval. Your membership remains active until it is approved.',
           ),
         ],
         if (lastDecision != null && lastDecision.isDeclined) ...[
@@ -185,6 +271,26 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
             ),
           ),
         ],
+        if (current != null && state.pendingCancellation == null) ...[
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: CupertinoButton(
+              borderRadius: BorderRadius.circular(12),
+              color: const Color(0xFFDC2626),
+              onPressed: _submitting ? null : _requestCancellation,
+              child: const Text(
+                'Request Membership Cancellation',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: 24),
         const Text(
           'HISTORY',
@@ -202,13 +308,19 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
           ...expiredList.map(_expiredMembershipTile),
           const SizedBox(height: 8),
         ],
-        if (expiredList.isEmpty && state.renewalRequests.isEmpty)
+        if (expiredList.isEmpty &&
+            state.renewalRequests.isEmpty &&
+            cancellationRequests.isEmpty)
           const Text(
             'No history yet.',
             style: TextStyle(fontSize: 12, color: Color(0xFF636366)),
-          )
-        else if (state.renewalRequests.isNotEmpty)
+          ),
+        if (state.renewalRequests.isNotEmpty)
           ...state.renewalRequests.map(_historyTile),
+        if (cancellationRequests.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          ...cancellationRequests.map(_cancellationHistoryTile),
+        ],
       ],
     );
   }
@@ -219,6 +331,7 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
     final end = endD == null
         ? '—'
         : '${endD.year}-${endD.month.toString().padLeft(2, '0')}-${endD.day.toString().padLeft(2, '0')}';
+    final cancelled = membership.status == 'cancelled';
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -229,11 +342,7 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
       ),
       child: Row(
         children: [
-          const Icon(
-            CupertinoIcons.clock,
-            size: 16,
-            color: Color(0xFF8E8E93),
-          ),
+          const Icon(CupertinoIcons.clock, size: 16, color: Color(0xFF8E8E93)),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -248,7 +357,7 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
                   ),
                 ),
                 Text(
-                  'Expired $end',
+                  '${cancelled ? 'Cancelled' : 'Expired'} $end',
                   style: const TextStyle(
                     fontSize: 11,
                     color: Color(0xFF8E8E93),
@@ -257,12 +366,14 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
               ],
             ),
           ),
-          const Text(
-            'EXPIRED',
+          Text(
+            cancelled ? 'CANCELLED' : 'EXPIRED',
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w700,
-              color: Color(0xFFFF453A),
+              color: cancelled
+                  ? const Color(0xFFFF9F0A)
+                  : const Color(0xFFFF453A),
             ),
           ),
         ],
@@ -335,6 +446,68 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
           ),
           Text(
             label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _cancellationHistoryTile(Map<String, dynamic> request) {
+    final status = request['status'] as String? ?? 'pending';
+    final color = status == 'approved'
+        ? const Color(0xFF30D158)
+        : status == 'declined'
+        ? const Color(0xFFFF453A)
+        : const Color(0xFFFF9F0A);
+    final refund = (request['refund_amount'] as num?)?.toDouble();
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withAlpha(10),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white.withAlpha(24)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Membership cancellation',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+                Text(
+                  'Requested ${_fmtDate(DateTime.tryParse(request['requested_at'] as String? ?? '') ?? DateTime.now())}',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF8E8E93),
+                  ),
+                ),
+                if (status == 'approved' && refund != null)
+                  Text(
+                    'Refund recorded: ₱${refund.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF30D158),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Text(
+            status.toUpperCase(),
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w700,

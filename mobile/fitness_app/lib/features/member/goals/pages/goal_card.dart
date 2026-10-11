@@ -20,8 +20,14 @@ const goalDangerRed = Color(0xFFF87171);
 class GoalCard extends ConsumerWidget {
   final Map<String, dynamic> goal;
   final VoidCallback? onToggleStatus;
+  final VoidCallback? onCancel;
 
-  const GoalCard({super.key, required this.goal, this.onToggleStatus});
+  const GoalCard({
+    super.key,
+    required this.goal,
+    this.onToggleStatus,
+    this.onCancel,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -81,6 +87,7 @@ class GoalCard extends ConsumerWidget {
     final timeProgress = (elapsedDays / totalDays).clamp(0.0, 1.0);
     final displayDays = daysRemaining < 0 ? 0 : daysRemaining;
     final isCompleted = effectiveStatus == 'completed';
+    final isCancelled = status == 'cancelled';
     final daysColor = isCompleted
         ? goalSuccessGreen
         : isOverdue
@@ -90,10 +97,14 @@ class GoalCard extends ConsumerWidget {
         : daysRemaining <= 7
         ? goalWarningAmber
         : goalSuccessGreen;
-    final statusLabel = isCompleted
+    final statusLabel = isCancelled
+        ? 'CANCELLED'
+        : isCompleted
         ? 'COMPLETED'
         : (isOverdue ? 'EXPIRED' : 'IN PROGRESS');
-    final statusColor = isCompleted
+    final statusColor = isCancelled
+        ? goalDangerRed
+        : isCompleted
         ? goalSuccessGreen
         : (isOverdue ? textSecondary : highlightPurple);
 
@@ -186,7 +197,7 @@ class GoalCard extends ConsumerWidget {
                       ],
                     ),
                   ),
-                  if (onToggleStatus != null) ...[
+                  if (onToggleStatus != null && !isCancelled) ...[
                     const SizedBox(height: 8),
                     Semantics(
                       button: true,
@@ -363,6 +374,25 @@ class GoalCard extends ConsumerWidget {
                     : 'Day $elapsedDays of $totalDays',
                 style: const TextStyle(fontSize: 12, color: textSecondary),
               ),
+              if (onCancel != null && !isCompleted && !isOverdue) ...[
+                const SizedBox(height: 14),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: FilledButton.icon(
+                    onPressed: onCancel,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFFDC2626),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+                    ),
+                    icon: const Icon(CupertinoIcons.xmark_circle, size: 16),
+                    label: const Text('Cancel goal'),
+                  ),
+                ),
+              ],
             ],
           ),
         ),

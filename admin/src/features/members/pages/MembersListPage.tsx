@@ -1,4 +1,6 @@
 ﻿import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { supabase } from '@/lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import PeopleTable, { peopleCells, type PeopleColumn } from '@/components/PeopleTable'
@@ -16,6 +18,7 @@ export default function MembersListPage() {
 
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
+  const [view, setView] = useState<'all' | 'unassigned' | 'recent'>('all')
   // The join-date window, opened on the whole dataset. It was `from`/`to` pairs
   // before, undefined meaning "no filter"; a `Range` cannot express that, so
   // `isAllTime` stands in for it and the hook is given no bounds at all on that
@@ -27,13 +30,31 @@ export default function MembersListPage() {
 
   // Any change to the filters resets to page 1; staying on page 6 of a result
   // set that now has one page renders an empty table.
-  useResetPageOnChange(setPage, search, range.start, range.end)
+  useResetPageOnChange(setPage, search, range.start, range.end, view)
 
   const all = isAllTime(range)
+  const { data: assignedMemberIds } = useQuery({
+    queryKey: ['member-assignment-ids'],
+    queryFn: async () => {
+      const [membersResult, ...assignmentPages] = await Promise.all([
+        supabase.from('profiles').select('id').eq('role', 'member'),
+        ...Array.from({ length: 5 }, (_, index) => supabase.from('trainer_assignments').select('member_id').eq('status', 'active').range(index * 1000, (index + 1) * 1000 - 1)),
+      ])
+      if (membersResult.error) throw membersResult.error
+      const assignmentError = assignmentPages.find(page => page.error)?.error
+      if (assignmentError) throw assignmentError
+      const assigned = new Set(assignmentPages.flatMap(page => page.data ?? []).map(row => row.member_id))
+      return (membersResult.data ?? []).map(row => row.id).filter(memberId => !assigned.has(memberId))
+    },
+    enabled: view === 'unassigned',
+  })
   const { rows, total, pageCount, isLoading } = useMembersList({
     page, pageSize: LIST_PAGE_SIZE, search,
     from: all ? undefined : range.start,
     to: all ? undefined : range.end,
+    unassignedIds: view === 'unassigned' ? assignedMemberIds : undefined,
+    sortRecent: view === 'recent',
+    enabled: view !== 'unassigned' || assignedMemberIds !== undefined,
   })
   // Fifteen rows is the contract; the height of one of them is what gives. The
   // scroller is owned by PeopleTable, so that is what has to be measured.
@@ -80,7 +101,16 @@ export default function MembersListPage() {
       {/* Only the date filter lives out here now, right-aligned. The search
           moved into the card header, beside the title, which is where the QR
           queue and every dashboard tab keep theirs. */}
-      <ListToolbar range={range} onRangeChange={setRange} />
+      <ListToolbar range={range} onRangeChange={setRange} left={
+        <div className="flex items-center gap-2" role="group" aria-label="Member views">
+          {([['all', 'All members'], ['unassigned', 'No trainer'], ['recent', 'Recent join']] as const).map(([id, label]) => (
+            <button key={id} type="button" onClick={() => setView(id)} aria-pressed={view === id}
+              className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${view === id ? 'bg-[#7C3AED] border-[#7C3AED] text-white' : 'border-line text-fg-muted hover:text-fg-strong'}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+      } />
 
       <PeopleTable
         title="Members"
@@ -125,4 +155,3 @@ export default function MembersListPage() {
     </div>
   )
 }
-

@@ -1,4 +1,6 @@
+import 'dart:ui';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 
 const bgDark = Color(0xFF0B0D1A);
 const cardDark = Color(0xFF15172A);
@@ -15,65 +17,92 @@ class EmptyGoalsState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: cardDark,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: primaryPurple.withAlpha(40)),
-      ),
+    return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: primaryPurple.withAlpha(20),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(CupertinoIcons.flag, color: primaryPurple, size: 40),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No Goals Yet',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: textPrimary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Create your first fitness goal and start your journey today!',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: textSecondary, fontSize: 14),
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              height: 44,
-              child: CupertinoButton(
-                color: primaryPurple,
-                borderRadius: BorderRadius.circular(12),
-                onPressed: onAction,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 20),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(22),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: cardDark.withAlpha(210),
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: Colors.white.withAlpha(28)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: primaryPurple.withAlpha(18),
+                      blurRadius: 24,
+                      spreadRadius: 1,
+                    ),
+                  ],
+                ),
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(CupertinoIcons.plus, color: textPrimary, size: 20),
-                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: primaryPurple.withAlpha(20),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        CupertinoIcons.flag,
+                        color: primaryPurple,
+                        size: 40,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                     Text(
-                      'Create Your First Goal',
+                      'No Goals Yet',
                       style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
                         color: textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Create your first fitness goal and start your journey today!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: textSecondary, fontSize: 14),
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: CupertinoButton.filled(
+                        borderRadius: BorderRadius.circular(14),
+                        onPressed: onAction,
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              CupertinoIcons.plus,
+                              color: textPrimary,
+                              size: 18,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              'Create your first goal',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-          ],
+          ),
         ),
       ),
     );

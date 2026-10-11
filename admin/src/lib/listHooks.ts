@@ -40,13 +40,13 @@ const PEOPLE_COLUMNS =
  * every column of every row, which is a large payload for a table showing a
  * handful of fields.
  */
-export function useMembersList({ page, pageSize, search, from, to }: PeopleListParams) {
+export function useMembersList({ page, pageSize, search, from, to, unassignedIds, sortRecent, enabled }: PeopleListParams & { unassignedIds?: string[]; sortRecent?: boolean; enabled?: boolean }) {
   return usePagedTable<Profile>({
     table: 'profiles',
     select: PEOPLE_COLUMNS,
     // `code` is unique per role but is NULL for some rows, so `id` is kept as
     // the unique tiebreak that keeps pages disjoint.
-    orderBy: [{ column: 'code', ascending: true }, { column: 'id', ascending: true }],
+    orderBy: sortRecent ? [{ column: 'created_at', ascending: false }, { column: 'id', ascending: false }] : [{ column: 'code', ascending: true }, { column: 'id', ascending: true }],
     page, pageSize, search,
     searchColumns: ['full_name', 'code', 'email'],
     dateColumn: 'created_at', from, to,
@@ -54,6 +54,8 @@ export function useMembersList({ page, pageSize, search, from, to }: PeopleListP
     // 89 trainers and the admin, and the members page lists them. The role
     // predicate is part of what the list *is*, not an optional extra filter.
     eq: { role: 'member' },
+    inFilter: unassignedIds === undefined ? undefined : { id: unassignedIds },
+    enabled,
   })
 }
 
@@ -64,7 +66,7 @@ export function useTrainersList({ page, pageSize, search, from, to }: PeopleList
     select: `${PEOPLE_COLUMNS}, specialty, available_days`,
     orderBy: [{ column: 'code', ascending: true }, { column: 'id', ascending: true }],
     page, pageSize, search,
-    searchColumns: ['full_name', 'code', 'email'],
+    searchColumns: ['full_name', 'code', 'email', 'specialty', 'available_days'],
     dateColumn: 'created_at', from, to,
     eq: { role: 'trainer' },
   })

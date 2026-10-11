@@ -28,7 +28,7 @@ async function main() {
   const { data: profile } = await client
     .from('profiles')
     .select('id, full_name, code')
-    .eq('code', 'M002')
+    .eq('code', '2023-01-M002')
     .maybeSingle()
   if (!profile) {
     console.error('M002 not found')

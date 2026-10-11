@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shared/services/supabase_client.dart';
 import 'package:shared/services/workout_service.dart';
 import 'package:shared/providers/body_measurement_provider.dart';
+import 'package:shared/providers/auth_provider.dart';
 import 'package:shared/models/workout_log.dart';
 import '../../../shared/services/interaction_monitor.dart';
 import '../data/met_exercise_repository.dart' as repo;
@@ -49,10 +50,16 @@ class SessionExercise {
       category: json['category'] as String,
       met: (json['met'] as num).toDouble(),
     );
-    exercise.startedAt = json['startedAt'] != null ? DateTime.parse(json['startedAt'] as String) : null;
-    exercise.proofRecordedAt = json['proofRecordedAt'] != null ? DateTime.parse(json['proofRecordedAt'] as String) : null;
+    exercise.startedAt = json['startedAt'] != null
+        ? DateTime.parse(json['startedAt'] as String)
+        : null;
+    exercise.proofRecordedAt = json['proofRecordedAt'] != null
+        ? DateTime.parse(json['proofRecordedAt'] as String)
+        : null;
     exercise.proofUrl = json['proofUrl'] as String?;
-    exercise.doneAt = json['doneAt'] != null ? DateTime.parse(json['doneAt'] as String) : null;
+    exercise.doneAt = json['doneAt'] != null
+        ? DateTime.parse(json['doneAt'] as String)
+        : null;
     exercise.sessionElapsedSeconds = json['sessionElapsedSeconds'] as int?;
     return exercise;
   }
@@ -94,7 +101,9 @@ class CompletedSession {
     return CompletedSession(
       workoutName: json['workoutName'] as String,
       exerciseNames: List<String>.from(json['exerciseNames'] as List),
-      exerciseCategories: List<String>.from(json['exerciseCategories'] as List? ?? const []),
+      exerciseCategories: List<String>.from(
+        json['exerciseCategories'] as List? ?? const [],
+      ),
       exerciseCalories: List<int>.from(json['exerciseCalories'] as List),
       exerciseProofUrls: List<String?>.from(json['exerciseProofUrls'] as List),
       totalCalories: json['totalCalories'] as int,
@@ -143,7 +152,7 @@ class WorkoutSessionState {
     this.showPreviousCards = false,
     this.lastPersistSuccess,
     this.dayKey = '',
-  // ignore: prefer_initializing_formals
+    // ignore: prefer_initializing_formals
   }) : _latestCalories = latestCalories;
 
   /// Today's local day key (`yyyy-MM-dd`).
@@ -173,7 +182,9 @@ class WorkoutSessionState {
     final idx = exercises.indexOf(exercise);
     if (idx < 0) return 0;
     if (exercise.sessionElapsedSeconds != null) {
-      final prev = idx > 0 ? (exercises[idx - 1].sessionElapsedSeconds ?? 0) : 0;
+      final prev = idx > 0
+          ? (exercises[idx - 1].sessionElapsedSeconds ?? 0)
+          : 0;
       final delta = exercise.sessionElapsedSeconds! - prev;
       return delta < 0 ? 0 : delta;
     }
@@ -212,11 +223,19 @@ class WorkoutSessionState {
 
   factory WorkoutSessionState.fromJson(Map<String, dynamic> json) {
     return WorkoutSessionState(
-      exercises: (json['exercises'] as List?)?.map((e) => SessionExercise.fromJson(e as Map<String, dynamic>)).toList() ?? const [],
+      exercises:
+          (json['exercises'] as List?)
+              ?.map((e) => SessionExercise.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const [],
       isRunning: json['isRunning'] as bool? ?? false,
       elapsedSeconds: json['elapsedSeconds'] as int? ?? 0,
-      startedAt: json['startedAt'] != null ? DateTime.parse(json['startedAt'] as String) : null,
-      lastInteractionAt: json['lastInteractionAt'] != null ? DateTime.parse(json['lastInteractionAt'] as String) : null,
+      startedAt: json['startedAt'] != null
+          ? DateTime.parse(json['startedAt'] as String)
+          : null,
+      lastInteractionAt: json['lastInteractionAt'] != null
+          ? DateTime.parse(json['lastInteractionAt'] as String)
+          : null,
       idleWarning: json['idleWarning'] as bool? ?? false,
       idleWarningSeconds: json['idleWarningSeconds'] as int? ?? 0,
       sessionEnded: json['sessionEnded'] as bool? ?? false,
@@ -224,7 +243,11 @@ class WorkoutSessionState {
       latestCalories: json['latestCalories'] as int?,
       sessionCount: json['sessionCount'] as int? ?? 0,
       completedSessionCount: json['completedSessionCount'] as int? ?? 0,
-      completedSessions: (json['completedSessions'] as List?)?.map((s) => CompletedSession.fromJson(s as Map<String, dynamic>)).toList() ?? const [],
+      completedSessions:
+          (json['completedSessions'] as List?)
+              ?.map((s) => CompletedSession.fromJson(s as Map<String, dynamic>))
+              .toList() ??
+          const [],
       showPreviousCards: json['showPreviousCards'] as bool? ?? false,
       lastPersistSuccess: json['lastPersistSuccess'] as bool?,
       // Legacy payloads pre-dayKey restore with an empty key, so the next
@@ -251,12 +274,15 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
   DateTime? _lastTick;
   SharedPreferences? _prefs;
   DateTime? _lastPersistAt;
+  final String? memberId;
+  String get _statePrefsKey =>
+      'workout_session_state_${memberId ?? 'signed_out'}';
 
   /// Member's weight in kg, fetched from the latest body_measurement.
   double _weightKg = 70;
 
-  WorkoutSessionNotifier({double? weightKg})
-      : super(WorkoutSessionState.freshToday(weightKg: weightKg ?? 70)) {
+  WorkoutSessionNotifier({double? weightKg, this.memberId})
+    : super(WorkoutSessionState.freshToday(weightKg: weightKg ?? 70)) {
     _weightKg = weightKg ?? 70;
     _initPrefs();
   }
@@ -271,7 +297,7 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
 
   Future<bool> _tryRestoreState() async {
     if (_prefs == null) return false;
-    final raw = _prefs!.getString('workout_session_state');
+    final raw = _prefs!.getString(_statePrefsKey);
     if (raw == null) return false;
     try {
       final map = jsonDecode(raw) as Map<String, dynamic>;
@@ -319,7 +345,7 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
     state = WorkoutSessionState.freshToday(weightKg: _weightKg);
     _prefs ??= await SharedPreferences.getInstance();
     try {
-      await _prefs!.remove('workout_session_state');
+      await _prefs!.remove(_statePrefsKey);
     } catch (e) {
       debugPrint('Failed to clear workout state: $e');
     }
@@ -329,7 +355,7 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
   Future<void> _persist() async {
     _prefs ??= await SharedPreferences.getInstance();
     try {
-      await _prefs!.setString('workout_session_state', jsonEncode(state.toJson()));
+      await _prefs!.setString(_statePrefsKey, jsonEncode(state.toJson()));
     } catch (e) {
       debugPrint('Failed to persist workout state: $e');
     }
@@ -346,20 +372,23 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
   Future<void> _loadSessionHistory() async {
     try {
       final client = SupabaseClientService().client;
-      final userId = client.auth.currentUser?.id;
-      if (userId == null) return;
+      final userId = memberId;
+      final authUid = client.auth.currentUser?.id;
+      if (userId == null || authUid != userId) return;
 
       final now = DateTime.now();
       final startOfDay = DateTime(now.year, now.month, now.day).toUtc();
       final endOfDay = DateTime(now.year, now.month, now.day + 1).toUtc();
 
-       final res = await client
-           .from('workout_logs')
-           .select('workout_name, exercise_name, total_calories, duration_seconds, logged_at')
-           .eq('member_id', userId)
-           .gte('logged_at', startOfDay.toIso8601String())
-           .lt('logged_at', endOfDay.toIso8601String())
-           .order('logged_at', ascending: true);
+      final res = await client
+          .from('workout_logs')
+          .select(
+            'workout_name, exercise_name, total_calories, duration_seconds, logged_at',
+          )
+          .eq('member_id', userId)
+          .gte('logged_at', startOfDay.toIso8601String())
+          .lt('logged_at', endOfDay.toIso8601String())
+          .order('logged_at', ascending: true);
 
       final groups = <String, List<Map<String, dynamic>>>{};
       for (final row in res) {
@@ -373,7 +402,9 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
       for (final entry in groups.entries) {
         final name = entry.key;
         final exercises = entry.value;
-        final exerciseNames = exercises.map((e) => e['exercise_name'] as String? ?? '').toList();
+        final exerciseNames = exercises
+            .map((e) => e['exercise_name'] as String? ?? '')
+            .toList();
         final exerciseCalories = List<int>.filled(exercises.length, 0);
         final exerciseProofUrls = List<String?>.filled(exercises.length, null);
         final totalCalories = exercises
@@ -383,16 +414,24 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
             .map((e) => (e['duration_seconds'] as int?) ?? 0)
             .fold<int>(0, (sum, k) => sum + k);
 
-        sessions.add(CompletedSession(
-          workoutName: name,
-          exerciseNames: exerciseNames,
-          exerciseCategories: exerciseNames.map((n) => getCategoryFor(n)).toList(),
-          exerciseCalories: exerciseCalories,
-          exerciseProofUrls: exerciseProofUrls,
-          totalCalories: totalCalories,
-          elapsedSeconds: elapsedSeconds,
-          completedAt: DateTime.tryParse(exercises.last['logged_at'] as String? ?? '') ?? DateTime.now(),
-        ));
+        sessions.add(
+          CompletedSession(
+            workoutName: name,
+            exerciseNames: exerciseNames,
+            exerciseCategories: exerciseNames
+                .map((n) => getCategoryFor(n))
+                .toList(),
+            exerciseCalories: exerciseCalories,
+            exerciseProofUrls: exerciseProofUrls,
+            totalCalories: totalCalories,
+            elapsedSeconds: elapsedSeconds,
+            completedAt:
+                DateTime.tryParse(
+                  exercises.last['logged_at'] as String? ?? '',
+                ) ??
+                DateTime.now(),
+          ),
+        );
 
         final match = RegExp(r'S(\d+)').firstMatch(name);
         if (match != null) {
@@ -452,25 +491,27 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
   /// Adds a catalog-matched exercise to the current session.
   void addExercise(String name) {
     final category = metExerciseCatalog.entries
-        .firstWhere((c) => c.value.any((e) => e.name == name),
-            orElse: () => const MapEntry('', []))
+        .firstWhere(
+          (c) => c.value.any((e) => e.name == name),
+          orElse: () => const MapEntry('', []),
+        )
         .key;
     if (category.isEmpty) return;
     final met = getMetValue(name);
-    _addExerciseInternal(SessionExercise(
-      name: name,
-      category: category,
-      met: met,
-    ));
+    _addExerciseInternal(
+      SessionExercise(name: name, category: category, met: met),
+    );
   }
 
   /// Adds an exercise from the repository.
   void addExerciseFromRepository(repo.MetExercise exercise) {
-    _addExerciseInternal(SessionExercise(
-      name: exercise.name,
-      category: exercise.category,
-      met: exercise.metValue,
-    ));
+    _addExerciseInternal(
+      SessionExercise(
+        name: exercise.name,
+        category: exercise.category,
+        met: exercise.metValue,
+      ),
+    );
   }
 
   void _addExerciseInternal(SessionExercise exercise) {
@@ -514,7 +555,9 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
   }
 
   void startSession() {
-    if (state.exercises.isEmpty || state.isRunning || state.sessionEnded) return;
+    if (state.exercises.isEmpty || state.isRunning || state.sessionEnded) {
+      return;
+    }
     _lastTick = DateTime.now();
     final started = DateTime.now();
     state.exercises.first.startedAt ??= started;
@@ -534,30 +577,30 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
     );
     _ticker?.cancel();
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
-InteractionMonitor.instance.ensureStarted();
-   }
+    InteractionMonitor.instance.ensureStarted();
+  }
 
-    void startNewSession() {
-      if (state.sessionCount >= 3) return;
-      _ticker?.cancel();
-      _ticker = null;
-      _idleGraceTimer?.cancel();
-      _idleGraceTimer = null;
-      _lastTick = null;
-      state = WorkoutSessionState(
-        exercises: const [],
-        isRunning: false,
-        elapsedSeconds: 0,
-        startedAt: null,
-        lastInteractionAt: _stampInteraction(),
-        idleWarning: false,
-        idleWarningSeconds: 0,
-        sessionEnded: false,
-        weightKg: _weightKg,
-        latestCalories: 0,
-        sessionCount: state.sessionCount + 1,
-        completedSessionCount: state.completedSessionCount,
-        completedSessions: state.completedSessions,
+  void startNewSession() {
+    if (state.sessionCount >= 3) return;
+    _ticker?.cancel();
+    _ticker = null;
+    _idleGraceTimer?.cancel();
+    _idleGraceTimer = null;
+    _lastTick = null;
+    state = WorkoutSessionState(
+      exercises: const [],
+      isRunning: false,
+      elapsedSeconds: 0,
+      startedAt: null,
+      lastInteractionAt: _stampInteraction(),
+      idleWarning: false,
+      idleWarningSeconds: 0,
+      sessionEnded: false,
+      weightKg: _weightKg,
+      latestCalories: 0,
+      sessionCount: state.sessionCount + 1,
+      completedSessionCount: state.completedSessionCount,
+      completedSessions: state.completedSessions,
       showPreviousCards: false,
       lastPersistSuccess: null,
       dayKey: state.dayKey,
@@ -565,7 +608,7 @@ InteractionMonitor.instance.ensureStarted();
     _persist();
   }
 
-   /// Records that the current exercise has a saved proof video.
+  /// Records that the current exercise has a saved proof video.
   void markProofRecorded(int index, String url) {
     if (index < 0 || index >= state.exercises.length) return;
     final e = state.exercises[index];
@@ -614,7 +657,9 @@ InteractionMonitor.instance.ensureStarted();
       workoutName: 'Workout S${state.sessionCount + 1}',
       exerciseNames: state.exercises.map((e) => e.name).toList(),
       exerciseCategories: state.exercises.map((e) => e.category).toList(),
-      exerciseCalories: state.exercises.map((e) => _caloriesFor(e).round()).toList(),
+      exerciseCalories: state.exercises
+          .map((e) => _caloriesFor(e).round())
+          .toList(),
       exerciseProofUrls: state.exercises.map((e) => e.proofUrl).toList(),
       totalCalories: totalCalories,
       elapsedSeconds: state.elapsedSeconds,
@@ -651,7 +696,10 @@ InteractionMonitor.instance.ensureStarted();
     // Start idle warning once the threshold is crossed.
     if (!state.idleWarning && idleFor >= SessionConfig.idleThreshold) {
       _startIdleGrace();
-      state = _copyWith(idleWarning: true, idleWarningSeconds: SessionConfig.idleGracePeriod.inSeconds);
+      state = _copyWith(
+        idleWarning: true,
+        idleWarningSeconds: SessionConfig.idleGracePeriod.inSeconds,
+      );
       return;
     }
 
@@ -666,7 +714,8 @@ InteractionMonitor.instance.ensureStarted();
       lastInteractionAt: lastInteraction,
     );
     final now2 = DateTime.now();
-    if (_lastPersistAt == null || now2.difference(_lastPersistAt!).inSeconds >= 10) {
+    if (_lastPersistAt == null ||
+        now2.difference(_lastPersistAt!).inSeconds >= 10) {
       _lastPersistAt = now2;
       _persist();
     }
@@ -750,7 +799,8 @@ InteractionMonitor.instance.ensureStarted();
       weightKg: weightKg ?? state.weightKg,
       latestCalories: latestCalories ?? state.latestCalories,
       sessionCount: sessionCount ?? state.sessionCount,
-      completedSessionCount: completedSessionCount ?? state.completedSessionCount,
+      completedSessionCount:
+          completedSessionCount ?? state.completedSessionCount,
       completedSessions: completedSessions ?? state.completedSessions,
       showPreviousCards: showPreviousCards ?? state.showPreviousCards,
       lastPersistSuccess: lastPersistSuccess ?? state.lastPersistSuccess,
@@ -763,7 +813,8 @@ InteractionMonitor.instance.ensureStarted();
     _persist();
   }
 
-  DateTime _stampInteraction() => InteractionMonitor.instance.lastInteractionAt.value = DateTime.now();
+  DateTime _stampInteraction() =>
+      InteractionMonitor.instance.lastInteractionAt.value = DateTime.now();
 
   @override
   void dispose() {
@@ -778,7 +829,11 @@ InteractionMonitor.instance.ensureStarted();
 // autoDispose provider would cancel the clock and wipe the exercise list.
 final workoutSessionProvider =
     StateNotifierProvider<WorkoutSessionNotifier, WorkoutSessionState>((ref) {
-  final measurement = ref.read(latestBodyMeasurementProvider).valueOrNull;
-  final weightKg = measurement?['weight_kg'] as num?;
-  return WorkoutSessionNotifier(weightKg: weightKg?.toDouble() ?? 70);
-});
+      final memberId = ref.watch(activeUserIdProvider);
+      final measurement = ref.read(latestBodyMeasurementProvider).valueOrNull;
+      final weightKg = measurement?['weight_kg'] as num?;
+      return WorkoutSessionNotifier(
+        weightKg: weightKg?.toDouble() ?? 70,
+        memberId: memberId,
+      );
+    });

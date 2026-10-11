@@ -66,6 +66,8 @@ export interface PeopleTableProps<T> {
    * `(page - 1) * pageSize + 1`.
    */
   startIndex?: number
+  /** Add visually blank rows so a short final page still fills the table body. */
+  fillRowsTo?: number
   /** Rendered under the table inside the card - the list pages' pager. */
   footer?: React.ReactNode
   /**
@@ -140,7 +142,7 @@ function CardSearch({ value, onChange, placeholder, debounceMs = 300 }: {
 
 export default function PeopleTable<T>({
   rows, columns, rowKey, onRowClick, isLoading, emptyMessage,
-  headerExtra, rowHeight, scrollRef, title, search, startIndex = 1, footer,
+  headerExtra, rowHeight, scrollRef, title, search, startIndex = 1, footer, fillRowsTo,
 }: PeopleTableProps<T>) {
   // Row click is optional: when no handler is given the default route depends
   // on the entity, so the caller supplies it (people rows go to /members or
@@ -270,7 +272,8 @@ export default function PeopleTable<T>({
                   </td>
                 </tr>
               ) : (
-                rows.map((row, i) => (
+                <>
+                {rows.map((row, i) => (
                   <tr
                     key={rowKey(row)}
                     onClick={() => go(row)}
@@ -297,7 +300,13 @@ export default function PeopleTable<T>({
                       </td>
                     ))}
                   </tr>
-                ))
+                ))}
+                {fillRowsTo != null && Array.from({ length: Math.max(0, fillRowsTo - rows.length) }, (_, i) => (
+                  <tr key={`filler-${i}`} aria-hidden="true" style={rowStyle} className="border-b border-line-soft last:border-0">
+                    <td colSpan={columns.length + 1} className="p-0" />
+                  </tr>
+                ))}
+                </>
               )}
             </tbody>
           </table>

@@ -1,6 +1,6 @@
 ﻿import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import PeopleTable, { peopleCells, type PeopleColumn } from '@/components/PeopleTable'
 import PaginationFooter from '@/components/PaginationFooter'
 import ListToolbar from '@/components/ListToolbar'
@@ -8,6 +8,7 @@ import { allTime, isAllTime, type Range } from '@/features/dashboard/lib/dateRan
 import { useFitRowHeight } from '@/hooks/useFitRows'
 import { useTrainersList, LIST_PAGE_SIZE } from '@/lib/listHooks'
 import { useResetPageOnChange } from '@/lib/pagedTable'
+import { supabase } from '@/lib/supabase'
 import type { Profile } from '@/types'
 import { X } from 'lucide-react'
 
@@ -30,6 +31,21 @@ export default function TrainersListPage() {
     from: all ? undefined : range.start,
     to: all ? undefined : range.end,
   })
+  const { data: memberCounts = {} } = useQuery({
+    queryKey: ['trainer-member-counts'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('trainer_assignments')
+        .select('trainer_id')
+        .eq('status', 'active')
+        .range(0, 4999)
+      if (error) throw error
+      return (data ?? []).reduce<Record<string, number>>((counts, assignment) => {
+        counts[assignment.trainer_id] = (counts[assignment.trainer_id] ?? 0) + 1
+        return counts
+      }, {})
+    },
+  })
   // Fifteen rows is the contract; the height of one of them is what gives.
   const [scrollRef, rowHeight] = useFitRowHeight<HTMLDivElement>({ count: LIST_PAGE_SIZE })
   useResetPageOnChange(setPage, search, range.start, range.end)
@@ -45,6 +61,8 @@ export default function TrainersListPage() {
     { key: 'code', header: 'Code', render: t => peopleCells.code(t.code) },
     { key: 'email', header: 'Email', render: t => t.email },
     { key: 'specialty', header: 'Specialty', render: t => t.specialty || '—' },
+    { key: 'availability', header: 'Availability', render: t => t.available_days?.split(',').join(', ') || '-' },
+    { key: 'members', header: 'Members', render: t => <span className="tabular-nums">{memberCounts[t.id] ?? 0}</span> },
     { key: 'joined', header: 'Hired', render: t => peopleCells.date(t.created_at) },
     {
       key: 'actions',
@@ -186,7 +204,7 @@ export default function TrainersListPage() {
         emptyMessage="No trainers match these filters"
         scrollRef={scrollRef}
         rowHeight={rowHeight}
-        search={{ value: search, onChange: setSearch, placeholder: 'Search by name, code or email…' }}
+        search={{ value: search, onChange: setSearch, placeholder: 'Search name, code, email, specialty or day...' }}
         startIndex={(page - 1) * LIST_PAGE_SIZE + 1}
         footer={
           <PaginationFooter

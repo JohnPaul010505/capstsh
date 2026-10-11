@@ -27,7 +27,7 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
   String? selectedClient;
   String? selectedClientName;
   String? selectedWorkoutType;
-  final TextEditingController notesController = TextEditingController();
+  final Map<int, TextEditingController> _notesByDay = {};
   final TextEditingController foodSearchController = TextEditingController();
   final TextEditingController exerciseNameController = TextEditingController();
   final TextEditingController setsController = TextEditingController();
@@ -36,8 +36,10 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
 
   int _currentDay = 1;
   String? _selectedMealType;
-  final Map<int, List<Map<String, dynamic>>> foodsByDay = <int, List<Map<String, dynamic>>>{};
-  final Map<int, List<Map<String, dynamic>>> exercisesByDay = <int, List<Map<String, dynamic>>>{};
+  final Map<int, List<Map<String, dynamic>>> foodsByDay =
+      <int, List<Map<String, dynamic>>>{};
+  final Map<int, List<Map<String, dynamic>>> exercisesByDay =
+      <int, List<Map<String, dynamic>>>{};
 
   bool isSaving = false;
   List<Map<String, dynamic>>? members;
@@ -47,11 +49,22 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
   DateTime _startDate = DateTime.now();
 
   static const _monthNames = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
 
-  String _fmtDate(DateTime d) => '${_monthNames[d.month - 1]} ${d.day}, ${d.year}';
+  String _fmtDate(DateTime d) =>
+      '${_monthNames[d.month - 1]} ${d.day}, ${d.year}';
 
   bool _isDayComplete(int day) {
     final foods = foodsByDay[day] ?? [];
@@ -59,11 +72,30 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
     return foods.length == 3 && exercises.isNotEmpty;
   }
 
-  bool get _allDaysComplete {
-    for (int day = 1; day <= 7; day++) {
-      if (!_isDayComplete(day)) return false;
+  TextEditingController _notesControllerForDay(int day) =>
+      _notesByDay.putIfAbsent(day, TextEditingController.new);
+
+  void _goToNextDay() {
+    if (!_isDayComplete(_currentDay)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Complete Day $_currentDay nutrition and training first.',
+          ),
+        ),
+      );
+      return;
     }
-    return true;
+    if (_currentDay < 7) setState(() => _currentDay++);
+  }
+
+  int get _completedDayCount {
+    var count = 0;
+    for (var day = 1; day <= 7; day++) {
+      if (!_isDayComplete(day)) break;
+      count = day;
+    }
+    return count;
   }
 
   @override
@@ -104,11 +136,16 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
 
       // 3. Batch fetch active plans for these members in one query
       final now = DateTime.now();
-      final todayStr = DateTime(now.year, now.month, now.day).toIso8601String().split('T').first;
+      final todayStr = DateTime(
+        now.year,
+        now.month,
+        now.day,
+      ).toIso8601String().split('T').first;
       final activePlansResp = await client
           .from('member_goal_plans')
           .select('member_id')
           .inFilter('member_id', memberIds)
+          .eq('status', 'active')
           .gte('end_date', todayStr);
 
       final activeMemberIds = (activePlansResp as List)
@@ -135,9 +172,14 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
 
   Future<void> _assignPlan() async {
     if (selectedClient == null) return;
-    if (!_allDaysComplete) {
+    final dayCount = _completedDayCount;
+    if (dayCount == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please complete all 7 days before assigning.')),
+        const SnackBar(
+          content: Text(
+            'Complete Day 1 nutrition and training before assigning.',
+          ),
+        ),
       );
       return;
     }
@@ -145,19 +187,21 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
     try {
       final client = SupabaseClientService().client;
 
-      final foodPlan = List.generate(7, (day) {
+      final foodPlan = List.generate(dayCount, (day) {
         final dayNum = day + 1;
         return {
           'day': dayNum,
           'foods': foodsByDay[dayNum] ?? [],
+          'notes': _notesControllerForDay(dayNum).text.trim(),
         };
       });
 
-      final exercisePlan = List.generate(7, (day) {
+      final exercisePlan = List.generate(dayCount, (day) {
         final dayNum = day + 1;
         return {
           'day': dayNum,
           'exercises': exercisesByDay[dayNum] ?? [],
+          'notes': _notesControllerForDay(dayNum).text.trim(),
         };
       });
 
@@ -165,40 +209,35 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
         'member_id': selectedClient,
         'food_plan': foodPlan,
         'exercise_plan': exercisePlan,
-        'notes': notesController.text.trim().isNotEmpty ? notesController.text.trim() : null,
         'start_date': _startDate.toIso8601String().split('T').first,
         'end_date': _startDate
-            .add(const Duration(days: 6))
+            .add(Duration(days: dayCount - 1))
             .toIso8601String()
             .split('T')
             .first,
-        'timeframe': '7_days',
-        'updated_at': DateTime.now().toIso8601String(),
+        'timeframe': '${dayCount}_days',
+        'status': 'active',
         'trainer_id': client.auth.currentUser!.id,
       };
-
-      final existing = await client
-          .from('member_goal_plans')
-          .select('id')
-          .eq('member_id', selectedClient!)
-          .maybeSingle();
-
-      if (existing != null && existing['id'] != null) {
+      // Each assignment gets a new plan ID so previous day completions never
+      // carry over to a replacement plan.
+      if (_confirmReplace) {
         await client
             .from('member_goal_plans')
-            .update(planJson)
-            .eq('id', existing['id'] as String);
-      } else {
-        planJson['created_at'] = DateTime.now().toIso8601String();
-        await client.from('member_goal_plans').insert(planJson);
+            .update({'status': 'cancelled'})
+            .eq('member_id', selectedClient!)
+            .eq('status', 'active');
       }
+      planJson['created_at'] = DateTime.now().toIso8601String();
+      await client.from('member_goal_plans').insert(planJson);
 
       if (!mounted) return;
       if (selectedClient != null) {
         final trainerName = await _trainerDisplayName(client);
-        final notes = notesController.text.trim();
+        final notes = _notesControllerForDay(1).text.trim();
         final body = StringBuffer(
-            'Your 7-day plan starts ${_fmtDate(_startDate)}.');
+          'Your $dayCount-day plan starts ${_fmtDate(_startDate)}.',
+        );
         if (notes.isNotEmpty) body.write(' $notes');
         body.write('\n- $trainerName');
         await NotificationService().createNotification(
@@ -214,9 +253,9 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
       context.pop();
     } on Exception catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to assign plan: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to assign plan: $e')));
     } finally {
       if (mounted) {
         setState(() => isSaving = false);
@@ -247,7 +286,9 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
     if (_selectedMealType == null) return;
     if (foodSearchController.text.trim().isEmpty) return;
     final currentFoods = foodsByDay[_currentDay] ?? [];
-    final addedTypes = currentFoods.map((f) => f['meal_type'] as String? ?? '').toSet();
+    final addedTypes = currentFoods
+        .map((f) => f['meal_type'] as String? ?? '')
+        .toSet();
     if (addedTypes.contains(_selectedMealType)) return;
     if (currentFoods.length >= 3) return;
 
@@ -325,15 +366,31 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
   }
 
   @override
+  void dispose() {
+    for (final controller in _notesByDay.values) {
+      controller.dispose();
+    }
+    foodSearchController.dispose();
+    exerciseNameController.dispose();
+    setsController.dispose();
+    repsController.dispose();
+    weightController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final membersList = members ??
+    final membersList =
+        members ??
         const [
-          {'id': '', 'full_name': 'Loading members...'}
+          {'id': '', 'full_name': 'Loading members...'},
         ];
 
     final currentFoods = foodsByDay[_currentDay] ?? <Map<String, dynamic>>[];
-    final currentExercises = exercisesByDay[_currentDay] ?? <Map<String, dynamic>>[];
-    final hasActivePlan = selectedClient != null && memberHasActivePlan[selectedClient!] == true;
+    final currentExercises =
+        exercisesByDay[_currentDay] ?? <Map<String, dynamic>>[];
+    final hasActivePlan =
+        selectedClient != null && memberHasActivePlan[selectedClient!] == true;
 
     return Scaffold(
       backgroundColor: ClayTokens.clayDarkBase,
@@ -344,7 +401,10 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
               _buildHeader(),
               Expanded(
                 child: ListView(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
                   children: [
                     _NotificationGlassPanel(
                       child: Column(
@@ -367,16 +427,25 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
                               decoration: BoxDecoration(
                                 color: const Color(0xFFFF9500).withAlpha(20),
                                 borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: const Color(0xFFFF9500).withAlpha(60)),
+                                border: Border.all(
+                                  color: const Color(0xFFFF9500).withAlpha(60),
+                                ),
                               ),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.warning_amber_rounded, color: Color(0xFFFF9500), size: 18),
+                                  const Icon(
+                                    Icons.warning_amber_rounded,
+                                    color: Color(0xFFFF9500),
+                                    size: 18,
+                                  ),
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Text(
                                       'This member already has an active plan. Creating a new plan will replace it.',
-                                      style: const TextStyle(fontSize: 12, color: Color(0xFFFFCC02)),
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Color(0xFFFFCC02),
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -391,7 +460,10 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
                                 },
                                 child: const Text(
                                   'I understand, continue',
-                                  style: TextStyle(fontSize: 12, color: Color(0xFFD6A5FF)),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFFD6A5FF),
+                                  ),
                                 ),
                               ),
                           ] else ...[
@@ -401,16 +473,25 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
                               decoration: BoxDecoration(
                                 color: Colors.white.withAlpha(10),
                                 borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.white.withAlpha(28)),
+                                border: Border.all(
+                                  color: Colors.white.withAlpha(28),
+                                ),
                               ),
                               child: Row(
                                 children: [
-                                  Icon(Icons.info_outline, color: ClayTokens.clayPrimaryLight, size: 18),
+                                  Icon(
+                                    Icons.info_outline,
+                                    color: ClayTokens.clayPrimaryLight,
+                                    size: 18,
+                                  ),
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Text(
                                       'This member does not have an active plan yet.',
-                                      style: const TextStyle(fontSize: 12, color: Color(0xFFFFFFFF)),
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Color(0xFFFFFFFF),
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -422,6 +503,16 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
                             currentDay: _currentDay,
                             isDayComplete: _isDayComplete,
                             onDayChanged: (day) {
+                              if (day > 1 && !_isDayComplete(day - 1)) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Finish Day ${day - 1} nutrition and training first.',
+                                    ),
+                                  ),
+                                );
+                                return;
+                              }
                               setState(() => _currentDay = day);
                             },
                           ),
@@ -441,18 +532,25 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
                             child: Container(
                               width: double.infinity,
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 14),
+                                horizontal: 14,
+                                vertical: 14,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.white.withAlpha(14),
-                                borderRadius:
-                                    BorderRadius.circular(ClayTokens.radiusMd),
-                                border:
-                                    Border.all(color: Colors.white.withAlpha(30)),
+                                borderRadius: BorderRadius.circular(
+                                  ClayTokens.radiusMd,
+                                ),
+                                border: Border.all(
+                                  color: Colors.white.withAlpha(30),
+                                ),
                               ),
                               child: Row(
                                 children: [
-                                  const Icon(CupertinoIcons.calendar,
-                                      size: 16, color: Color(0xFF8E8E93)),
+                                  const Icon(
+                                    CupertinoIcons.calendar,
+                                    size: 16,
+                                    color: Color(0xFF8E8E93),
+                                  ),
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
@@ -462,9 +560,11 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
                                       ),
                                     ),
                                   ),
-                                  Icon(CupertinoIcons.chevron_down,
-                                      size: 16,
-                                      color: ClayTokens.clayDarkTextTertiary),
+                                  Icon(
+                                    CupertinoIcons.chevron_down,
+                                    size: 16,
+                                    color: ClayTokens.clayDarkTextTertiary,
+                                  ),
                                 ],
                               ),
                             ),
@@ -509,9 +609,17 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
                           ),
                           const SizedBox(height: 16),
                           _NotesSection(
-                            controller: notesController,
+                            controller: _notesControllerForDay(_currentDay),
                           ),
                           const SizedBox(height: 20),
+                          if (_currentDay < 7) ...[
+                            _AssignPlanButton(
+                              label: 'Next',
+                              onPressed: isSaving ? null : _goToNextDay,
+                              isLoading: false,
+                            ),
+                            const SizedBox(height: 12),
+                          ],
                           _AssignPlanButton(
                             onPressed: isSaving ? null : _assignPlan,
                             isLoading: isSaving,
@@ -538,10 +646,7 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
           CupertinoButton(
             padding: EdgeInsets.zero,
             onPressed: () => context.go('/trainer/profile'),
-            child: Icon(
-              CupertinoIcons.back,
-              color: Colors.white,
-            ),
+            child: Icon(CupertinoIcons.back, color: Colors.white),
           ),
           Expanded(
             child: Text(
@@ -660,8 +765,8 @@ class _DaySelector extends StatelessWidget {
               borderColor = const Color(0xFF7C3AED);
               textColor = Colors.white;
             } else if (complete) {
-              backgroundColor = const Color(0xFF7C3AED).withAlpha(120);
-              borderColor = const Color(0xFF7C3AED).withAlpha(200);
+              backgroundColor = const Color(0xFF7C3AED);
+              borderColor = const Color(0xFF7C3AED);
               textColor = Colors.white;
             } else if (isSelected) {
               backgroundColor = Colors.white.withAlpha(14);
@@ -785,10 +890,8 @@ class _ClientSection extends StatelessWidget {
   Future<void> _openMemberPicker(BuildContext context) async {
     final picked = await showDialog<String>(
       context: context,
-      builder: (_) => _MemberPickerDialog(
-        members: members,
-        selected: selectedClient,
-      ),
+      builder: (_) =>
+          _MemberPickerDialog(members: members, selected: selectedClient),
     );
     if (picked != null) onChanged(picked);
   }
@@ -852,7 +955,10 @@ class _MemberPickerDialogState extends State<_MemberPickerDialog> {
               onChanged: (v) => setState(() => _query = v),
               decoration: InputDecoration(
                 hintText: 'Search members…',
-                hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF7070A0)),
+                hintStyle: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF7070A0),
+                ),
                 prefixIcon: const Icon(
                   Icons.search,
                   size: 18,
@@ -881,7 +987,10 @@ class _MemberPickerDialogState extends State<_MemberPickerDialog> {
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 child: Text(
                   'No members match "$_query"',
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF8E8E93)),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF8E8E93),
+                  ),
                 ),
               )
             else
@@ -940,7 +1049,10 @@ class _MemberPickerDialogState extends State<_MemberPickerDialog> {
             Align(
               alignment: Alignment.centerRight,
               child: CupertinoButton(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 6,
+                ),
                 onPressed: () => Navigator.pop(context),
                 child: const Text(
                   'Cancel',
@@ -1078,7 +1190,9 @@ class _NutritionSectionState extends State<_NutritionSection> {
 
   @override
   Widget build(BuildContext context) {
-    final addedTypes = widget.foods.map((f) => f['meal_type'] as String? ?? '').toSet();
+    final addedTypes = widget.foods
+        .map((f) => f['meal_type'] as String? ?? '')
+        .toSet();
     final isFull = widget.foods.length >= 3;
 
     return Column(
@@ -1110,33 +1224,39 @@ class _NutritionSectionState extends State<_NutritionSection> {
                   final isAdded = addedTypes.contains(type);
                   return Expanded(
                     child: GestureDetector(
-                      onTap: isAdded ? null : () => widget.onMealTypeChanged(type),
+                      onTap: isAdded
+                          ? null
+                          : () => widget.onMealTypeChanged(type),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         height: 36,
-                        margin: EdgeInsets.only(right: type != _mealTypes.last ? 6 : 0),
-                          decoration: BoxDecoration(
+                        margin: EdgeInsets.only(
+                          right: type != _mealTypes.last ? 6 : 0,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? ClayTokens.clayPrimary
+                              : isAdded
+                              ? ClayTokens.clayPrimary.withAlpha(40)
+                              : Colors.white.withAlpha(14),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
                             color: isSelected
                                 ? ClayTokens.clayPrimary
                                 : isAdded
-                                    ? ClayTokens.clayPrimary.withAlpha(40)
-                                    : Colors.white.withAlpha(14),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: isSelected
-                                  ? ClayTokens.clayPrimary
-                                  : isAdded
-                                      ? ClayTokens.clayPrimary.withAlpha(120)
-                                      : Colors.white.withAlpha(30),
-                            ),
+                                ? ClayTokens.clayPrimary.withAlpha(120)
+                                : Colors.white.withAlpha(30),
                           ),
+                        ),
                         child: Center(
                           child: Text(
                             _mealTypeLabel(type),
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
-                              color: isSelected || isAdded ? Colors.white : ClayTokens.clayDarkTextSecondary,
+                              color: isSelected || isAdded
+                                  ? Colors.white
+                                  : ClayTokens.clayDarkTextSecondary,
                             ),
                           ),
                         ),
@@ -1153,7 +1273,9 @@ class _NutritionSectionState extends State<_NutritionSection> {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w400,
-                  color: widget.selectedMealType != null ? const Color(0xFFFFFFFF) : const Color(0xFF8E8E93),
+                  color: widget.selectedMealType != null
+                      ? const Color(0xFFFFFFFF)
+                      : const Color(0xFF8E8E93),
                 ),
               ),
               const SizedBox(height: 8),
@@ -1163,11 +1285,18 @@ class _NutritionSectionState extends State<_NutritionSection> {
                     child: CupertinoTextField(
                       controller: widget.searchController,
                       placeholder: 'Search or enter food',
-                      placeholderStyle: ClayTokens.darkBodyMedium.copyWith(color: ClayTokens.clayDarkTextTertiary),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                      placeholderStyle: ClayTokens.darkBodyMedium.copyWith(
+                        color: ClayTokens.clayDarkTextTertiary,
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 14,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white.withAlpha(14),
-                        borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
+                        borderRadius: BorderRadius.circular(
+                          ClayTokens.radiusMd,
+                        ),
                         border: Border.all(color: Colors.white.withAlpha(30)),
                       ),
                       style: ClayTokens.darkBodyMedium,
@@ -1183,11 +1312,21 @@ class _NutritionSectionState extends State<_NutritionSection> {
                   ),
                   const SizedBox(width: 8),
                   CupertinoButton(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
                     color: ClayTokens.clayPrimary,
                     borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
-                    onPressed: (widget.selectedMealType != null && !isFull) ? widget.onAddFood : null,
-                    child: Text('Add', style: ClayTokens.darkBodyMedium.copyWith(color: Color(0xFFFFFFFF))),
+                    onPressed: (widget.selectedMealType != null && !isFull)
+                        ? widget.onAddFood
+                        : null,
+                    child: Text(
+                      'Add',
+                      style: ClayTokens.darkBodyMedium.copyWith(
+                        color: Color(0xFFFFFFFF),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -1204,7 +1343,9 @@ class _NutritionSectionState extends State<_NutritionSection> {
                   ),
                 ),
               ],
-              if (!_searchingFoods && _hasFoodQuery && _foodResults.isEmpty) ...[
+              if (!_searchingFoods &&
+                  _hasFoodQuery &&
+                  _foodResults.isEmpty) ...[
                 const SizedBox(height: 10),
                 const Text(
                   'No FNRI foods found. You can still type the food name.',
@@ -1253,7 +1394,9 @@ class _NutritionSectionState extends State<_NutritionSection> {
                                       width: 28,
                                       height: 28,
                                       decoration: BoxDecoration(
-                                        color: ClayTokens.clayPrimary.withAlpha(35),
+                                        color: ClayTokens.clayPrimary.withAlpha(
+                                          35,
+                                        ),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: const Icon(
@@ -1265,7 +1408,8 @@ class _NutritionSectionState extends State<_NutritionSection> {
                                     const SizedBox(width: 10),
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             food.foodName,
@@ -1306,18 +1450,27 @@ class _NutritionSectionState extends State<_NutritionSection> {
               const SizedBox(height: 12),
               if (widget.foods.isEmpty)
                 Container(
-                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 16,
+                    horizontal: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withAlpha(14),
                     borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
                   ),
                   child: Row(
                     children: [
-                      Icon(CupertinoIcons.add_circled, color: ClayTokens.clayPrimaryLight, size: 20),
+                      Icon(
+                        CupertinoIcons.add_circled,
+                        color: ClayTokens.clayPrimaryLight,
+                        size: 20,
+                      ),
                       const SizedBox(width: 10),
                       Text(
                         'No foods added yet',
-                        style: ClayTokens.darkBodyMedium.copyWith(color: ClayTokens.clayDarkTextTertiary),
+                        style: ClayTokens.darkBodyMedium.copyWith(
+                          color: ClayTokens.clayDarkTextTertiary,
+                        ),
                       ),
                     ],
                   ),
@@ -1347,7 +1500,10 @@ class _NutritionSectionState extends State<_NutritionSection> {
                     child: Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: ClayTokens.clayPrimary,
                             borderRadius: BorderRadius.circular(8),
@@ -1376,7 +1532,11 @@ class _NutritionSectionState extends State<_NutritionSection> {
                         CupertinoButton(
                           padding: const EdgeInsets.all(4),
                           onPressed: () => widget.onRemoveFood(index),
-                          child: Icon(CupertinoIcons.delete, color: ClayTokens.clayError, size: 18),
+                          child: Icon(
+                            CupertinoIcons.delete,
+                            color: ClayTokens.clayError,
+                            size: 18,
+                          ),
                         ),
                       ],
                     ),
@@ -1455,7 +1615,8 @@ class _TrainingSectionState extends State<_TrainingSection> {
   }
 
   void _updateAddButtonVisibility() {
-    final show = widget.workoutType != null &&
+    final show =
+        widget.workoutType != null &&
         widget.nameController.text.trim().isNotEmpty;
     if (_showAddButton != show) {
       setState(() => _showAddButton = show);
@@ -1481,7 +1642,10 @@ class _TrainingSectionState extends State<_TrainingSection> {
     final reps = widget.repsController.text.trim();
     final setsValue = int.tryParse(sets);
     final repsValue = int.tryParse(reps);
-    if (setsValue == null || setsValue <= 0 || repsValue == null || repsValue <= 0) {
+    if (setsValue == null ||
+        setsValue <= 0 ||
+        repsValue == null ||
+        repsValue <= 0) {
       return 'Enter sets & reps';
     }
     return null;
@@ -1548,11 +1712,17 @@ class _TrainingSectionState extends State<_TrainingSection> {
           ),
           child: Row(
             children: [
-              Icon(CupertinoIcons.add_circled, color: ClayTokens.clayPrimaryLight, size: 20),
+              Icon(
+                CupertinoIcons.add_circled,
+                color: ClayTokens.clayPrimaryLight,
+                size: 20,
+              ),
               const SizedBox(width: 10),
               Text(
                 'No exercises added yet',
-                style: ClayTokens.darkBodyMedium.copyWith(color: ClayTokens.clayDarkTextTertiary),
+                style: ClayTokens.darkBodyMedium.copyWith(
+                  color: ClayTokens.clayDarkTextTertiary,
+                ),
               ),
             ],
           ),
@@ -1596,7 +1766,11 @@ class _TrainingSectionState extends State<_TrainingSection> {
             CupertinoButton(
               padding: const EdgeInsets.all(4),
               onPressed: () => widget.onRemoveExercise(index),
-              child: Icon(CupertinoIcons.delete, color: ClayTokens.clayError, size: 18),
+              child: Icon(
+                CupertinoIcons.delete,
+                color: ClayTokens.clayError,
+                size: 18,
+              ),
             ),
           ],
         ),
@@ -1653,8 +1827,15 @@ class _TrainingSectionState extends State<_TrainingSection> {
                 onChanged: _onQueryChanged,
                 decoration: InputDecoration(
                   hintText: 'Search exercises…',
-                  hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF7070A0)),
-                  prefixIcon: const Icon(Icons.search, color: Color(0xFF7070A0), size: 18),
+                  hintStyle: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF7070A0),
+                  ),
+                  prefixIcon: const Icon(
+                    Icons.search,
+                    color: Color(0xFF7070A0),
+                    size: 18,
+                  ),
                   filled: true,
                   fillColor: Colors.white.withAlpha(14),
                   enabledBorder: OutlineInputBorder(
@@ -1665,7 +1846,10 @@ class _TrainingSectionState extends State<_TrainingSection> {
                     borderRadius: BorderRadius.circular(12),
                     borderSide: const BorderSide(color: Color(0xFFA78BFA)),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 12,
+                  ),
                 ),
                 style: const TextStyle(fontSize: 13, color: Color(0xFFFFFFFF)),
               ),
@@ -1675,11 +1859,16 @@ class _TrainingSectionState extends State<_TrainingSection> {
                   child: SizedBox(
                     width: 16,
                     height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFD6A5FF)),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Color(0xFFD6A5FF),
+                    ),
                   ),
                 ),
               ],
-              if (_searchResults.isEmpty && _query.isNotEmpty && !_isSearching) ...[
+              if (_searchResults.isEmpty &&
+                  _query.isNotEmpty &&
+                  !_isSearching) ...[
                 const SizedBox(height: 8),
                 const Text(
                   'No exercises found. Try a different search term.',
@@ -1700,7 +1889,10 @@ class _TrainingSectionState extends State<_TrainingSection> {
                           filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
                           child: PressableCard(
                             onTap: () => _addExerciseFromSearch(e),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
                             borderRadius: BorderRadius.circular(12),
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
@@ -1712,44 +1904,56 @@ class _TrainingSectionState extends State<_TrainingSection> {
                                 ],
                               ),
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.white.withAlpha(38)),
+                              border: Border.all(
+                                color: Colors.white.withAlpha(38),
+                              ),
                             ),
                             child: Row(
-                        children: [
-                          Container(
-                            width: 28,
-                            height: 28,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFBF5AF2).withAlpha(20),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Icon(
-                              Icons.add,
-                              color: Color(0xFFD6A5FF),
-                              size: 16,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  e.name,
-                                  style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF)),
+                                Container(
+                                  width: 28,
+                                  height: 28,
+                                  decoration: BoxDecoration(
+                                    color: const Color(
+                                      0xFFBF5AF2,
+                                    ).withAlpha(20),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(
+                                    Icons.add,
+                                    color: Color(0xFFD6A5FF),
+                                    size: 16,
+                                  ),
                                 ),
-                                Text(
-                                  '${e.category} · MET ${e.metValue.toStringAsFixed(1)}',
-                                  style: const TextStyle(fontSize: 10, color: Color(0xFF8E8E93)),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        e.name,
+                                        style: const TextStyle(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFFFFFFFF),
+                                        ),
+                                      ),
+                                      Text(
+                                        '${e.category} · MET ${e.metValue.toStringAsFixed(1)}',
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          color: Color(0xFF8E8E93),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),
                           ),
-                          ],
                         ),
                       ),
-                    ),
-                    ),
                     );
                   }).toList(),
                 ),
@@ -1759,7 +1963,10 @@ class _TrainingSectionState extends State<_TrainingSection> {
                 controller: widget.nameController,
                 decoration: InputDecoration(
                   hintText: 'Exercise name',
-                  hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF7070A0)),
+                  hintStyle: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF7070A0),
+                  ),
                   filled: true,
                   fillColor: Colors.white.withAlpha(14),
                   enabledBorder: OutlineInputBorder(
@@ -1770,7 +1977,10 @@ class _TrainingSectionState extends State<_TrainingSection> {
                     borderRadius: BorderRadius.circular(12),
                     borderSide: const BorderSide(color: Color(0xFFA78BFA)),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 12,
+                  ),
                 ),
                 style: const TextStyle(fontSize: 13, color: Color(0xFFFFFFFF)),
               ),
@@ -1782,20 +1992,33 @@ class _TrainingSectionState extends State<_TrainingSection> {
                       controller: widget.setsController,
                       decoration: InputDecoration(
                         hintText: 'Sets',
-                        hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF7070A0)),
+                        hintStyle: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF7070A0),
+                        ),
                         filled: true,
                         fillColor: Colors.white.withAlpha(14),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.white.withAlpha(30)),
+                          borderSide: BorderSide(
+                            color: Colors.white.withAlpha(30),
+                          ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFFA78BFA)),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFA78BFA),
+                          ),
                         ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
                       ),
-                      style: const TextStyle(fontSize: 13, color: Color(0xFFFFFFFF)),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFFFFFFFF),
+                      ),
                       keyboardType: TextInputType.number,
                       // Numbers only, max 2 digits (up to 99).
                       inputFormatters: [
@@ -1809,20 +2032,33 @@ class _TrainingSectionState extends State<_TrainingSection> {
                       controller: widget.repsController,
                       decoration: InputDecoration(
                         hintText: 'Reps',
-                        hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF7070A0)),
+                        hintStyle: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF7070A0),
+                        ),
                         filled: true,
                         fillColor: Colors.white.withAlpha(14),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.white.withAlpha(30)),
+                          borderSide: BorderSide(
+                            color: Colors.white.withAlpha(30),
+                          ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFFA78BFA)),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFA78BFA),
+                          ),
                         ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
                       ),
-                      style: const TextStyle(fontSize: 13, color: Color(0xFFFFFFFF)),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFFFFFFFF),
+                      ),
                       keyboardType: TextInputType.number,
                       // Numbers only, max 2 digits (up to 99).
                       inputFormatters: [
@@ -1836,20 +2072,33 @@ class _TrainingSectionState extends State<_TrainingSection> {
                       controller: widget.weightController,
                       decoration: InputDecoration(
                         hintText: 'Weight (kg)',
-                        hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF7070A0)),
+                        hintStyle: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF7070A0),
+                        ),
                         filled: true,
                         fillColor: Colors.white.withAlpha(14),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.white.withAlpha(30)),
+                          borderSide: BorderSide(
+                            color: Colors.white.withAlpha(30),
+                          ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFFA78BFA)),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFA78BFA),
+                          ),
                         ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
                       ),
-                      style: const TextStyle(fontSize: 13, color: Color(0xFFFFFFFF)),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFFFFFFFF),
+                      ),
                       keyboardType: TextInputType.number,
                       // Numbers only, max 3 digits (up to 999).
                       inputFormatters: [
@@ -1863,7 +2112,10 @@ class _TrainingSectionState extends State<_TrainingSection> {
                 const SizedBox(height: 6),
                 Text(
                   _error!,
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF8E8E93)),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF8E8E93),
+                  ),
                 ),
               ],
               const SizedBox(height: 10),
@@ -1887,12 +2139,13 @@ class _TrainingSectionState extends State<_TrainingSection> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: const [
-                      Icon(CupertinoIcons.plus, color: Color(0xFFFFFFFF), size: 18),
-                      SizedBox(width: 8),
-                      Text(
-                        'Add',
-                        style: TextStyle(color: Color(0xFFFFFFFF)),
+                      Icon(
+                        CupertinoIcons.plus,
+                        color: Color(0xFFFFFFFF),
+                        size: 18,
                       ),
+                      SizedBox(width: 8),
+                      Text('Add', style: TextStyle(color: Color(0xFFFFFFFF))),
                     ],
                   ),
                 ),
@@ -1959,8 +2212,11 @@ class _NotesSection extends StatelessWidget {
                 maxLines: 5,
                 style: ClayTokens.darkBodyMedium,
                 decoration: InputDecoration(
-                  hintText: 'Add instructions, rest days, intensity, or trainer notes...',
-                  hintStyle: ClayTokens.darkBodyMedium.copyWith(color: ClayTokens.clayDarkTextTertiary),
+                  hintText:
+                      'Add instructions, rest days, intensity, or trainer notes...',
+                  hintStyle: ClayTokens.darkBodyMedium.copyWith(
+                    color: ClayTokens.clayDarkTextTertiary,
+                  ),
                   filled: true,
                   fillColor: Colors.white.withAlpha(14),
                   border: OutlineInputBorder(
@@ -1979,10 +2235,12 @@ class _NotesSection extends StatelessWidget {
 class _AssignPlanButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final bool isLoading;
+  final String label;
 
   const _AssignPlanButton({
     required this.onPressed,
     required this.isLoading,
+    this.label = 'Assign Plan',
   });
 
   @override
@@ -2002,8 +2260,8 @@ class _AssignPlanButton extends StatelessWidget {
         onPressed: onPressed,
         child: isLoading
             ? const CupertinoActivityIndicator(color: Color(0xFFFFFFFF))
-            : const Text(
-                'Assign Plan',
+            : Text(
+                label,
                 style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w600,
@@ -2131,7 +2389,9 @@ class _DropdownFieldState<T> extends State<DropdownField<T>> {
                 child: Text(
                   selectedLabel ?? widget.placeholder ?? 'Select...',
                   style: ClayTokens.darkBodyMedium.copyWith(
-                    color: widget.value != null ? ClayTokens.clayDarkTextPrimary : ClayTokens.clayDarkTextTertiary,
+                    color: widget.value != null
+                        ? ClayTokens.clayDarkTextPrimary
+                        : ClayTokens.clayDarkTextTertiary,
                   ),
                 ),
               ),
@@ -2210,7 +2470,9 @@ class _MenuItem<T> extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
-          color: isSelected ? ClayTokens.clayPrimary.withAlpha(25) : Colors.transparent,
+          color: isSelected
+              ? ClayTokens.clayPrimary.withAlpha(25)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
         ),
         child: Row(
@@ -2220,7 +2482,9 @@ class _MenuItem<T> extends StatelessWidget {
                 item.label,
                 style: ClayTokens.darkBodyMedium.copyWith(
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                  color: isSelected ? ClayTokens.clayDarkTextPrimary : ClayTokens.clayDarkTextSecondary,
+                  color: isSelected
+                      ? ClayTokens.clayDarkTextPrimary
+                      : ClayTokens.clayDarkTextSecondary,
                 ),
               ),
             ),

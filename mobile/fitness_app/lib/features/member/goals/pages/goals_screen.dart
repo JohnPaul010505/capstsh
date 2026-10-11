@@ -8,8 +8,8 @@ import '../../../../app/design_tokens.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../../../../features/shared/widgets/clay/clay_card.dart';
 import '../../../shared/widgets/app_glow_background.dart';
-import '../../../shared/widgets/animations.dart'
-    show StaggeredFadeIn, Shimmer;
+import '../../../shared/widgets/glass_confirm_dialog.dart';
+import '../../../shared/widgets/animations.dart' show StaggeredFadeIn, Shimmer;
 import 'create_goal_card.dart';
 import 'goal_card.dart';
 import 'empty_goals_state.dart';
@@ -32,8 +32,15 @@ final goalsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
 /// (safe side: the Create tab stays guarded). The date comparison matches
 /// GoalCard's own isOverdue check so UI and predicate stay in sync.
 bool _ongoing(Map<String, dynamic> g) {
+  if ((g['status'] as String? ?? 'active') != 'active') return false;
   final end = DateTime.tryParse(g['end_date']?.toString() ?? '');
   return end == null || !end.isBefore(DateTime.now());
+}
+
+bool _isHistoryGoal(Map<String, dynamic> goal) {
+  if ((goal['status'] as String? ?? 'active') != 'active') return true;
+  final end = DateTime.tryParse(goal['end_date']?.toString() ?? '');
+  return end != null && end.isBefore(DateTime.now());
 }
 
 class GoalsPage extends ConsumerStatefulWidget {
@@ -50,7 +57,7 @@ class _GoalsPageState extends ConsumerState<GoalsPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -99,7 +106,27 @@ class _GoalsPageState extends ConsumerState<GoalsPage>
                     // Tab 2 - Goals: the member's goals in glass-style cards.
                     goalsAsync.when(
                       data: (goals) => _GoalsTab(
-                        goals: goals,
+                        goals: goals.where((g) => !_isHistoryGoal(g)).toList(),
+                        history: false,
+                        onCreate: () => _tabController.animateTo(0),
+                        onCancel: (g) async {
+                          final confirmed = await showGlassConfirmDialog(
+                            context,
+                            title: 'Cancel this goal?',
+                            message:
+                                'You can create a new goal after cancelling this one.',
+                            keepLabel: 'Keep goal',
+                            confirmLabel: 'Cancel goal',
+                          );
+                          if (confirmed == true) {
+                            await SupabaseClientService().client
+                                .from('goals')
+                                .update({'status': 'cancelled'})
+                                .eq('id', g['id']);
+                            ref.invalidate(goalsProvider);
+                            _tabController.animateTo(2);
+                          }
+                        },
                         onToggleStatus: (g) async {
                           final currentStatus =
                               g['status'] as String? ?? 'active';
@@ -132,11 +159,16 @@ class _GoalsPageState extends ConsumerState<GoalsPage>
                             }
                           }
                           ref.invalidate(goalsProvider);
+                          _tabController.animateTo(
+                            newStatus == 'completed' ? 2 : 1,
+                          );
                         },
                       ),
                       loading: () => ListView(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 16),
+                          horizontal: 16,
+                          vertical: 16,
+                        ),
                         children: [
                           StaggeredFadeIn(
                             index: 0,
@@ -149,6 +181,45 @@ class _GoalsPageState extends ConsumerState<GoalsPage>
                         child: Text(
                           'Error: $e',
                           style: TextStyle(
+                            color: Colors.redAccent,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Tab 3 - completed and cancelled goals.
+                    goalsAsync.when(
+                      data: (goals) => _GoalsTab(
+                        goals: goals.where(_isHistoryGoal).toList(),
+                        history: true,
+                        onCreate: () => _tabController.animateTo(0),
+                        onCancel: (_) {},
+                        onToggleStatus: (g) async {
+                          await SupabaseClientService().client
+                              .from('goals')
+                              .update({'status': 'active'})
+                              .eq('id', g['id']);
+                          ref.invalidate(goalsProvider);
+                          _tabController.animateTo(1);
+                        },
+                      ),
+                      loading: () => ListView(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 16,
+                        ),
+                        children: [
+                          StaggeredFadeIn(
+                            index: 0,
+                            child: _GoalsSkeletonCard(),
+                          ),
+                        ],
+                      ),
+                      error: (e, _) => Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Text(
+                          'Error: $e',
+                          style: const TextStyle(
                             color: Colors.redAccent,
                             fontSize: 14,
                           ),
@@ -193,9 +264,7 @@ class _GoalsPageState extends ConsumerState<GoalsPage>
     );
   }
 
-  /// Two-tab switcher: "Create a Goal" (the form) and "Goals" (the member's
-  /// goals). A segmented pill so it reads as one glass system with the cards
-  /// below it.
+  /// Three-tab switcher for creating, tracking, and reviewing goals.
   Widget _buildTabBar() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -231,13 +300,13 @@ class _GoalsPageState extends ConsumerState<GoalsPage>
           tabs: const [
             Tab(text: 'Create a Goal'),
             Tab(text: 'Goals'),
+            Tab(text: 'History'),
           ],
         ),
       ),
     );
   }
 }
-
 
 /// "Create a Goal" tab — shows the create-goal form only. Adding a goal
 /// refreshes the list and jumps to the Goals tab so the new goal is visible.
@@ -268,17 +337,53 @@ class _CreateTab extends StatelessWidget {
 /// form lives here: the Create a Goal tab owns that.
 class _GoalsTab extends StatelessWidget {
   final List<Map<String, dynamic>> goals;
+  final bool history;
+  final VoidCallback onCreate;
   final void Function(Map<String, dynamic> goal) onToggleStatus;
+  final void Function(Map<String, dynamic> goal) onCancel;
 
   const _GoalsTab({
     required this.goals,
+    required this.history,
+    required this.onCreate,
     required this.onToggleStatus,
+    required this.onCancel,
   });
 
   @override
   Widget build(BuildContext context) {
     if (goals.isEmpty) {
-      return const EmptyGoalsState();
+      if (!history) return EmptyGoalsState(onAction: onCreate);
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: GlassPanel(
+            padding: const EdgeInsets.all(24),
+            borderRadius: BorderRadius.circular(20),
+            child: const Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(CupertinoIcons.clock, color: Color(0xFFA855F7), size: 38),
+                SizedBox(height: 12),
+                Text(
+                  'No goal history yet',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                SizedBox(height: 6),
+                Text(
+                  'Completed and cancelled goals will appear here.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Color(0xFFA0A4B8)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
     }
 
     return ListView(
@@ -288,16 +393,22 @@ class _GoalsTab extends StatelessWidget {
           index: 0,
           child: Column(
             children: goals
-                .map((g) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: GlassPanel(
-                        padding: const EdgeInsets.all(12),
-                        child: GoalCard(
-                          goal: g,
-                          onToggleStatus: () => onToggleStatus(g),
-                        ),
+                .map(
+                  (g) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: GlassPanel(
+                      padding: const EdgeInsets.all(12),
+                      child: GoalCard(
+                        goal: g,
+                        onToggleStatus: () => onToggleStatus(g),
+                        onCancel:
+                            (g['status'] as String? ?? 'active') == 'active'
+                            ? () => onCancel(g)
+                            : null,
                       ),
-                    ))
+                    ),
+                  ),
+                )
                 .toList(),
           ),
         ),

@@ -43,6 +43,21 @@ export function usePredictions(range?: Range) {
   })
 }
 
+/** Exact total across stored forecast rows; the recent list is capped at 50. */
+export function usePredictionCount() {
+  return useQuery({
+    queryKey: ['prediction-count'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('predictions')
+        .select('id', { count: 'exact', head: true })
+        .neq('metric_name', 'body_fat')
+      if (error) throw error
+      return count ?? 0
+    },
+  })
+}
+
 export interface GenerateResult {
   data: any
   source: 'ai' | 'fallback'
@@ -67,8 +82,11 @@ export function useGeneratePredictions() {
       // here as well would create duplicate rows.
       return { data, source: (xSource === 'fallback' ? 'fallback' : 'ai') as 'ai' | 'fallback' }
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['predictions'] })
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['predictions'] }),
+        qc.invalidateQueries({ queryKey: ['prediction-count'] }),
+      ])
     },
   })
 }

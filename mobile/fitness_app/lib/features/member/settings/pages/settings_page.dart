@@ -24,41 +24,46 @@ class SettingsPage extends ConsumerWidget {
       body: AppGlowBackground(
         child: SafeArea(
           child: authState.when(
-          data: (profile) => _SettingsContent(profile: profile),
-          loading: () => const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 14),
-            child: Column(
-              children: [
-                SizedBox(height: 20),
-                Row(
-                  children: [
-                    SkeletonBox(width: 24, height: 24, borderRadius: 12),
-                    SizedBox(width: 12),
-                    SkeletonBox(width: 100, height: 20),
-                  ],
-                ),
-                SizedBox(height: 24),
-                SkeletonBox(height: 72),
-                SizedBox(height: 24),
-                SkeletonBox(width: 80, height: 14),
-                SizedBox(height: 12),
-                SkeletonBox(height: 50),
-                SizedBox(height: 8),
-                SkeletonBox(height: 50),
-                SizedBox(height: 8),
-                SkeletonBox(height: 50),
-                SizedBox(height: 8),
-                SkeletonBox(height: 50),
-                SizedBox(height: 8),
-                SkeletonBox(height: 50),
-              ],
+            data: (profile) => _SettingsContent(profile: profile),
+            loading: () => const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 14),
+              child: Column(
+                children: [
+                  SizedBox(height: 20),
+                  Row(
+                    children: [
+                      SkeletonBox(width: 24, height: 24, borderRadius: 12),
+                      SizedBox(width: 12),
+                      SkeletonBox(width: 100, height: 20),
+                    ],
+                  ),
+                  SizedBox(height: 24),
+                  SkeletonBox(height: 72),
+                  SizedBox(height: 24),
+                  SkeletonBox(width: 80, height: 14),
+                  SizedBox(height: 12),
+                  SkeletonBox(height: 50),
+                  SizedBox(height: 8),
+                  SkeletonBox(height: 50),
+                  SizedBox(height: 8),
+                  SkeletonBox(height: 50),
+                  SizedBox(height: 8),
+                  SkeletonBox(height: 50),
+                  SizedBox(height: 8),
+                  SkeletonBox(height: 50),
+                ],
+              ),
+            ),
+            error: (e, _) => Center(
+              child: Text(
+                'Error: $e',
+                style: const TextStyle(color: Color(0xFF636366)),
+              ),
             ),
           ),
-          error: (e, _) => Center(child: Text('Error: $e', style: const TextStyle(color: Color(0xFF636366)))),
         ),
       ),
-    ),
-  );
+    );
   }
 }
 
@@ -85,9 +90,21 @@ class _SettingsContent extends ConsumerWidget {
           children: [
             GestureDetector(
               onTap: () => context.pop(),
-              child: const Icon(CupertinoIcons.chevron_back, color: Color(0xFFFFFFFF), size: 24),
+              child: const Icon(
+                CupertinoIcons.chevron_back,
+                color: Color(0xFFFFFFFF),
+                size: 24,
+              ),
             ),
-            const Text('Settings', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF), decoration: TextDecoration.none)),
+            const Text(
+              'Settings',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFFFFFFFF),
+                decoration: TextDecoration.none,
+              ),
+            ),
             const SizedBox(width: 24),
           ],
         ),
@@ -106,102 +123,191 @@ class _SettingsContent extends ConsumerWidget {
                   border: Border.all(color: Colors.white.withAlpha(18)),
                 ),
                 child: Row(
-              children: [
-                Stack(
-                  clipBehavior: Clip.none,
                   children: [
-                    Container(
-                      width: 52, height: 52,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: avatarUrl == null ? null : Colors.transparent,
-                        gradient: avatarUrl == null
-                            ? const LinearGradient(
-                                colors: [Color(0xFFBF5AF2), Color(0xFFD6A5FF)],
-                              )
-                            : null,
-                        boxShadow: [
-                          BoxShadow(color: Colors.black.withAlpha(40), blurRadius: 8, offset: const Offset(0, 2)),
-                        ],
-                      ),
-                      alignment: Alignment.center,
-                      child: avatarUrl == null
-                          ? Text(initials, style: const TextStyle(
-                              color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700,
-                            ))
-                          : (avatarUrl!.startsWith('assets/')
-                              ? Image.asset(
-                                  avatarUrl,
-                                  width: 52,
-                                  height: 52,
-                                  fit: BoxFit.cover,
-                                )
-                              : ClipOval(
-                                  child: Image.network(
-                                    avatarUrl,
-                                    width: 52,
-                                    height: 52,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => Text(initials, style: const TextStyle(
-                                      color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700,
-                                    )),
-                                  ),
-                                )),
-                    ),
-                     if (gender == 'male' && avatarUrl == null)
-                      Positioned(
-                        bottom: -3,
-                        right: -3,
-                        child: Container(
-                          width: 22,
-                          height: 22,
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          width: 52,
+                          height: 52,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: const Color(0xFF1C1C1E),
-                            border: Border.all(color: ClayTokens.clayPrimary, width: 1.5),
+                            color: avatarUrl == null
+                                ? null
+                                : Colors.transparent,
+                            gradient: avatarUrl == null
+                                ? const LinearGradient(
+                                    colors: [
+                                      Color(0xFFBF5AF2),
+                                      Color(0xFFD6A5FF),
+                                    ],
+                                  )
+                                : null,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withAlpha(40),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
                           ),
                           alignment: Alignment.center,
-                          child: Icon(CupertinoIcons.person_fill, color: ClayTokens.clayPrimary, size: 12),
+                          child: avatarUrl == null
+                              ? Text(
+                                  initials,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                )
+                              : (avatarUrl!.startsWith('assets/')
+                                    ? Image.asset(
+                                        avatarUrl,
+                                        width: 52,
+                                        height: 52,
+                                        fit: BoxFit.cover,
+                                      )
+                                    : ClipOval(
+                                        child: Image.network(
+                                          avatarUrl,
+                                          width: 52,
+                                          height: 52,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) => Text(
+                                            initials,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ),
+                                      )),
                         ),
+                        if (gender == 'male' && avatarUrl == null)
+                          Positioned(
+                            bottom: -3,
+                            right: -3,
+                            child: Container(
+                              width: 22,
+                              height: 22,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: const Color(0xFF1C1C1E),
+                                border: Border.all(
+                                  color: ClayTokens.clayPrimary,
+                                  width: 1.5,
+                                ),
+                              ),
+                              alignment: Alignment.center,
+                              child: Icon(
+                                CupertinoIcons.person_fill,
+                                color: ClayTokens.clayPrimary,
+                                size: 12,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 12),
+                          Text(
+                            name,
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFFFFFFFF),
+                              decoration: TextDecoration.none,
+                            ),
+                          ),
+                          if (email.isNotEmpty)
+                            Text(
+                              email,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF636366),
+                                decoration: TextDecoration.none,
+                              ),
+                            ),
+                          const SizedBox(height: 8),
+                          TextButton(
+                            onPressed: () => _showAvatarPicker(context, ref),
+                            child: const Text(
+                              'Change Profile',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFFD8B4FE),
+                                decoration: TextDecoration.none,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
+                    ),
                   ],
                 ),
-                    const SizedBox(width: 14),
-                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 12),
-                      Text(name, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF), decoration: TextDecoration.none)),
-                      if (email.isNotEmpty)
-                        Text(email, style: const TextStyle(
-                          fontSize: 12, color: Color(0xFF636366),
-                          decoration: TextDecoration.none,
-                        )),
-                      const SizedBox(height: 8),
-                       TextButton(
-                        onPressed: () => _showAvatarPicker(context, ref),
-                        child: const Text('Change Profile', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFD8B4FE), decoration: TextDecoration.none)),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),
-      ),
-    ),
         const SizedBox(height: 24),
-        Text('Features', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: const Color(0xFF8E8E93), letterSpacing: 0, decoration: TextDecoration.none)),
+        Text(
+          'Features',
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+            color: const Color(0xFF8E8E93),
+            letterSpacing: 0,
+            decoration: TextDecoration.none,
+          ),
+        ),
         const SizedBox(height: 8),
-        _SettingItem(index: 1, icon: CupertinoIcons.gear, iconColor: const Color(0xFF0A84FF), label: 'BMI', subtitle: bmiInfo == null ? null : '${bmiInfo.bmi.toStringAsFixed(1)} \u00b7 ${bmiInfo.label}', onTap: () => context.push('/member/bmi')),
+        _SettingItem(
+          index: 1,
+          icon: CupertinoIcons.gear,
+          iconColor: const Color(0xFF0A84FF),
+          label: 'BMI',
+          subtitle: bmiInfo == null
+              ? null
+              : '${bmiInfo.bmi.toStringAsFixed(1)} \u00b7 ${bmiInfo.label}',
+          onTap: () => context.push('/member/bmi'),
+        ),
         const SizedBox(height: 10),
-        _SettingItem(index: 2, icon: CupertinoIcons.bubble_left, iconColor: const Color(0xFF30D158), label: 'Feedback', onTap: () => context.push('/member/feedback')),
+        _SettingItem(
+          index: 2,
+          icon: CupertinoIcons.bubble_left,
+          iconColor: const Color(0xFF30D158),
+          label: 'Feedback',
+          onTap: () => context.push('/member/feedback'),
+        ),
         const SizedBox(height: 10),
-        _SettingItem(index: 3, icon: CupertinoIcons.flag, iconColor: const Color(0xFFBF5AF2), label: 'Goals', onTap: () => context.push('/member/goals')),
+        _SettingItem(
+          index: 3,
+          icon: CupertinoIcons.flag,
+          iconColor: const Color(0xFFBF5AF2),
+          label: 'Goals',
+          onTap: () => context.push('/member/goals'),
+        ),
         const SizedBox(height: 10),
-        _SettingItem(index: 4, icon: CupertinoIcons.creditcard, iconColor: const Color(0xFF0A84FF), label: 'Membership', onTap: () => context.push('/member/membership')),
+        _SettingItem(
+          index: 4,
+          icon: CupertinoIcons.creditcard,
+          iconColor: const Color(0xFF0A84FF),
+          label: 'Membership',
+          onTap: () => context.push('/member/membership'),
+        ),
+        const SizedBox(height: 10),
+        _SettingItem(
+          index: 5,
+          icon: CupertinoIcons.doc_text,
+          iconColor: const Color(0xFFBF5AF2),
+          label: 'Trainer Plan',
+          onTap: () => context.push('/member/trainer-plan'),
+        ),
         const SizedBox(height: 24),
         const Divider(color: Color(0xFF38383A)),
         const SizedBox(height: 8),
@@ -218,7 +324,9 @@ class _SettingsContent extends ConsumerWidget {
             },
             color: ClayTokens.clayPrimaryLight.withAlpha(25),
             borderRadius: BorderRadius.circular(12),
-            border: const Border.fromBorderSide(BorderSide(color: Color(0x18FFFFFF))),
+            border: const Border.fromBorderSide(
+              BorderSide(color: Color(0x18FFFFFF)),
+            ),
             padding: const EdgeInsets.symmetric(vertical: 14),
             child: Center(
               child: Text(
@@ -245,8 +353,8 @@ class _SettingsContent extends ConsumerWidget {
     final avatarOptions = gender == 'male'
         ? ['L1', 'L2', 'L3']
         : gender == 'female'
-            ? ['W1', 'W2', 'W3']
-            : ['L1', 'L2', 'L3', 'W1', 'W2', 'W3'];
+        ? ['W1', 'W2', 'W3']
+        : ['L1', 'L2', 'L3', 'W1', 'W2', 'W3'];
     String? selectedAvatar = profile?.avatarUrl;
 
     showModalBottomSheet(
@@ -263,7 +371,14 @@ class _SettingsContent extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Choose Profile', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: Color(0xFFFFFFFF))),
+              const Text(
+                'Choose Profile',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFFFFFFFF),
+                ),
+              ),
               const SizedBox(height: 16),
               GridView.count(
                 shrinkWrap: true,
@@ -279,11 +394,18 @@ class _SettingsContent extends ConsumerWidget {
                       duration: const Duration(milliseconds: 200),
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: isSelected ? const Color(0xFF7C3AED) : Colors.transparent, width: 3),
+                        border: Border.all(
+                          color: isSelected
+                              ? const Color(0xFF7C3AED)
+                              : Colors.transparent,
+                          width: 3,
+                        ),
                       ),
                       child: CircleAvatar(
                         radius: 36,
-                        backgroundImage: AssetImage('assets/profiles/$asset.gif'),
+                        backgroundImage: AssetImage(
+                          'assets/profiles/$asset.gif',
+                        ),
                         backgroundColor: Colors.transparent,
                       ),
                     ),
@@ -299,9 +421,18 @@ class _SettingsContent extends ConsumerWidget {
                       style: TextButton.styleFrom(
                         foregroundColor: const Color(0xFFB4B4D0),
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: Color(0xFF38383A))),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: const BorderSide(color: Color(0xFF38383A)),
+                        ),
                       ),
-                      child: const Text('Cancel', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -309,21 +440,31 @@ class _SettingsContent extends ConsumerWidget {
                     child: ElevatedButton(
                       onPressed: () async {
                         try {
-                          await ref.read(authProvider.notifier).updateProfile(
-                            fullName: profile?.fullName ?? '',
-                            email: profile?.email ?? '',
-                            gender: gender,
-                            avatarAsset: selectedAvatar != null ? 'assets/profiles/$selectedAvatar.gif' : null,
-                          );
+                          await ref
+                              .read(authProvider.notifier)
+                              .updateProfile(
+                                fullName: profile?.fullName ?? '',
+                                email: profile?.email ?? '',
+                                gender: gender,
+                                avatarAsset: selectedAvatar != null
+                                    ? 'assets/profiles/$selectedAvatar.gif'
+                                    : null,
+                              );
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Profile updated'), backgroundColor: Color(0xFF7C3AED)),
+                              const SnackBar(
+                                content: Text('Profile updated'),
+                                backgroundColor: Color(0xFF7C3AED),
+                              ),
                             );
                           }
                         } catch (e) {
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Failed to update profile: $e'), backgroundColor: const Color(0xFFFF453A)),
+                              SnackBar(
+                                content: Text('Failed to update profile: $e'),
+                                backgroundColor: const Color(0xFFFF453A),
+                              ),
                             );
                           }
                         }
@@ -333,9 +474,17 @@ class _SettingsContent extends ConsumerWidget {
                         backgroundColor: const Color(0xFF7C3AED),
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                      child: const Text('Save', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                      child: const Text(
+                        'Save',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -358,8 +507,12 @@ class _SettingItem extends StatelessWidget {
   final VoidCallback onTap;
 
   const _SettingItem({
-    required this.index, required this.icon, required this.iconColor, required this.label,
-    this.subtitle, required this.onTap,
+    required this.index,
+    required this.icon,
+    required this.iconColor,
+    required this.label,
+    this.subtitle,
+    required this.onTap,
   });
 
   @override
@@ -373,22 +526,32 @@ class _SettingItem extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
           color: ClayTokens.clayPrimaryLight.withAlpha(25),
           borderRadius: BorderRadius.circular(12),
-          border: const Border.fromBorderSide(BorderSide(color: Color(0x18FFFFFF))),
+          border: const Border.fromBorderSide(
+            BorderSide(color: Color(0x18FFFFFF)),
+          ),
           child: Row(
             children: [
               Icon(icon, color: iconColor, size: 20),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(label, style: const TextStyle(
-                  color: Color(0xFFFFFFFF), fontSize: 14,
-                )),
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    color: Color(0xFFFFFFFF),
+                    fontSize: 14,
+                  ),
+                ),
               ),
               if (subtitle != null)
                 Padding(
                   padding: const EdgeInsets.only(right: 6),
-                  child: Text(subtitle!, style: const TextStyle(
-                    color: Color(0xFF8E8E93), fontSize: 13,
-                  )),
+                  child: Text(
+                    subtitle!,
+                    style: const TextStyle(
+                      color: Color(0xFF8E8E93),
+                      fontSize: 13,
+                    ),
+                  ),
                 ),
             ],
           ),

@@ -18,7 +18,6 @@ import { ArrowLeft, Phone, Calendar, MapPin, PhoneCall, Play, X } from 'lucide-r
 import {
   describeError,
   normalizeProfileUpdates,
-  validateProfileUpdates,
   type MemberEditableFields,
 } from '@/features/shared/profileUpdates'
 import { useRealtimeProfiles } from '@/hooks/useRealtimeProfiles'
@@ -57,14 +56,11 @@ export default function MemberDetailPage() {
    * is seeded from the member on entry so a half-typed edit can be discarded
    * by toggling off without touching the server.
    *
-   * `email` and `full_name` are in here too: they live in the same `profiles`
-   * row, the admin update policy already covers them, and an admin fixing a
-   * typo in a member's email should not have to be told "that is not editable".
+   * Email stays read-only because it is also the member's login address.
    */
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState<MemberEditableFields & Record<string, string>>({
     full_name: '',
-    email: '',
     phone: '',
     date_of_birth: '',
     gender: '',
@@ -83,7 +79,6 @@ export default function MemberDetailPage() {
     setSaveError(null)
     setForm({
       full_name: member.full_name ?? '',
-      email: member.email ?? '',
       phone: member.phone ?? '',
       date_of_birth: member.date_of_birth ?? '',
       gender: member.gender ?? '',
@@ -95,11 +90,6 @@ export default function MemberDetailPage() {
   }
   const saveEdit = () => {
     if (!id) return
-    const invalid = validateProfileUpdates(form)
-    if (invalid) {
-      setSaveError(invalid)
-      return
-    }
     setSaveError(null)
     // Trim + empty->null: '' would 400 the date column and write nothing.
     const updates = normalizeProfileUpdates(form)
@@ -302,16 +292,9 @@ export default function MemberDetailPage() {
       enabled: tab === 'meals' && !!id,
     })
 
-  /**
-   * ONE row height for both log panes: the card body budget divided by the
-   * PINNED page size (10), never by the rows currently on screen. The old
-   * `rows.length` count re-divided when data arrived (0 -> 9 -> 10), which
-   * repainted every row — the "zoom"/"animation" on first login — and made
-   * Food Intake and Workout Log measure different sizes. With a constant
-   * count, the value only changes on a real window resize: same size on both
-   * tabs, same size before and after the data loads, no animation classes.
-   */
-  const [scrollRef, rowHeight] = useFitRowHeight<HTMLDivElement>({ count: DETAIL_PAGE_SIZE, max: 1000 })
+  // Independent observers keep each tab's table sizing stable when switching.
+  const [workoutScrollRef, workoutRowHeight] = useFitRowHeight<HTMLDivElement>({ count: DETAIL_PAGE_SIZE, max: 1000 })
+  const [mealScrollRef, mealRowHeight] = useFitRowHeight<HTMLDivElement>({ count: DETAIL_PAGE_SIZE, max: 1000 })
 
   if (isLoading) return <div className="text-center py-8 text-fg-muted">Loading...</div>
   if (!member) return <div className="text-center py-8 text-fg-muted">Member not found</div>
@@ -478,9 +461,12 @@ export default function MemberDetailPage() {
         )}
         {editing ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="block">
+              <span className="block text-xs text-fg-muted mb-1">Email (login)</span>
+              <p className="px-3 py-2 text-sm text-fg-strong bg-overlay-8 border border-line rounded-lg break-all">{member.email}</p>
+            </div>
             {([
               ['full_name', 'Full Name', 'text'],
-              ['email', 'Email', 'email'],
               ['phone', 'Phone', 'tel'],
               ['date_of_birth', 'Date of Birth', 'date'],
               ['gender', 'Gender', 'text'],
@@ -595,8 +581,9 @@ export default function MemberDetailPage() {
                   isLoading={workoutsLoading}
                   emptyMessage={workoutTotal === 0 ? 'No workouts logged' : 'No workouts match this search'}
                   search={{ value: workoutsSearch, onChange: setWorkoutsSearch, placeholder: 'Search exercises…' }}
-                  scrollRef={scrollRef}
-                  rowHeight={rowHeight}
+                  scrollRef={workoutScrollRef}
+                  rowHeight={workoutRowHeight}
+                  fillRowsTo={DETAIL_PAGE_SIZE}
                   startIndex={(safeWorkoutsPage - 1) * DETAIL_PAGE_SIZE + 1}
                   footer={
                     <PaginationFooter
@@ -625,8 +612,9 @@ export default function MemberDetailPage() {
                   isLoading={mealsLoading}
                   emptyMessage={mealTotal === 0 ? 'No meals logged' : 'No meals match this search'}
                   search={{ value: mealsSearch, onChange: setMealsSearch, placeholder: 'Search foods…' }}
-                  scrollRef={scrollRef}
-                  rowHeight={rowHeight}
+                  scrollRef={mealScrollRef}
+                  rowHeight={mealRowHeight}
+                  fillRowsTo={DETAIL_PAGE_SIZE}
                   startIndex={(safeMealsPage - 1) * DETAIL_PAGE_SIZE + 1}
                   footer={
                     <PaginationFooter

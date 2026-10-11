@@ -48,7 +48,7 @@ const DAY = 86400000
  * every month in the window receives a predictable number of joins.
  *
  * Ordering by CODE is what keeps the existing invariant true: the auto_uid
- * trigger hands out M001, M002, ... in insert order, and `ensureProfiles` feeds
+ * trigger hands out member sequences in insert order, and `ensureProfiles` feeds
  * it a joinedAt-ascending list, so code order and seniority must stay in step.
  * Callers must therefore pass the roster already sorted by code.
  */
@@ -225,6 +225,10 @@ export async function ensureProfiles(people, role, opts = {}) {
           gender: person.gender,
           date_of_birth: person.dateOfBirth,
           is_active: person.isActive,
+          ...(role === 'trainer' ? {
+            specialty: ['Strength Training', 'Weight Loss', 'Yoga', 'Pilates', 'Cardio', 'Functional Training'][ordered.indexOf(person) % 6],
+            available_days: ['Mon,Wed,Fri', 'Tue,Thu,Sat', 'Mon,Tue,Thu', 'Wed,Fri,Sat'][ordered.indexOf(person) % 4],
+          } : {}),
         })
         .select('id, code')
         .single()

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { normalizeProfileUpdates, syncAuthEmail } from '@/features/shared/profileUpdates'
+import { normalizeProfileUpdates, type TrainerEditableFields } from '@/features/shared/profileUpdates'
 import type { Profile } from '@/types'
 
 export function useTrainers() {
@@ -47,22 +47,11 @@ export function useTrainer(id: string) {
 export function useUpdateTrainer() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ id, ...updates }: Partial<Profile> & { id: string }) => {
+    mutationFn: async ({ id, ...updates }: TrainerEditableFields & { id: string }) => {
       const normalized = normalizeProfileUpdates(updates)
       // Same email-sync contract as useUpdateMember: auth.users must follow
       // profiles.email or sign-in breaks; skip when the email is unchanged so
       // plain contact edits don't depend on the API server.
-      const newEmail = typeof normalized.email === 'string' ? normalized.email : null
-      if (newEmail) {
-        const { data: current } = await supabase
-          .from('profiles')
-          .select('email')
-          .eq('id', id)
-          .single()
-        if ((current?.email ?? '').toLowerCase() !== newEmail.toLowerCase()) {
-          await syncAuthEmail(id, newEmail)
-        }
-      }
       const { data, error } = await supabase
         .from('profiles')
         .update(normalized)

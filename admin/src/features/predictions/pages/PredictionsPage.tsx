@@ -1,5 +1,5 @@
 ﻿import { useState } from 'react'
-import { usePredictions, useGeneratePredictions, useMembersSimple, type MemberOption } from '../hooks/usePredictions'
+import { usePredictions, usePredictionCount, useGeneratePredictions, useMembersSimple, type MemberOption } from '../hooks/usePredictions'
 // No Info/ChevronDown/Cpu/ShieldCheck/Database: they were only ever used by the
 // "How these predictions are measured" block, which is gone. `noUnusedLocals`
 // is on, so leaving them imported would fail the build rather than just sit
@@ -113,18 +113,11 @@ const signed = (n: number, digits = 1) => `${n > 0 ? '+' : ''}${n.toFixed(digits
  * Two views of the page, in the same order Notifications uses: the thing you
  * came here to do, then the record of what you did.
  *
- * `generate` opens first and holds the three cards - totals, the generator, the
- * high-confidence count - AND the "Last Generated Results" panel. `recent` is the
- * stored predictions table on its own.
+ * `generate` contains the controls and summary cards. `recent` lists every
+ * saved forecast, including the result of the most recent generation.
  *
- * The results panel used to live on `recent`, and a successful generate used to
- * switch tabs to show it there. Both are wrong for the same reason: the numbers
- * you just asked for belong next to the button that produced them, not three
- * seconds later on another tab. So the panel stays on `generate` and generating
- * no longer navigates. It also stays on this tab for the case it was really
- * written for - when the AI service is down it returns an estimate that is NOT
- * written to the `predictions` table, so this panel is the only place those
- * numbers exist at all.
+ * After generation, the page opens `recent`, where the saved forecast now
+ * appears at the top and the totals reflect the newly stored rows.
  *
  * There was a third view. "Prediction History" re-sorted the same 50 rows by
  * `created_at` instead of by metric, which read as a second, separate record
@@ -163,6 +156,7 @@ export default function PredictionsPage() {
   // the cheaper query and the one that leaves the seeded totals intact.
   const queryRange = view === 'recent' ? range : undefined
   const { data: predictions, isLoading: predictionsLoading } = usePredictions(queryRange)
+  const { data: predictionCount = 0 } = usePredictionCount()
   const { data: members } = useMembersSimple()
   const generateMutation = useGeneratePredictions()
 
@@ -176,11 +170,6 @@ export default function PredictionsPage() {
       const result: { data: any; source: 'ai' | 'fallback' } = await generateMutation.mutateAsync({ memberId: selectedMemberId, daysAhead: 30 })
       setAiResults((Array.isArray(result.data) ? result.data : (result.data.results ?? result.data)) as Forecast[])
       setAiResultSource(result.source)
-      // Deliberately NO tab switch here. This used to jump to `recent` on
-      // success, because that was where the results panel rendered. The panel
-      // now lives on THIS tab, so switching would hide the numbers the admin
-      // just asked for. Errors do not switch either: the banner explaining them
-      // lives on the Generate view.
     } catch (err) {
       // A 404 here is the "needs more weigh-ins" case, not a crash — surface the
       // service's own wording instead of a generic alert.
@@ -318,20 +307,19 @@ export default function PredictionsPage() {
           <>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 shrink-0">
               <div className="glass-card p-4 rounded-xl">
-                <div className="flex items-center gap-2 text-sm text-fg-muted mb-1">
-                  <TrendingUp className="w-4 h-4 text-[#22C55E]" />
-                  <span>Total Predictions</span>
+                <div className="flex items-center gap-2 text-sm font-medium text-fg-strong mb-1">
+                  <span className="w-8 h-8 rounded-lg bg-[#7C3AED] text-white flex items-center justify-center shrink-0"><TrendingUp className="w-4 h-4" /></span>
+                  <span>Total predictions</span>
                 </div>
-                <p className="text-xl font-bold text-fg-strong">{predictions?.length ?? 0}</p>
-                <p className="text-xs text-fg-muted mt-1">
-                  Stored forecast rows in the <span className="text-fg">predictions</span> table — one per metric per member
-                  (weight and retention risk). Latest 50 shown.
+                <p className="text-2xl font-bold text-fg-strong">{predictionCount}</p>
+                <p className="text-sm leading-5 text-fg mt-1">
+                  Saved forecasts. Recent Predictions shows the newest 50.
                 </p>
               </div>
               <div className="glass-card p-4 rounded-xl relative z-30">
-                <div className="flex items-center gap-2 text-sm text-fg-muted mb-1">
-                  <Sparkles className="w-4 h-4 text-accent-purple" />
-                  <span>Generate New</span>
+                <div className="flex items-center gap-2 text-sm font-medium text-fg-strong mb-1">
+                  <span className="w-8 h-8 rounded-lg bg-[#7C3AED] text-white flex items-center justify-center shrink-0"><Sparkles className="w-4 h-4" /></span>
+                  <span>Generate new forecast</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <MemberSelect
@@ -356,14 +344,14 @@ export default function PredictionsPage() {
                 </div>
               </div>
               <div className="glass-card p-4 rounded-xl">
-                <div className="flex items-center gap-2 text-sm text-fg-muted mb-1">
-                  <TrendingDown className="w-4 h-4 text-[#F59E0B]" />
-                  <span>High Confidence</span>
+                <div className="flex items-center gap-2 text-sm font-medium text-fg-strong mb-1">
+                  <span className="w-8 h-8 rounded-lg bg-[#7C3AED] text-white flex items-center justify-center shrink-0"><TrendingDown className="w-4 h-4" /></span>
+                  <span>High confidence</span>
                 </div>
-                <p className="text-xl font-bold text-fg-strong">
+                <p className="text-2xl font-bold text-fg-strong">
                   {predictions?.filter(p => p.confidence >= 0.7).length ?? 0}
                 </p>
-                <p className="text-xs text-fg-muted mt-1">Confidence &gt;= 70%</p>
+                <p className="text-sm leading-5 text-fg mt-1">At least 70% confidence among the newest 50.</p>
               </div>
             </div>
 
@@ -393,7 +381,7 @@ export default function PredictionsPage() {
                  It lives here rather than over on `recent` because these are the
                  numbers the admin just asked for, and the button that produced them
                  is two cards above this panel. */
-              <div className="bg-gradient-to-r from-[#7C3AED]/10 to-[#3B82F6]/10 p-4 rounded-xl border border-[#7C3AED]/30 shadow-sm shrink-0 max-h-[30vh] flex flex-col min-h-0">
+              <div className="bg-gradient-to-r from-[#7C3AED]/10 to-[#3B82F6]/10 p-4 rounded-xl border border-[#7C3AED]/30 shadow-sm shrink-0 max-h-[42vh] flex flex-col min-h-0">
                 <div className="flex items-center justify-between mb-3 gap-2 flex-wrap shrink-0">
                   <h2 className="text-base font-semibold text-fg-strong">
                     Last Generated Results — {selectedMember?.full_name ?? 'Member'}
@@ -401,7 +389,7 @@ export default function PredictionsPage() {
                   {aiResultSource === 'fallback' && (
                     <div className="flex items-center gap-1 px-2 py-1 text-xs rounded-full bg-[#F59E0B]/15 text-[#F59E0B]">
                       <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                      <span>AI service offline — local estimate, not persisted</span>
+                    <span>AI service offline — saved local estimate</span>
                     </div>
                   )}
                 </div>
@@ -409,8 +397,8 @@ export default function PredictionsPage() {
                   {aiResults.map((r, i) => {
                     const level = riskLevel(r.predicted_value)
                     return (
-                      <div key={i} className="bg-overlay-8 p-4 rounded-lg border border-line shadow-sm">
-                        <p className="text-sm font-medium text-fg">{METRIC_LABELS[r.prediction_type] ?? r.prediction_type}</p>
+                      <div key={i} className="bg-[#111840]/90 backdrop-blur-lg p-4 rounded-lg border border-line shadow-sm">
+                        <p className="text-base font-semibold text-fg-strong">{METRIC_LABELS[r.prediction_type] ?? r.prediction_type}</p>
 
                         {isRisk(r) ? (
                           <>
@@ -418,7 +406,7 @@ export default function PredictionsPage() {
                               {r.predicted_value.toFixed(2)}
                               <span className="text-xs font-normal text-fg-muted ml-1.5">risk score</span>
                             </p>
-                            <p className="text-xs text-fg-muted mt-0.5">
+                            <p className="text-sm leading-6 text-fg mt-1">
                               {r.note ?? 'Check-in frequency, trend and recency'}
                             </p>
                             <div className="mt-2 flex items-center gap-2 flex-wrap">
@@ -434,13 +422,13 @@ export default function PredictionsPage() {
                               {r.current_value} <span className="text-fg-muted text-sm">&rarr;</span> {r.predicted_value}
                               <span className="text-xs font-normal text-fg-muted ml-1">{r.unit}</span>
                             </p>
-                            <p className="text-xs text-fg-muted mt-0.5">
+                            <p className="text-sm leading-6 text-fg mt-1">
                               in {r.days_ahead} days ({r.change != null ? `${signed(r.change)} ${r.unit}` : '—'}) ·{' '}
                               {basisText(r)}
                               {r.daily_rate != null && ` · trend ${signed(r.daily_rate, 2)} ${r.unit}/day`}
                             </p>
                             {r.clamped && (
-                              <p className="text-[11px] text-accent-amber mt-1">
+                              <p className="text-sm leading-5 text-accent-amber mt-1">
                                 Trend capped to a safe range (±5% weight / ±3 body-fat points in 30 days)
                               </p>
                             )}
@@ -453,6 +441,19 @@ export default function PredictionsPage() {
                       </div>
                     )
                   })}
+                  <section className="md:col-span-2 bg-[#111840]/90 backdrop-blur-lg p-4 rounded-lg border border-line">
+                    <h3 className="text-base font-semibold text-fg-strong">How these estimates are based</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3 text-sm text-fg">
+                      <div>
+                        <p className="font-semibold text-fg-strong">Body weight</p>
+                        <p className="mt-1 leading-6">Uses dated weigh-ins to fit a straight-line trend, then projects it {aiResults.find(r => !isRisk(r))?.days_ahead ?? 30} days ahead. At least 3 readings over 7 days are needed. The change is capped at 5% over 30 days; confidence reflects the fit and the amount of history.</p>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-fg-strong">Retention risk</p>
+                        <p className="mt-1 leading-6">A 0–1 score combining check-in frequency (60%), whether attendance is falling (20%), and days since the last visit (20%). Higher means more signs the member may stop attending. Data confidence describes the amount of attendance history, not the risk level.</p>
+                      </div>
+                    </div>
+                  </section>
                 </div>
               </div>
             )}
@@ -462,7 +463,7 @@ export default function PredictionsPage() {
         {view === 'recent' && (
             <RecordsTable
               title="Recent Predictions"
-              subtitle="Forecasts stored in the predictions table by the AI service. The basis column shows the readings each number came from; re-generating the same member replaces that member's row for the same metric and target date instead of duplicating it."
+              subtitle="Saved forecasts in the order they were generated. Each run is kept so you can review how predictions change over time."
               columns={predictionColumns}
               rows={predictionRows}
               rowKey={p => p.id}

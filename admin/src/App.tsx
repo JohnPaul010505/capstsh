@@ -140,10 +140,10 @@ function AppRoutes() {
     )
   }
 
-  // Public access: guests who scan the enrollment QR land on /qr without an
-  // account. Show the public enrollment form instead of the login gate.
+  // Public access: the enrollment QR opens /enroll, which always renders the
+  // public form. Keep /qr available to signed-out users for older codes.
   // (An in-flight login handoff animation takes precedence while running.)
-  if (handoff === 'none' && profile === null && location.pathname === '/qr') {
+  if (location.pathname === '/enroll' || (handoff === 'none' && profile === null && location.pathname === '/qr')) {
     return <QRPage />
   }
 

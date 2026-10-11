@@ -183,30 +183,30 @@ class _LoginPageState extends ConsumerState<LoginPage>
                                 // changing the layout height.
                                 offset: const Offset(0, 18),
                                 child: Stack(
-                                alignment: Alignment.center,
-                                children: [
-                                  Container(
-                                    width: 132,
-                                    height: 132,
-                                    decoration: const BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      gradient: RadialGradient(
-                                        colors: [
-                                          Color(0x408B5CF6),
-                                          Color(0x1A7C3AED),
-                                          Color(0x008B5CF6),
-                                        ],
+                                  alignment: Alignment.center,
+                                  children: [
+                                    Container(
+                                      width: 132,
+                                      height: 132,
+                                      decoration: const BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        gradient: RadialGradient(
+                                          colors: [
+                                            Color(0x408B5CF6),
+                                            Color(0x1A7C3AED),
+                                            Color(0x008B5CF6),
+                                          ],
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  Image.asset(
-                                    'assets/logo.png',
-                                    width: 96,
-                                    height: 96,
-                                    fit: BoxFit.contain,
-                                  ),
-                                ],
-                              ),
+                                    Image.asset(
+                                      'assets/logo.png',
+                                      width: 96,
+                                      height: 96,
+                                      fit: BoxFit.contain,
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                             const SizedBox(height: 1),
@@ -323,6 +323,21 @@ class _LoginPageState extends ConsumerState<LoginPage>
                                         ),
                                       ),
                                       const SizedBox(height: 26),
+                                      Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(
+                                          'User code',
+                                          style: _clean(
+                                            sfText(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: CupertinoAppColors
+                                                  .textSecondary,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
                                       StaggeredFadeIn(
                                         index: 3,
                                         child: Semantics(
@@ -330,14 +345,29 @@ class _LoginPageState extends ConsumerState<LoginPage>
                                           child: _FloatingLabelInput(
                                             controller: _codeController,
                                             focusNode: _codeFocus,
-                                            label: 'User code',
+                                            label: '',
                                             textInputAction:
                                                 TextInputAction.next,
                                           ),
                                         ),
                                       ),
                                       // Breathing room between the two glass inputs.
-                                      const SizedBox(height: 12),
+                                      const SizedBox(height: 14),
+                                      Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(
+                                          'Password',
+                                          style: _clean(
+                                            sfText(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: CupertinoAppColors
+                                                  .textSecondary,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
                                       StaggeredFadeIn(
                                         index: 5,
                                         child: Semantics(
@@ -345,7 +375,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
                                           child: _FloatingLabelInput(
                                             controller: _passwordController,
                                             focusNode: _passwordFocus,
-                                            label: 'Password',
+                                            label: '',
                                             obscureText: _obscurePassword,
                                             textInputAction:
                                                 TextInputAction.done,
@@ -619,7 +649,12 @@ class _FloatingLabelInputState extends State<_FloatingLabelInput> {
             style: _clean(
               sfText(fontSize: 15, color: CupertinoAppColors.textPrimary),
             ),
-            padding: const EdgeInsets.fromLTRB(16, 22, 16, 14),
+            padding: EdgeInsets.fromLTRB(
+              16,
+              widget.label.isEmpty ? 14 : 22,
+              16,
+              14,
+            ),
             decoration: const BoxDecoration(),
             suffix: widget.suffix,
           ),
@@ -652,4 +687,3 @@ class _FloatingLabelInputState extends State<_FloatingLabelInput> {
     );
   }
 }
-

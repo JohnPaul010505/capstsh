@@ -81,6 +81,19 @@ async function seedRole(kind, role, key, builder, target, count) {
     onSave: persist,
     onProgress: (d, t) => progress(d, t, `${kind}/profile`),
   })
+  if (role === 'trainer') {
+    const specialties = ['Strength Training', 'Weight Loss', 'Yoga', 'Pilates', 'Cardio', 'Functional Training']
+    const schedules = ['Mon,Wed,Fri', 'Tue,Thu,Sat', 'Mon,Tue,Thu', 'Wed,Fri,Sat']
+    const { data: demoTrainers, error } = await client.from('profiles').select('id').eq('role', 'trainer').ilike('email', '%@demo.fit').order('created_at')
+    if (error) throw new Error(`load demo trainers: ${error.message}`)
+    for (const [index, trainer] of (demoTrainers ?? []).entries()) {
+      const { error: updateError } = await client.from('profiles').update({
+        specialty: specialties[index % specialties.length],
+        available_days: schedules[index % schedules.length],
+      }).eq('id', trainer.id)
+      if (updateError) throw new Error(`update demo trainer ${trainer.id}: ${updateError.message}`)
+    }
+  }
   const dt = ((Date.now() - t0) / 1000).toFixed(1)
   console.log(`Done ${kind}: ${people.filter((p) => p.profileId).length}/${people.length} profiles in ${dt}s`)
   return people
@@ -129,7 +142,7 @@ async function main() {
     if (!onlyMembers) await seedRole('trainers', 'trainer', TRAINERS_KEY, (n) => buildTrainers(n), TARGET_TRAINERS)
   }
   const existing = loadExistingProfiles()
-  console.log(`Existing profiles kept: ${existing.length} (30 members incl. M001/M002, 7 trainers, 1 admin)`)
+  console.log(`Existing profiles kept: ${existing.length} (30 members incl. 2023-01-M001/2023-01-M002, 7 trainers, 1 admin)`)
   if (!usersOnly || verifyOnly || limit > 0) await verify()
   else console.log('Skipped verification (--users-only). Run with --verify-only to check.')
   if (!limit && (onlyMembers || onlyTrainers)) {

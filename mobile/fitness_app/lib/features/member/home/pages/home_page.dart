@@ -31,160 +31,163 @@ import '../../../shared/services/prediction_service.dart';
 // flashing e.g. the trainer's open attendance session as the member's ACTIVE
 // membership card. Throws when signed out / mismatched so callers show the
 // loading or error state rather than another user's data.
-final homeDataProvider = FutureProvider.autoDispose<Map<String, dynamic>>((
-  ref,
-) async {
-  final client = SupabaseClientService().client;
-  final userId = ref.watch(activeUserIdProvider);
-  final authUid = client.auth.currentUser?.id;
-  if (userId == null || authUid == null || userId != authUid) {
-    throw Exception('Signed out — please log in again.');
-  }
-
-  final profile = ref.watch(authProvider).valueOrNull;
-  final now = DateTime.now();
-  final today = DateTime(now.year, now.month, now.day);
-  final weekStart = today.subtract(Duration(days: today.weekday - 1));
-  final weekEnd = weekStart.add(const Duration(days: 7));
-  final yearStart = DateTime(today.year, 1, 1);
-  final nextYear = DateTime(today.year + 1, 1, 1);
-
-  // Fire all independent queries in parallel (ONE network latency total).
-  final results = await Future.wait<dynamic>([
-    // Yearly attendance (includes check_out/expires to derive today's open
-    // session client-side — no extra round-trip).
-    client
-        .from('attendance')
-        .select('check_in_time, check_in_date, check_out_time, expires_at')
-        .eq('member_id', userId)
-        .gte('check_in_time', yearStart.toIso8601String())
-        .lt('check_in_time', nextYear.toIso8601String()),
-    client
-        .from('body_measurements')
-        .select('weight_kg, height_cm, measured_at')
-        .eq('member_id', userId)
-        .gte('measured_at', yearStart.toIso8601String())
-        .lt('measured_at', nextYear.toIso8601String())
-        .order('measured_at', ascending: true),
-    client
-        .from('goals')
-        .select('title')
-        .eq('member_id', userId)
-        .eq('status', 'active')
-        .limit(1),
-    client
-        .from('trainer_assignments')
-        .select('trainer_id')
-        .eq('member_id', userId)
-        .eq('status', 'active')
-        .limit(1),
-  ]);
-
-  final yearList = results[0] as List;
-  final measurements = results[1] as List;
-  final goals = results[2] as List;
-  final assignment = results[3] as List;
-
-  // This Week counts COMPLETED workout sessions from `workout_logs` — one row
-  // per exercise, so a session is a distinct `workout_name` + local date.
-  // QR attendance is presence, not movement: never mix the two.
-  // toLocal() keeps early-morning check-ins (e.g. 01:17 PH = 17:17 UTC the
-  // day before) on the correct weekday.
-  final weekCounts = List.generate(7, (i) => 0);
-  final completedSessions = <String>{};
-  for (final row
-      in await client
-          .from('workout_logs')
-          .select('workout_name, logged_at')
-          .eq('member_id', userId)
-          .gte('logged_at', weekStart.toUtc().toIso8601String())
-          .lt('logged_at', weekEnd.toUtc().toIso8601String())
-          .order('logged_at', ascending: false)) {
-    final name = (row['workout_name'] as String?)?.trim() ?? '';
-    final loggedAt = DateTime.tryParse(row['logged_at'] as String? ?? '');
-    if (name.isEmpty || loggedAt == null) continue;
-    // A completed workout = a distinct (workout, local date) pair: a single
-    // session spans one or more exercise rows in `workout_logs`.
-    final sessionKey = '$name|${loggedAt.toLocal()}';
-    if (completedSessions.add(sessionKey)) {
-      final date = DateTime.parse(sessionKey.split('|')[1]);
-      if (date.isAfter(weekStart) && date.isBefore(weekEnd)) {
-        weekCounts[date.weekday - 1]++;
+final homeDataProvider = FutureProvider.autoDispose
+    .family<Map<String, dynamic>, String>((ref, requestedUserId) async {
+      final client = SupabaseClientService().client;
+      final userId = ref.watch(activeUserIdProvider);
+      final authUid = client.auth.currentUser?.id;
+      if (requestedUserId.isEmpty ||
+          userId == null ||
+          authUid == null ||
+          userId != authUid ||
+          requestedUserId != userId) {
+        throw Exception('Signed out — please log in again.');
       }
-    }
-  }
 
-  final monthlyCounts = List.generate(12, (i) => 0);
-  for (final a in yearList.cast<Map<String, dynamic>>()) {
-    final t = DateTime.parse(a['check_in_time'] as String);
-    if (t.month - 1 >= 0 && t.month - 1 < 12) monthlyCounts[t.month - 1]++;
-  }
+      final profile = ref.watch(authProvider).valueOrNull;
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final weekStart = today.subtract(Duration(days: today.weekday - 1));
+      final weekEnd = weekStart.add(const Duration(days: 7));
+      final yearStart = DateTime(today.year, 1, 1);
+      final nextYear = DateTime(today.year + 1, 1, 1);
 
-  // The Total pill sums every month plotted in the year chart (the whole
-  // year total), not just the current month.
-  final totalWorkouts = monthlyCounts.reduce((a, b) => a + b);
+      // Fire all independent queries in parallel (ONE network latency total).
+      final results = await Future.wait<dynamic>([
+        // Yearly attendance (includes check_out/expires to derive today's open
+        // session client-side — no extra round-trip).
+        client
+            .from('attendance')
+            .select('check_in_time, check_in_date, check_out_time, expires_at')
+            .eq('member_id', userId)
+            .gte('check_in_time', yearStart.toIso8601String())
+            .lt('check_in_time', nextYear.toIso8601String()),
+        client
+            .from('body_measurements')
+            .select('weight_kg, height_cm, measured_at')
+            .eq('member_id', userId)
+            .gte('measured_at', yearStart.toIso8601String())
+            .lt('measured_at', nextYear.toIso8601String())
+            .order('measured_at', ascending: true),
+        client
+            .from('goals')
+            .select('title')
+            .eq('member_id', userId)
+            .eq('status', 'active')
+            .limit(1),
+        client
+            .from('trainer_assignments')
+            .select('trainer_id')
+            .eq('member_id', userId)
+            .eq('status', 'active')
+            .limit(1),
+      ]);
 
-  // Active-day accounting for THIS MONTH, from REAL attendance only.
-  //
-  // Rule: distinct `check_in_date` values inside the current local month,
-  // already member-scoped by the `.eq('member_id', ...)` query above.
-  // Workout logs are exercise evidence, not presence, so they never feed
-  // this count. Distinct dates prevent the same day being counted twice.
-  final activeDates = <String>{};
-  final monthPrefix =
-      '${today.year.toString().padLeft(4, '0')}-'
-      '${today.month.toString().padLeft(2, '0')}';
-  for (final a in yearList.cast<Map<String, dynamic>>()) {
-    final checkInDate = a['check_in_date'];
-    if (checkInDate is String && checkInDate.startsWith(monthPrefix)) {
-      activeDates.add(checkInDate);
-    }
-  }
-  final activeDays = activeDates.length;
+      final yearList = results[0] as List;
+      final measurements = results[1] as List;
+      final goals = results[2] as List;
+      final assignment = results[3] as List;
 
-  final monthlyBmis = List<double?>.generate(12, (i) => null);
-  for (final m in measurements.cast<Map<String, dynamic>>()) {
-    final t = DateTime.parse(m['measured_at'] as String);
-    final heightCm = (m['height_cm'] as num?)?.toDouble();
-    final weightKg = (m['weight_kg'] as num?)?.toDouble();
-    if (heightCm != null &&
-        heightCm > 0 &&
-        weightKg != null &&
-        t.month - 1 >= 0 &&
-        t.month - 1 < 12) {
-      final h = heightCm / 100;
-      monthlyBmis[t.month - 1] = double.parse(
-        (weightKg / (h * h)).toStringAsFixed(1),
-      );
-    }
-  }
+      // This Week counts COMPLETED workout sessions from `workout_logs` — one row
+      // per exercise, so a session is a distinct `workout_name` + local date.
+      // QR attendance is presence, not movement: never mix the two.
+      // toLocal() keeps early-morning check-ins (e.g. 01:17 PH = 17:17 UTC the
+      // day before) on the correct weekday.
+      final weekCounts = List.generate(7, (i) => 0);
+      final completedSessions = <String>{};
+      for (final row
+          in await client
+              .from('workout_logs')
+              .select('workout_name, logged_at')
+              .eq('member_id', userId)
+              .gte('logged_at', weekStart.toUtc().toIso8601String())
+              .lt('logged_at', weekEnd.toUtc().toIso8601String())
+              .order('logged_at', ascending: false)) {
+        final name = (row['workout_name'] as String?)?.trim() ?? '';
+        final loggedAt = DateTime.tryParse(row['logged_at'] as String? ?? '');
+        if (name.isEmpty || loggedAt == null) continue;
+        // A completed workout = a distinct (workout, local date) pair: a single
+        // session spans one or more exercise rows in `workout_logs`.
+        final sessionKey = '$name|${loggedAt.toLocal()}';
+        if (completedSessions.add(sessionKey)) {
+          final date = DateTime.parse(sessionKey.split('|')[1]);
+          if (date.isAfter(weekStart) && date.isBefore(weekEnd)) {
+            weekCounts[date.weekday - 1]++;
+          }
+        }
+      }
 
-  final activeGoal = goals.isNotEmpty ? goals[0]['title'] as String? : null;
+      final monthlyCounts = List.generate(12, (i) => 0);
+      for (final a in yearList.cast<Map<String, dynamic>>()) {
+        final t = DateTime.parse(a['check_in_time'] as String);
+        if (t.month - 1 >= 0 && t.month - 1 < 12) monthlyCounts[t.month - 1]++;
+      }
 
-  Map<String, dynamic>? trainerProfile;
-  if (assignment.isNotEmpty) {
-    final trainerId = assignment[0]['trainer_id'] as String;
-    final trainerResp = await client
-        .from('profiles')
-        .select('id, full_name, avatar_url')
-        .eq('id', trainerId)
-        .single();
-    trainerProfile = trainerResp;
-  }
+      // The Total pill sums every month plotted in the year chart (the whole
+      // year total), not just the current month.
+      final totalWorkouts = monthlyCounts.reduce((a, b) => a + b);
 
-  return {
-    'profile': profile,
-    'weekCounts': weekCounts,
-    'maxWeek': weekCounts.reduce((a, b) => a > b ? a : b).clamp(1, 100),
-    'monthlyCounts': monthlyCounts,
-    'maxMonth': monthlyCounts.reduce((a, b) => a > b ? a : b).clamp(1, 100),
-    'monthlyWeights': monthlyBmis,
-    'totalWorkouts': totalWorkouts,
-    'activeDays': activeDays,
-    'activeGoal': activeGoal,
-    'trainer': trainerProfile,
-  };
-});
+      // Active-day accounting for THIS MONTH, from REAL attendance only.
+      //
+      // Rule: distinct `check_in_date` values inside the current local month,
+      // already member-scoped by the `.eq('member_id', ...)` query above.
+      // Workout logs are exercise evidence, not presence, so they never feed
+      // this count. Distinct dates prevent the same day being counted twice.
+      final activeDates = <String>{};
+      final monthPrefix =
+          '${today.year.toString().padLeft(4, '0')}-'
+          '${today.month.toString().padLeft(2, '0')}';
+      for (final a in yearList.cast<Map<String, dynamic>>()) {
+        final checkInDate = a['check_in_date'];
+        if (checkInDate is String && checkInDate.startsWith(monthPrefix)) {
+          activeDates.add(checkInDate);
+        }
+      }
+      final activeDays = activeDates.length;
+
+      final monthlyBmis = List<double?>.generate(12, (i) => null);
+      for (final m in measurements.cast<Map<String, dynamic>>()) {
+        final t = DateTime.parse(m['measured_at'] as String);
+        final heightCm = (m['height_cm'] as num?)?.toDouble();
+        final weightKg = (m['weight_kg'] as num?)?.toDouble();
+        if (heightCm != null &&
+            heightCm > 0 &&
+            weightKg != null &&
+            t.month - 1 >= 0 &&
+            t.month - 1 < 12) {
+          final h = heightCm / 100;
+          monthlyBmis[t.month - 1] = double.parse(
+            (weightKg / (h * h)).toStringAsFixed(1),
+          );
+        }
+      }
+
+      final activeGoal = goals.isNotEmpty ? goals[0]['title'] as String? : null;
+
+      Map<String, dynamic>? trainerProfile;
+      if (assignment.isNotEmpty) {
+        final trainerId = assignment[0]['trainer_id'] as String;
+        final trainerResp = await client
+            .from('profiles')
+            .select('id, full_name, avatar_url')
+            .eq('id', trainerId)
+            .single();
+        trainerProfile = trainerResp;
+      }
+
+      return {
+        'profile': profile,
+        'weekCounts': weekCounts,
+        'maxWeek': weekCounts.reduce((a, b) => a > b ? a : b).clamp(1, 100),
+        'monthlyCounts': monthlyCounts,
+        'maxMonth': monthlyCounts.reduce((a, b) => a > b ? a : b).clamp(1, 100),
+        'monthlyWeights': monthlyBmis,
+        'totalWorkouts': totalWorkouts,
+        'activeDays': activeDays,
+        'activeGoal': activeGoal,
+        'trainer': trainerProfile,
+      };
+    });
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -208,10 +211,15 @@ class _HomePageState extends ConsumerState<HomePage>
     WidgetsBinding.instance.addObserver(this);
     // Refresh on every visit while showing the cached data instantly.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) ref.invalidate(homeDataProvider);
+      if (mounted) _invalidateHomeData();
     });
     _startRealtimeListeners();
     _startPeriodicInvalidation();
+  }
+
+  void _invalidateHomeData() {
+    final memberId = ref.read(activeUserIdProvider);
+    if (memberId != null) ref.invalidate(homeDataProvider(memberId));
   }
 
   void _startRealtimeListeners() {
@@ -230,7 +238,7 @@ class _HomePageState extends ConsumerState<HomePage>
         .stream(primaryKey: ['id'])
         .eq('member_id', userId)
         .listen((_) {
-          if (mounted) ref.invalidate(homeDataProvider);
+          if (mounted) _invalidateHomeData();
         });
 
     // Workout logs realtime listener
@@ -239,7 +247,7 @@ class _HomePageState extends ConsumerState<HomePage>
         .stream(primaryKey: ['id'])
         .eq('member_id', userId)
         .listen((_) {
-          if (mounted) ref.invalidate(homeDataProvider);
+          if (mounted) _invalidateHomeData();
         });
   }
 
@@ -251,7 +259,7 @@ class _HomePageState extends ConsumerState<HomePage>
             _router?.routerDelegate.currentConfiguration.uri.path ==
             '/member/home';
         if (isHome) {
-          ref.invalidate(homeDataProvider);
+          _invalidateHomeData();
         }
       }
     });
@@ -272,7 +280,7 @@ class _HomePageState extends ConsumerState<HomePage>
     final isHome =
         _router!.routerDelegate.currentConfiguration.uri.path == '/member/home';
     if (isHome && !_wasHome && mounted) {
-      ref.invalidate(homeDataProvider);
+      _invalidateHomeData();
     }
     _wasHome = isHome;
   }
@@ -280,7 +288,7 @@ class _HomePageState extends ConsumerState<HomePage>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      ref.invalidate(homeDataProvider);
+      _invalidateHomeData();
     }
   }
 
@@ -303,7 +311,8 @@ class _HomePageState extends ConsumerState<HomePage>
     if (authUid != null && authUid != _listeningUserId) {
       _startRealtimeListeners();
     }
-    final dataAsync = ref.watch(homeDataProvider);
+    final memberId = ref.watch(activeUserIdProvider) ?? '';
+    final dataAsync = ref.watch(homeDataProvider(memberId));
     final profile = ref.watch(authProvider).valueOrNull;
     final onboardingAsync = ref.watch(needsOnboardingProvider);
 
@@ -926,9 +935,7 @@ class _GreetingRow extends ConsumerWidget {
     return Icon(
       isEvening ? Icons.nights_stay : Icons.wb_sunny,
       size: 16,
-      color: isEvening
-          ? ClayTokens.clayPrimaryLight
-          : ClayTokens.clayWarning,
+      color: isEvening ? ClayTokens.clayPrimaryLight : ClayTokens.clayWarning,
     );
   }
 }

@@ -1,4 +1,5 @@
 ﻿import { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { QRCodeSVG } from 'qrcode.react'
 import { supabase } from '@/lib/supabase'
@@ -10,8 +11,8 @@ import { useFitSquare } from '@/hooks/useFitRows'
 import { Eye, Check, X, Plus } from 'lucide-react'
 import AppBackground from '@/components/AppBackground'
 
-const ORIGIN = import.meta.env.VITE_PUBLIC_URL || window.location.origin
-const PAGE_URL = `${ORIGIN}/qr`
+const PUBLIC_ORIGIN = import.meta.env.VITE_PUBLIC_URL?.trim() || window.location.origin
+const PAGE_URL = new URL('/enroll', PUBLIC_ORIGIN).toString()
 
 /**
  * The page is three views, not one long page.
@@ -38,7 +39,8 @@ type QrView = (typeof QR_VIEWS)[number]['id']
 
 export default function QRPage() {
   const { profile } = useAuth()
-  const isAdmin = !!profile
+  const location = useLocation()
+  const isAdmin = !!profile && location.pathname !== '/enroll'
   const { theme } = useTheme()
   const qrBg = theme === 'light' ? '#FFFFFF' : '#14142A'
   const qrFg = theme === 'light' ? '#0F172A' : '#ECECFC'

@@ -1,7 +1,7 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { useCreateMembership, useDeleteMembership, useAttendanceLast7Days, useRenewalRequests } from '../hooks/useMemberships'
+import { useCreateMembership, useDeleteMembership, useAttendanceLast7Days, useRenewalRequests, useCancellationRequests } from '../hooks/useMemberships'
 import { useMembershipsList, useMembershipSearchIds, LIST_PAGE_SIZE } from '@/lib/listHooks'
 import { useResetPageOnChange } from '@/lib/pagedTable'
 import { useFitRowHeight } from '@/hooks/useFitRows'
@@ -9,7 +9,7 @@ import PeopleTable, { peopleCells, type PeopleColumn } from '@/components/People
 import ListToolbar from '@/components/ListToolbar'
 import PaginationFooter from '@/components/PaginationFooter'
 import StatusBadge from '@/components/StatusBadge'
-import type { Membership, MembershipRenewalRequest } from '@/types'
+import type { Membership, MembershipRenewalRequest, MembershipCancellationRequest } from '@/types'
 import { Plus, X, ChevronDown, CheckCircle, XCircle } from 'lucide-react'
 
 const PLANS = {
@@ -44,6 +44,7 @@ function endOfDay(date: string) {
 }
 
 function computeStatus(m: Membership, recentAttendance: Set<string>) {
+  if (m.status === 'cancelled') return 'cancelled'
   if (endOfDay(m.end_date).getTime() < Date.now()) return 'expired'
   const startDate = new Date(m.start_date)
   const daysSinceStart = Math.floor((Date.now() - startDate.getTime()) / 86400000)
@@ -155,7 +156,7 @@ function MemberSelect({ members, value, onChange }: { members: MemberOption[] | 
 }
 
 export default function MembershipsPage() {
-  const [activeTab, setActiveTab] = useState<'daily' | 'monthly' | 'renewal'>('daily')
+  const [activeTab, setActiveTab] = useState<'daily' | 'monthly' | 'renewal' | 'cancellation'>('daily')
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState({
     member_id: '',
@@ -179,6 +180,7 @@ export default function MembershipsPage() {
   // hook still accepts `from`/`to`; nothing here uses them.
   const [membershipPage, setMembershipPage] = useState(1)
   const [renewPage, setRenewPage] = useState(1)
+  const [cancellationPage, setCancellationPage] = useState(1)
   const [membershipSearch, setMembershipSearch] = useState('')
 
   // The member's name and code live on the JOINED profile, so they cannot take
@@ -191,7 +193,7 @@ export default function MembershipsPage() {
     [membershipSearch, searchIdRows],
   )
 
-  const planTab = activeTab === 'renewal' ? 'daily' : activeTab
+  const planTab = activeTab === 'monthly' ? 'monthly' : 'daily'
   // Paged + filtered server-side. The previous useMemberships(plan) fetched
   // every row of the plan - 1,800 for Monthly - and rendered them in one block
   // with a 420px cap, so most of the plan sat unreachable behind an inner
@@ -309,8 +311,15 @@ export default function MembershipsPage() {
 
   // ── Renewal decision state & handlers (Phases 3–4) ─────────────────────────
   const [renewRequestId, setRenewRequestId] = useState<string | null>(null)
+  const [cancellationDecision, setCancellationDecision] = useState<{ request: MembershipCancellationRequest; approve: boolean } | null>(null)
   const [adminId, setAdminId] = useState<string>('')
   const { data: pendingData } = useRenewalRequests()
+  const { data: cancellationData = [], isLoading: cancellationsLoading, error: cancellationError } = useCancellationRequests()
+  const cancellationMatches = useMemo(() => {
+    const q = membershipSearch.trim().toLowerCase()
+    return (cancellationData as MembershipCancellationRequest[]).filter(r => !q || [r.profiles?.full_name, r.profiles?.code, r.profiles?.email, r.memberships?.plan_name].some(v => (v ?? '').toLowerCase().includes(q)))
+  }, [cancellationData, membershipSearch])
+  useResetPageOnChange(setCancellationPage, membershipSearch)
   const pendingList = useMemo(() => pendingData ?? [], [pendingData])
   const pendingByMember = useRef<Map<string, MembershipRenewalRequest>>(new Map())
   useEffect(() => {
@@ -343,6 +352,9 @@ export default function MembershipsPage() {
     (safeRenewPage - 1) * LIST_PAGE_SIZE,
     safeRenewPage * LIST_PAGE_SIZE,
   )
+  const cancellationPageCount = Math.max(1, Math.ceil(cancellationMatches.length / LIST_PAGE_SIZE))
+  const safeCancellationPage = Math.min(cancellationPage, cancellationPageCount)
+  const cancellationRows = cancellationMatches.slice((safeCancellationPage - 1) * LIST_PAGE_SIZE, safeCancellationPage * LIST_PAGE_SIZE)
 
   // Fifteen rows is the contract on every tab; the height of one of them is what
   // gives. One measurement serves both tables - they are never on screen at once.
@@ -548,6 +560,35 @@ export default function MembershipsPage() {
     }
   }
 
+  const decideCancellation = async (request: MembershipCancellationRequest, approve: boolean): Promise<boolean> => {
+    setSavingRequest(request.id)
+    setRenewError(null)
+    try {
+      const { error } = await supabase.rpc('decide_membership_cancellation', { p_request_id: request.id, p_approve: approve })
+      if (error) throw error
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['membership_cancellation_requests'] }),
+        qc.invalidateQueries({ queryKey: ['memberships'] }),
+        qc.invalidateQueries({ queryKey: ['dash-revenue'] }),
+      ])
+      return true
+    } catch (err) {
+      setRenewError(err instanceof Error ? err.message : 'Could not update the cancellation request.')
+      return false
+    } finally { setSavingRequest(null) }
+  }
+
+  const cancellationColumns: PeopleColumn<MembershipCancellationRequest>[] = [
+    { key: 'member', header: 'Member', render: r => <span className="font-medium text-fg-strong">{r.profiles?.full_name ?? '—'}</span> },
+    { key: 'code', header: 'Code', render: r => peopleCells.code(r.profiles?.code) },
+    { key: 'plan', header: 'Plan', render: r => r.memberships?.plan_name ?? '—' },
+    { key: 'price', header: 'Price', render: r => `₱${Number(r.membership_price ?? r.memberships?.price ?? 0).toLocaleString()}` },
+    { key: 'attendance', header: 'Days Attended', render: r => r.attendance_days ?? '—' },
+    { key: 'refund', header: 'Estimated Refund', render: r => `₱${Number(r.refund_amount ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
+    { key: 'status', header: 'Status', render: r => <StatusBadge status={r.status} /> },
+    { key: 'actions', header: 'Actions', align: 'right', render: r => r.status !== 'pending' ? <span className="text-xs text-fg-muted">{r.status}</span> : <div className="flex justify-end gap-2"><button onClick={() => setCancellationDecision({ request: r, approve: false })} className="px-2.5 py-1 rounded-lg border border-line text-xs text-fg hover:text-fg-strong">Decline</button><button onClick={() => setCancellationDecision({ request: r, approve: true })} className="px-2.5 py-1 rounded-lg bg-[#7C3AED] text-white text-xs">Approve</button></div> },
+  ]
+
   /**
    * A queue row is deliberately one line: the member's email rides along as the
    * name's tooltip and their note as the plan cell's, because a variable-height
@@ -641,7 +682,7 @@ export default function MembershipsPage() {
       <ListToolbar
         left={(
           <div className="flex gap-1 glass-card rounded-xl p-1 w-fit" role="tablist" aria-label="Membership views">
-            {(['daily', 'monthly', 'renewal'] as const).map(tab => (
+            {(['daily', 'monthly', 'renewal', 'cancellation'] as const).map(tab => (
               <button
                 key={tab}
                 type="button"
@@ -654,7 +695,7 @@ export default function MembershipsPage() {
                     : 'text-fg hover:text-fg-strong'
                 }`}
               >
-                {tab === 'daily' ? 'Daily' : tab === 'monthly' ? 'Monthly' : 'Renewal'}
+                {tab === 'daily' ? 'Daily' : tab === 'monthly' ? 'Monthly' : tab === 'renewal' ? 'Renewal' : 'Cancellations'}
               </button>
             ))}
           </div>
@@ -665,7 +706,25 @@ export default function MembershipsPage() {
         </button>
       </ListToolbar>
 
-      {activeTab === 'renewal' ? (
+      {activeTab === 'cancellation' ? (
+        <>
+          {cancellationError && <p role="alert" className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-300">Could not load cancellation requests: {cancellationError.message}</p>}
+          {renewError && <p role="alert" className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-300">{renewError}</p>}
+          <PeopleTable
+            title="Cancellation Requests"
+            rows={cancellationRows}
+            columns={cancellationColumns}
+            rowKey={r => r.id}
+            isLoading={cancellationsLoading}
+            emptyMessage={membershipSearch ? `No cancellation requests match "${membershipSearch}"` : 'No cancellation requests.'}
+            scrollRef={scrollRef}
+            rowHeight={rowHeight}
+            search={{ value: membershipSearch, onChange: setMembershipSearch, placeholder: 'Search by member name or code…' }}
+            startIndex={(safeCancellationPage - 1) * LIST_PAGE_SIZE + 1}
+            footer={<PaginationFooter page={safeCancellationPage} pageCount={cancellationPageCount} total={cancellationMatches.length} pageSize={LIST_PAGE_SIZE} onPageChange={setCancellationPage} />}
+          />
+        </>
+      ) : activeTab === 'renewal' ? (
         pendingList.length > 0 ? (
           <PeopleTable
             title="Renewal Requests"
@@ -719,6 +778,25 @@ export default function MembershipsPage() {
             />
           }
         />
+      )}
+
+      {cancellationDecision && (
+        <div className="fixed inset-0 z-[70] grid place-items-center bg-[#05051A]/75 px-4 py-6 backdrop-blur-md" onClick={() => setCancellationDecision(null)}>
+          <section role="alertdialog" aria-modal="true" aria-labelledby="cancellation-confirm-title" className="glass-card w-full max-w-md rounded-2xl border border-[#A78BFA]/35 p-6 shadow-2xl shadow-black/40" onClick={event => event.stopPropagation()}>
+            <div className="flex items-start gap-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#7C3AED] text-white">{cancellationDecision.approve ? <CheckCircle className="h-5 w-5" /> : <XCircle className="h-5 w-5" />}</div>
+              <div>
+                <h2 id="cancellation-confirm-title" className="text-lg font-semibold text-fg-strong">{cancellationDecision.approve ? 'Approve cancellation?' : 'Decline cancellation?'}</h2>
+                <p className="mt-2 text-sm leading-6 text-fg">{cancellationDecision.approve ? <>This will cancel <strong>{cancellationDecision.request.profiles?.full_name ?? 'this member'}’s membership</strong>. The current estimate is <strong>₱{Number(cancellationDecision.request.refund_amount ?? 0).toFixed(2)}</strong> after {cancellationDecision.request.attendance_days ?? 0} attendance day(s); the final amount is recalculated when you approve.</> : <>Declining keeps <strong>{cancellationDecision.request.profiles?.full_name ?? 'this member'}’s membership</strong> active.</>}</p>
+              </div>
+            </div>
+            {renewError && <p role="alert" className="mt-4 rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-300">{renewError}</p>}
+            <div className="mt-6 flex justify-end gap-2">
+              <button disabled={savingRequest === cancellationDecision.request.id} onClick={() => setCancellationDecision(null)} className="rounded-lg border border-line px-4 py-2 text-sm text-fg">Cancel</button>
+              <button disabled={savingRequest === cancellationDecision.request.id} onClick={() => { const decision = cancellationDecision; void decideCancellation(decision.request, decision.approve).then(ok => { if (ok) setCancellationDecision(null) }) }} className="rounded-lg bg-[#7C3AED] px-4 py-2 text-sm text-white disabled:opacity-50">{savingRequest === cancellationDecision.request.id ? 'Saving…' : cancellationDecision.approve ? 'Confirm approval' : 'Confirm decline'}</button>
+            </div>
+          </section>
+        </div>
       )}
 
       {showModal && (

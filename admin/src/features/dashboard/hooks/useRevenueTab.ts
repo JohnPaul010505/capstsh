@@ -3,6 +3,7 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { autoGrain, bucketize, daysBetween, type Grain, type Range } from '@/features/dashboard/lib/dateRange'
 import { fetchMembershipsInRange } from '@/features/dashboard/lib/attendance'
 import type { PlanFilter } from '@/features/dashboard/lib/planFilter'
+import { supabase } from '@/lib/supabase'
 
 export interface RevenuePoint {
   key: string
@@ -45,6 +46,21 @@ export function useRevenueTab(range: Range, plan: PlanFilter, grain?: Grain) {
     },
   })
 
+  const refundsQuery = useQuery({
+    queryKey: ['dash-refunds', range.start, range.end, plan],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('membership_cancellation_requests')
+        .select('refund_amount, decided_at, memberships!membership_cancellation_requests_membership_id_fkey(plan_name)')
+        .eq('status', 'approved')
+        .gte('decided_at', `${range.start}T00:00:00`)
+        .lte('decided_at', `${range.end}T23:59:59.999`)
+      if (error) throw error
+      const rows = (data ?? []) as Array<{ refund_amount: number | null; memberships?: Array<{ plan_name: string }> | null }>
+      return plan === 'all' ? rows : rows.filter(r => r.memberships?.[0]?.plan_name === plan)
+    },
+  })
+
   const derived = useMemo(() => {
     const rows = q.data ?? []
     const days = Math.max(1, daysBetween(range.start, range.end))
@@ -84,8 +100,9 @@ export function useRevenueTab(range: Range, plan: PlanFilter, grain?: Grain) {
       memberCode: r.profiles?.code ?? null,
     }))
 
-    return { total, avg, days, transactions, peakDay, peakAmount, points, records }
-  }, [q.data, range.start, range.end, effectiveGrain])
+    const refunds = (refundsQuery.data ?? []).reduce((sum, row) => sum + (Number(row.refund_amount) || 0), 0)
+    return { total, refunds, net: total - refunds, avg, days, transactions, peakDay, peakAmount, points, records }
+  }, [q.data, refundsQuery.data, range.start, range.end, effectiveGrain])
 
-  return { ...derived, isLoading: q.isLoading, error: q.error }
+  return { ...derived, isLoading: q.isLoading || refundsQuery.isLoading, error: q.error ?? refundsQuery.error }
 }

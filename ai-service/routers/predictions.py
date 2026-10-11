@@ -19,20 +19,13 @@ def _persist(member_id: str, result: PredictionResult) -> None:
     Best-effort: a persistence failure must never lose the forecast in the
     response body.
 
-    Re-generating replaces the member's previous forecast for the same metric
-    *and* target date, so pressing Generate twice refreshes the row instead of
-    stacking duplicates.
+    Each generation is retained as a separate history row so admins can review
+    how forecasts change over time.
     """
     try:
         predicted_date = (
             datetime.now(timezone.utc) + timedelta(days=result.days_ahead)
         ).date().isoformat()
-        db.delete(
-            "predictions",
-            member_id=member_id,
-            metric_name=result.prediction_type,
-            predicted_date=predicted_date,
-        )
         row = {
             "member_id": member_id,
             "metric_name": result.prediction_type,

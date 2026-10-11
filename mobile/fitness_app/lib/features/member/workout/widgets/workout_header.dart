@@ -7,11 +7,13 @@ import '../../../shared/widgets/animations.dart';
 
 class WorkoutHeader extends ConsumerWidget {
   final WorkoutSessionState session;
+  final int totalWorkouts;
   final VoidCallback onDateTap;
 
   const WorkoutHeader({
     super.key,
     required this.session,
+    required this.totalWorkouts,
     required this.onDateTap,
   });
 
@@ -19,7 +21,11 @@ class WorkoutHeader extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isRunning = session.isRunning;
     final isDone = session.sessionEnded;
-    final label = isRunning ? 'Live' : isDone ? 'Done' : 'Ready';
+    final label = isRunning
+        ? 'Live'
+        : isDone
+        ? 'Done'
+        : 'Ready';
     // Ready = purple · Live = red · Done = green (all with readable text).
     final Color chipBg;
     final Color chipFg;
@@ -38,11 +44,22 @@ class WorkoutHeader extends ConsumerWidget {
         Expanded(
           child: Align(
             alignment: Alignment.centerLeft,
-            child: Text(
-              'WORKOUT LOG',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800, color: Color(0xFFFFFFFF)),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: Text(
+                    'WORKOUT LOG',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 21,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFFFFFFFF),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -60,7 +77,11 @@ class WorkoutHeader extends ConsumerWidget {
               const SizedBox(width: 5),
               Text(
                 label,
-                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: chipFg),
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: chipFg,
+                ),
               ),
             ],
           ),
@@ -68,21 +89,54 @@ class WorkoutHeader extends ConsumerWidget {
         Expanded(
           child: Align(
             alignment: Alignment.centerRight,
-            child: GestureDetector(
-              onTap: onDateTap,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF7C3AED), Color(0xFFC56BF0)],
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 5,
                   ),
-                  borderRadius: BorderRadius.circular(999),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF7C3AED), Color(0xFFC56BF0)],
+                    ),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '$totalWorkouts total',
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
-                child: Text(
-                  DateFormat('MMM d').format(DateTime.now()),
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white),
+                const SizedBox(width: 5),
+                GestureDetector(
+                  onTap: onDateTap,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF7C3AED), Color(0xFFC56BF0)],
+                      ),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      DateFormat('MMM d').format(DateTime.now()),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
         ),

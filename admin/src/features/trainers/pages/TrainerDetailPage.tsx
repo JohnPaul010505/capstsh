@@ -6,12 +6,11 @@ import { usePagedTable, useResetPageOnChange } from '@/lib/pagedTable'
 import { useFitRowHeight } from '@/hooks/useFitRows'
 import PeopleTable, { type PeopleColumn } from '@/components/PeopleTable'
 import PaginationFooter from '@/components/PaginationFooter'
-import { ArrowLeft, Mail, Phone, Users, UserPlus, X, Search, Trash2 } from 'lucide-react'
+import { ArrowLeft, Phone, Users, UserPlus, X, Search, Trash2, Pencil, Check } from 'lucide-react'
 import { useUpdateTrainer } from '../hooks/useTrainers'
 import {
   describeError,
   normalizeProfileUpdates,
-  validateProfileUpdates,
   type TrainerEditableFields,
 } from '@/features/shared/profileUpdates'
 import { useRealtimeProfiles } from '@/hooks/useRealtimeProfiles'
@@ -39,6 +38,8 @@ export default function TrainerDetailPage() {
   const updateTrainer = useUpdateTrainer()
   const [showAssignModal, setShowAssignModal] = useState(false)
   const [memberSearch, setMemberSearch] = useState('')
+  const [memberToAssign, setMemberToAssign] = useState<{ id: string; full_name: string } | null>(null)
+  const [assignmentError, setAssignmentError] = useState<string | null>(null)
   // The member page shares this hook: the trainer row follows edits made in
   // another tab or on the app without a reload.
   useRealtimeProfiles(id ? [id] : [])
@@ -50,9 +51,8 @@ export default function TrainerDetailPage() {
    * Same normaliser as the member page, so '' can never reach Postgres and a
    * failed save gets an on-screen message instead of a silent no-op.
    */
-  const [editing, setEditing] = useState(false)
+  const [editingField, setEditingField] = useState<'phone' | 'specialty' | null>(null)
   const [form, setForm] = useState<TrainerEditableFields & Record<string, string>>({
-    email: '',
     phone: '',
     specialty: '',
   })
@@ -60,21 +60,19 @@ export default function TrainerDetailPage() {
   const startEdit = () => {
     if (!trainer) return
     setSaveError(null)
-    setForm({ email: trainer.email ?? '', phone: trainer.phone ?? '', specialty: trainer.specialty ?? '' })
-    setEditing(true)
+    setForm({ phone: trainer.phone ?? '', specialty: trainer.specialty ?? '' })
+    setEditingField('phone')
   }
   const saveEdit = () => {
-    if (!id) return
-    const invalid = validateProfileUpdates(form)
-    if (invalid) {
-      setSaveError(invalid)
-      return
-    }
+    if (!id || !editingField) return
     setSaveError(null)
+    const updates = editingField === 'phone'
+      ? { phone: form.phone }
+      : { specialty: form.specialty }
     updateTrainer.mutate(
-      { id, ...normalizeProfileUpdates(form) },
+      { id, ...normalizeProfileUpdates(updates) },
       {
-        onSuccess: () => setEditing(false),
+        onSuccess: () => setEditingField(null),
         onError: err => setSaveError(describeError(err)),
       },
     )
@@ -231,17 +229,18 @@ export default function TrainerDetailPage() {
       // the drawer against it would offer every already-assigned member from
       // page 2 onwards as if they were still free. Ids and profiles are read
       // in one query so the two cannot disagree while the drawer is open.
-      const { data: assignments } = await supabase
-        .from('trainer_assignments')
-        .select('member_id')
-        .eq('trainer_id', id)
-        .eq('status', 'active')
-      const assignedIds = new Set((assignments ?? []).map(a => a.member_id))
-      const { data } = await supabase
+      const assignmentPages = await Promise.all(Array.from({ length: 5 }, (_, index) =>
+        supabase.from('trainer_assignments').select('member_id').eq('status', 'active').range(index * 1000, (index + 1) * 1000 - 1),
+      ))
+      const assignmentError = assignmentPages.find(page => page.error)?.error
+      if (assignmentError) throw assignmentError
+      const assignedIds = new Set(assignmentPages.flatMap(page => page.data ?? []).map(a => a.member_id))
+      const { data, error } = await supabase
         .from('profiles')
         .select('id, full_name, email, code')
         .eq('role', 'member')
         .order('full_name')
+      if (error) throw error
       return (data ?? []).filter(m => !assignedIds.has(m.id))
     },
     enabled: showAssignModal,
@@ -254,17 +253,25 @@ export default function TrainerDetailPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ trainer_id: id, member_id: memberId }),
       })
-      if (!res.ok) throw new Error('Failed to assign')
-      return res.json()
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.error || 'Failed to assign')
+      return result
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['trainer', id] })
+      queryClient.invalidateQueries({ queryKey: ['member-assignment-ids'] })
       // The old trainer-members key was UNPAGED. The table, the stat card and
       // the tab badge now take their totals from the paged query, so that is
       // the key (matched by prefix) that has to be invalidated.
       queryClient.invalidateQueries({ queryKey: ['trainer_assignments', 'paged'] })
+      queryClient.invalidateQueries({ queryKey: ['trainer-member-counts'] })
       queryClient.invalidateQueries({ queryKey: ['unassigned-members', id] })
       setShowAssignModal(false)
+      setMemberSearch('')
+      setMemberToAssign(null)
+      setAssignmentError(null)
     },
+    onError: error => setAssignmentError(error.message),
   })
 
   const unassignMutation = useMutation({
@@ -279,6 +286,8 @@ export default function TrainerDetailPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['trainer_assignments', 'paged'] })
+      queryClient.invalidateQueries({ queryKey: ['trainer-member-counts'] })
+      queryClient.invalidateQueries({ queryKey: ['member-assignment-ids'] })
       queryClient.invalidateQueries({ queryKey: ['unassigned-members', id] })
     },
   })
@@ -347,84 +356,41 @@ export default function TrainerDetailPage() {
       </button>
 
       <div className="glass-card p-4 rounded-xl shrink-0">
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-start gap-4">
+          <div className="flex items-center gap-4 min-w-0">
           <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#22C55E]/30 to-[#4ADE80]/30 flex items-center justify-center">
             <span className="text-xl font-bold text-accent-green">{trainer.full_name.charAt(0)}</span>
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="text-lg font-bold text-fg-strong">{trainer.full_name}</div>
             <p className="text-sm text-fg">{trainer.email}</p>
             <p className="text-xs font-mono text-fg-strong mt-1">{trainer.code}</p>
             {trainer.specialty && <p className="text-xs text-[#22C55E] mt-1">{trainer.specialty}</p>}
             {trainer.available_days && <p className="text-xs text-fg mt-0.5">Available: {trainer.available_days}</p>}
           </div>
+          </div>
+
         </div>
       </div>
 
-      <div className="flex items-center justify-between shrink-0">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 flex-1">
+      <div className="shrink-0">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
           <div className="glass-card p-4 rounded-xl">
-            <div className="flex items-center gap-2 text-sm text-fg-muted mb-1">
-              <Mail className="w-4 h-4" />
-              <span>Email</span>
-            </div>
-            {editing ? (
-              <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                className="w-full px-2 py-1.5 text-sm bg-page-deep border border-line rounded-lg text-fg-strong focus:outline-none focus:border-[#7C3AED]" />
-            ) : (
-              <p className="text-sm text-fg-strong break-all">{trainer.email}</p>
-            )}
+            <p className="text-sm text-fg-muted mb-1">Member rating</p>
+            {avgRating === null ? <p className="text-sm font-semibold text-fg-strong">No ratings yet</p> : <p className="text-sm font-semibold text-fg-strong">{avgRating.toFixed(1)} / 5 <span className="font-normal text-fg-muted">{'\u00b7'} {ratedRatings.length} rating{ratedRatings.length === 1 ? '' : 's'}</span></p>}
+            <p className="text-base tracking-wide text-amber-300" aria-label={`${Math.round(avgRating ?? 0)} out of 5 stars`}>{String.fromCharCode(9733).repeat(Math.round(avgRating ?? 0))}<span className="text-fg-faint">{String.fromCharCode(9733).repeat(5 - Math.round(avgRating ?? 0))}</span></p>
           </div>
           <div className="glass-card p-4 rounded-xl">
-            <div className="flex items-center gap-2 text-sm text-fg-muted mb-1">
-              <Phone className="w-4 h-4" />
-              <span>Phone</span>
-            </div>
-            {editing ? (
-              <input type="text" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
-                className="w-full px-2 py-1.5 text-sm bg-page-deep border border-line rounded-lg text-fg-strong focus:outline-none focus:border-[#7C3AED]" />
-            ) : (
-              <p className="text-sm text-fg-strong">{trainer.phone || '—'}</p>
-            )}
+            <div className="flex items-center justify-between text-sm text-fg-muted mb-1"><span className="flex items-center gap-2"><Phone className="w-4 h-4" />Phone</span>{editingField !== 'phone' && <button onClick={() => { startEdit(); setEditingField('phone') }} aria-label="Edit phone" className="hover:text-[#A78BFA] cursor-pointer"><Pencil className="w-3.5 h-3.5" /></button>}</div>
+            {editingField === 'phone' ? <div className="flex gap-2"><input type="text" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} className="min-w-0 flex-1 px-2 py-1.5 text-sm bg-page-deep border border-line rounded-lg text-fg-strong focus:outline-none focus:border-[#7C3AED]" /><button onClick={saveEdit} disabled={updateTrainer.isPending} aria-label="Save phone" className="text-[#A78BFA] disabled:opacity-50 cursor-pointer"><Check className="w-4 h-4" /></button><button onClick={() => { setEditingField(null); setSaveError(null) }} aria-label="Cancel phone edit" className="text-fg-muted cursor-pointer"><X className="w-4 h-4" /></button></div> : <p className="text-sm text-fg-strong">{trainer.phone || '\u2014'}</p>}
           </div>
           <div className="glass-card p-4 rounded-xl">
-            <div className="flex items-center gap-2 text-sm text-fg-muted mb-1">
-              <span className="text-xs font-bold">S</span>
-              <span>Specialty</span>
-            </div>
-            {editing ? (
-              <input type="text" value={form.specialty} onChange={e => setForm(f => ({ ...f, specialty: e.target.value }))}
-                placeholder="e.g. Strength training"
-                className="w-full px-2 py-1.5 text-sm bg-page-deep border border-line rounded-lg text-fg-strong placeholder-fg-muted focus:outline-none focus:border-[#7C3AED]" />
-            ) : (
-              <p className="text-sm text-fg-strong">{trainer.specialty || '—'}</p>
-            )}
+            <div className="flex items-center justify-between text-sm text-fg-muted mb-1"><span className="flex items-center gap-2"><span className="text-xs font-bold">S</span>Specialty</span>{editingField !== 'specialty' && <button onClick={() => { startEdit(); setEditingField('specialty') }} aria-label="Edit specialty" className="hover:text-[#A78BFA] cursor-pointer"><Pencil className="w-3.5 h-3.5" /></button>}</div>
+            {editingField === 'specialty' ? <div className="flex gap-2"><input type="text" value={form.specialty} onChange={e => setForm(f => ({ ...f, specialty: e.target.value }))} placeholder="e.g. Strength training" className="min-w-0 flex-1 px-2 py-1.5 text-sm bg-page-deep border border-line rounded-lg text-fg-strong placeholder-fg-muted focus:outline-none focus:border-[#7C3AED]" /><button onClick={saveEdit} disabled={updateTrainer.isPending} aria-label="Save specialty" className="text-[#A78BFA] disabled:opacity-50 cursor-pointer"><Check className="w-4 h-4" /></button><button onClick={() => { setEditingField(null); setSaveError(null) }} aria-label="Cancel specialty edit" className="text-fg-muted cursor-pointer"><X className="w-4 h-4" /></button></div> : <p className="text-sm text-fg-strong">{trainer.specialty || '\u2014'}</p>}
           </div>
-          <div className="glass-card p-4 rounded-xl">
-            <div className="flex items-center gap-2 text-sm text-fg-muted mb-1">
-              <Users className="w-4 h-4" />
-              <span>Assigned Members</span>
-            </div>
-            {/* The paged TOTAL, not the visible rows: the stat has to match the
-                badge and the footer whether page 1 or page 3 is on screen. */}
-            <p className="text-xl font-bold text-fg-strong">{assignedTotal}</p>
-          </div>
+          <div className="glass-card p-4 rounded-xl"><div className="flex items-center gap-2 text-sm text-fg-muted mb-1"><Users className="w-4 h-4" /><span>Assigned Members</span></div><p className="text-xl font-bold text-fg-strong">{assignedTotal}</p></div>
         </div>
-        {saveError && (
-          <p role="alert" className="mt-3 text-xs text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded-lg px-3 py-2 shrink-0">
-            {saveError}
-          </p>
-        )}
-        {editing ? (
-          <div className="flex gap-2 ml-3 shrink-0">
-            <button onClick={() => setEditing(false)} className="px-3 py-1.5 text-xs rounded-lg border border-line text-fg-muted hover:text-fg-strong cursor-pointer transition-colors">Cancel</button>
-            <button onClick={saveEdit} disabled={updateTrainer.isPending} className="px-3 py-1.5 text-xs rounded-lg bg-[#7C3AED] text-white hover:bg-[#6D28D9] disabled:opacity-50 cursor-pointer transition-colors">
-              {updateTrainer.isPending ? 'Saving…' : 'Save'}
-            </button>
-          </div>
-        ) : (
-          <button onClick={startEdit} className="px-3 py-1.5 text-xs rounded-lg border border-line text-fg-muted hover:text-fg-strong hover:border-[#7C3AED]/50 cursor-pointer transition-colors ml-3 shrink-0">Edit</button>
-        )}
+        {saveError && <p role="alert" className="mt-2 text-xs text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded-lg px-3 py-2">{saveError}</p>}
       </div>
 
       {/* The tab strip is the same shape Memberships uses (glass pill, active tab
@@ -541,6 +507,9 @@ export default function TrainerDetailPage() {
               </button>
             </div>
             <div className="px-6 py-4 border-b border-line">
+              <p className="text-xs text-fg-muted mb-3">{Math.max(0, 15 - assignedTotal)} of 15 member spots available</p>
+              {assignedTotal >= 15 && <p className="text-sm text-amber-400 mb-3">This trainer has reached the 15 member limit.</p>}
+              {assignmentError && <p role="alert" className="text-sm text-rose-300 bg-rose-500/10 border border-rose-400/25 rounded-lg px-3 py-2 mb-3">{assignmentError}</p>}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-fg-muted" />
                 <input
@@ -563,8 +532,12 @@ export default function TrainerDetailPage() {
                 .map(m => (
                   <button
                     key={m.id}
-                    onClick={() => assignMutation.mutate(m.id)}
-                    disabled={assignMutation.isPending}
+                    onClick={() => {
+                      if (assignedTotal >= 15) return
+                      setAssignmentError(null)
+                      setMemberToAssign({ id: m.id, full_name: m.full_name })
+                    }}
+                    disabled={assignMutation.isPending || assignedTotal >= 15}
                     className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-[#7C3AED]/10 transition-colors disabled:opacity-50 text-left"
                   >
                     <div>
@@ -584,6 +557,50 @@ export default function TrainerDetailPage() {
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {memberToAssign && (
+        <div
+          className="fixed inset-0 z-[100] grid place-items-center bg-[#05051A]/75 backdrop-blur-md px-4 py-6"
+          onClick={() => !assignMutation.isPending && setMemberToAssign(null)}
+        >
+          <section
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="confirm-assignment-title"
+            aria-describedby="confirm-assignment-description"
+            className="glass-card w-full max-w-md rounded-2xl border border-[#A78BFA]/35 p-6 shadow-2xl shadow-black/40"
+            onClick={event => event.stopPropagation()}
+          >
+            <div className="flex items-start gap-4">
+              <div className="w-11 h-11 rounded-xl bg-[#7C3AED] text-white flex items-center justify-center shrink-0">
+                <UserPlus className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 id="confirm-assignment-title" className="text-lg font-semibold text-fg-strong">Confirm trainer assignment</h2>
+                <p id="confirm-assignment-description" className="text-sm leading-6 text-fg mt-2">
+                  Assign <span className="font-semibold text-fg-strong">{memberToAssign.full_name}</span> to <span className="font-semibold text-fg-strong">{trainer.full_name}</span>?
+                </p>
+                <p className="text-xs leading-5 text-fg-muted mt-2">This member will appear in the trainer’s assigned members list.</p>
+              </div>
+            </div>
+            {assignmentError && <p role="alert" className="text-sm text-rose-300 bg-rose-500/10 border border-rose-400/25 rounded-lg px-3 py-2 mt-4">{assignmentError}</p>}
+            <div className="flex justify-end gap-2 mt-6">
+              <button
+                type="button"
+                disabled={assignMutation.isPending}
+                onClick={() => setMemberToAssign(null)}
+                className="px-4 py-2 text-sm rounded-lg border border-line text-fg hover:bg-overlay-8 disabled:opacity-50"
+              >Cancel</button>
+              <button
+                type="button"
+                disabled={assignMutation.isPending}
+                onClick={() => assignMutation.mutate(memberToAssign.id)}
+                className="px-4 py-2 text-sm rounded-lg bg-[#7C3AED] text-white hover:bg-[#6D28D9] disabled:opacity-50"
+              >{assignMutation.isPending ? 'Assigning…' : 'Assign member'}</button>
+            </div>
+          </section>
         </div>
       )}
     </div>
