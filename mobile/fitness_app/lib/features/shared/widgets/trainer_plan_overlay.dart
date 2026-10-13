@@ -33,8 +33,11 @@ class _NotesBanner extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
               children: [
-                const Icon(Icons.sticky_note_2_outlined,
-                    color: Color(0xFFD6A5FF), size: 20),
+                const Icon(
+                  Icons.sticky_note_2_outlined,
+                  color: Color(0xFFD6A5FF),
+                  size: 20,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
@@ -73,8 +76,11 @@ class _NotesBanner extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 2),
-                const Icon(Icons.chevron_right,
-                    color: Color(0xFFD6A5FF), size: 18),
+                const Icon(
+                  Icons.chevron_right,
+                  color: Color(0xFFD6A5FF),
+                  size: 18,
+                ),
               ],
             ),
           ),
@@ -118,10 +124,12 @@ class TrainerPlanWorkoutOverlay extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<TrainerPlanWorkoutOverlay> createState() => _TrainerPlanWorkoutOverlayState();
+  ConsumerState<TrainerPlanWorkoutOverlay> createState() =>
+      _TrainerPlanWorkoutOverlayState();
 }
 
-class _TrainerPlanWorkoutOverlayState extends ConsumerState<TrainerPlanWorkoutOverlay> {
+class _TrainerPlanWorkoutOverlayState
+    extends ConsumerState<TrainerPlanWorkoutOverlay> {
   List<Map<String, dynamic>> exercises = [];
   final Set<String> _completed = <String>{};
   bool _loading = true;
@@ -137,9 +145,8 @@ class _TrainerPlanWorkoutOverlayState extends ConsumerState<TrainerPlanWorkoutOv
     final days = await PlanRepository().getPlanDays(widget.planId);
     if (!mounted) return;
     final dayData = days.isNotEmpty ? days.first : <String, dynamic>{};
-    final exercisePlan =
-        (dayData['exercise_plan'] as List<dynamic>? ?? [])
-            .cast<Map<String, dynamic>>();
+    final exercisePlan = (dayData['exercise_plan'] as List<dynamic>? ?? [])
+        .cast<Map<String, dynamic>>();
     // The trainer writes plan rows GROUPED per day:
     //   exercise_plan = [{'day': 1, 'exercises': [{...}, {...}]}, ...]
     // so the day's exercises live one level down inside `exercises`. Reading
@@ -147,10 +154,12 @@ class _TrainerPlanWorkoutOverlayState extends ConsumerState<TrainerPlanWorkoutOv
     // empty row instead of the trainer's recommendation.
     final dayExercises = _rowsForDay(exercisePlan, 'exercises');
 
-    if (widget.dayNumber == 1) {
-      await _autoCheckFromLogs(dayExercises);
-      if (!mounted) return;
-    }
+    // The sheet always opens on the member's CURRENT plan day (Day 1 on the
+    // plan's start date, then Day 2 after 24 h, ...), so auto-checking and
+    // mirroring today's logs applies to whichever day is active — not only
+    // to Day 1.
+    await _autoCheckFromLogs(dayExercises);
+    if (!mounted) return;
 
     setState(() {
       exercises = dayExercises;
@@ -161,7 +170,7 @@ class _TrainerPlanWorkoutOverlayState extends ConsumerState<TrainerPlanWorkoutOv
     // trainer's progress view reflects what the member actually did. Guarded:
     // only writes when something WAS auto-checked, so a day with no logs can
     // never wipe an earlier saved completion.
-    if (widget.dayNumber == 1 && _completed.isNotEmpty) {
+    if (_completed.isNotEmpty) {
       await _syncCompletionFromLogs();
     }
   }
@@ -179,9 +188,7 @@ class _TrainerPlanWorkoutOverlayState extends ConsumerState<TrainerPlanWorkoutOv
       final nested = group[nestedKey];
       if (nested is List) {
         rows.addAll(
-          nested
-              .whereType<Map>()
-              .map((e) => Map<String, dynamic>.from(e)),
+          nested.whereType<Map>().map((e) => Map<String, dynamic>.from(e)),
         );
       } else if ((group['name'] as String?)?.isNotEmpty == true) {
         // Legacy flat row: the entry IS the exercise/food itself.
@@ -191,7 +198,7 @@ class _TrainerPlanWorkoutOverlayState extends ConsumerState<TrainerPlanWorkoutOv
     return rows;
   }
 
-  /// Day-1 convenience: pre-check rows whose exercise name appears in the
+  /// Day-aware convenience: pre-check rows whose exercise name appears in the
   /// member's workout logs for today (case/whitespace-insensitive). Stores the
   /// ORIGINAL plan-row name so row UI comparisons keep working.
   Future<void> _autoCheckFromLogs(
@@ -204,25 +211,18 @@ class _TrainerPlanWorkoutOverlayState extends ConsumerState<TrainerPlanWorkoutOv
       final now = DateTime.now();
       final startOfDay = DateTime(now.year, now.month, now.day);
       final endOfDay = startOfDay.add(const Duration(days: 1));
-      final rows =
-          await client
-              .from('workout_logs')
-              .select('exercise_name')
-              .eq('member_id', memberId)
-              .gte(
-                'logged_at',
-                startOfDay.toUtc().toIso8601String(),
-              )
-              .lt('logged_at', endOfDay.toUtc().toIso8601String())
-              .limit(200);
-      final logged =
-          (rows as List)
-              .map(
-                (r) => (r as Map)['exercise_name'] as String? ?? '',
-              )
-              .map(_normPlanName)
-              .where((n) => n.isNotEmpty)
-              .toSet();
+      final rows = await client
+          .from('workout_logs')
+          .select('exercise_name')
+          .eq('member_id', memberId)
+          .gte('logged_at', startOfDay.toUtc().toIso8601String())
+          .lt('logged_at', endOfDay.toUtc().toIso8601String())
+          .limit(200);
+      final logged = (rows as List)
+          .map((r) => (r as Map)['exercise_name'] as String? ?? '')
+          .map(_normPlanName)
+          .where((n) => n.isNotEmpty)
+          .toSet();
       if (logged.isEmpty) return;
       for (final e in dayExercises) {
         final name = e['name'] as String? ?? '';
@@ -276,161 +276,179 @@ class _TrainerPlanWorkoutOverlayState extends ConsumerState<TrainerPlanWorkoutOv
     return SizedBox(
       height: MediaQuery.of(context).size.height * 0.75,
       child: GlassSheetShell(
+        fillOpacity: 0.68,
         child: Column(
-        children: [
-          Container(
-            margin: const EdgeInsets.only(top: 12),
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.white.withAlpha(40),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          // Centred title with the close button overlaid on the right, so the
-          // heading sits on the true centre line of the sheet.
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Center(
-                  child: Text(
-                    'Day ${widget.dayNumber} — Trainer Plan',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFFFFFFFF),
-                    ),
-                  ),
-                ),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: IconButton(
-                    onPressed: () => context.pop(),
-                    icon:
-                        const Icon(Icons.close, color: Color(0xFF8E8E93)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Divider(color: Color(0xFF38383A), height: 1),
-          _NotesBanner(
-            notes: widget.notes,
-            onSeeAll: () => _openNotes(context),
-          ),
-          Expanded(
-            child: _loading
-                ? const Center(child: CupertinoActivityIndicator(color: Color(0xFFD6A5FF)))
-                : exercises.isEmpty
-                    ? const Center(
-                        child: Text(
-                          'No exercises planned for this day',
-                          style: TextStyle(fontSize: 14, color: Color(0xFF8E8E93)),
-                        ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        itemCount: exercises.length,
-                        itemBuilder: (context, index) {
-                          final exercise = exercises[index];
-                          final name = exercise['name'] as String? ?? '';
-                          final sets = exercise['sets']?.toString() ?? '';
-                          final reps = exercise['reps']?.toString() ?? '';
-                          final weight = exercise['weight']?.toString() ?? '';
-                          final isDone = _completed.contains(name);
-
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: GlassPanel(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 12),
-                              child: Row(
-                                children: [
-                                  // Read-only status dot: no GestureDetector,
-                                  // so a tap can never change it.
-                                  Container(
-                                    width: 24,
-                                    height: 24,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: isDone
-                                          ? const Color(0xFF30D158)
-                                          : Colors.transparent,
-                                      border: Border.all(
-                                        color: isDone
-                                            ? const Color(0xFF30D158)
-                                            : const Color(0xFF8E8E93),
-                                        width: 2,
-                                      ),
-                                    ),
-                                    child: isDone
-                                        ? const Icon(Icons.check,
-                                            size: 14, color: Colors.white)
-                                        : null,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          name,
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600,
-                                            color: isDone
-                                                ? const Color(0xFF8E8E93)
-                                                : const Color(0xFFFFFFFF),
-                                            decoration: isDone
-                                                ? TextDecoration.lineThrough
-                                                : TextDecoration.none,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 3),
-                                        Text(
-                                          '$sets sets × $reps reps${weight.isNotEmpty ? ' • $weight kg' : ''}',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: isDone
-                                                ? const Color(0xFF636366)
-                                                : const Color(0xFF8E8E93),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  if (isDone)
-                                    const Text(
-                                      'Logged',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w700,
-                                        color: Color(0xFF30D158),
-                                        letterSpacing: 0.4,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-          ),
-          if (exercises.isNotEmpty)
-            Padding(
-              padding: EdgeInsets.fromLTRB(16, 8, 16, bottomPadding + 12),
-              child: Text(
-                '${_completed.length}/${exercises.length} logged today',
-                style: const TextStyle(fontSize: 12, color: Color(0xFF8E8E93)),
-                textAlign: TextAlign.center,
+          children: [
+            Container(
+              margin: EdgeInsets.only(top: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: ClayTokens.hairline.withAlpha(40),
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
-        ],
-      ),
+            // Centred title with the close button overlaid on the right, so the
+            // heading sits on the true centre line of the sheet.
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Center(
+                    child: Text(
+                      'Day ${widget.dayNumber} — Trainer Plan',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: glassInk(),
+                      ),
+                    ),
+                  ),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: IconButton(
+                      onPressed: () => context.pop(),
+                      icon: const Icon(Icons.close, color: Color(0xFF8E8E93)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Divider(color: glassLine(const Color(0xFF38383A)), height: 1),
+            _NotesBanner(
+              notes: widget.notes,
+              onSeeAll: () => _openNotes(context),
+            ),
+            Expanded(
+              child: _loading
+                  ? const Center(
+                      child: CupertinoActivityIndicator(
+                        color: Color(0xFFD6A5FF),
+                      ),
+                    )
+                  : exercises.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'No exercises planned for this day',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF8E8E93),
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      itemCount: exercises.length,
+                      itemBuilder: (context, index) {
+                        final exercise = exercises[index];
+                        final name = exercise['name'] as String? ?? '';
+                        final sets = exercise['sets']?.toString() ?? '';
+                        final reps = exercise['reps']?.toString() ?? '';
+                        final weight = exercise['weight']?.toString() ?? '';
+                        final isDone = _completed.contains(name);
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: GlassPanel(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 12,
+                            ),
+                            child: Row(
+                              children: [
+                                // Read-only status dot: no GestureDetector,
+                                // so a tap can never change it.
+                                Container(
+                                  width: 24,
+                                  height: 24,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: isDone
+                                        ? const Color(0xFF30D158)
+                                        : Colors.transparent,
+                                    border: Border.all(
+                                      color: isDone
+                                          ? const Color(0xFF30D158)
+                                          : const Color(0xFF8E8E93),
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: isDone
+                                      ? Icon(
+                                          Icons.check,
+                                          size: 14,
+                                          color: ClayTokens.clayDarkTextPrimary,
+                                        )
+                                      : null,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        name,
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: isDone
+                                              ? const Color(0xFF8E8E93)
+                                              : glassInk(),
+                                          decoration: isDone
+                                              ? TextDecoration.lineThrough
+                                              : TextDecoration.none,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        '$sets sets × $reps reps${weight.isNotEmpty ? ' • $weight kg' : ''}',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: isDone
+                                              ? const Color(0xFF636366)
+                                              : const Color(0xFF8E8E93),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (isDone)
+                                  const Text(
+                                    'Logged',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF30D158),
+                                      letterSpacing: 0.4,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+            if (exercises.isNotEmpty)
+              Padding(
+                padding: EdgeInsets.fromLTRB(16, 8, 16, bottomPadding + 12),
+                child: Text(
+                  '${_completed.length}/${exercises.length} logged today',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF8E8E93),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -449,10 +467,12 @@ class TrainerPlanFoodOverlay extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<TrainerPlanFoodOverlay> createState() => _TrainerPlanFoodOverlayState();
+  ConsumerState<TrainerPlanFoodOverlay> createState() =>
+      _TrainerPlanFoodOverlayState();
 }
 
-class _TrainerPlanFoodOverlayState extends ConsumerState<TrainerPlanFoodOverlay> {
+class _TrainerPlanFoodOverlayState
+    extends ConsumerState<TrainerPlanFoodOverlay> {
   List<Map<String, dynamic>> foods = [];
   final Set<String> _completed = <String>{};
   bool _loading = true;
@@ -504,9 +524,7 @@ class _TrainerPlanFoodOverlayState extends ConsumerState<TrainerPlanFoodOverlay>
       final nested = group[nestedKey];
       if (nested is List) {
         rows.addAll(
-          nested
-              .whereType<Map>()
-              .map((f) => Map<String, dynamic>.from(f)),
+          nested.whereType<Map>().map((f) => Map<String, dynamic>.from(f)),
         );
       } else if ((group['name'] as String?)?.isNotEmpty == true) {
         // Legacy flat row: the entry IS the food itself.
@@ -516,13 +534,11 @@ class _TrainerPlanFoodOverlayState extends ConsumerState<TrainerPlanFoodOverlay>
     return rows;
   }
 
-  /// Day-1 convenience, mirroring the workout sheet: pre-check rows whose
+  /// Day-aware convenience, mirroring the workout sheet: pre-check rows whose
   /// food name appears in the member's meal logs for today
   /// (case/whitespace-insensitive, tolerant contains-match). Stores the
   /// ORIGINAL plan-row name so row UI comparisons keep working.
-  Future<void> _autoCheckFromLogs(
-    List<Map<String, dynamic>> dayFoods,
-  ) async {
+  Future<void> _autoCheckFromLogs(List<Map<String, dynamic>> dayFoods) async {
     try {
       final client = SupabaseClientService().client;
       final memberId = client.auth.currentUser?.id;
@@ -530,20 +546,18 @@ class _TrainerPlanFoodOverlayState extends ConsumerState<TrainerPlanFoodOverlay>
       final now = DateTime.now();
       final startOfDay = DateTime(now.year, now.month, now.day);
       final endOfDay = startOfDay.add(const Duration(days: 1));
-      final rows =
-          await client
-              .from('meal_logs')
-              .select('food_name')
-              .eq('member_id', memberId)
-              .gte('meal_time', startOfDay.toUtc().toIso8601String())
-              .lt('meal_time', endOfDay.toUtc().toIso8601String())
-              .limit(200);
-      final logged =
-          (rows as List)
-              .map((r) => (r as Map)['food_name'] as String? ?? '')
-              .map(_normPlanName)
-              .where((n) => n.isNotEmpty)
-              .toSet();
+      final rows = await client
+          .from('meal_logs')
+          .select('food_name')
+          .eq('member_id', memberId)
+          .gte('meal_time', startOfDay.toUtc().toIso8601String())
+          .lt('meal_time', endOfDay.toUtc().toIso8601String())
+          .limit(200);
+      final logged = (rows as List)
+          .map((r) => (r as Map)['food_name'] as String? ?? '')
+          .map(_normPlanName)
+          .where((n) => n.isNotEmpty)
+          .toSet();
       if (logged.isEmpty) return;
       for (final f in dayFoods) {
         final name = f['name'] as String? ?? '';
@@ -602,170 +616,191 @@ class _TrainerPlanFoodOverlayState extends ConsumerState<TrainerPlanFoodOverlay>
         orderedMealTypes.add(type);
       }
     }
-    mealTypes.keys.where((k) => !orderedMealTypes.contains(k)).forEach(orderedMealTypes.add);
+    mealTypes.keys
+        .where((k) => !orderedMealTypes.contains(k))
+        .forEach(orderedMealTypes.add);
 
     return SizedBox(
       height: MediaQuery.of(context).size.height * 0.6,
       child: GlassSheetShell(
+        fillOpacity: 0.68,
         child: Column(
-        children: [
-          Container(
-            margin: const EdgeInsets.only(top: 12),
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.white.withAlpha(40),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          // Centred title. The back arrow is gone: X is the single, obvious
-          // way out of the sheet (a "<" next to an "X" made dismissal
-          // ambiguous).
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Center(
-                  child: Text(
-                    'Day ${widget.dayNumber} — Nutrition Plan',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFFFFFFFF),
-                    ),
-                  ),
-                ),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: IconButton(
-                    onPressed: () => context.pop(),
-                    icon: const Icon(Icons.close, color: Color(0xFF8E8E93)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Divider(color: Color(0xFF38383A), height: 1),
-          _NotesBanner(
-            notes: widget.notes,
-            onSeeAll: () => _openNotes(context),
-          ),
-          Expanded(
-            child: _loading
-                ? const Center(child: CupertinoActivityIndicator(color: Color(0xFFD6A5FF)))
-                : foods.isEmpty
-                    ? const Center(
-                        child: Text(
-                          'No foods planned for this day',
-                          style: TextStyle(fontSize: 14, color: Color(0xFF8E8E93)),
-                        ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        itemCount: orderedMealTypes.length,
-                        itemBuilder: (context, index) {
-                          final mealType = orderedMealTypes[index];
-                          final items = mealTypes[mealType]!;
-
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  mealType[0].toUpperCase() + mealType.substring(1),
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: Color(0xFFD6A5FF),
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                ...items.map((food) {
-                                  final name = food['name'] as String? ?? '';
-                                  final isDone = _completed.contains(name);
-
-                                  // Same treatment as the workout sheet: a
-                                  // done row gets the green check circle, a
-                                  // greyed strike-through name and the
-                                  // "Logged" badge.
-                                  return GlassPanel(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 14, vertical: 12),
-                                    child: Row(
-                                      children: [
-                                        Container(
-                                          width: 24,
-                                          height: 24,
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            color: isDone
-                                                ? const Color(0xFF30D158)
-                                                : Colors.transparent,
-                                            border: Border.all(
-                                              color: isDone
-                                                  ? const Color(0xFF30D158)
-                                                  : const Color(0xFF8E8E93),
-                                              width: 2,
-                                            ),
-                                          ),
-                                          child: isDone
-                                              ? const Icon(Icons.check,
-                                                  size: 14,
-                                                  color: Colors.white)
-                                              : null,
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Text(
-                                            name,
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                              color: isDone
-                                                  ? const Color(0xFF8E8E93)
-                                                  : const Color(0xFFFFFFFF),
-                                              decoration: isDone
-                                                  ? TextDecoration.lineThrough
-                                                  : TextDecoration.none,
-                                            ),
-                                          ),
-                                        ),
-                                        if (isDone)
-                                          const Text(
-                                            'Logged',
-                                            style: TextStyle(
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.w700,
-                                              color: Color(0xFF30D158),
-                                              letterSpacing: 0.4,
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  );
-                                }),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-          ),
-          if (foods.isNotEmpty)
-            Padding(
-              padding: EdgeInsets.fromLTRB(16, 8, 16, bottomPadding + 12),
-              child: Text(
-                '${_completed.length}/${foods.length} logged today',
-                style: const TextStyle(fontSize: 12, color: Color(0xFF8E8E93)),
-                textAlign: TextAlign.center,
+          children: [
+            Container(
+              margin: EdgeInsets.only(top: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: ClayTokens.hairline.withAlpha(40),
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
-          SizedBox(height: bottomPadding + 8),
-        ],
-      ),
+            // Centred title. The back arrow is gone: X is the single, obvious
+            // way out of the sheet (a "<" next to an "X" made dismissal
+            // ambiguous).
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Center(
+                    child: Text(
+                      'Day ${widget.dayNumber} — Nutrition Plan',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: glassInk(),
+                      ),
+                    ),
+                  ),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: IconButton(
+                      onPressed: () => context.pop(),
+                      icon: const Icon(Icons.close, color: Color(0xFF8E8E93)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Divider(color: glassLine(const Color(0xFF38383A)), height: 1),
+            _NotesBanner(
+              notes: widget.notes,
+              onSeeAll: () => _openNotes(context),
+            ),
+            Expanded(
+              child: _loading
+                  ? const Center(
+                      child: CupertinoActivityIndicator(
+                        color: Color(0xFFD6A5FF),
+                      ),
+                    )
+                  : foods.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'No foods planned for this day',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF8E8E93),
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      itemCount: orderedMealTypes.length,
+                      itemBuilder: (context, index) {
+                        final mealType = orderedMealTypes[index];
+                        final items = mealTypes[mealType]!;
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                mealType[0].toUpperCase() +
+                                    mealType.substring(1),
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFFD6A5FF),
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              ...items.map((food) {
+                                final name = food['name'] as String? ?? '';
+                                final isDone = _completed.contains(name);
+
+                                // Same treatment as the workout sheet: a
+                                // done row gets the green check circle, a
+                                // greyed strike-through name and the
+                                // "Logged" badge.
+                                return GlassPanel(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 12,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 24,
+                                        height: 24,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: isDone
+                                              ? const Color(0xFF30D158)
+                                              : Colors.transparent,
+                                          border: Border.all(
+                                            color: isDone
+                                                ? const Color(0xFF30D158)
+                                                : const Color(0xFF8E8E93),
+                                            width: 2,
+                                          ),
+                                        ),
+                                        child: isDone
+                                            ? Icon(
+                                                Icons.check,
+                                                size: 14,
+                                                color: ClayTokens.clayDarkTextPrimary,
+                                              )
+                                            : null,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          name,
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: isDone
+                                                ? const Color(0xFF8E8E93)
+                                                : glassInk(),
+                                            decoration: isDone
+                                                ? TextDecoration.lineThrough
+                                                : TextDecoration.none,
+                                          ),
+                                        ),
+                                      ),
+                                      if (isDone)
+                                        const Text(
+                                          'Logged',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w700,
+                                            color: Color(0xFF30D158),
+                                            letterSpacing: 0.4,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                );
+                              }),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+            ),
+            if (foods.isNotEmpty)
+              Padding(
+                padding: EdgeInsets.fromLTRB(16, 8, 16, bottomPadding + 12),
+                child: Text(
+                  '${_completed.length}/${foods.length} logged today',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF8E8E93),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            SizedBox(height: bottomPadding + 8),
+          ],
+        ),
       ),
     );
   }

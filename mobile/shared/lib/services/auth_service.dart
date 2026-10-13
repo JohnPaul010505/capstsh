@@ -5,10 +5,18 @@ import 'supabase_client.dart';
 class AuthService {
   final SupabaseClient _client;
 
+  static const passwordRecoveryRedirect = 'triplejfitness://reset-password';
+
   AuthService() : _client = SupabaseClientService().client;
 
-  Future<Profile?> signIn({required String email, required String password}) async {
-    final response = await _client.auth.signInWithPassword(email: email, password: password);
+  Future<Profile?> signIn({
+    required String email,
+    required String password,
+  }) async {
+    final response = await _client.auth.signInWithPassword(
+      email: email,
+      password: password,
+    );
     if (response.user == null) return null;
     return _fetchProfile(response.user!.id);
   }
@@ -29,7 +37,8 @@ class AuthService {
       }
       email = result['email'] as String;
     } catch (e) {
-      if (e is Exception && e.toString().contains('Invalid member code')) rethrow;
+      if (e is Exception && e.toString().contains('Invalid member code'))
+        rethrow;
       throw Exception('Could not look up member code');
     }
 
@@ -55,6 +64,24 @@ class AuthService {
     await _client.auth.signOut();
   }
 
+  Future<void> sendPasswordResetEmail(String email) async {
+    final normalizedEmail = email.trim();
+    if (normalizedEmail.isEmpty) {
+      throw Exception('Enter the email address on your account.');
+    }
+    await _client.auth.resetPasswordForEmail(
+      normalizedEmail,
+      redirectTo: passwordRecoveryRedirect,
+    );
+  }
+
+  Future<void> updatePassword(String password) async {
+    if (_client.auth.currentSession == null) {
+      throw Exception('Your reset link expired. Request a new one.');
+    }
+    await _client.auth.updateUser(UserAttributes(password: password));
+  }
+
   Future<Profile?> refreshProfile() async {
     final user = _client.auth.currentUser;
     if (user == null) return null;
@@ -78,10 +105,10 @@ class AuthService {
   }) async {
     final user = _client.auth.currentUser;
     if (user == null) return;
-    await _client.from('profiles').update({
-      'gender': gender,
-      'avatar_url': profileAsset,
-    }).eq('id', user.id);
+    await _client
+        .from('profiles')
+        .update({'gender': gender, 'avatar_url': profileAsset})
+        .eq('id', user.id);
     await _client.from('body_measurements').insert({
       'member_id': user.id,
       'weight_kg': weightKg,
@@ -93,9 +120,10 @@ class AuthService {
   Future<void> updateProfileAsset(String profileAsset) async {
     final user = _client.auth.currentUser;
     if (user == null) return;
-    await _client.from('profiles').update({
-      'avatar_url': profileAsset,
-    }).eq('id', user.id);
+    await _client
+        .from('profiles')
+        .update({'avatar_url': profileAsset})
+        .eq('id', user.id);
   }
 
   Future<void> updateProfile({

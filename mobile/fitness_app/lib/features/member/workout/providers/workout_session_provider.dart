@@ -23,6 +23,7 @@ class SessionExercise {
   String? proofUrl;
   DateTime? doneAt;
   int? sessionElapsedSeconds;
+  int? sessionRestElapsedSeconds;
 
   SessionExercise({
     required this.name,
@@ -42,6 +43,7 @@ class SessionExercise {
     'proofUrl': proofUrl,
     'doneAt': doneAt?.toIso8601String(),
     'sessionElapsedSeconds': sessionElapsedSeconds,
+    'sessionRestElapsedSeconds': sessionRestElapsedSeconds,
   };
 
   factory SessionExercise.fromJson(Map<String, dynamic> json) {
@@ -61,6 +63,8 @@ class SessionExercise {
         ? DateTime.parse(json['doneAt'] as String)
         : null;
     exercise.sessionElapsedSeconds = json['sessionElapsedSeconds'] as int?;
+    exercise.sessionRestElapsedSeconds =
+        json['sessionRestElapsedSeconds'] as int?;
     return exercise;
   }
 }
@@ -116,7 +120,10 @@ class CompletedSession {
 class WorkoutSessionState {
   final List<SessionExercise> exercises;
   final bool isRunning;
+  final bool isPaused;
   final int elapsedSeconds;
+  final int activeSeconds;
+  final int restSeconds;
   final DateTime? startedAt;
   final DateTime? lastInteractionAt;
   final bool idleWarning;
@@ -138,7 +145,10 @@ class WorkoutSessionState {
   const WorkoutSessionState({
     this.exercises = const [],
     this.isRunning = false,
+    this.isPaused = false,
     this.elapsedSeconds = 0,
+    this.activeSeconds = 0,
+    this.restSeconds = 0,
     this.startedAt,
     this.lastInteractionAt,
     this.idleWarning = false,
@@ -168,9 +178,6 @@ class WorkoutSessionState {
     return WorkoutSessionState(dayKey: todayKey(), weightKg: weightKg);
   }
 
-  /// Total active session time, minus idle windows (tracked by the notifier).
-  int get activeSeconds => elapsedSeconds;
-
   /// Calories from the last session summary (0 before a session completes).
   int get latestCalories => _latestCalories ?? 0;
 
@@ -194,18 +201,37 @@ class WorkoutSessionState {
     return seconds < 0 ? 0 : seconds;
   }
 
+  /// Rest seconds attributed to this exercise segment, including pauses.
+  int restSecondsFor(SessionExercise exercise) {
+    final idx = exercises.indexOf(exercise);
+    if (idx < 0) return 0;
+    final end = exercise.sessionRestElapsedSeconds ?? restSeconds;
+    final prev = idx > 0
+        ? (exercises[idx - 1].sessionRestElapsedSeconds ?? 0)
+        : 0;
+    final delta = end - prev;
+    return delta < 0 ? 0 : delta;
+  }
+
+  int totalSecondsFor(SessionExercise exercise) =>
+      activeSecondsFor(exercise) + restSecondsFor(exercise);
+
   /// Calories for an individual exercise given the member's weight in kg.
-  /// kcal = MET x weight(kg) x duration(hours) — based on active session
-  /// time so idle windows don't inflate the burn.
+  /// Gross kcal: exercise MET for active time, 1.3 MET for paused rest time.
   double caloriesFor(SessionExercise exercise, double weightKg) {
-    final hours = activeSecondsFor(exercise) / 3600.0;
-    return exercise.met * weightKg * hours;
+    final activeHours = activeSecondsFor(exercise) / 3600.0;
+    final restHours = restSecondsFor(exercise) / 3600.0;
+    return (exercise.met * weightKg * activeHours) +
+        (1.3 * weightKg * restHours);
   }
 
   Map<String, dynamic> toJson() => {
     'exercises': exercises.map((e) => e.toJson()).toList(),
     'isRunning': isRunning,
+    'isPaused': isPaused,
     'elapsedSeconds': elapsedSeconds,
+    'activeSeconds': activeSeconds,
+    'restSeconds': restSeconds,
     'startedAt': startedAt?.toIso8601String(),
     'lastInteractionAt': lastInteractionAt?.toIso8601String(),
     'idleWarning': idleWarning,
@@ -229,7 +255,12 @@ class WorkoutSessionState {
               .toList() ??
           const [],
       isRunning: json['isRunning'] as bool? ?? false,
+      isPaused: json['isPaused'] as bool? ?? false,
       elapsedSeconds: json['elapsedSeconds'] as int? ?? 0,
+      activeSeconds:
+          json['activeSeconds'] as int? ??
+          (json['elapsedSeconds'] as int? ?? 0),
+      restSeconds: json['restSeconds'] as int? ?? 0,
       startedAt: json['startedAt'] != null
           ? DateTime.parse(json['startedAt'] as String)
           : null,
@@ -310,6 +341,11 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
         return false;
       }
       state = restored;
+      if (restored.isRunning && !restored.sessionEnded) {
+        _lastTick = DateTime.now();
+        _ticker?.cancel();
+        _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
+      }
       // New calendar day: yesterday's in-progress input must not carry over.
       // Completed DB history is untouched — the calendar/month views and
       // _loadSessionHistory() still show it.
@@ -460,10 +496,6 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
 
     final service = WorkoutService();
     final workoutName = 'Workout S${state.sessionCount + 1}';
-    final totalCalories = state.exercises
-        .map((e) => _caloriesFor(e))
-        .fold<double>(0, (sum, c) => sum + c)
-        .round();
     try {
       for (final e in state.exercises) {
         if (e.doneAt == null) continue;
@@ -472,13 +504,13 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
           memberId: userId,
           exerciseName: e.name,
           workoutName: workoutName,
-          durationMinutes: state.activeSecondsFor(e) ~/ 60,
-          durationSeconds: state.activeSecondsFor(e),
+          durationMinutes: state.totalSecondsFor(e) ~/ 60,
+          durationSeconds: state.totalSecondsFor(e),
           weightKg: _weightKg,
           proofUrl: e.proofUrl,
           proofType: e.hasProof ? 'video' : null,
           loggedAt: e.doneAt!.toUtc(),
-          totalCalories: totalCalories,
+          totalCalories: _caloriesFor(e).round(),
         );
         await service.createWorkout(log);
       }
@@ -519,7 +551,10 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
     state = WorkoutSessionState(
       exercises: [...state.exercises, exercise],
       isRunning: state.isRunning,
+      isPaused: state.isPaused,
       elapsedSeconds: state.elapsedSeconds,
+      activeSeconds: state.activeSeconds,
+      restSeconds: state.restSeconds,
       startedAt: state.startedAt,
       lastInteractionAt: _stampInteraction(),
       idleWarningSeconds: state.idleWarningSeconds,
@@ -541,7 +576,10 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
     state = WorkoutSessionState(
       exercises: list,
       isRunning: false,
+      isPaused: false,
       elapsedSeconds: 0,
+      activeSeconds: 0,
+      restSeconds: 0,
       lastInteractionAt: _stampInteraction(),
       sessionEnded: false,
       weightKg: _weightKg,
@@ -564,7 +602,10 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
     state = WorkoutSessionState(
       exercises: state.exercises,
       isRunning: true,
+      isPaused: false,
       elapsedSeconds: 0,
+      activeSeconds: 0,
+      restSeconds: 0,
       startedAt: started,
       lastInteractionAt: _stampInteraction(),
       sessionEnded: false,
@@ -580,6 +621,34 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
     InteractionMonitor.instance.ensureStarted();
   }
 
+  /// Pause active exercise time while the total workout clock continues.
+  void pauseSession() {
+    if (!state.isRunning || state.isPaused || state.idleWarning) return;
+    final now = DateTime.now();
+    final delta = now
+        .difference(_lastTick ?? now)
+        .inSeconds
+        .clamp(0, 2)
+        .toInt();
+    _lastTick = now;
+    _stampInteraction();
+    state = _copyWith(
+      elapsedSeconds: state.elapsedSeconds + delta,
+      activeSeconds: state.activeSeconds + delta,
+      isPaused: true,
+    );
+    _persist();
+  }
+
+  /// Resume active exercise time after a rest break.
+  void resumeSession() {
+    if (!state.isRunning || !state.isPaused) return;
+    _lastTick = DateTime.now();
+    _stampInteraction();
+    state = _copyWith(isPaused: false);
+    _persist();
+  }
+
   void startNewSession() {
     if (state.sessionCount >= 3) return;
     _ticker?.cancel();
@@ -590,7 +659,10 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
     state = WorkoutSessionState(
       exercises: const [],
       isRunning: false,
+      isPaused: false,
       elapsedSeconds: 0,
+      activeSeconds: 0,
+      restSeconds: 0,
       startedAt: null,
       lastInteractionAt: _stampInteraction(),
       idleWarning: false,
@@ -628,13 +700,14 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
 
   /// Marks the exercise at [index] as Done with a manual timestamp.
   void markDone(int index) {
-    if (index < 0 || index >= state.exercises.length) return;
+    if (state.isPaused || index < 0 || index >= state.exercises.length) return;
     final e = state.exercises[index];
     if (!e.hasProof) return;
     e.doneAt = DateTime.now();
     // Stamp where this exercise landed on the session clock so the summary
     // card shows the same time basis as the session duration.
-    e.sessionElapsedSeconds = state.elapsedSeconds;
+    e.sessionElapsedSeconds = state.activeSeconds;
+    e.sessionRestElapsedSeconds = state.restSeconds;
     final next = index + 1;
     if (next < state.exercises.length) {
       state.exercises[next].startedAt ??= e.doneAt;
@@ -668,7 +741,10 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
     state = WorkoutSessionState(
       exercises: state.exercises,
       isRunning: false,
+      isPaused: false,
       elapsedSeconds: state.elapsedSeconds,
+      activeSeconds: state.activeSeconds,
+      restSeconds: state.restSeconds,
       startedAt: state.startedAt,
       lastInteractionAt: state.lastInteractionAt,
       idleWarning: false,
@@ -694,7 +770,9 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
     final idleFor = now.difference(lastInteraction);
 
     // Start idle warning once the threshold is crossed.
-    if (!state.idleWarning && idleFor >= SessionConfig.idleThreshold) {
+    if (!state.isPaused &&
+        !state.idleWarning &&
+        idleFor >= SessionConfig.idleThreshold) {
       _startIdleGrace();
       state = _copyWith(
         idleWarning: true,
@@ -705,14 +783,22 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
 
     if (state.idleWarning) return;
 
-    // Advance the clock only for active time (idle windows excluded).
+    // Total duration includes pauses; calorie accounting tracks both separately.
     final base = _lastTick ?? state.startedAt ?? now;
-    final delta = now.difference(base).inSeconds;
+    final rawDelta = now.difference(base).inSeconds;
+    final delta = state.isPaused ? rawDelta : rawDelta.clamp(0, 2).toInt();
     _lastTick = now;
-    state = _copyWith(
-      elapsedSeconds: state.elapsedSeconds + delta,
-      lastInteractionAt: lastInteraction,
-    );
+    state = state.isPaused
+        ? _copyWith(
+            elapsedSeconds: state.elapsedSeconds + delta,
+            restSeconds: state.restSeconds + delta,
+            lastInteractionAt: lastInteraction,
+          )
+        : _copyWith(
+            elapsedSeconds: state.elapsedSeconds + delta,
+            activeSeconds: state.activeSeconds + delta,
+            lastInteractionAt: lastInteraction,
+          );
     final now2 = DateTime.now();
     if (_lastPersistAt == null ||
         now2.difference(_lastPersistAt!).inSeconds >= 10) {
@@ -773,7 +859,10 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
 
   WorkoutSessionState _copyWith({
     int? elapsedSeconds,
+    int? activeSeconds,
+    int? restSeconds,
     bool? isRunning,
+    bool? isPaused,
     bool? idleWarning,
     int? idleWarningSeconds,
     DateTime? lastInteractionAt,
@@ -790,7 +879,10 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
     return WorkoutSessionState(
       exercises: state.exercises,
       isRunning: isRunning ?? state.isRunning,
+      isPaused: isPaused ?? state.isPaused,
       elapsedSeconds: elapsedSeconds ?? state.elapsedSeconds,
+      activeSeconds: activeSeconds ?? state.activeSeconds,
+      restSeconds: restSeconds ?? state.restSeconds,
       startedAt: state.startedAt,
       lastInteractionAt: lastInteractionAt ?? state.lastInteractionAt,
       idleWarning: idleWarning ?? state.idleWarning,

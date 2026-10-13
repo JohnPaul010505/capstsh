@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart' show Colors, Icons;
+import 'package:flutter/material.dart' show Colors, Icons, Theme;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -151,7 +151,9 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
       return _buildSuccessScreen();
     }
     return CupertinoPageScaffold(
-      backgroundColor: ClayTokens.clayDarkBase,
+      backgroundColor: ClayColors.isLightMode
+          ? ClayTokens.claySurfaceLight.withAlpha(250)
+          : Theme.of(context).scaffoldBackgroundColor,
       child: AppGlowBackground(
         child: SafeArea(
           child: Column(
@@ -160,7 +162,7 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
               _buildHeader('In & Out', showBack: widget.showBack),
               Expanded(
                 child: ListView(
-                  padding: const EdgeInsets.symmetric(
+                  padding: EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 24,
                   ),
@@ -170,16 +172,22 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
                       // the scanner reads as liquid glass over the camera feed.
                       Container(
                         height: 250,
-                        padding: const EdgeInsets.all(2.5),
+                        padding: EdgeInsets.all(2.5),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
-                            colors: [
-                              Colors.white.withAlpha(120),
-                              ClayTokens.clayPrimary.withAlpha(150),
-                              Colors.white.withAlpha(60),
-                            ],
+                            colors: ClayColors.isLightMode
+                                ? [
+                                    ClayTokens.claySurfaceLight.withAlpha(180),
+                                    ClayTokens.clayPrimary.withAlpha(150),
+                                    ClayTokens.claySurfaceLight.withAlpha(120),
+                                  ]
+                                : [
+                                    Colors.white.withAlpha(120),
+                                    ClayTokens.clayPrimary.withAlpha(150),
+                                    Colors.white.withAlpha(60),
+                                  ],
                           ),
                           borderRadius: BorderRadius.circular(18),
                           boxShadow: [
@@ -193,7 +201,9 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(15.5),
                           child: Container(
-                            color: Colors.black,
+                            color: ClayColors.isLightMode
+                                ? const Color(0xFF1A1A2E)
+                                : Colors.black,
                             child: MobileScanner(
                               onDetect: _onDetect,
                               controller: _scannerController,
@@ -216,15 +226,23 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
                                 gradient: LinearGradient(
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
-                                  colors: [
-                                    Colors.white.withAlpha(21),
-                                    ClayTokens.clayPrimaryLight.withAlpha(20),
-                                    ClayTokens.clayPrimary.withAlpha(24),
-                                  ],
+                                  colors: ClayColors.isLightMode
+                                      ? [
+                                          ClayTokens.claySurfaceLight.withAlpha(180),
+                                          ClayTokens.clayPrimary.withAlpha(25),
+                                          ClayTokens.clayPrimaryLight.withAlpha(20),
+                                        ]
+                                      : [
+                                          ClayTokens.hairline.withAlpha(21),
+                                          ClayTokens.clayPrimaryLight.withAlpha(20),
+                                          ClayTokens.clayPrimary.withAlpha(24),
+                                        ],
                                 ),
                                 borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
-                                  color: Colors.white.withAlpha(38),
+                                  color: ClayColors.isLightMode
+                                      ? ClayTokens.clayPrimary.withAlpha(40)
+                                      : ClayTokens.hairline.withAlpha(38),
                                 ),
                               ),
                               child: Center(
@@ -240,7 +258,9 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
                                     Text(
                                       'Tap to open scanner',
                                       style: ClayTokens.bodyMedium.copyWith(
-                                        color: ClayTokens.clayDarkTextPrimary,
+                                        color: ClayColors.isLightMode
+                                            ? ClayTokens.clayTextPrimary
+                                            : ClayTokens.clayDarkTextPrimary,
                                       ),
                                     ),
                                   ],
@@ -323,7 +343,9 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
                     Text(
                       'Scan the gym QR code to check in or out. You get one check-in and one check-out per day.',
                       style: ClayTokens.bodySmall.copyWith(
-                        color: ClayTokens.clayDarkTextTertiary,
+                        color: ClayColors.isLightMode
+                            ? ClayTokens.clayTextTertiary
+                            : ClayTokens.clayDarkTextTertiary,
                         fontSize: 13,
                       ),
                       textAlign: TextAlign.center,
@@ -341,25 +363,35 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
   /// Glass card showing today's check-in / check-out times so the trainer
   /// (or member) can see at a glance whether they are checked in or out.
   Widget _buildStatusCard() {
+    final isLight = ClayColors.isLightMode;
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(16),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                Colors.white.withAlpha(21),
-                ClayTokens.clayPrimaryLight.withAlpha(20),
-                ClayTokens.clayPrimary.withAlpha(24),
-              ],
+              colors: isLight
+                  ? [
+                      ClayTokens.claySurfaceLight.withAlpha(180),
+                      ClayTokens.clayPrimary.withAlpha(25),
+                      ClayTokens.clayPrimaryLight.withAlpha(20),
+                    ]
+                  : [
+                      ClayTokens.hairline.withAlpha(21),
+                      ClayTokens.clayPrimaryLight.withAlpha(20),
+                      ClayTokens.clayPrimary.withAlpha(24),
+                    ],
             ),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withAlpha(38)),
+            border: Border.all(
+              color: isLight
+                  ? ClayTokens.clayPrimary.withAlpha(40)
+                  : ClayTokens.hairline.withAlpha(38)),
           ),
           child: _sessionsLoading
               ? const Center(child: CupertinoActivityIndicator())
@@ -379,7 +411,9 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
                           style: ClayTokens.titleLarge.copyWith(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
-                            color: ClayTokens.clayDarkTextPrimary,
+                            color: isLight
+                                ? ClayTokens.clayTextPrimary
+                                : ClayTokens.clayDarkTextPrimary,
                             letterSpacing: -0.41,
                           ),
                         ),
@@ -390,7 +424,9 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
                       Text(
                         "You haven't checked in yet today.",
                         style: ClayTokens.bodyMedium.copyWith(
-                          color: ClayTokens.clayDarkTextTertiary,
+                          color: isLight
+                              ? ClayTokens.clayTextTertiary
+                              : ClayTokens.clayDarkTextTertiary,
                         ),
                       )
                     else
@@ -402,6 +438,7 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
                             session['check_in_time'] as String?,
                           ),
                           color: ClayTokens.clayAccent,
+                          isLight: isLight,
                         ),
                         const SizedBox(height: 8),
                         if (session['check_out_time'] != null)
@@ -412,6 +449,7 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
                               session['check_out_time'] as String?,
                             ),
                             color: ClayTokens.clayAccent,
+                            isLight: isLight,
                           )
                         else
                           _statusRow(
@@ -419,12 +457,13 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
                             label: 'Still checked in',
                             time: null,
                             color: ClayTokens.clayPrimary,
+                            isLight: isLight,
                           ),
                         if (session != _todaySessions.last)
                           const SizedBox(height: 14),
                       ],
                   ],
-                ),
+              ),
         ),
       ),
     );
@@ -435,6 +474,7 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
     required String label,
     required String? time,
     required Color color,
+    required bool isLight,
   }) {
     return Row(
       children: [
@@ -444,7 +484,7 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
           child: Text(
             label,
             style: ClayTokens.bodyMedium.copyWith(
-              color: ClayTokens.clayDarkTextPrimary,
+              color: isLight ? ClayTokens.clayTextPrimary : ClayTokens.clayDarkTextPrimary,
             ),
           ),
         ),
@@ -454,7 +494,7 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
             style: ClayTokens.titleLarge.copyWith(
               fontSize: 14,
               fontWeight: FontWeight.w700,
-              color: ClayTokens.clayDarkTextPrimary,
+              color: isLight ? ClayTokens.clayTextPrimary : ClayTokens.clayDarkTextPrimary,
             ),
           ),
       ],
@@ -478,8 +518,12 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
         ? null
         : _durationLabel(result.sessionDuration!);
 
+    final isLight = ClayColors.isLightMode;
+
     return ColoredBox(
-      color: ClayTokens.clayDarkBase,
+      color: isLight
+          ? ClayTokens.claySurfaceLight
+          : ClayTokens.clayDarkBase,
       child: SafeArea(
         child: Center(
           child: Column(
@@ -492,27 +536,45 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
                   color: ClayTokens.clayAccent.withAlpha(26),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.check_rounded,
-                  color: Colors.white,
+                  color: isLight
+                      ? ClayTokens.clayTextPrimary
+                      : ClayTokens.clayDarkTextPrimary,
                   size: 48,
                 ),
               ),
               const SizedBox(height: 24),
-              Text(title, style: ClayTokens.darkDisplaySmall),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w700,
+                  color: isLight
+                      ? ClayTokens.clayTextPrimary
+                      : const Color(0xFFF2F2F7),
+                  letterSpacing: -0.5,
+                ),
+              ),
               const SizedBox(height: 8),
               Text(
                 'You checked $verb at $localTime',
-                style: ClayTokens.darkBodyMedium.copyWith(
-                  color: ClayTokens.clayDarkTextSecondary,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: isLight
+                      ? ClayTokens.clayTextSecondary
+                      : const Color(0xFF8E8E93),
                 ),
               ),
               if (duration != null) ...[
                 const SizedBox(height: 6),
                 Text(
                   'Session length: $duration',
-                  style: ClayTokens.darkBodySmall.copyWith(
-                    color: ClayTokens.clayDarkTextSecondary,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isLight
+                        ? ClayTokens.clayTextSecondary
+                        : const Color(0xFF8E8E93),
                   ),
                 ),
               ],
@@ -520,8 +582,11 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
                 const SizedBox(height: 6),
                 Text(
                   'Your previous open session was auto-closed.',
-                  style: ClayTokens.darkBodySmall.copyWith(
-                    color: ClayTokens.clayDarkTextTertiary,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isLight
+                        ? ClayTokens.clayTextTertiary
+                        : const Color(0xFF636366),
                   ),
                 ),
               ],
@@ -530,15 +595,21 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
                 isCheckedOut
                     ? "You're done for today. See you tomorrow!"
                     : 'Scan the QR again when you leave to check out.',
-                style: ClayTokens.darkBodySmall.copyWith(
-                  color: ClayTokens.clayDarkTextTertiary,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: isLight
+                      ? ClayTokens.clayTextTertiary
+                      : const Color(0xFF636366),
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 'Returning...',
-                style: ClayTokens.darkBodySmall.copyWith(
-                  color: ClayTokens.clayDarkTextTertiary,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: isLight
+                      ? ClayTokens.clayTextTertiary
+                      : const Color(0xFF636366),
                 ),
               ),
             ],
@@ -581,7 +652,10 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
                       );
                     }
                   },
-                  child: const Icon(CupertinoIcons.back, color: Colors.white),
+                  child: Icon(
+                    CupertinoIcons.back,
+                    color: ClayTokens.clayDarkTextPrimary,
+                  ),
                 )
               : const SizedBox(width: 32),
           Expanded(

@@ -7,33 +7,33 @@ import 'package:shared/services/supabase_client.dart';
 import 'package:shared/services/notification_service.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../shared/widgets/glass_card.dart';
-import '../../../../features/shared/widgets/clay/clay_card.dart';
 import '../../../shared/widgets/app_glow_background.dart';
 import '../../../shared/widgets/glass_confirm_dialog.dart';
 import '../../../shared/widgets/animations.dart' show StaggeredFadeIn, Shimmer;
 import 'create_goal_card.dart';
 import 'goal_card.dart';
 import 'empty_goals_state.dart';
+import '../services/goal_home_widget.dart';
 
 const bgDark = Color(0xFF0B0D1A);
 
 final goalsProvider = FutureProvider.autoDispose
     .family<List<Map<String, dynamic>>, String>((ref, requestedUserId) async {
-  final client = SupabaseClientService().client;
-  final activeUserId = ref.watch(activeUserIdProvider);
-  final authUserId = client.auth.currentUser?.id;
-  if (requestedUserId.isEmpty ||
-      requestedUserId != activeUserId ||
-      requestedUserId != authUserId) {
-    throw Exception('Signed out — please log in again.');
-  }
-  final response = await client
-      .from('goals')
-      .select()
-      .eq('member_id', requestedUserId)
-      .order('created_at', ascending: false);
-  return response;
-});
+      final client = SupabaseClientService().client;
+      final activeUserId = ref.watch(activeUserIdProvider);
+      final authUserId = client.auth.currentUser?.id;
+      if (requestedUserId.isEmpty ||
+          requestedUserId != activeUserId ||
+          requestedUserId != authUserId) {
+        throw Exception('Signed out — please log in again.');
+      }
+      final response = await client
+          .from('goals')
+          .select()
+          .eq('member_id', requestedUserId)
+          .order('created_at', ascending: false);
+      return response;
+    });
 
 /// A goal is ongoing while its end date has not passed — regardless of DB
 /// status — so the member cannot accidentally add a second one while the
@@ -87,7 +87,7 @@ class _GoalsPageState extends ConsumerState<GoalsPage>
     final hasActiveGoal = goalsAsync.valueOrNull?.any(_ongoing) ?? false;
 
     return CupertinoPageScaffold(
-      backgroundColor: bgDark,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       child: AppGlowBackground(
         child: SafeArea(
           child: Column(
@@ -137,6 +137,7 @@ class _GoalsPageState extends ConsumerState<GoalsPage>
                                 .from('goals')
                                 .update({'status': 'cancelled'})
                                 .eq('id', g['id']);
+                            await GoalHomeWidget.syncForCurrentMember();
                             if (memberId != null) {
                               ref.invalidate(goalsProvider(memberId));
                             }
@@ -153,6 +154,7 @@ class _GoalsPageState extends ConsumerState<GoalsPage>
                               .from('goals')
                               .update({'status': newStatus})
                               .eq('id', g['id']);
+                          await GoalHomeWidget.syncForCurrentMember();
                           final userId = SupabaseClientService()
                               .client
                               .auth
@@ -217,6 +219,7 @@ class _GoalsPageState extends ConsumerState<GoalsPage>
                               .from('goals')
                               .update({'status': 'active'})
                               .eq('id', g['id']);
+                          await GoalHomeWidget.syncForCurrentMember();
                           if (memberId != null) {
                             ref.invalidate(goalsProvider(memberId));
                           }
@@ -264,7 +267,10 @@ class _GoalsPageState extends ConsumerState<GoalsPage>
           CupertinoButton(
             padding: EdgeInsets.zero,
             onPressed: () => context.pop(),
-            child: Icon(CupertinoIcons.back, color: Colors.white),
+            child: Icon(
+              CupertinoIcons.back,
+              color: ClayTokens.clayDarkTextPrimary,
+            ),
           ),
           Expanded(
             child: Text(
@@ -293,7 +299,11 @@ class _GoalsPageState extends ConsumerState<GoalsPage>
         decoration: BoxDecoration(
           color: ClayTokens.clayDarkSurface.withAlpha(120),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white.withAlpha(18)),
+          border: Border.all(
+            color: ClayColors.isLightMode
+                ? ClayTokens.clayPrimary.withAlpha(45)
+                : Colors.white.withAlpha(18),
+          ),
         ),
         child: TabBar(
           controller: _tabController,
@@ -380,24 +390,24 @@ class _GoalsTab extends StatelessWidget {
           child: GlassPanel(
             padding: const EdgeInsets.all(24),
             borderRadius: BorderRadius.circular(20),
-            child: const Column(
+            child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(CupertinoIcons.clock, color: Color(0xFFA855F7), size: 38),
-                SizedBox(height: 12),
+                const Icon(CupertinoIcons.clock, color: Color(0xFFA855F7), size: 38),
+                const SizedBox(height: 12),
                 Text(
                   'No goal history yet',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: ClayTokens.clayDarkTextPrimary,
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                SizedBox(height: 6),
+                const SizedBox(height: 6),
                 Text(
                   'Completed and cancelled goals will appear here.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Color(0xFFA0A4B8)),
+                  style: TextStyle(color: ClayTokens.clayDarkTextSecondary),
                 ),
               ],
             ),
@@ -445,11 +455,8 @@ class _GoalsSkeletonCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Shimmer(
-      child: ClayCard(
-        variant: ClayCardVariant.outlined,
-        backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
-        customPadding: const EdgeInsets.all(20),
-        padding: ClayCardPadding.none,
+      child: MemberGlassCard(
+        padding: const EdgeInsets.all(20),
         borderRadius: BorderRadius.circular(16),
         child: Column(
           children: [
@@ -459,11 +466,11 @@ class _GoalsSkeletonCard extends StatelessWidget {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(25),
+                    color: ClayTokens.hairline.withAlpha(25),
                     borderRadius: BorderRadius.circular(14),
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -472,16 +479,16 @@ class _GoalsSkeletonCard extends StatelessWidget {
                         height: 18,
                         width: 150,
                         decoration: BoxDecoration(
-                          color: Colors.white.withAlpha(25),
+                          color: ClayTokens.hairline.withAlpha(25),
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       Container(
                         height: 12,
                         width: 90,
                         decoration: BoxDecoration(
-                          color: Colors.white.withAlpha(18),
+                          color: ClayTokens.hairline.withAlpha(18),
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
@@ -492,7 +499,7 @@ class _GoalsSkeletonCard extends StatelessWidget {
                   width: 76,
                   height: 24,
                   decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(25),
+                    color: ClayTokens.hairline.withAlpha(25),
                     borderRadius: BorderRadius.circular(999),
                   ),
                 ),
@@ -502,16 +509,16 @@ class _GoalsSkeletonCard extends StatelessWidget {
             Container(
               width: 140,
               height: 140,
-              decoration: const BoxDecoration(
-                color: Color(0xFF2C2C2E),
+              decoration: BoxDecoration(
+                color: glassRimSoft(const Color(0xFF2C2C2E)),
                 shape: BoxShape.circle,
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Container(
               height: 56,
               decoration: BoxDecoration(
-                color: Colors.white.withAlpha(18),
+                color: ClayTokens.hairline.withAlpha(18),
                 borderRadius: BorderRadius.circular(14),
               ),
             ),

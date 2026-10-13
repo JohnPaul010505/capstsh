@@ -19,127 +19,128 @@ import '../../../shared/utils/goal_progress.dart';
 /// list path. Keep-alive (not autoDispose): the indexed-stack shell keeps
 /// this page alive, so revisits render cached rows instantly while the
 /// router listener below refetches in the background.
-final assignedMembersProvider =
-    FutureProvider<List<Map<String, dynamic>>>((ref) async {
-      final client = SupabaseClientService().client;
-      final userId = client.auth.currentUser!.id;
+final assignedMembersProvider = FutureProvider<List<Map<String, dynamic>>>((
+  ref,
+) async {
+  final client = SupabaseClientService().client;
+  final userId = client.auth.currentUser!.id;
 
-      final assignments = await client
-          .from('trainer_assignments')
-          .select('member_id')
-          .eq('trainer_id', userId)
-          .eq('status', 'active');
+  final assignments = await client
+      .from('trainer_assignments')
+      .select('member_id')
+      .eq('trainer_id', userId)
+      .eq('status', 'active');
 
-      final memberIds = (assignments as List)
-          .map((a) => a['member_id'] as String)
-          .toList();
-      if (memberIds.isEmpty) return [];
+  final memberIds = (assignments as List)
+      .map((a) => a['member_id'] as String)
+      .toList();
+  if (memberIds.isEmpty) return [];
 
-      final ninetyDaysAgo = DateTime.now().subtract(const Duration(days: 90));
+  final ninetyDaysAgo = DateTime.now().subtract(const Duration(days: 90));
 
-      final results = await Future.wait([
-        client
-            .from('profiles')
-            .select('id, full_name, avatar_url, code')
-            .inFilter('id', memberIds),
-        client
-            .from('attendance')
-            .select('member_id, check_in_time')
-            .inFilter('member_id', memberIds)
-            .gte('check_in_time', ninetyDaysAgo.toIso8601String()),
-        // Latest two measurements per member (newest first) → current weight +
-        // the delta vs the previous reading for the "↗ 2.0kg" badge.
-        client
-            .from('body_measurements')
-            .select('member_id, weight_kg, measured_at')
-            .inFilter('member_id', memberIds)
-            .not('weight_kg', 'is', null)
-            .order('measured_at', ascending: false),
-        // Running goals (newest first) → goal_type + target for the journey bar.
-        client
-            .from('goals')
-            .select(
-              'member_id, title, goal_type, target_value, current_value, status',
-            )
-            .inFilter('member_id', memberIds)
-            .inFilter('status', ['active', 'in_progress'])
-            .order('created_at', ascending: false),
-      ]);
+  final results = await Future.wait([
+    client
+        .from('profiles')
+        .select('id, full_name, avatar_url, code')
+        .inFilter('id', memberIds),
+    client
+        .from('attendance')
+        .select('member_id, check_in_time')
+        .inFilter('member_id', memberIds)
+        .gte('check_in_time', ninetyDaysAgo.toIso8601String()),
+    // Latest two measurements per member (newest first) → current weight +
+    // the delta vs the previous reading for the "↗ 2.0kg" badge.
+    client
+        .from('body_measurements')
+        .select('member_id, weight_kg, measured_at')
+        .inFilter('member_id', memberIds)
+        .not('weight_kg', 'is', null)
+        .order('measured_at', ascending: false),
+    // Running goals (newest first) → goal_type + target for the journey bar.
+    client
+        .from('goals')
+        .select(
+          'member_id, title, goal_type, target_value, current_value, status',
+        )
+        .inFilter('member_id', memberIds)
+        .inFilter('status', ['active', 'in_progress'])
+        .order('created_at', ascending: false),
+  ]);
 
-      final profileList = (results[0] as List).cast<Map<String, dynamic>>();
+  final profileList = (results[0] as List).cast<Map<String, dynamic>>();
 
-      // Most recent check-in per member.
-      final lastCheckIn = <String, DateTime>{};
-      for (final a in (results[1] as List).cast<Map<String, dynamic>>()) {
-        final mid = a['member_id'] as String?;
-        final t = DateTime.tryParse(a['check_in_time'] as String? ?? '');
-        if (mid == null || t == null) continue;
-        final prev = lastCheckIn[mid];
-        if (prev == null || t.isAfter(prev)) lastCheckIn[mid] = t;
-      }
+  // Most recent check-in per member.
+  final lastCheckIn = <String, DateTime>{};
+  for (final a in (results[1] as List).cast<Map<String, dynamic>>()) {
+    final mid = a['member_id'] as String?;
+    final t = DateTime.tryParse(a['check_in_time'] as String? ?? '');
+    if (mid == null || t == null) continue;
+    final prev = lastCheckIn[mid];
+    if (prev == null || t.isAfter(prev)) lastCheckIn[mid] = t;
+  }
 
-      // Latest + previous weight per member (rows are newest-first, so the
-      // first sighting is the current weight and the second is the prior one).
-      final latestWeight = <String, double>{};
-      final prevWeight = <String, double>{};
-      for (final m in (results[2] as List).cast<Map<String, dynamic>>()) {
-        final mid = m['member_id'] as String?;
-        final w = (m['weight_kg'] as num?)?.toDouble();
-        if (mid == null || w == null) continue;
-        if (latestWeight.containsKey(mid)) {
-          prevWeight.putIfAbsent(mid, () => w);
-        } else {
-          latestWeight[mid] = w;
-        }
-      }
+  // Latest + previous weight per member (rows are newest-first, so the
+  // first sighting is the current weight and the second is the prior one).
+  final latestWeight = <String, double>{};
+  final prevWeight = <String, double>{};
+  for (final m in (results[2] as List).cast<Map<String, dynamic>>()) {
+    final mid = m['member_id'] as String?;
+    final w = (m['weight_kg'] as num?)?.toDouble();
+    if (mid == null || w == null) continue;
+    if (latestWeight.containsKey(mid)) {
+      prevWeight.putIfAbsent(mid, () => w);
+    } else {
+      latestWeight[mid] = w;
+    }
+  }
 
-      // Newest running goal per member.
-      final goalByMember = <String, Map<String, dynamic>>{};
-      for (final g in (results[3] as List).cast<Map<String, dynamic>>()) {
-        final mid = g['member_id'] as String?;
-        if (mid == null) continue;
-        goalByMember.putIfAbsent(mid, () => g);
-      }
+  // Newest running goal per member.
+  final goalByMember = <String, Map<String, dynamic>>{};
+  for (final g in (results[3] as List).cast<Map<String, dynamic>>()) {
+    final mid = g['member_id'] as String?;
+    if (mid == null) continue;
+    goalByMember.putIfAbsent(mid, () => g);
+  }
 
-      final rows = profileList.map((p) {
-        final mid = p['id'] as String;
-        final goal = goalByMember[mid];
-        final goalType = (goal?['goal_type'] as String?) ?? '';
-        final live = latestWeight[mid];
-        final goalPct = goal == null
-            ? null
-            : computeGoalProgress(
-                baseline: (goal['current_value'] as num?)?.toDouble(),
-                target: (goal['target_value'] as num?)?.toDouble(),
-                live: live,
-                goalType: goalType,
-              ).pct;
-        return <String, dynamic>{
-          'id': mid,
-          'full_name': p['full_name'] as String? ?? 'Unknown',
-          'avatar_url': p['avatar_url'] as String?,
-          'code': p['code'] as String?,
-          'last_checkin': lastCheckIn[mid],
-          'weight': live,
-          'weight_delta':
-              (live != null && prevWeight[mid] != null && prevWeight[mid] != live)
-              ? live - prevWeight[mid]!
-              : null,
-          'goal_pct': goalPct,
-        };
-      }).toList();
+  final rows = profileList.map((p) {
+    final mid = p['id'] as String;
+    final goal = goalByMember[mid];
+    final goalType = (goal?['goal_type'] as String?) ?? '';
+    final live = latestWeight[mid];
+    final goalPct = goal == null
+        ? null
+        : computeGoalProgress(
+            baseline: (goal['current_value'] as num?)?.toDouble(),
+            target: (goal['target_value'] as num?)?.toDouble(),
+            live: live,
+            goalType: goalType,
+          ).pct;
+    return <String, dynamic>{
+      'id': mid,
+      'full_name': p['full_name'] as String? ?? 'Unknown',
+      'avatar_url': p['avatar_url'] as String?,
+      'code': p['code'] as String?,
+      'last_checkin': lastCheckIn[mid],
+      'weight': live,
+      'weight_delta':
+          (live != null && prevWeight[mid] != null && prevWeight[mid] != live)
+          ? live - prevWeight[mid]!
+          : null,
+      'goal_pct': goalPct,
+    };
+  }).toList();
 
-      // Most recent activity first; members who never checked in sort last.
-      rows.sort((a, b) {
-        final la = a['last_checkin'] as DateTime?;
-        final lb = b['last_checkin'] as DateTime?;
-        if (la == null && lb == null) return 0;
-        if (la == null) return 1;
-        if (lb == null) return -1;
-        return lb.compareTo(la);
-      });
-      return rows;
-    });
+  // Most recent activity first; members who never checked in sort last.
+  rows.sort((a, b) {
+    final la = a['last_checkin'] as DateTime?;
+    final lb = b['last_checkin'] as DateTime?;
+    if (la == null && lb == null) return 0;
+    if (la == null) return 1;
+    if (lb == null) return -1;
+    return lb.compareTo(la);
+  });
+  return rows;
+});
 
 class ProgressListPage extends ConsumerStatefulWidget {
   const ProgressListPage({super.key});
@@ -184,9 +185,10 @@ class _ProgressListPageState extends ConsumerState<ProgressListPage> {
   Widget build(BuildContext context) {
     final membersAsync = ref.watch(assignedMembersProvider);
 
-    return Scaffold(
-      backgroundColor: ClayTokens.clayDarkBase,
-      body: AppGlowBackground(
+    return Scaffold(        backgroundColor: ClayColors.isLightMode
+            ? ClayTokens.claySurfaceLight.withAlpha(250)
+            : ClayTokens.clayDarkSurface,
+        body: AppGlowBackground(
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -201,59 +203,59 @@ class _ProgressListPageState extends ConsumerState<ProgressListPage> {
                   ),
                   borderRadius: BorderRadius.circular(14),
                   child: TextField(
-                  controller: _searchController,
-                  onChanged: (v) =>
-                      setState(() => _query = v.trim().toLowerCase()),
-                  style: ClayTokens.bodyLarge.copyWith(
-                    color: ClayTokens.clayDarkTextPrimary,
-                    fontSize: 14,
-                  ),
-                  cursorColor: ClayTokens.clayPrimary,
-                  decoration: InputDecoration(
-                    hintText: 'Search members',
-                    hintStyle: ClayTokens.bodySmall.copyWith(
-                      color: ClayTokens.clayDarkTextTertiary,
+                    controller: _searchController,
+                    onChanged: (v) =>
+                        setState(() => _query = v.trim().toLowerCase()),
+                    style: ClayTokens.bodyLarge.copyWith(
+                      color: ClayTokens.clayDarkTextPrimary,
+                      fontSize: 14,
                     ),
-                    prefixIcon: Icon(
-                      Icons.search,
-                      color: ClayTokens.clayDarkTextTertiary,
-                      size: 18,
-                    ),
-                    suffixIcon: _query.isEmpty
-                        ? null
-                        : IconButton(
-                            icon: Icon(
-                              Icons.clear,
-                              color: ClayTokens.clayDarkTextTertiary,
-                              size: 18,
+                    cursorColor: ClayTokens.clayPrimary,
+                    decoration: InputDecoration(
+                      hintText: 'Search members',
+                      hintStyle: ClayTokens.bodySmall.copyWith(
+                        color: ClayTokens.clayDarkTextTertiary,
+                      ),
+                      prefixIcon: Icon(
+                        Icons.search,
+                        color: ClayTokens.clayDarkTextTertiary,
+                        size: 18,
+                      ),
+                      suffixIcon: _query.isEmpty
+                          ? null
+                          : IconButton(
+                              icon: Icon(
+                                Icons.clear,
+                                color: ClayTokens.clayDarkTextTertiary,
+                                size: 18,
+                              ),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() => _query = '');
+                              },
                             ),
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() => _query = '');
-                            },
-                          ),
-                    isDense: true,
-                    filled: true,
-                    fillColor: Colors.transparent,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 10,
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: Colors.white.withAlpha(24),
+                      isDense: true,
+                      filled: true,
+                      fillColor: Colors.transparent,
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
                       ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: ClayTokens.clayPrimary,
-                        width: 1.5,
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: ClayTokens.hairline.withAlpha(24),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: ClayTokens.clayPrimary,
+                          width: 1.5,
+                        ),
                       ),
                     ),
                   ),
-                ),
                 ),
               ),
               Expanded(
@@ -395,7 +397,7 @@ class _MemberRow extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       color: ClayTokens.clayPrimaryLight.withAlpha(25),
       borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: Colors.white.withAlpha(18)),
+      border: Border.all(color: ClayTokens.hairline.withAlpha(18)),
       child: Row(
         children: [
           ClayAvatar(
@@ -412,10 +414,10 @@ class _MemberRow extends StatelessWidget {
                   name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    color: Colors.white,
+                    color: ClayTokens.clayDarkTextPrimary,
                   ),
                 ),
                 const SizedBox(height: 5),
@@ -489,10 +491,10 @@ class _WeightLine extends StatelessWidget {
       children: [
         Text(
           '${weight.toStringAsFixed(1)} kg',
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12.5,
             fontWeight: FontWeight.w800,
-            color: Colors.white,
+            color: ClayTokens.clayDarkTextPrimary,
           ),
         ),
         if (hasDelta) ...[
@@ -516,6 +518,7 @@ class _WeightLine extends StatelessWidget {
     );
   }
 }
+
 Widget _buildTrainerNavBar(String title) {
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),

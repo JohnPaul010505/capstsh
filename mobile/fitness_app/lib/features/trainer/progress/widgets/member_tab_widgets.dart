@@ -99,11 +99,11 @@ class _DateField extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
-            color: Colors.white.withAlpha(14),
+            color: ClayTokens.hairline.withAlpha(14),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.white.withAlpha(30)),
+            border: Border.all(color: ClayTokens.hairline.withAlpha(30)),
           ),
           child: Row(
             children: [
@@ -164,17 +164,17 @@ class _PresetChip extends StatelessWidget {
     return GestureDetector(
       onTap: () => onTap(value),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        duration: Duration(milliseconds: 150),
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: selected
               ? ClayTokens.clayPrimary
-              : Colors.white.withAlpha(14),
+              : ClayTokens.hairline.withAlpha(14),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: selected
                 ? ClayTokens.clayPrimary
-                : Colors.white.withAlpha(30),
+                : ClayTokens.hairline.withAlpha(30),
           ),
         ),
         child: Text(
@@ -334,12 +334,12 @@ class _PagerButton extends StatelessWidget {
       onTap: enabled ? onTap : null,
       behavior: HitTestBehavior.opaque,
       child: Container(
-        padding: const EdgeInsets.all(7),
+        padding: EdgeInsets.all(7),
         decoration: BoxDecoration(
-          color: Colors.white.withAlpha(enabled ? 18 : 8),
+          color: ClayTokens.hairline.withAlpha(enabled ? 18 : 8),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: Colors.white.withAlpha(enabled ? 30 : 12),
+            color: ClayTokens.hairline.withAlpha(enabled ? 30 : 12),
           ),
         ),
         child: Icon(

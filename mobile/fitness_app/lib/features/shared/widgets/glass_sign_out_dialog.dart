@@ -10,11 +10,13 @@ Future<bool> showGlassSignOutDialog(BuildContext context) async {
     barrierDismissible: false,
     // Dim the page behind the dialog but keep it visible so the frosted
     // glass card reads as glass over the app background.
-    barrierColor: Colors.black.withAlpha(110),
+    barrierColor: ClayColors.isLightMode
+        ? Colors.black.withAlpha(50)
+        : Colors.black.withAlpha(110),
     builder: (ctx) => Dialog(
       backgroundColor: Colors.transparent,
       elevation: 0,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 40),
+      insetPadding: EdgeInsets.symmetric(horizontal: 40),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(20),
         child: BackdropFilter(
@@ -22,30 +24,41 @@ Future<bool> showGlassSignOutDialog(BuildContext context) async {
           filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
           child: Container(
             width: 320,
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+            padding: EdgeInsets.fromLTRB(20, 20, 20, 16),
             decoration: BoxDecoration(
               // Liquid glass: translucent gradient tint instead of a flat
               // opaque surface so the live background ghosts through.
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [
-                  Colors.white.withAlpha(30),
-                  ClayTokens.clayPrimary.withAlpha(36),
-                  const Color(0xFF14142A).withAlpha(150),
-                ],
+                colors: ClayColors.isLightMode
+                    ? [
+                        ClayTokens.hairline.withAlpha(25),
+                        ClayTokens.clayPrimary.withAlpha(30),
+                        ClayTokens.claySurfaceLight.withAlpha(180),
+                      ]
+                    : [
+                        ClayTokens.hairline.withAlpha(30),
+                        ClayTokens.clayPrimary.withAlpha(36),
+                        const Color(0xFF14142A).withAlpha(150),
+                      ],
                 stops: const [0.0, 0.45, 1.0],
               ),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withAlpha(45)),
+              border: Border.all(
+                color: ClayColors.isLightMode
+                    ? ClayTokens.clayPrimary.withAlpha(45)
+                    : ClayTokens.hairline.withAlpha(45)),
               boxShadow: [
                 BoxShadow(
-                  color: ClayTokens.clayPrimary.withAlpha(45),
+                  color: ClayTokens.clayPrimary.withAlpha(
+                      ClayColors.isLightMode ? 30 : 45),
                   blurRadius: 40,
                   offset: const Offset(0, 12),
                 ),
                 BoxShadow(
-                  color: Colors.black.withAlpha(90),
+                  color: Colors.black.withAlpha(
+                      ClayColors.isLightMode ? 40 : 90),
                   blurRadius: 32,
                   offset: const Offset(0, 12),
                 ),
@@ -55,10 +68,12 @@ Future<bool> showGlassSignOutDialog(BuildContext context) async {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Sign Out',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: ClayColors.isLightMode
+                        ? ClayTokens.clayTextPrimary
+                        : ClayTokens.clayDarkTextPrimary,
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
                     decoration: TextDecoration.none,
@@ -68,7 +83,9 @@ Future<bool> showGlassSignOutDialog(BuildContext context) async {
                 Text(
                   'Are you sure you want to sign out?',
                   style: TextStyle(
-                    color: ClayTokens.clayDarkTextSecondary,
+                    color: ClayColors.isLightMode
+                        ? ClayTokens.clayTextSecondary
+                        : ClayTokens.clayDarkTextSecondary,
                     fontSize: 14,
                     decoration: TextDecoration.none,
                   ),
@@ -81,6 +98,7 @@ Future<bool> showGlassSignOutDialog(BuildContext context) async {
                         label: 'No',
                         backgroundColor: ClayTokens.clayPrimary,
                         onPressed: () => Navigator.of(ctx).pop(false),
+                        isLight: ClayColors.isLightMode,
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -89,6 +107,7 @@ Future<bool> showGlassSignOutDialog(BuildContext context) async {
                         label: 'Yes',
                         backgroundColor: ClayTokens.clayError,
                         onPressed: () => Navigator.of(ctx).pop(true),
+                        isLight: ClayColors.isLightMode,
                       ),
                     ),
                   ],
@@ -107,11 +126,13 @@ class _GlassDialogButton extends StatelessWidget {
   final String label;
   final Color backgroundColor;
   final VoidCallback onPressed;
+  final bool isLight;
 
   const _GlassDialogButton({
     required this.label,
     required this.backgroundColor,
     required this.onPressed,
+    required this.isLight,
   });
 
   @override
@@ -130,8 +151,8 @@ class _GlassDialogButton extends StatelessWidget {
           ),
           child: Text(
             label,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: isLight ? Colors.white : ClayTokens.clayDarkTextPrimary,
               fontSize: 15,
               fontWeight: FontWeight.w700,
               decoration: TextDecoration.none,

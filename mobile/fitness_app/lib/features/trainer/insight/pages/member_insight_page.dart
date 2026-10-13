@@ -23,68 +23,69 @@ import '../../progress/pages/member_progress_page.dart'
 /// sessions, recent check-ins, and weight history.
 final memberInsightProvider = FutureProvider.autoDispose
     .family<Map<String, dynamic>, String>((ref, memberId) async {
-  final client = SupabaseClientService().client;
-  final results = await Future.wait([
-    client
-        .from('profiles')
-        .select('id, full_name, email, avatar_url, code')
-        .eq('id', memberId)
-        .single(),
-    // Members create goals as 'in_progress' while seeds use 'active'; a
-    // running goal is either. Newest first → the first row is the goal.
-    client
-        .from('goals')
-        .select(
-          'title, goal_type, target_value, current_value, start_date, '
-          'end_date, status',
-        )
-        .eq('member_id', memberId)
-        .inFilter('status', ['active', 'in_progress'])
-        .order('created_at', ascending: false),
-    // Newest-first: first row = live weight, next rows feed the trend list.
-    client
-        .from('body_measurements')
-        .select('weight_kg, height_cm, measured_at')
-        .eq('member_id', memberId)
-        .order('measured_at', ascending: false)
-        .limit(8),
-    client
-        .from('attendance')
-        .select('check_in_time')
-        .eq('member_id', memberId)
-        .order('check_in_time', ascending: false)
-        .limit(10),
-  ]);
+      final client = SupabaseClientService().client;
+      final results = await Future.wait([
+        client
+            .from('profiles')
+            .select('id, full_name, email, avatar_url, code')
+            .eq('id', memberId)
+            .single(),
+        // Members create goals as 'in_progress' while seeds use 'active'; a
+        // running goal is either. Newest first → the first row is the goal.
+        client
+            .from('goals')
+            .select(
+              'title, goal_type, target_value, current_value, start_date, '
+              'end_date, status',
+            )
+            .eq('member_id', memberId)
+            .inFilter('status', ['active', 'in_progress'])
+            .order('created_at', ascending: false),
+        // Newest-first: first row = live weight, next rows feed the trend list.
+        client
+            .from('body_measurements')
+            .select('weight_kg, height_cm, measured_at')
+            .eq('member_id', memberId)
+            .order('measured_at', ascending: false)
+            .limit(8),
+        client
+            .from('attendance')
+            .select('check_in_time')
+            .eq('member_id', memberId)
+            .order('check_in_time', ascending: false)
+            .limit(10),
+      ]);
 
-  final profile = results[0] as Map<String, dynamic>;
-  final goals = results[1] as List;
-  final measurements = (results[2] as List).cast<Map<String, dynamic>>();
-  final checkins = (results[3] as List).cast<Map<String, dynamic>>();
+      final profile = results[0] as Map<String, dynamic>;
+      final goals = results[1] as List;
+      final measurements = (results[2] as List).cast<Map<String, dynamic>>();
+      final checkins = (results[3] as List).cast<Map<String, dynamic>>();
 
-  return {
-    'profile': profile,
-    'goal': goals.isEmpty ? null : goals.first as Map<String, dynamic>,
-    'measurements': measurements,
-    'checkins': checkins,
-  };
-});
+      return {
+        'profile': profile,
+        'goal': goals.isEmpty ? null : goals.first as Map<String, dynamic>,
+        'measurements': measurements,
+        'checkins': checkins,
+      };
+    });
 
 /// Retention risk for ONE member, fetched OFF the critical path (the AI
 /// service sits behind the dev tunnel and must never gate the screen).
 /// `null` = no forecast available (new member / service down) — the chip
 /// simply hides; the rest of the screen renders regardless.
-final memberRiskProvider = FutureProvider.autoDispose.family<String?, String>(
-  (ref, memberId) async {
-    try {
-      final forecast = await PredictionService()
-          .getForecast(memberId)
-          .timeout(const Duration(seconds: 5));
-      return forecast.retention?.riskLabel;
-    } catch (_) {
-      return null;
-    }
-  },
-);
+final memberRiskProvider = FutureProvider.autoDispose.family<String?, String>((
+  ref,
+  memberId,
+) async {
+  try {
+    final forecast = await PredictionService()
+        .getForecast(memberId)
+        .timeout(const Duration(seconds: 5));
+    return forecast.retention?.riskLabel;
+  } catch (_) {
+    return null;
+  }
+});
 
 class MemberInsightPage extends ConsumerWidget {
   final String id;
@@ -96,7 +97,7 @@ class MemberInsightPage extends ConsumerWidget {
     final riskAsync = ref.watch(memberRiskProvider(id));
 
     return Scaffold(
-      backgroundColor: ClayTokens.clayDarkBase,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: AppGlowBackground(
         child: SafeArea(
           child: Column(
@@ -106,8 +107,7 @@ class MemberInsightPage extends ConsumerWidget {
               Expanded(
                 child: dataAsync.when(
                   data: (data) {
-                    final profile =
-                        data['profile'] as Map<String, dynamic>;
+                    final profile = data['profile'] as Map<String, dynamic>;
                     final goal = data['goal'] as Map<String, dynamic>?;
                     final measurements = (data['measurements'] as List)
                         .cast<Map<String, dynamic>>();
@@ -320,8 +320,8 @@ class _RiskChip extends StatelessWidget {
         final color = label == 'high'
             ? const Color(0xFFFF453A)
             : label == 'medium'
-                ? const Color(0xFFFF9500)
-                : const Color(0xFF30D158);
+            ? const Color(0xFFFF9500)
+            : const Color(0xFF30D158);
         return Semantics(
           label: 'Retention risk: $label',
           child: Container(
@@ -337,8 +337,10 @@ class _RiskChip extends StatelessWidget {
                 Container(
                   width: 6,
                   height: 6,
-                  decoration:
-                      BoxDecoration(color: color, shape: BoxShape.circle),
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                  ),
                 ),
                 const SizedBox(width: 5),
                 Text(
@@ -395,8 +397,8 @@ class _GoalSection extends StatelessWidget {
     );
 
     final now = DateTime.now();
-    final startDate = start ??
-        (end != null ? end.subtract(const Duration(days: 30)) : now);
+    final startDate =
+        start ?? (end != null ? end.subtract(const Duration(days: 30)) : now);
     final endDate = end ?? now.add(const Duration(days: 30));
     final totalDays = endDate.difference(startDate).inDays.clamp(1, 3650);
     final elapsedDays = now.difference(startDate).inDays.clamp(0, totalDays);
@@ -407,29 +409,31 @@ class _GoalSection extends StatelessWidget {
     final daysColor = isCompleted
         ? _green
         : isOverdue || displayDays <= 3
-            ? _red
-            : displayDays <= 7
-                ? _amber
-                : _green;
+        ? _red
+        : displayDays <= 7
+        ? _amber
+        : _green;
     final statusLabel = isCompleted
         ? 'COMPLETED'
         : isOverdue
-            ? 'EXPIRED'
-            : 'IN PROGRESS';
+        ? 'EXPIRED'
+        : 'IN PROGRESS';
     final statusColor = isCompleted
         ? _green
         : isOverdue
-            ? ClayTokens.clayDarkTextTertiary
-            : ClayTokens.clayPrimaryLight;
+        ? ClayTokens.clayDarkTextTertiary
+        : ClayTokens.clayPrimaryLight;
 
-    final isWeightGoal = goalType.toLowerCase() == 'lose weight' ||
+    final isWeightGoal =
+        goalType.toLowerCase() == 'lose weight' ||
         goalType.toLowerCase() == 'gain muscle' ||
         goalType.toLowerCase() == 'maintain weight';
     final unit = isWeightGoal ? 'kg' : '';
     final currentDisplay = goalType.isNotEmpty ? (live ?? baseline) : baseline;
     final remainingRaw = calc.remaining;
-    final remainingDisplay =
-        remainingRaw == null ? null : (remainingRaw < 0 ? 0.0 : remainingRaw);
+    final remainingDisplay = remainingRaw == null
+        ? null
+        : (remainingRaw < 0 ? 0.0 : remainingRaw);
     final dayOfGoal = (elapsedDays + 1).clamp(1, totalDays);
     final dateRange =
         '${DateFormat('MMM d').format(startDate)} – ${DateFormat('MMM d').format(endDate)}';
@@ -464,17 +468,17 @@ class _GoalSection extends StatelessWidget {
                       title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
-                        color: Colors.white,
+                        color: ClayTokens.clayDarkTextPrimary,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       goalType.isNotEmpty
                           ? '${goalType.toUpperCase()}  ·  Target: '
-                              '${target?.toStringAsFixed(1) ?? '—'} $unit'
+                                '${target?.toStringAsFixed(1) ?? '—'} $unit'
                           : 'SEEDED GOAL',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -490,8 +494,7 @@ class _GoalSection extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: statusColor.withAlpha(28),
                   borderRadius: BorderRadius.circular(20),
@@ -529,8 +532,8 @@ class _GoalSection extends StatelessWidget {
                         height: 128,
                         child: CircularProgressIndicator(
                           value: value,
-                          backgroundColor:
-                              ClayTokens.clayPrimaryLight.withAlpha(28),
+                          backgroundColor: ClayTokens.clayPrimaryLight
+                              .withAlpha(28),
                           color: isCompleted
                               ? _green
                               : ClayTokens.clayPrimaryLight,
@@ -543,10 +546,10 @@ class _GoalSection extends StatelessWidget {
                         children: [
                           Text(
                             '${(value * 100).toStringAsFixed(0)}%',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 26,
                               fontWeight: FontWeight.w800,
-                              color: Colors.white,
+                              color: ClayTokens.clayDarkTextPrimary,
                               letterSpacing: -0.4,
                             ),
                           ),
@@ -582,10 +585,7 @@ class _GoalSection extends StatelessWidget {
                     : '${remainingDisplay.toStringAsFixed(1)} $unit',
                 accent: true,
               ),
-              _StatCell(
-                label: 'GOAL DAY',
-                value: '$dayOfGoal of $totalDays',
-              ),
+              _StatCell(label: 'GOAL DAY', value: '$dayOfGoal of $totalDays'),
             ],
           ),
           const SizedBox(height: 12),
@@ -620,7 +620,11 @@ class _StatCell extends StatelessWidget {
   final String value;
   final bool accent;
 
-  const _StatCell({required this.label, required this.value, this.accent = false});
+  const _StatCell({
+    required this.label,
+    required this.value,
+    this.accent = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -690,11 +694,7 @@ class _GoalDaysBanner extends StatelessWidget {
               color: daysColor.withAlpha(30),
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              CupertinoIcons.calendar,
-              size: 16,
-              color: daysColor,
-            ),
+            child: Icon(CupertinoIcons.calendar, size: 16, color: daysColor),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -784,12 +784,12 @@ class _NoGoalCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'No active goal yet',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: Colors.white,
+                    color: ClayTokens.clayDarkTextPrimary,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -837,12 +837,12 @@ class _WeekSessionSection extends ConsumerWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
+                  Text(
                     'This Week',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                      color: ClayTokens.clayDarkTextPrimary,
                     ),
                   ),
                   Container(
@@ -856,10 +856,10 @@ class _WeekSessionSection extends ConsumerWidget {
                     ),
                     child: Text(
                       '$total session${total == 1 ? '' : 's'}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
-                        color: Colors.white,
+                        color: ClayTokens.clayDarkTextPrimary,
                       ),
                     ),
                   ),
@@ -908,8 +908,9 @@ class _WeekSessionSection extends ConsumerWidget {
                                 top: Radius.circular(4),
                               ),
                               color: isFuture
-                                  ? ClayTokens.clayDarkTextTertiary
-                                      .withAlpha(50)
+                                  ? ClayTokens.clayDarkTextTertiary.withAlpha(
+                                      50,
+                                    )
                                   : ClayTokens.clayPrimaryDark,
                             ),
                           ),
@@ -966,12 +967,12 @@ class _CheckinsSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Recent Check-ins',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w700,
-              color: Colors.white,
+              color: ClayTokens.clayDarkTextPrimary,
             ),
           ),
           const SizedBox(height: 10),
@@ -987,7 +988,9 @@ class _CheckinsSection extends StatelessWidget {
             ...checkins.take(8).toList().asMap().entries.map((entry) {
               final i = entry.key;
               final row = entry.value;
-              final raw = DateTime.tryParse(row['check_in_time'] as String? ?? '');
+              final raw = DateTime.tryParse(
+                row['check_in_time'] as String? ?? '',
+              );
               if (raw == null) return const SizedBox.shrink();
               final local = raw.toLocal();
               final pill = _relativePill(local);
@@ -997,10 +1000,7 @@ class _CheckinsSection extends StatelessWidget {
               return Column(
                 children: [
                   if (i > 0)
-                    Container(
-                      height: 1,
-                      color: Colors.white.withAlpha(8),
-                    ),
+                    Container(height: 1, color: ClayTokens.hairline.withAlpha(8)),
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     child: Row(
@@ -1024,10 +1024,10 @@ class _CheckinsSection extends StatelessWidget {
                             DateFormat('EEE, MMM d · h:mm a').format(local),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
-                              color: Colors.white,
+                              color: ClayTokens.clayDarkTextPrimary,
                             ),
                           ),
                         ),
@@ -1087,12 +1087,12 @@ class _WeightSection extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Weight',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
-                  color: Colors.white,
+                  color: ClayTokens.clayDarkTextPrimary,
                 ),
               ),
               if (latestWeight != null)
@@ -1131,10 +1131,10 @@ class _WeightSection extends StatelessWidget {
               children: [
                 Text(
                   latestWeight.toStringAsFixed(1),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 26,
                     fontWeight: FontWeight.w800,
-                    color: Colors.white,
+                    color: ClayTokens.clayDarkTextPrimary,
                     letterSpacing: -0.4,
                   ),
                 ),
@@ -1184,12 +1184,13 @@ class _WeightSection extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 10),
-            Container(height: 1, color: Colors.white.withAlpha(8)),
+            Container(height: 1, color: ClayTokens.hairline.withAlpha(8)),
             ...measurements.take(5).toList().asMap().entries.map((entry) {
               final row = entry.value;
               final weight = (row['weight_kg'] as num?)?.toDouble();
-              final raw =
-                  DateTime.tryParse(row['measured_at'] as String? ?? '');
+              final raw = DateTime.tryParse(
+                row['measured_at'] as String? ?? '',
+              );
               if (weight == null || raw == null) return const SizedBox.shrink();
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 6),
@@ -1206,10 +1207,10 @@ class _WeightSection extends StatelessWidget {
                     ),
                     Text(
                       '${weight.toStringAsFixed(1)} kg',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11.5,
                         fontWeight: FontWeight.w600,
-                        color: Colors.white,
+                        color: ClayTokens.clayDarkTextPrimary,
                       ),
                     ),
                   ],
@@ -1236,7 +1237,7 @@ class _FullProgressLink extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       color: ClayTokens.clayPrimaryLight.withAlpha(25),
       borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: Colors.white.withAlpha(18)),
+      border: Border.all(color: ClayTokens.hairline.withAlpha(18)),
       child: Row(
         children: [
           Container(
@@ -1246,10 +1247,10 @@ class _FullProgressLink extends StatelessWidget {
               color: ClayTokens.clayPrimary.withAlpha(60),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(
+            child: Icon(
               CupertinoIcons.chart_bar_fill,
               size: 18,
-              color: Colors.white,
+              color: ClayTokens.clayDarkTextPrimary,
             ),
           ),
           const SizedBox(width: 12),
@@ -1257,12 +1258,12 @@ class _FullProgressLink extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'View full progress',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: Colors.white,
+                    color: ClayTokens.clayDarkTextPrimary,
                   ),
                 ),
                 const SizedBox(height: 2),

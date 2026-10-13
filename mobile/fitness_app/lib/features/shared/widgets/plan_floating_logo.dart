@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fitness_app/app/design_tokens.dart';
 import '../providers/plan_providers.dart';
+import 'glass_card.dart';
 
 /// Member's floating trainer-plan logo — the bare logo image with NO
 /// background shape at all (the earlier purple disc was a gradient/boxShadow
@@ -8,7 +10,7 @@ import '../providers/plan_providers.dart';
 ///
 /// Gestures, all on ONE scale recognizer (mixing `onPan*` with `onScale*`
 /// makes Flutter throw "scale is a superset of pan" and red-screens):
-///   - one finger, no movement -> tap (opens the Day-1 plan sheet)
+///   - one finger, no movement -> tap (opens today's plan sheet)
 ///   - one finger, moved       -> drag, confined to [bounds] (the page's own
 ///                                body box, so it can never slip under the
 ///                                bottom nav bar)
@@ -25,16 +27,36 @@ class PlanFloatingLogo extends ConsumerStatefulWidget {
   /// minus the nav bar) so the logo is always fully visible.
   final Size bounds;
 
+  /// When true the logo gets the shared liquid-glass body in light mode. When
+  /// false the logo is always bare (no background shape) in both modes — the
+  /// mark with transparent margins shows straight through.
+  final bool withGlass;
+
   const PlanFloatingLogo({
     super.key,
     required this.onTap,
     required this.isExpanded,
     required this.memberId,
     required this.bounds,
+    this.withGlass = true,
   });
 
   @override
   ConsumerState<PlanFloatingLogo> createState() => _PlanFloatingLogoState();
+}
+
+Widget _logo(double size) {
+  return Image.asset(
+    'assets/logo.png',
+    width: size,
+    height: size,
+    fit: BoxFit.contain,
+    errorBuilder: (_, __, ___) => Icon(
+      Icons.fitness_center,
+      color: ClayTokens.clayDarkTextPrimary,
+      size: size * 0.46,
+    ),
+  );
 }
 
 class _PlanFloatingLogoState extends ConsumerState<PlanFloatingLogo> {
@@ -85,22 +107,21 @@ class _PlanFloatingLogoState extends ConsumerState<PlanFloatingLogo> {
       },
       child: AnimatedRotation(
         turns: widget.isExpanded ? 1 : 0,
-        duration: const Duration(milliseconds: 400),
+        duration: Duration(milliseconds: 400),
         curve: Curves.easeInOutCubic,
-        // Bare logo: no circle, no gradient, no shadow. logo.png already has
-        // transparent margins, and any shape drawn behind it shows straight
-        // through them.
-        child: Image.asset(
-          'assets/logo.png',
-          width: size,
-          height: size,
-          fit: BoxFit.contain,
-          errorBuilder: (_, __, ___) => Icon(
-            Icons.fitness_center,
-            color: Colors.white,
-            size: size * 0.46,
-          ),
-        ),
+        // Dark mode keeps the bare logo: no circle, no gradient, no shadow
+        // (logo.png has transparent margins, so a shape behind it shows straight
+        // through). Light mode gives it the shared liquid-glass body so the mark
+        // stays legible against the pale background. The disc + its padding add
+        // up to exactly `size`, so the widget never grows past the footprint the
+        // drag bounds and side-snapping were computed for.
+        child: (ClayColors.isLightMode && widget.withGlass)
+            ? GlassSurface(
+                borderRadius: BorderRadius.circular(size / 2),
+                padding: EdgeInsets.all(size * 0.12),
+                child: _logo(size * 0.76),
+              )
+            : _logo(size),
       ),
     );
   }

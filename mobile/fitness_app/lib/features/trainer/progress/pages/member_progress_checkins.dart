@@ -83,7 +83,7 @@ class _CheckinsTabState extends ConsumerState<CheckinsTab> {
                   stops: const [0.0, 0.55, 1.0],
                 ),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withAlpha(38)),
+                border: Border.all(color: ClayTokens.hairline.withAlpha(38)),
               ),
               child: child ?? const SizedBox.shrink(),
             ),
@@ -236,10 +236,10 @@ class _CheckinRowCard extends StatelessWidget {
                   DateFormat('EEEE, MMM d, y').format(row.checkInTime),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w700,
-                    color: Colors.white,
+                    color: ClayTokens.clayDarkTextPrimary,
                   ),
                 ),
                 const SizedBox(height: 2),

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Widget metadata.
+
+  Android derives the occupied cell span from minWidth/minHeight with
+  cells = (size + 30) / 70, and launchers that support them (Android 12+,
+  including Samsung One UI) additionally reserve the span named by
+  targetCellWidth/targetCellHeight. The two MUST agree: reserving fewer rows
+  than minHeight needs makes the launcher fail the bind, which the user sees as
+  "Couldn't add widget". So:
+
+    width  : 250dp -> (250 + 30) / 70 = 4 cells -> targetCellWidth  = 4
+    height : 180dp -> (180 + 30) / 70 = 3 cells -> targetCellHeight = 3
+
+  minResizeHeight/Width stay at or below the matching min size so the widget
+  can still be shrunk after placement, without changing the initial span.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/goal_widget_description"
+    android:initialLayout="@layout/goal_widget"
+    android:label="@string/goal_widget_label"
+    android:minHeight="180dp"
+    android:minResizeHeight="140dp"
+    android:minResizeWidth="250dp"
+    android:minWidth="250dp"
+    android:previewLayout="@layout/goal_widget"
+    android:resizeMode="horizontal|vertical"
+    android:targetCellWidth="4"
+    android:targetCellHeight="3"
+    android:updatePeriodMillis="1800000"
+    android:widgetCategory="home_screen" />

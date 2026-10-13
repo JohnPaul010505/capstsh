@@ -103,7 +103,8 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
   String? _pendingCancellationPlanId;
   bool _requestingCancellation = false;
   late Future<Map<String, dynamic>?> _planFuture;
-  Future<(Map<String, Set<String>>, Map<String, Set<String>>)>? _completionFuture;
+  Future<(Map<String, Set<String>>, Map<String, Set<String>>)>?
+  _completionFuture;
   String? _completionKey;
 
   @override
@@ -202,9 +203,10 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: ClayTokens.clayDarkBase,
-      body: AppGlowBackground(
+    return Scaffold(        backgroundColor: ClayColors.isLightMode
+            ? ClayTokens.claySurfaceLight.withAlpha(250)
+            : ClayTokens.clayDarkSurface,
+        body: AppGlowBackground(
         child: SafeArea(
           child: FutureBuilder<Map<String, dynamic>?>(
             future: _planFuture,
@@ -342,8 +344,8 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
                                                     plan['id']
                                                 ? 'Cancellation request sent. Your plan stays active until reviewed.'
                                                 : 'Need to stop this plan? Request cancellation from your trainer.',
-                                            style: const TextStyle(
-                                              color: Colors.white,
+                                            style: TextStyle(
+                                              color: ClayTokens.clayDarkTextPrimary,
                                               fontSize: 12,
                                             ),
                                           ),
@@ -364,13 +366,13 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
                                                         plan,
                                                       ),
                                             child: _requestingCancellation
-                                                ? const CupertinoActivityIndicator(
-                                                    color: Colors.white,
+                                                ? CupertinoActivityIndicator(
+                                                    color: ClayTokens.clayDarkTextPrimary,
                                                   )
-                                                : const Text(
+                                                : Text(
                                                     'Request',
                                                     style: TextStyle(
-                                                      color: Colors.white,
+                                                      color: ClayTokens.clayDarkTextPrimary,
                                                       fontSize: 12,
                                                       fontWeight:
                                                           FontWeight.w700,
@@ -423,11 +425,11 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
 
   Widget _tabPill() {
     return Container(
-      padding: const EdgeInsets.all(4),
+      padding: EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: Colors.white.withAlpha(12),
+        color: ClayTokens.hairline.withAlpha(12),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withAlpha(20)),
+        border: Border.all(color: ClayTokens.hairline.withAlpha(20)),
       ),
       child: Row(
         children: [
@@ -477,7 +479,10 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
           CupertinoButton(
             padding: EdgeInsets.zero,
             onPressed: () => context.pop(),
-            child: const Icon(CupertinoIcons.back, color: Colors.white),
+            child: Icon(
+              CupertinoIcons.back,
+              color: ClayTokens.clayDarkTextPrimary,
+            ),
           ),
           Expanded(
             child: Column(
@@ -485,10 +490,10 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
                 Text(
                   widget.memberName,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w700,
-                    color: Colors.white,
+                    color: ClayTokens.clayDarkTextPrimary,
                     decoration: TextDecoration.none,
                   ),
                 ),
@@ -676,7 +681,7 @@ class _PlanDaySection extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 'Notes: $notes',
-                style: const TextStyle(fontSize: 12, color: Color(0xFFECECFC)),
+                style: TextStyle(fontSize: 12, color: ClayTokens.clayDarkTextPrimary),
               ),
             ],
             const SizedBox(height: 6),
@@ -705,7 +710,7 @@ class _PlanDaySection extends StatelessWidget {
                               : TextDecoration.none,
                           color: item.done
                               ? const Color(0xFF8E8E93)
-                              : const Color(0xFFECECFC),
+                              : ClayTokens.clayDarkTextPrimary,
                         ),
                       ),
                     ),

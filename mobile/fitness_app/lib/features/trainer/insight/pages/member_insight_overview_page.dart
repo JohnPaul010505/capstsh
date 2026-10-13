@@ -111,7 +111,7 @@ class _MemberInsightOverviewViewState
                   stops: const [0.0, 0.55, 1.0],
                 ),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withAlpha(38)),
+                border: Border.all(color: ClayTokens.hairline.withAlpha(38)),
               ),
               child: child ?? const SizedBox.shrink(),
             ),
@@ -121,7 +121,15 @@ class _MemberInsightOverviewViewState
     );
     if (picked == null || !mounted) return;
     final day = DateTime(picked.year, picked.month, picked.day);
-    final dayEnd = DateTime(picked.year, picked.month, picked.day, 23, 59, 59, 999);
+    final dayEnd = DateTime(
+      picked.year,
+      picked.month,
+      picked.day,
+      23,
+      59,
+      59,
+      999,
+    );
     setState(() {
       _preset = 'custom';
       if (isStart) {
@@ -197,7 +205,7 @@ class _InsightHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 4, bottom: 2),
+      padding: EdgeInsets.only(top: 4, bottom: 2),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -207,7 +215,7 @@ class _InsightHeader extends StatelessWidget {
               fontSize: 22,
               fontWeight: FontWeight.w800,
               letterSpacing: -0.5,
-              color: Colors.white,
+              color: ClayTokens.clayDarkTextPrimary,
               fontFamily: ClayTypography.headingFamily,
             ),
           ),
@@ -235,7 +243,7 @@ class MemberInsightOverviewPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: ClayTokens.clayDarkBase,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: AppGlowBackground(
         child: SafeArea(
           child: Column(
@@ -415,7 +423,6 @@ class _RangeBar extends StatelessWidget {
   }
 }
 
-
 class _DateField extends StatelessWidget {
   final String label;
   final DateTime date;
@@ -433,11 +440,11 @@ class _DateField extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
-            color: Colors.white.withAlpha(14),
+            color: ClayTokens.hairline.withAlpha(14),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.white.withAlpha(30)),
+            border: Border.all(color: ClayTokens.hairline.withAlpha(30)),
           ),
           child: Row(
             children: [
@@ -498,17 +505,15 @@ class _PresetChip extends StatelessWidget {
     return GestureDetector(
       onTap: () => onTap(value),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        duration: Duration(milliseconds: 150),
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: selected
-              ? ClayTokens.clayPrimary
-              : Colors.white.withAlpha(14),
+          color: selected ? ClayTokens.clayPrimary : ClayTokens.hairline.withAlpha(14),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: selected
                 ? ClayTokens.clayPrimary
-                : Colors.white.withAlpha(30),
+                : ClayTokens.hairline.withAlpha(30),
           ),
         ),
         child: Text(
@@ -516,16 +521,13 @@ class _PresetChip extends StatelessWidget {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: selected
-                ? Colors.white
-                : ClayTokens.clayDarkTextSecondary,
+            color: selected ? Colors.white : ClayTokens.clayDarkTextSecondary,
           ),
         ),
       ),
     );
   }
 }
-
 
 // ---------------------------------------------------------------------------
 // Four stat cards: Total / Active / Inactive / High risk
@@ -615,11 +617,11 @@ class _StatCard extends StatelessWidget {
           const SizedBox(height: 9),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 21,
               fontWeight: FontWeight.w800,
               letterSpacing: -0.4,
-              color: Colors.white,
+              color: ClayTokens.clayDarkTextPrimary,
             ),
           ),
           const SizedBox(height: 1),
@@ -639,7 +641,6 @@ class _StatCard extends StatelessWidget {
     );
   }
 }
-
 
 // ---------------------------------------------------------------------------
 // Goals Progress Overview — running goals grouped by goal_type
@@ -672,12 +673,12 @@ class _GoalsProgress extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Goals Progress Overview',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
-                  color: Colors.white,
+                  color: ClayTokens.clayDarkTextPrimary,
                 ),
               ),
               Text(
@@ -759,10 +760,10 @@ class _GoalBucketRow extends StatelessWidget {
                   bucket.goalType,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w600,
-                    color: Colors.white,
+                    color: ClayTokens.clayDarkTextPrimary,
                   ),
                 ),
               ),
@@ -785,13 +786,13 @@ class _GoalBucketRow extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           ClipRRect(
             borderRadius: BorderRadius.circular(6),
             child: LinearProgressIndicator(
               value: pct / 100.0,
               minHeight: 6,
-              backgroundColor: Colors.white.withAlpha(20),
+              backgroundColor: ClayTokens.hairline.withAlpha(20),
               valueColor: AlwaysStoppedAnimation(color),
             ),
           ),
@@ -800,7 +801,6 @@ class _GoalBucketRow extends StatelessWidget {
     );
   }
 }
-
 
 // ---------------------------------------------------------------------------
 // Members Needing Attention — paginated (pageSize per page) attention list
@@ -838,12 +838,12 @@ class _AttentionSection extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Members Needing Attention',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
-                  color: Colors.white,
+                  color: ClayTokens.clayDarkTextPrimary,
                 ),
               ),
               if (members.isNotEmpty)
@@ -904,7 +904,6 @@ class _AttentionEmpty extends StatelessWidget {
   }
 }
 
-
 class _AttentionRow extends StatelessWidget {
   final AttentionMember member;
   const _AttentionRow({required this.member});
@@ -919,9 +918,9 @@ class _AttentionRow extends StatelessWidget {
       onTap: () => context.push('/trainer/members/${member.id}'),
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(10),
-      color: Colors.white.withAlpha(12),
+      color: ClayTokens.hairline.withAlpha(12),
       borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: Colors.white.withAlpha(16)),
+      border: Border.all(color: ClayTokens.hairline.withAlpha(16)),
       child: Row(
         children: [
           ClayAvatar(
@@ -938,10 +937,10 @@ class _AttentionRow extends StatelessWidget {
                   member.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: Colors.white,
+                    color: ClayTokens.clayDarkTextPrimary,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -966,10 +965,10 @@ class _AttentionRow extends StatelessWidget {
             ),
             child: Text(
               never ? 'No data' : '${member.daysInactive}d',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w800,
-                color: Colors.white,
+                color: ClayTokens.clayDarkTextPrimary,
               ),
             ),
           ),
@@ -1038,13 +1037,11 @@ class _PagerButton extends StatelessWidget {
       onTap: enabled ? onTap : null,
       behavior: HitTestBehavior.opaque,
       child: Container(
-        padding: const EdgeInsets.all(7),
+        padding: EdgeInsets.all(7),
         decoration: BoxDecoration(
-          color: Colors.white.withAlpha(enabled ? 18 : 8),
+          color: ClayTokens.hairline.withAlpha(enabled ? 18 : 8),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: Colors.white.withAlpha(enabled ? 30 : 12),
-          ),
+          border: Border.all(color: ClayTokens.hairline.withAlpha(enabled ? 30 : 12)),
         ),
         child: Icon(
           icon,
@@ -1057,4 +1054,3 @@ class _PagerButton extends StatelessWidget {
     );
   }
 }
-

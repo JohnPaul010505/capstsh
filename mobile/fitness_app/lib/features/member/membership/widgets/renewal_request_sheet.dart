@@ -100,19 +100,19 @@ class _RenewalRequestSheetState extends State<RenewalRequestSheet> {
                 child: Container(
                   width: 40,
                   height: 4,
-                  margin: const EdgeInsets.only(bottom: 16),
+                  margin: EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(60),
+                    color: ClayTokens.hairline.withAlpha(60),
                     borderRadius: BorderRadius.circular(999),
                   ),
                 ),
               ),
-              const Text(
+              Text(
                 'Apply for Membership Renewal',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
-                  color: Colors.white,
+                  color: ClayTokens.clayDarkTextPrimary,
                 ),
               ),
               const SizedBox(height: 4),
@@ -196,16 +196,16 @@ class _RenewalRequestSheetState extends State<RenewalRequestSheet> {
     return GestureDetector(
       onTap: () => setState(() => _useCustomDates = !_useCustomDates),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           color: _useCustomDates
               ? ClayTokens.clayPrimary.withAlpha(30)
-              : Colors.white.withAlpha(12),
+              : ClayTokens.hairline.withAlpha(12),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: _useCustomDates
                 ? ClayTokens.clayPrimary
-                : Colors.white.withAlpha(30),
+                : ClayTokens.hairline.withAlpha(30),
           ),
         ),
         child: Row(
@@ -217,16 +217,16 @@ class _RenewalRequestSheetState extends State<RenewalRequestSheet> {
               size: 18,
               color: _useCustomDates
                   ? ClayTokens.clayPrimaryLight
-                  : Colors.white70,
+                  : ClayTokens.clayDarkTextSecondary,
             ),
             const SizedBox(width: 10),
-            const Expanded(
+            Expanded(
               child: Text(
                 'Custom start & end date',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: Colors.white,
+                  color: ClayTokens.clayDarkTextPrimary,
                 ),
               ),
             ),
@@ -244,11 +244,11 @@ class _RenewalRequestSheetState extends State<RenewalRequestSheet> {
     return GestureDetector(
       onTap: () => _pickDate(isStart: isStart),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.white.withAlpha(15),
+          color: ClayTokens.hairline.withAlpha(15),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.white.withAlpha(30)),
+          border: Border.all(color: ClayTokens.hairline.withAlpha(30)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -272,10 +272,10 @@ class _RenewalRequestSheetState extends State<RenewalRequestSheet> {
                 const SizedBox(width: 6),
                 Text(
                   DateFormat('MMM d, y').format(date),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: Colors.white,
+                    color: ClayTokens.clayDarkTextPrimary,
                   ),
                 ),
               ],
@@ -297,15 +297,15 @@ class _RenewalRequestSheetState extends State<RenewalRequestSheet> {
         }
       }),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: EdgeInsets.symmetric(vertical: 12),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? ClayTokens.clayPrimary : Colors.white.withAlpha(15),
+          color: selected ? ClayTokens.clayPrimary : ClayTokens.hairline.withAlpha(15),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: selected
                 ? ClayTokens.clayPrimary
-                : Colors.white.withAlpha(30),
+                : ClayTokens.hairline.withAlpha(30),
           ),
         ),
         child: Text(
@@ -325,15 +325,15 @@ class _RenewalRequestSheetState extends State<RenewalRequestSheet> {
     return GestureDetector(
       onTap: () => setState(() => _months = m),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        padding: EdgeInsets.symmetric(vertical: 10),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? ClayTokens.clayPrimary : Colors.white.withAlpha(15),
+          color: selected ? ClayTokens.clayPrimary : ClayTokens.hairline.withAlpha(15),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: selected
                 ? ClayTokens.clayPrimary
-                : Colors.white.withAlpha(30),
+                : ClayTokens.hairline.withAlpha(30),
           ),
         ),
         child: Text(
@@ -360,22 +360,22 @@ class _RenewalRequestSheetState extends State<RenewalRequestSheet> {
             color: Color(0xFF8E8E93),
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         CupertinoTextField(
           controller: _noteController,
           placeholder: 'Anything the admin should know?',
-          style: const TextStyle(color: Colors.white, fontSize: 14),
-          placeholderStyle: const TextStyle(
+          style: TextStyle(color: ClayTokens.clayDarkTextPrimary, fontSize: 14),
+          placeholderStyle: TextStyle(
             color: Color(0xFF636366),
             fontSize: 14,
           ),
           maxLines: 2,
           minLines: 1,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: Colors.white.withAlpha(15),
+            color: ClayTokens.hairline.withAlpha(15),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.white.withAlpha(30)),
+            border: Border.all(color: ClayTokens.hairline.withAlpha(30)),
           ),
         ),
       ],
@@ -431,7 +431,7 @@ class _GlassSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
         child: Container(
@@ -445,7 +445,7 @@ class _GlassSheet extends StatelessWidget {
               ],
             ),
             border: Border(
-              top: BorderSide(color: Colors.white.withAlpha(38)),
+              top: BorderSide(color: ClayTokens.hairline.withAlpha(38)),
             ),
           ),
           child: child,
@@ -488,7 +488,7 @@ class _GlassDatePickerState extends State<_GlassDatePicker> {
           ],
         ),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        border: Border(top: BorderSide(color: Colors.white.withAlpha(38))),
+        border: Border(top: BorderSide(color: ClayTokens.hairline.withAlpha(38))),
       ),
       child: SafeArea(
         top: false,

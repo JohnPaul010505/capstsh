@@ -1,0 +1,397 @@
+﻿--------- beginning of main
+10-13 16:22:35.366 19051 19051 W milo-handler-th: type=1400 audit(0.0:517871): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46432 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:22:35.366 19051 19051 W milo-handler-th: type=1400 audit(0.0:517872): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46457 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:22:35.366 19051 19051 W milo-handler-th: type=1400 audit(0.0:517873): avc: denied { setattr } for name="stat" dev="proc" ino=35697355 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:22:35.460 10036 10036 I clwn    : close()
+10-13 16:22:35.463 10036 10036 I clwn    : (REDACTED) Dismissing old window %s
+10-13 16:22:35.464 10036 10036 I clwn    : Disabling window touch for binder managed window
+10-13 16:22:35.503 20988  6387 I fddz    : (REDACTED) HDM. appOpsListener %s %s
+10-13 16:22:35.503 20988  6387 I fddz    : (REDACTED) HDM. Ignoring irrelevant audio permission changes for package %s
+10-13 16:22:35.503 10036 10036 D BLASTBufferQueue: [VRI[GoogleDiscoverWindow]#23](f:0,a:1) destructor()
+10-13 16:22:35.503 10036 10036 D BufferQueueConsumer: [VRI[GoogleDiscoverWindow]#23(BLAST Consumer)23](id:273400000018,api:0,p:-1,c:10036) disconnect
+10-13 16:22:35.523 26002 26002 D BufferQueueConsumer: [](id:659200000006,api:0,p:-1,c:26002) connect: controlledByApp=false
+10-13 16:22:35.529 26002 26002 D BufferQueueConsumer: [](id:659200000007,api:0,p:-1,c:26002) connect: controlledByApp=false
+10-13 16:22:35.529 10036 10036 I clqf    : (REDACTED) onApplyWindowInsets: systemWindowInsets=%s
+10-13 16:22:35.532 10036 10036 I clqf    : (REDACTED) onApplyWindowInsets: systemWindowInsets=%s
+--------- beginning of system
+10-13 16:22:35.535  1712  5289 D BatteryStatsService: notePemString  noteWhich: 49,arg1: 1080, arg2: 2349, arg3: 26002, arg4: 1, name: com.example.fitness_app
+10-13 16:22:35.537  1712  5281 D BatteryStatsService: notePemString  noteWhich: 49,arg1: 1080, arg2: 2349, arg3: 26002, arg4: 1, name: com.example.fitness_app
+10-13 16:22:35.557 26002 26042 D BLASTBufferQueue: [VRI[MainActivity]#6](f:0,a:1) acquireNextBufferLocked size=1080x2408 mFrameNumber=1 applyTransaction=true mTimestamp=69205501453047(auto) mPendingTransactions.size=0 graphicBufferId=111677739630612 transform=0
+10-13 16:22:35.561 23099 23099 I o.android.imoim: Using generational CollectorTypeCC GC.
+10-13 16:22:35.576 23099 23099 D nativeloader: Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
+10-13 16:22:35.595  2699  2934 I BatteryStatsImpl: ********** CLEARING HISTORY!
+10-13 16:22:35.616 23099 23099 D CompatibilityChangeReporter: Compat change id reported: 171979766; UID 10273; state: ENABLED
+10-13 16:22:35.618 10036 10036 I clww    : (REDACTED) onDestroy: isRecreating: %s
+10-13 16:22:35.629 23099 23099 D ApplicationLoaders: Returning zygote-cached class loader: /system/framework/android.test.base.jar
+10-13 16:22:35.635 23099 23099 D nativeloader: Configuring clns-4 for other apk /system/framework/org.apache.http.legacy.jar. target_sdk_version=36, uses_libraries=ALL, library_path=/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/lib/arm64:/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/base.apk!/lib/arm64-v8a:/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/split_AdSDKFBGG.apk!/lib/arm64-v8a:/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/split_AdSDKFBGG.config.en.apk!/lib/arm64-v8a:/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/split_AdSDKPangle.apk!/lib/arm64-v8a:/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/split_AdSDKPangle.config.arm64_v8a.apk!/lib/arm64-v8a:/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/split_AdSDKPangle.config.en.apk!/lib/arm64-v8a:/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.and
+10-13 16:22:35.635 23099 23099 D nativeloader: Extending system_exposed_libraries: libteeservice_client.trustonic.so:libapuwareapusys.mtk.so:libapuwareapusys_v2.mtk.so:libapuwarexrp.mtk.so:libapuwarexrp_v2.mtk.so:libapuwareutils.mtk.so:libapuwareutils_v2.mtk.so:libapuwarehmp.mtk.so:libmcv_runtime_usdk.mtk.so:libneuron_graph_delegate.mtk.so:libneuronusdk_adapter.mtk.so:libtflite_mtk.mtk.so:libarmnn_ndk.mtk.so:libcmdl_ndk.mtk.so:libnir_neon_driver_ndk.mtk.so:libmvpu_runtime.mtk.so:libmvpu_runtime_pub.mtk.so:libmvpu_engine_pub.mtk.so:libmvpu_pattern_pub.mtk.so:libmvpuop_mtk_cv.mtk.so:libmvpuop_mtk_nn.mtk.so
+10-13 16:22:35.669 26002 26138 D BLASTBufferQueue: [SurfaceView[com.example.fitness_app/com.example.fitness_app.MainActivity]#7](f:0,a:1) acquireNextBufferLocked size=1080x2349 mFrameNumber=1 applyTransaction=true mTimestamp=69205618653586(auto) mPendingTransactions.size=0 graphicBufferId=111677739630613 transform=0
+10-13 16:22:35.723 26002 26002 V ImeFocusController: onWindowFocus: DecorView@3adf39f[MainActivity] softInputMode=STATE_UNSPECIFIED|ADJUST_RESIZE|IS_FORWARD_NAVIGATION
+10-13 16:22:35.723 26002 26002 V ImeFocusController: Restarting due to isRestartOnNextWindowFocus as true
+10-13 16:22:35.723 26002 26002 D ImeFocusController: onViewFocusChanged, view=DecorView@3adf39f[MainActivity], mServedView=DecorView@3adf39f[MainActivity]
+10-13 16:22:35.723 26002 26002 V ImeFocusController: checkFocus: view=DecorView@3adf39f[MainActivity] next=DecorView@3adf39f[MainActivity] immDelegate=delegate{bcfd91c displayId=0} force=true package=com.example.fitness_app
+10-13 16:22:35.730 10036 10036 I cloo    : onPause
+10-13 16:22:35.739  4772  4772 I GoogleInputMethodService: GoogleInputMethodService.onFinishInput():2404 
+10-13 16:22:35.745  4772 23145 I Module  : DeviceLockedStatusModuleProvider$Module.updateDeviceLockedStatusInternal():119 repeatCheckTimes = 0, locked = false
+10-13 16:22:35.749  4772  4772 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1552 onStartInput(EditorInfo{EditorInfo{packageName=com.example.fitness_app, inputType=0, inputTypeString=NULL, enableLearning=false, autoCorrection=false, autoComplete=false, imeOptions=0, privateImeOptions=null, actionName=UNSPECIFIED, actionLabel=null, initialSelStart=-1, initialSelEnd=-1, initialCapsMode=0, label=null, fieldId=-1, fieldName=null, extras=null, hintText=null, hintLocales=[]}}, false)
+10-13 16:22:35.750  4772  4772 I LatinInputMethodServiceBase: LatinInputMethodServiceBase.updateInputViewCoverNavigation():360 Update input view padding, isNavbarOverInputWindow=false, bottom inset=119
+10-13 16:22:35.752 23099 23099 W o.android.imoim: Failed to find entry 'classes.dex': Entry not found
+10-13 16:22:35.757 10036 10036 I cloo    : onStop
+10-13 16:22:35.762  4772 23152 I Module  : DeviceLockedStatusModuleProvider$Module.updateDeviceLockedStatusInternal():119 repeatCheckTimes = 1, locked = false
+10-13 16:22:35.767 23099 23099 W o.android.imoim: Failed to find entry 'classes.dex': Entry not found
+10-13 16:22:35.768 23099 23099 W o.android.imoim: Failed to find entry 'classes.dex': Entry not found
+10-13 16:22:35.788 23099 23099 W o.android.imoim: Failed to find entry 'classes.dex': Entry not found
+10-13 16:22:35.795 10036 10036 W cjjp    : Null back to top button - can't update visibility
+10-13 16:22:35.797 29975 29975 D BoundBrokerSvc: onRebind: Intent { act=com.google.android.gms.libs.gmscorelogger.service.START dat=chimera-action:/... cmp=com.google.android.gms/.chimera.PersistentDirectBootAwareApiService }
+10-13 16:22:35.805 23099 23099 W o.android.imoim: Failed to find entry 'classes.dex': Entry not found
+10-13 16:22:35.820 23099 23099 W o.android.imoim: Failed to find entry 'classes.dex': Entry not found
+10-13 16:22:35.831 23099 23099 W o.android.imoim: Failed to find entry 'classes.dex': Entry not found
+10-13 16:22:35.832 23099 23099 W o.android.imoim: Failed to find entry 'classes.dex': Entry not found
+10-13 16:22:35.833 23099 23099 W o.android.imoim: Failed to find entry 'classes.dex': Entry not found
+10-13 16:22:35.835 23099 23099 D nativeloader: Configuring clns-5 for other apk /data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/base.apk:/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/split_AdSDKFBGG.apk:/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/split_AdSDKFBGG.config.en.apk:/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/split_AdSDKPangle.apk:/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/split_AdSDKPangle.config.arm64_v8a.apk:/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/split_AdSDKPangle.config.en.apk:/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/split_AdSDKVungle.apk:/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/split_FaceSDK.apk:/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/split_FaceSDK.config.arm64_v8a.apk:/data/a
+10-13 16:22:35.862 23099 23099 D nativeloader: Load libframework-connectivity-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity.jar: ok
+10-13 16:22:35.867 23099 23099 V GraphicsEnvironment: ANGLE Developer option for 'com.imo.android.imoim' set to: 'default'
+10-13 16:22:35.870 23099 23099 V GraphicsEnvironment: ANGLE GameManagerService for com.imo.android.imoim: false
+10-13 16:22:35.870 23099 23099 V GraphicsEnvironment: App is not on the allowlist for updatable production driver.
+10-13 16:22:35.871 10036 10036 I fesx    : destroy
+10-13 16:22:35.882 23099 23099 I LoadedApk: No resource references to update in package com.imo.android.imoim.BigGroup
+10-13 16:22:35.882 23099 23099 I LoadedApk: No resource references to update in package com.imo.android.imoim.Settings
+10-13 16:22:35.884 10036 10036 W eece    : measuring already stopped.
+10-13 16:22:35.884 23099 23099 I LoadedApk: No resource references to update in package com.imo.android.imoim.Login
+10-13 16:22:35.885 23099 23099 I LoadedApk: No resource references to update in package com.imo.android.imoim.Profile
+10-13 16:22:35.885 23099 23099 I LoadedApk: No resource references to update in package com.imo.android.imoim.QrCode
+10-13 16:22:35.885 23099 23099 I LoadedApk: No resource references to update in package com.imo.android.imoim.Search
+10-13 16:22:35.886 23099 23099 I LoadedApk: No resource references to update in package com.imo.android.imoim.Emoji
+10-13 16:22:35.887 23099 23099 I LoadedApk: No resource references to update in package com.imo.android.imoim.Produce
+10-13 16:22:35.888 23099 23099 I LoadedApk: No resource references to update in package com.imo.android.imoim.Story
+10-13 16:22:35.888 23099 23099 I LoadedApk: No resource references to update in package com.imo.android.imoim.AdSDK
+10-13 16:22:35.888 23099 23099 I LoadedApk: No resource references to update in package com.imo.android.imoim.AdSDKFBGG
+10-13 16:22:35.896 23099 23099 I LoadedApk: No resource references to update in package com.imo.android.imoim.AdSDKPangle
+10-13 16:22:35.896 23099 23099 I LoadedApk: No resource references to update in package com.imo.android.imoim.FaceSDK
+10-13 16:22:35.900 23099 23099 I LoadedApk: No resource references to update in package com.imo.android.imoim.ClubHouse
+10-13 16:22:35.901 23099 23099 I LoadedApk: No resource references to update in package com.imo.android.imoim.Channel
+10-13 16:22:35.902 23099 23099 I LoadedApk: No resource references to update in package com.imo.android.imoim.DataTransfer
+10-13 16:22:35.903 23099 23099 I LoadedApk: No resource references to update in package com.imo.android.imoim.MediaNet
+10-13 16:22:35.904 23099 23099 I LoadedApk: No resource references to update in package com.imo.android.imoim.FileTransfer
+10-13 16:22:35.905 23099 23099 I LoadedApk: No resource references to update in package com.imo.android.imoim.Record
+10-13 16:22:35.906 23099 23099 D NetworkSecurityConfig: Using Network Security Config from resource n debugBuild: false
+10-13 16:22:35.907 23099 23099 D NetworkSecurityConfig: Using Network Security Config from resource n debugBuild: false
+10-13 16:22:36.029 23099 23199 D nativeloader: Load /data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/lib/arm64/libxdl.so using class loader ns clns-5 (caller=/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/base.apk!classes5.dex): ok
+10-13 16:22:36.036 23099 23199 D nativeloader: Load /data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/lib/arm64/libbytehook.so using class loader ns clns-5 (caller=/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/base.apk!classes5.dex): ok
+10-13 16:22:36.046 23099 23199 D nativeloader: Load /data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/lib/arm64/libc++_shared.so using class loader ns clns-5 (caller=/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/base.apk!classes5.dex): ok
+10-13 16:22:36.049 23099 23199 D nativeloader: Load /data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/lib/arm64/libxperf.so using class loader ns clns-5 (caller=/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/base.apk!classes5.dex): ok
+10-13 16:22:36.053 23099 23199 W bytehook_tag: bytehook version 1.0.10: bytehook init(mode: AUTOMATIC, debug: false), return: 0
+10-13 16:22:36.090 23099 23212 D nativeloader: Load /data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/lib/arm64/libbigolog.so using class loader ns clns-5 (caller=/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/base.apk!classes5.dex): ok
+10-13 16:22:36.095 23099 23212 I yysdk   : set log level->4
+10-13 16:22:36.109 23099 23211 D nativeloader: Load /data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/lib/arm64/libreflection.so using class loader ns clns-5 (caller=/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/base.apk!classes5.dex): ok
+10-13 16:22:36.111 23099 23212 I NervLibraryEnsurer: start load Nerv so
+10-13 16:22:36.121 23099 23212 D nativeloader: Load /data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/lib/arm64/libopenssl.so using class loader ns clns-5 (caller=/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/base.apk): ok
+10-13 16:22:36.127 23099 23099 I CrashReport: xCrash SDK init: start
+10-13 16:22:36.138 23099 23212 D nativeloader: Load /data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/lib/arm64/libnerv_android.so using class loader ns clns-5 (caller=/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/base.apk): ok
+10-13 16:22:36.150 23099 23099 D nativeloader: Load /data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/lib/arm64/libbigocrash.so using class loader ns clns-5 (caller=/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/base.apk!classes5.dex): ok
+10-13 16:22:36.150 23099 23099 I xCrash  : xcrash_jni_init
+10-13 16:22:36.153 23099 23099 I CrashReport: xCrash SDK init: end
+10-13 16:22:36.154 23099 23211 D nativeloader: Load /data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/lib/arm64/libimagepipeline.so using class loader ns clns-5 (caller=/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/base.apk): ok
+10-13 16:22:36.162 23099 23213 D CompatibilityChangeReporter: Compat change id reported: 183155436; UID 10273; state: ENABLED
+10-13 16:22:36.168 23099 23213 I FirebaseApp: Device unlocked: initializing all Firebase APIs for app [DEFAULT]
+10-13 16:22:36.206 23099 23246 W o.android.imoim: ClassLoaderContext classpath size mismatch. expected=1, found=0 (DLC[];PCL[base.apk*2890162721]{PCL[/system/framework/org.apache.http.legacy.jar*3114992561]#PCL[/system/framework/com.android.location.provider.jar*3868789109]#PCL[/system/framework/com.android.media.remotedisplay.jar*3886290638]} | DLC[];PCL[])
+10-13 16:22:36.213 23099 23246 I DynamiteModule: Considering local module com.google.android.gms.measurement.dynamite:152 and remote module com.google.android.gms.measurement.dynamite:210
+10-13 16:22:36.213 23099 23246 I DynamiteModule: Selected remote version of com.google.android.gms.measurement.dynamite, version >= 210
+10-13 16:22:36.235 23099 23246 W System  : ClassLoader referenced unknown path: 
+10-13 16:22:36.236 23099 23246 D nativeloader: Configuring clns-6 for other apk . target_sdk_version=37, uses_libraries=, library_path=/data/app/~~Ab_1CqvX8A7ktUap_OpbKw==/com.google.android.gms-oT33Q-vUGEuzl-vzgYhZNw==/lib/arm64:/data/app/~~Ab_1CqvX8A7ktUap_OpbKw==/com.google.android.gms-oT33Q-vUGEuzl-vzgYhZNw==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.google.android.gms
+10-13 16:22:36.295 23099 23268 D nativeloader: Load /data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/lib/arm64/libimonetwork.so using class loader ns clns-5 (caller=/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/base.apk!classes5.dex): ok
+10-13 16:22:36.303 23099 23099 I LoopLoggingUtils: addDispatcher isSuc: truecurrent size: 1
+10-13 16:22:36.329 23099 23272 D nativeloader: Load /data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/lib/arm64/libexchangekey.so using class loader ns clns-5 (caller=/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/base.apk!classes5.dex): ok
+10-13 16:22:36.374 19051 19051 W milo-handler-th: type=1400 audit(0.0:517887): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46432 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:22:36.374 19051 19051 W milo-handler-th: type=1400 audit(0.0:517888): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46457 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:22:36.374 19051 19051 W milo-handler-th: type=1400 audit(0.0:517889): avc: denied { setattr } for name="stat" dev="proc" ino=35697355 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:22:36.380 23099 23246 W o.android.imoim: ClassLoaderContext classpath size mismatch. expected=1, found=8 (DLC[];PCL[base.apk*2890162721]{PCL[/system/framework/org.apache.http.legacy.jar*3114992561]#PCL[/system/framework/com.android.location.provider.jar*3868789109]#PCL[/system/framework/com.android.media.remotedisplay.jar*3886290638]} | DLC[];PCL[/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/base.apk*1575899858:/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/split_AdSDKFBGG.apk*3487253875:/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/split_AdSDKPangle.apk*2281261256:/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/split_AdSDKVungle.apk*3722999890:/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/split_FaceSDK.apk*1265521101:/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/split_Record.apk*764011468:/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/split_SoLibs.apk*1227937951:/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/split_Websocket.apk*3483270451]{PCL[/system/framework/android.test.base.jar*446567138]#PCL[/system/framework/org.apache.http.legacy.jar*3114992561]})
+10-13 16:22:36.383 23099 23099 I BootMonitor: boot from others
+10-13 16:22:36.383 23099 23099 I LoopLoggingUtils: removeDispatcher isSuc: truecurrent size: 0
+10-13 16:22:36.387 23099 23277 D CompatibilityChangeReporter: Compat change id reported: 160794467; UID 10273; state: ENABLED
+10-13 16:22:36.393 23099 23212 D nativeloader: Load /data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/lib/arm64/libimoX3dh.so using class loader ns clns-5 (caller=/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/base.apk!classes5.dex): ok
+10-13 16:22:36.395 23099 23212 D LIB_X3DH: JNI_OnLoad
+10-13 16:22:36.396 23099 23212 D LIB_X3DH: LibInit
+10-13 16:22:36.401 23099 23212 D LIB_X3DH: GetIdentityKey
+10-13 16:22:36.405 23099 23212 D LIB_X3DH: GetSignedPreKey
+10-13 16:22:36.413 23099 23277 D CompatibilityChangeReporter: Compat change id reported: 194532703; UID 10273; state: ENABLED
+10-13 16:22:36.577 29975 14807 I PhenotypeResourceReader: unable to find any Phenotype resource metadata for com.imo.android.imoim
+10-13 16:22:36.578 23099 23261 D nativeloader: Load /data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/lib/arm64/libcronet.so using class loader ns clns-5 (caller=/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/split_Websocket.apk): ok
+10-13 16:22:36.610 23099 23304 D nativeloader: Load /data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/lib/arm64/libsqlcipher.so using class loader ns clns-5 (caller=/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/base.apk!classes5.dex): ok
+10-13 16:22:36.616 23099 23261 I cr_CronetLibraryLoader: Cronet version: 92.0.4515.107, arch: aarch64
+10-13 16:22:36.671 23099 23329 I FA      : App measurement initialized, version: 186005
+10-13 16:22:36.671 23099 23329 I FA      : To enable debug logging run: adb shell setprop log.tag.FA VERBOSE
+10-13 16:22:36.672 23099 23329 I FA      : To enable faster debug mode event logging run:
+10-13 16:22:36.672 23099 23329 I FA      :   adb shell setprop debug.firebase.analytics.app com.imo.android.imoim
+10-13 16:22:36.758 29975 30159 I FontLog : (REDACTED) Received query %s, URI %s
+10-13 16:22:36.759 29975 30159 I FontLog : (REDACTED) Query [%s] resolved to %s
+10-13 16:22:36.763 29975 30159 I FontLog : (REDACTED) Fetch %s end status %s
+10-13 16:22:36.769 29975 30159 I FontLog : (REDACTED) Pulling font file for id = %d, cache size = %d
+10-13 16:22:36.793 29975 29975 D BoundBrokerSvc: onBind: Intent { act=com.google.android.gms.measurement.START pkg=com.google.android.gms }
+10-13 16:22:36.793 29975 29975 D BoundBrokerSvc: Loading bound service for intent: Intent { act=com.google.android.gms.measurement.START pkg=com.google.android.gms }
+10-13 16:22:36.803 29975 30166 I FontLog : (REDACTED) Pulling font file for id = %d, cache size = %d
+10-13 16:22:36.986 29975 23378 D AdvertisingIdClient: AdvertisingIdClient already created.
+10-13 16:22:36.987 29975 23378 D AdvertisingIdClient: AdvertisingIdClient is not bounded. Starting to bind it...
+10-13 16:22:37.000 29975 23378 D AdvertisingIdClient: AdvertisingIdClient is bounded
+10-13 16:22:37.002 29975 23378 I AdvertisingIdClient: shouldSendLog 99978051
+10-13 16:22:37.002 29975 23378 I AdvertisingIdClient: GetInfoInternal elapse 15ms
+10-13 16:22:37.120 23099 23261 W FeatureFlagsImplExport: java.lang.NoClassDefFoundError: Class not found using the boot class loader; no stack trace available
+10-13 16:22:37.382 19051 19051 W milo-handler-th: type=1400 audit(0.0:517894): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46432 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:22:37.382 19051 19051 W milo-handler-th: type=1400 audit(0.0:517895): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46457 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:22:37.382 19051 19051 W milo-handler-th: type=1400 audit(0.0:517896): avc: denied { setattr } for name="stat" dev="proc" ino=35697355 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:22:37.620 23099 23304 W SQLiteLog: (28) double-quoted string literal: "3012210067098340"
+10-13 16:22:37.620 23099 23304 W SQLiteLog: (28) double-quoted string literal: "3021151424968536"
+10-13 16:22:37.620 23099 23304 W SQLiteLog: (28) double-quoted string literal: "1006560000000000"
+10-13 16:22:37.620 23099 23304 W SQLiteLog: (28) double-quoted string literal: "00tdcscaogmtb1ac;"
+10-13 16:22:37.621 23099 23304 W SQLiteLog: (28) double-quoted string literal: "3012210067098340"
+10-13 16:22:37.621 23099 23304 W SQLiteLog: (28) double-quoted string literal: "3021151424968536"
+10-13 16:22:37.621 23099 23304 W SQLiteLog: (28) double-quoted string literal: "1006560000000000"
+10-13 16:22:37.621 23099 23304 W SQLiteLog: (28) double-quoted string literal: "00tdcscaogmtb1ac;"
+10-13 16:22:37.769 23442 23442 E appproc : checkAndSetEnv get_baksize open file /data/dalvik-cache/classpath failed , error(Permission denied)
+10-13 16:22:37.773 23442 23442 E appproc : checkAndSetEnv write_classpathbak open file failed:Permission denied
+10-13 16:22:37.774 23442 23442 E appproc : checkAndSetEnv get_baksize open file /data/dalvik-cache/classpath2 failed , error(Permission denied)
+10-13 16:22:37.774 23442 23442 E appproc : checkAndSetEnv write_classpathbak open file failed:Permission denied
+10-13 16:22:37.774 23442 23442 E appproc : checkAndSetEnv get_baksize open file /data/dalvik-cache/classpath3 failed , error(Permission denied)
+10-13 16:22:37.774 23442 23442 E appproc : checkAndSetEnv write_classpathbak open file failed:Permission denied
+10-13 16:22:37.775 23442 23442 E appproc : checkAndSetEnv get_baksize open file /data/dalvik-cache/classpath4 failed , error(Permission denied)
+10-13 16:22:37.775 23442 23442 E appproc : checkAndSetEnv write_classpathbak open file failed:Permission denied
+10-13 16:22:37.775 23442 23442 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-13 16:22:37.810 23442 23442 I AndroidRuntime: Using default boot image
+10-13 16:22:37.810 23442 23442 I AndroidRuntime: Leaving lock profiling enabled
+10-13 16:22:37.821 23442 23442 I app_process: Core platform API enforcement reporting only by runtime option
+10-13 16:22:37.822 23442 23442 I app_process: Using generational CollectorTypeCC GC.
+10-13 16:22:38.028 23442 23442 D nativeloader: InitDefaultPublicLibraries for_preload=1: libandroid.so:libaaudio.so:libamidi.so:libbinder_ndk.so:libc.so:libcamera2ndk.so:libdl.so:libEGL.so:libGLESv1_CM.so:libGLESv2.so:libGLESv3.so:libicu.so:libicui18n.so:libicuuc.so:libjnigraphics.so:liblog.so:libmediandk.so:libm.so:libnativehelper.so:libnativewindow.so:libOpenMAXAL.so:libOpenSLES.so:libRS.so:libstdc++.so:libsync.so:libvulkan.so:libwebviewchromium_plat_support.so:libz.so
+10-13 16:22:38.046 23442 23442 D nativeloader: Load libicu_jni.so using APEX ns com_android_art for caller /apex/com.android.art/javalib/core-oj.jar: ok
+10-13 16:22:38.046 23442 23442 D app_process: Time zone APEX ICU file found: /apex/com.android.tzdata/etc/icu/icu_tzdata.dat
+10-13 16:22:38.046 23442 23442 D app_process: I18n APEX ICU file found: /apex/com.android.i18n/etc/icu/icudt70l.dat
+10-13 16:22:38.053 23442 23442 D nativeloader: Load libjavacore.so using APEX ns com_android_art for caller /apex/com.android.art/javalib/core-oj.jar: ok
+10-13 16:22:38.063 23442 23442 D nativeloader: Load libopenjdk.so using APEX ns com_android_art for caller /apex/com.android.art/javalib/core-oj.jar: ok
+10-13 16:22:38.071 23442 23442 I app_process: Priority-to-niceness mapping: 19, 16, 13, 10, 0, -2, -4, -5, -6, -8
+10-13 16:22:38.081 23442 23442 I VivoSystemFrameworkFactory: Instance implClass com.vivo.VivoSystemFrameworkFactoryImpl
+10-13 16:22:38.126 23442 23442 D nativeloader: Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
+10-13 16:22:38.127 23442 23442 D AndroidRuntime: Calling main entry com.android.commands.monkey.Monkey
+10-13 16:22:38.128 23442 23442 W libc    : Access denied finding property "ro.vendor.mtk.app32_boost_support"
+10-13 16:22:38.129 23442 23442 W Monkey  : args: [-p, com.android.launcher3, -c, android.intent.category.HOME, 1]
+10-13 16:22:38.129 23442 23442 W Monkey  :  arg: "-p"
+10-13 16:22:38.129 23442 23442 W Monkey  :  arg: "com.android.launcher3"
+10-13 16:22:38.129 23442 23442 W Monkey  :  arg: "-c"
+10-13 16:22:38.129 23442 23442 W Monkey  :  arg: "android.intent.category.HOME"
+10-13 16:22:38.129 23442 23442 W Monkey  :  arg: "1"
+10-13 16:22:38.129 23442 23442 W Monkey  : data="com.android.launcher3"
+10-13 16:22:38.130 23442 23442 W Monkey  : data="android.intent.category.HOME"
+10-13 16:22:38.216 23442 23442 I Monkey  :     // activityResuming(com.android.launcher3)
+10-13 16:22:38.254 10036 10036 I clwn    : (REDACTED) Dismissing old window %s
+10-13 16:22:38.256 10036 10036 W libc    : Access denied finding property "vendor.vivo.imageencoder.dump"
+10-13 16:22:38.257 10036 10036 D OpenGLRenderer: Bitmap::compress format:Png w:212 h:132 quality:100 app_apk:com.google.android.googlequicksearchbox:googleapp 
+10-13 16:22:38.257 10036 10036 W libc    : Access denied finding property "vendor.vivo.imageencoder.dump"
+10-13 16:22:38.280 10036 10036 I clww    : (REDACTED) onDestroy: isRecreating: %s
+10-13 16:22:38.302 23442 23442 I Monkey  : Events injected: 1
+10-13 16:22:38.332 10036 10036 I clwn    : (REDACTED) Created new binder managed window %s
+10-13 16:22:38.332 10036 10036 I clwn    : (REDACTED) WindowRefsActive: %d, TouchableWindowRefsActive: %b
+10-13 16:22:38.332 10036 10036 I clww    : (REDACTED) MinusoneConfigDbg windowAttached config=%s
+10-13 16:22:38.333 10036 10036 I clww    : (REDACTED) windowAttached start logFlowId=%s, configuration=%s, acetoneState=%s, overlayWindow=%s, fragmentHost=%s, binderManagedWindow=%s, params=%s
+10-13 16:22:38.339 10036 10036 I clww    : (REDACTED) onDestroy: isRecreating: %s
+10-13 16:22:38.340 10036 10036 I clww    : (REDACTED) initWindow for %s with token %s
+10-13 16:22:38.341 10036 10036 W OnBackInvokedCallback: OnBackInvokedCallback is not enabled for the application.
+10-13 16:22:38.341 10036 10036 W OnBackInvokedCallback: Set 'android:enableOnBackInvokedCallback="true"' in the application manifest.
+10-13 16:22:38.360  1712  1731 I ActivityTaskManager: Displayed com.android.launcher3/.Launcher: +775ms
+10-13 16:22:38.372 23442 23442 I Monkey  : ## Network stats: elapsed time=158ms (0ms mobile, 0ms wifi, 158ms not connected)
+10-13 16:22:38.379 23442 23442 I app_process: System.exit called, status: 0
+10-13 16:22:38.379 23442 23442 I AndroidRuntime: VM exiting with result code 0.
+10-13 16:22:38.390 19051 19051 W milo-handler-th: type=1400 audit(0.0:517900): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46432 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:22:38.390 19051 19051 W milo-handler-th: type=1400 audit(0.0:517901): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46457 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:22:38.394 19051 19051 W milo-handler-th: type=1400 audit(0.0:517902): avc: denied { setattr } for name="stat" dev="proc" ino=35697355 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:22:38.412 10036 10036 I clww    : (REDACTED) windowAttached completed window=%s fragmentHost=%s
+10-13 16:22:38.414  5209  5209 D SBE-DEBUG: init scroll scenario
+10-13 16:22:38.414  5209  5209 D SBE-DEBUG: init scroll scenario
+10-13 16:22:38.416 10036 10036 I clwn    : SharedMinusOne sent SwitcherIcon
+10-13 16:22:38.417 10036 10036 I clww    : onStart
+10-13 16:22:38.441 10036 10036 I clww    : onResume
+10-13 16:22:38.441 10036 10036 W eece    : missing event name
+10-13 16:22:38.461 10036 10036 D BufferQueueConsumer: [](id:273400000019,api:0,p:-1,c:10036) connect: controlledByApp=false
+10-13 16:22:38.482 10036 10116 D BLASTBufferQueue: [VRI[GoogleDiscoverWindow]#24](f:0,a:1) acquireNextBufferLocked size=1080x2408 mFrameNumber=1 applyTransaction=true mTimestamp=69208431868970(auto) mPendingTransactions.size=0 graphicBufferId=43104291782753 transform=0
+10-13 16:22:38.485 10036 10116 W Parcel  : Expecting binder but got null!
+10-13 16:22:38.531  5209  5209 D BufferQueueConsumer: [](id:145900000005,api:0,p:-1,c:5209) connect: controlledByApp=false
+10-13 16:22:38.540 10036 10036 I cmaf    : (REDACTED) shouldShowEomConsentUi: %s
+10-13 16:22:38.569 10036 10108 I esqi    : (REDACTED) Eligibility is %d
+10-13 16:22:38.588  1712  4563 D BatteryStatsService: notePemString  noteWhich: 49,arg1: -1, arg2: -1, arg3: 26002, arg4: 1, name: com.example.fitness_app
+10-13 16:22:38.644 10036 10036 I fewc    : Constructor was called
+10-13 16:22:38.675 10036 10036 I fesx    : (REDACTED) init, initialized: %s
+10-13 16:22:38.678 10036 10036 I cjlk    : (REDACTED) isMinusOneV1 isMinusOne=%b
+10-13 16:22:38.678 10036 10036 I cjlk    : (REDACTED) isMinusOneV1 isPixel=%b sdk=%d isAcetoneV2Config=%b
+10-13 16:22:38.680 10036 10170 I YTEInnerTubeInitializer: Pre-warmed account ID resolver.
+10-13 16:22:38.686  5209  6082 D BLASTBufferQueue: [VRI[HiBoard]#5](f:0,a:1) acquireNextBufferLocked size=1080x2408 mFrameNumber=1 applyTransaction=true mTimestamp=69208636414509(auto) mPendingTransactions.size=0 graphicBufferId=22372484644886 transform=0
+10-13 16:22:38.686 10036 10036 I cjlk    : No savedInstanceState.
+10-13 16:22:38.687 10036 10036 I cjlk    : makeRequest: subscribing to new source
+10-13 16:22:38.688  5209  6082 W Parcel  : Expecting binder but got null!
+10-13 16:22:38.712 10036 10036 I fewc    : OnCreate Was Called
+10-13 16:22:38.717 10036 10036 I PromoManagerDataService: PromoManagerDataServiceImpl.getTabTypePromotion[MINUS_ONE]
+10-13 16:22:38.732 10036 10036 I clpo    : (REDACTED) setupSearchBox for class %s
+10-13 16:22:38.735 26002 26016 D BLASTBufferQueue: [SurfaceView[com.example.fitness_app/com.example.fitness_app.MainActivity]#7](f:0,a:1) destructor()
+10-13 16:22:38.736 26002 26016 D BufferQueueConsumer: [SurfaceView[com.example.fitness_app/com.example.fitness_app.MainActivity]#7(BLAST Consumer)7](id:659200000007,api:0,p:-1,c:26002) disconnect
+10-13 16:22:38.736 26002 26002 D BLASTBufferQueue: [VRI[MainActivity]#6](f:0,a:1) destructor()
+10-13 16:22:38.736 26002 26002 D BufferQueueConsumer: [VRI[MainActivity]#6(BLAST Consumer)6](id:659200000006,api:0,p:-1,c:26002) disconnect
+10-13 16:22:38.768 10036 10036 I cfdc    : Account disc initialised
+10-13 16:22:38.768 10036 10036 I PromoManagerDataService: PromoManagerDataServiceImpl.getAccountMenuPromotion
+10-13 16:22:38.772 10036 10036 D SBE-DEBUG: init scroll scenario
+10-13 16:22:38.772 10036 10036 D SBE-DEBUG: init scroll scenario
+10-13 16:22:38.774 10036 10107 I cjul    : (REDACTED) #enqueuePeriodicJob: running = %b
+10-13 16:22:38.777 10036 10107 I cjtw    : (REDACTED) #scheduledConfig, timestampCreated %s, scheduledOffset %s
+10-13 16:22:38.779 10036 10036 D SBE-DEBUG: init scroll scenario
+10-13 16:22:38.779 10036 10036 D SBE-DEBUG: init scroll scenario
+10-13 16:22:38.782 10036 10036 I cloo    : onStart
+10-13 16:22:38.795 10036 10036 I cfee    : #accountsLoaded
+10-13 16:22:38.796 10036 10036 I cjlk    : (REDACTED) [%s] onStart()
+10-13 16:22:38.799 10036 10107 I cizx    : (REDACTED) loading data on surface %s.
+10-13 16:22:38.799 10036 10108 I cins    : #getLastSuccessfulTime
+10-13 16:22:38.801 10036 10036 I A       : (REDACTED) #loadData (initialFeedReceivedTimePerClient=%s, lastFeedUpdateTimePerClient=%s, eventTimePerClient=%s)
+10-13 16:22:38.806 10036 10036 E NetworkErrorMessage: (REDACTED) Invalid connectivity state: %s
+10-13 16:22:38.807 10036 10036 I cloo    : onResume
+10-13 16:22:38.815 10036 10036 I clqf    : (REDACTED) onApplyWindowInsets: systemWindowInsets=%s
+10-13 16:22:38.816 10036 10036 I clqf    : (REDACTED) onApplyWindowInsets: systemWindowInsets=%s
+10-13 16:22:38.828 10036 10036 I clqf    : (REDACTED) onApplyWindowInsets: systemWindowInsets=%s
+10-13 16:22:38.829 10036 10036 I clqf    : (REDACTED) onApplyWindowInsets: systemWindowInsets=%s
+10-13 16:22:38.843 29975 29975 D BoundBrokerSvc: onRebind: Intent { act=com.google.android.gms.auth.aang.events.services.START dat=chimera-action:/... cmp=com.google.android.gms/.chimera.PersistentApiService }
+10-13 16:22:38.847 10036 10087 I WM-GreedyScheduler: Ignoring schedule request in a secondary process
+10-13 16:22:38.849 10036 10036 I cmvu    : (REDACTED) PromoManagerSubscriptionCallbacks: onNewData called for fragment=%s with promotion: %s
+10-13 16:22:38.856 10036 10036 I cjlk    : (REDACTED) feed_age onNewData data=%s
+10-13 16:22:38.864 10036 10036 I clqf    : (REDACTED) onApplyWindowInsets: systemWindowInsets=%s
+10-13 16:22:38.865 10036 10036 I clqf    : (REDACTED) onApplyWindowInsets: systemWindowInsets=%s
+10-13 16:22:38.869 10036 10036 I cmaf    : (REDACTED) SearchBoxEligibility: %s
+10-13 16:22:38.871  5209  5209 D SBE-DEBUG: init scroll scenario
+10-13 16:22:38.871  5209  5209 D SBE-DEBUG: init scroll scenario
+10-13 16:22:38.875  4772  4772 I GoogleInputMethodService: GoogleInputMethodService.onFinishInput():2404 
+10-13 16:22:38.868 10036 10087 D WM-EnqueueRunnable: WorkSpec 3a01f328-e157-4ece-9b25-ecd8367148df with unique name "tiktok_wipeout_worker" is already in state ENQUEUED. Ignoring enqueue with ExistingWorkPolicy.KEEP for: [e2b7617e-b521-4edb-94da-791df01a7570]
+10-13 16:22:38.876  4772  4772 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1552 onStartInput(EditorInfo{EditorInfo{packageName=com.android.launcher3, inputType=0, inputTypeString=NULL, enableLearning=false, autoCorrection=false, autoComplete=false, imeOptions=0, privateImeOptions=null, actionName=UNSPECIFIED, actionLabel=null, initialSelStart=-1, initialSelEnd=-1, initialCapsMode=0, label=null, fieldId=-1, fieldName=null, extras=null, hintText=null, hintLocales=[]}}, false)
+10-13 16:22:38.884  4772 23528 I Module  : DeviceLockedStatusModuleProvider$Module.updateDeviceLockedStatusInternal():119 repeatCheckTimes = 0, locked = false
+10-13 16:22:38.887  4772  4772 I LatinInputMethodServiceBase: LatinInputMethodServiceBase.updateInputViewCoverNavigation():360 Update input view padding, isNavbarOverInputWindow=false, bottom inset=119
+10-13 16:22:38.898  4772 23530 I Module  : DeviceLockedStatusModuleProvider$Module.updateDeviceLockedStatusInternal():119 repeatCheckTimes = 1, locked = false
+10-13 16:22:38.948 10036 10087 D WM-Processor: Processor cancelling 145073f6-191f-4dd0-8eb1-1dd66ceb026c
+10-13 16:22:38.948 10036 10087 D WM-Processor: WorkerWrapper could not be found for 145073f6-191f-4dd0-8eb1-1dd66ceb026c
+10-13 16:22:38.955 10036 10108 I cjwh    : (REDACTED) Created StreamSubTree successfully, items %s
+10-13 16:22:38.956 10036 10108 I cizx    : (REDACTED) RenderableStreamDataSource#loadData - sessionStatus(%s)
+10-13 16:22:38.959 10036 10087 D WM-SystemJobScheduler: Cancelling work ID 145073f6-191f-4dd0-8eb1-1dd66ceb026c, Job ID 17
+10-13 16:22:38.963 10036 10087 I WM-GreedyScheduler: Ignoring schedule request in non-main process
+10-13 16:22:39.002 10036 10107 I cizx    : RenderableStreamDataSource#loadData - cacheHit
+10-13 16:22:39.003 10036 10107 I cizx    : (REDACTED) RenderableStreamDataSource#loadData - succeed, cache status: %s
+10-13 16:22:39.005 10036 10036 I cjlk    : (REDACTED) StreamFragmentPeer#onNewData called, renderable slices %s
+10-13 16:22:39.005 10036 10036 I chbt    : (REDACTED) Trying to load %s elementsRenderData
+10-13 16:22:39.006 10036 10036 I cjni    : (REDACTED) Clearing batch update data for stream %s
+10-13 16:22:39.006 10036 10036 I cjni    : (REDACTED) Removed set %s for stream %s
+10-13 16:22:39.006 10036 10036 I cjni    : (REDACTED) Tracking batch for content id %s and stream %s
+10-13 16:22:39.008 10036 10036 I cjni    : (REDACTED) Tracking batch for content id %s and stream %s
+10-13 16:22:39.009 10036 10036 I cjni    : (REDACTED) Tracking batch for content id %s and stream %s
+10-13 16:22:39.010 10036 10036 I cjni    : (REDACTED) Tracking batch for content id %s and stream %s
+10-13 16:22:39.011 10036 10036 I cjni    : (REDACTED) Tracking batch for content id %s and stream %s
+10-13 16:22:39.034 10036 10087 D WM-SystemJobScheduler: Scheduling work ID 14e89215-7a70-4d2d-86c8-8b1c5a7cbc17 (com.google.apps.tiktok.contrib.work.TikTokListenableWorker), Job ID 18
+10-13 16:22:39.055 10036 10087 I WM-GreedyScheduler: Ignoring schedule request in a secondary process
+10-13 16:22:39.163  5209  5218 W om.vivo.hiboard: Reducing the number of considered missed Gc histogram windows from 204 to 100
+10-13 16:22:39.194 10036 10036 W View    : requestLayout() improperly called by android.widget.FrameLayout{26fe7a3 V.E...... ......ID 0,0-1080,308} during layout: running second layout pass
+10-13 16:22:39.202  5209  6082 W OpenGLRenderer: Dirty -570.00 1480.00 -511.00 2389.00 doesn't intersect with 0 0 1080 2408 ?
+10-13 16:22:39.220  5209  6082 W OpenGLRenderer: Dirty -570.00 1480.00 -511.00 2389.00 doesn't intersect with 0 0 1080 2408 ?
+10-13 16:22:39.236  5209  6082 W OpenGLRenderer: Dirty -570.00 1480.00 -511.00 2389.00 doesn't intersect with 0 0 1080 2408 ?
+10-13 16:22:39.252  5209  6082 W OpenGLRenderer: Dirty -570.00 1480.00 -511.00 2389.00 doesn't intersect with 0 0 1080 2408 ?
+10-13 16:22:39.269  5209  6082 W OpenGLRenderer: Dirty -570.00 1480.00 -511.00 2389.00 doesn't intersect with 0 0 1080 2408 ?
+10-13 16:22:39.286  5209  6082 W OpenGLRenderer: Dirty -570.00 1480.00 -511.00 2389.00 doesn't intersect with 0 0 1080 2408 ?
+10-13 16:22:39.302  5209  6082 W OpenGLRenderer: Dirty -570.00 1480.00 -511.00 2389.00 doesn't intersect with 0 0 1080 2408 ?
+10-13 16:22:39.319  5209  6082 W OpenGLRenderer: Dirty -570.00 1480.00 -511.00 2389.00 doesn't intersect with 0 0 1080 2408 ?
+10-13 16:22:39.336  5209  6082 W OpenGLRenderer: Dirty -570.00 1480.00 -511.00 2389.00 doesn't intersect with 0 0 1080 2408 ?
+10-13 16:22:39.352  5209  6082 W OpenGLRenderer: Dirty -570.00 1480.00 -511.00 2389.00 doesn't intersect with 0 0 1080 2408 ?
+10-13 16:22:39.369  5209  6082 W OpenGLRenderer: Dirty -570.00 1480.00 -511.00 2389.00 doesn't intersect with 0 0 1080 2408 ?
+10-13 16:22:39.386  5209  6082 W OpenGLRenderer: Dirty -570.00 1480.00 -511.00 2389.00 doesn't intersect with 0 0 1080 2408 ?
+10-13 16:22:39.406 19051 19051 W milo-handler-th: type=1400 audit(0.0:517907): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46432 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:22:39.406 19051 19051 W milo-handler-th: type=1400 audit(0.0:517908): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46457 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:22:39.406 19051 19051 W milo-handler-th: type=1400 audit(0.0:517909): avc: denied { setattr } for name="stat" dev="proc" ino=35697355 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:22:39.436  5209  6082 W OpenGLRenderer: Dirty -570.00 1480.00 -511.00 1539.00 doesn't intersect with 0 0 1080 2408 ?
+10-13 16:22:39.453  5209  6082 W OpenGLRenderer: Dirty -570.00 1480.00 -511.00 1539.00 doesn't intersect with 0 0 1080 2408 ?
+10-13 16:22:39.470  5209  6082 W OpenGLRenderer: Dirty -570.00 1480.00 -511.00 1539.00 doesn't intersect with 0 0 1080 2408 ?
+10-13 16:22:39.486  5209  6082 W OpenGLRenderer: Dirty -570.00 1480.00 -511.00 1539.00 doesn't intersect with 0 0 1080 2408 ?
+10-13 16:22:39.503  5209  6082 W OpenGLRenderer: Dirty -570.00 1480.00 -511.00 1539.00 doesn't intersect with 0 0 1080 2408 ?
+10-13 16:22:39.519  5209  6082 W OpenGLRenderer: Dirty -570.00 1480.00 -511.00 1539.00 doesn't intersect with 0 0 1080 2408 ?
+10-13 16:22:39.536  5209  6082 W OpenGLRenderer: Dirty -570.00 1480.00 -511.00 1539.00 doesn't intersect with 0 0 1080 2408 ?
+10-13 16:22:39.553  5209  6082 W OpenGLRenderer: Dirty -570.00 1480.00 -511.00 1539.00 doesn't intersect with 0 0 1080 2408 ?
+10-13 16:22:39.597  5209  6082 W OpenGLRenderer: Dirty -570.00 1480.00 -511.00 1539.00 doesn't intersect with 0 0 1080 2408 ?
+10-13 16:22:39.604  5209  6082 W OpenGLRenderer: Dirty -570.00 1480.00 -511.00 1539.00 doesn't intersect with 0 0 1080 2408 ?
+10-13 16:22:39.622  5209  6082 W OpenGLRenderer: Dirty -570.00 1480.00 -511.00 1539.00 doesn't intersect with 0 0 1080 2408 ?
+10-13 16:22:40.115  5209  6705 D skia    : stream getLength() not supported, use temp buffer for loading stream, buffer addr 0x6eae7e3000 length 86523
+10-13 16:22:40.116  5209  6705 D skia    : LoadInputStreamToMem va 0x6eae7e3000  size 88704
+10-13 16:22:40.110  5209  5209 W glide-source-th: type=1400 audit(0.0:517910): avc: denied { search } for name="ppm" dev="proc" ino=4026531931 scontext=u:r:platform_app:s0:c512,c768 tcontext=u:object_r:proc_ppm:s0 tclass=dir permissive=0 app=com.vivo.hiboard
+10-13 16:22:40.119  5209  6705 D libjpeg-alpha: Huffman Builder run in subthread
+10-13 16:22:40.120  5209  6705 D libjpeg-alpha: Tile Decoder (#thread:4, size:256 256 256 280x384, alignment:256x16)
+10-13 16:22:40.114  5209  5209 W glide-source-th: type=1400 audit(0.0:517911): avc: denied { search } for name="ppm" dev="proc" ino=4026531931 scontext=u:r:platform_app:s0:c512,c768 tcontext=u:object_r:proc_ppm:s0 tclass=dir permissive=0 app=com.vivo.hiboard
+10-13 16:22:40.123  5209 23571 D libjpeg-alpha: Huffman Builder binding core: failed (Invalid argument)
+10-13 16:22:40.124  5209 23572 D libjpeg-alpha: Tile Decoder binding core: failed (Invalid argument)
+10-13 16:22:40.127  5209  6707 D skia    : stream getLength() not supported, use temp buffer for loading stream, buffer addr 0x6ea92a6000 length 67011
+10-13 16:22:40.128  5209  6707 D skia    : LoadInputStreamToMem va 0x6ea92a6000  size 69248
+10-13 16:22:40.129  5209  6707 D libjpeg-alpha: Huffman Builder run in subthread
+10-13 16:22:40.129  5209  6707 D libjpeg-alpha: Tile Decoder (#thread:4, size:256 256 256 312x480, alignment:256x16)
+10-13 16:22:40.130  5209 23576 D libjpeg-alpha: Huffman Builder binding core: failed (Invalid argument)
+10-13 16:22:40.134  5209 23582 D libjpeg-alpha: Tile Decoder binding core: failed (No such process)
+10-13 16:22:40.206  5209  6704 D skia    : stream getLength() not supported, use temp buffer for loading stream, buffer addr 0x6e317d3000 length 238374
+10-13 16:22:40.206  5209  6704 D skia    : LoadInputStreamToMem va 0x6e317d3000  size 240640
+10-13 16:22:40.210  5209  6706 D skia    : stream getLength() not supported, use temp buffer for loading stream, buffer addr 0x6e8a6bc000 length 171239
+10-13 16:22:40.211  5209  6706 D skia    : LoadInputStreamToMem va 0x6e8a6bc000  size 173440
+10-13 16:22:40.211  5209  6704 D libjpeg-alpha: Huffman Builder run in subthread
+10-13 16:22:40.212  5209  6706 D libjpeg-alpha: Huffman Builder run in subthread
+10-13 16:22:40.212  5209  6704 D libjpeg-alpha: Tile Decoder (#thread:4, size:256 256 256 312x480, alignment:256x16)
+10-13 16:22:40.213  5209  6706 D libjpeg-alpha: Tile Decoder (#thread:4, size:256 256 256 312x480, alignment:256x16)
+10-13 16:22:40.213  5209 23586 D libjpeg-alpha: Huffman Builder binding core: failed (Invalid argument)
+10-13 16:22:40.214  5209 23591 D libjpeg-alpha: Huffman Builder binding core: failed (Invalid argument)
+10-13 16:22:40.215  5209 23595 D libjpeg-alpha: Tile Decoder binding core: failed (Invalid argument)
+10-13 16:22:40.217  5209 23588 D libjpeg-alpha: Tile Decoder binding core: failed (Invalid argument)
+10-13 16:22:40.414 19051 19051 W milo-handler-th: type=1400 audit(0.0:517922): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46432 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:22:40.414 19051 19051 W milo-handler-th: type=1400 audit(0.0:517923): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46457 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:22:40.414 19051 19051 W milo-handler-th: type=1400 audit(0.0:517924): avc: denied { setattr } for name="stat" dev="proc" ino=35697355 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:22:41.370 23099 23597 W JobInfo : Requested interval +10m0s0ms for job 1 is too small; raising to +15m0s0ms
+10-13 16:22:41.371 23099 23314 I bigo-awake: bigo-awake >> init.
+10-13 16:22:41.372 23099 23314 I bigo-awake: bigo-awake >> update by config.
+10-13 16:22:41.372 23099 23314 I bigo-awake: bigo-awake >> config. type=32, enable=true, configs=8>sg.bigo.live|video.like>300>1800
+10-13 16:22:41.373 23099 23314 I bigo-awake: BigoAwakeSDK >> pn30, type=32, set enable=true, actual enable=true, options=Bundle[{pull_strategy_subtype=8, pull_strategy_pkg_list=[sg.bigo.live, video.like], pull_strategy_awake_duration=1800000, pull_strategy_awake_delay=300000}]
+10-13 16:22:41.374 23099 23314 I bigo-awake: BigoAwakeSDK >> enable, subType=32, ts=1791879761374
+10-13 16:22:41.408 23099 23285 D nativeloader: Load /data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/lib/arm64/liboverwallsdk.so using class loader ns clns-5 (caller=/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/base.apk): ok
+10-13 16:22:41.422 23099 23285 D overwallsdk: init: 3.4.452
+10-13 16:22:41.422 23099 23285 D overwallsdk: init linkd connect waiter list, enable:1
+10-13 16:22:41.422 19051 19051 W milo-handler-th: type=1400 audit(0.0:518020): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46432 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:22:41.422 19051 19051 W milo-handler-th: type=1400 audit(0.0:518021): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46457 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:22:41.422 19051 19051 W milo-handler-th: type=1400 audit(0.0:518022): avc: denied { setattr } for name="stat" dev="proc" ino=35697355 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:22:41.459 23099 23285 D nativeloader: Load /data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/lib/arm64/libanti.so using class loader ns clns-5 (caller=/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/base.apk!classes5.dex): ok
+10-13 16:22:41.465 23099 23314 I BLiveStatisSDK: Init Stat db: bigo_stats_62.db
+10-13 16:22:41.470 23099 23285 W libc    : Access denied finding property "vendor.boot.vbmeta.device_state"
+10-13 16:22:41.470 23099 23285 W libc    : Access denied finding property "ro.vendor.warranty_bit"
+10-13 16:22:41.470 23099 23285 W libc    : Access denied finding property "ro.vendor.boot.warranty_bit"
+10-13 16:22:41.500  5209  5209 D BLASTBufferQueue: [VRI[HiBoard]#5](f:0,a:1) destructor()
+10-13 16:22:41.500  5209  5209 D BufferQueueConsumer: [VRI[HiBoard]#5(BLAST Consumer)5](id:145900000005,api:0,p:-1,c:5209) disconnect
+10-13 16:22:41.546 23099 23099 W global-backgrou: type=1400 audit(0.0:518023): avc: denied { search } for name="net" dev="sysfs" ino=22783 scontext=u:r:untrusted_app:s0:c17,c257,c512,c768 tcontext=u:object_r:sysfs_net:s0 tclass=dir permissive=0 app=com.imo.android.imoim
+10-13 16:22:41.554 23099 23285 W Settings: Setting adb_enabled has moved from android.provider.Settings.Secure to android.provider.Settings.Global.
+10-13 16:22:41.560 23099 23285 W libc    : Access denied finding property "net.dns1"
+10-13 16:22:41.561 23099 23285 W libc    : Access denied finding property "net.dns2"
+10-13 16:22:41.561 23099 23285 W libc    : Access denied finding property "net.dns3"
+10-13 16:22:41.561 23099 23285 W libc    : Access denied finding property "net.dns4"
+10-13 16:22:41.566 23099 23285 I ProxyLibraryEnsurer: start load proxy so
+10-13 16:22:41.566 23099 23285 I ProxyLibraryEnsurer: load c++_shared done
+10-13 16:22:41.566 23099 23285 I ProxyLibraryEnsurer: load openssl done
+10-13 16:22:41.571 23099 23285 D nativeloader: Load /data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/lib/arm64/libproxy.so using class loader ns clns-5 (caller=/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/base.apk!classes5.dex): ok
+10-13 16:22:41.579 23099 23285 I ProxyLibraryEnsurer: load proxy done
+10-13 16:22:41.580 23099 23285 W Settings: Setting adb_enabled has moved from android.provider.Settings.Secure to android.provider.Settings.Global.
+10-13 16:22:41.581 23099 23285 W libc    : Access denied finding property "net.dns1"
+10-13 16:22:41.581 23099 23285 W libc    : Access denied finding property "net.dns2"
+10-13 16:22:41.581 23099 23285 W libc    : Access denied finding property "net.dns3"
+10-13 16:22:41.581 23099 23285 W libc    : Access denied finding property "net.dns4"
+10-13 16:22:41.586 23099 23285 I ProxyLibraryEnsurer: okHttpDisableFaking:false
+10-13 16:22:41.586 23099 23285 I ProxyLibraryEnsurer: preloadGonet:false
+10-13 16:22:41.587 23099 23285 I PR-ProxyConfigManager: updateSettings: inGbox: 0, fixSigsegv: 1, hookLog: 0, disableGonetInGBox: 1, optHsCrash: 0, okhttpDisableFaking: 0
+10-13 16:22:41.606 23099 23257 D nativeloader: Load /data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/lib/arm64/libzstd-jni.so using class loader ns clns-5 (caller=/data/app/~~Zl_k-MBb1MKh6GCkF4HJtw==/com.imo.android.imoim-QTY6LHserYZiLPYv1_ZXZw==/split_Websocket.apk): ok
+10-13 16:22:41.635 20988 16170 I native  : I0000 00:00:1791879761.635612   16170 soda_async_impl.cc:1420] Current audio timestamp: 1791879761249559
+10-13 16:22:42.430 19051 19051 W milo-handler-th: type=1400 audit(0.0:518024): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46432 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:22:42.430 19051 19051 W milo-handler-th: type=1400 audit(0.0:518025): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46457 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:22:42.434 19051 19051 W milo-handler-th: type=1400 audit(0.0:518026): avc: denied { setattr } for name="stat" dev="proc" ino=35697355 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:22:42.696 20988 21021 I fdjy    : (REDACTED) #onAudioData: %s bytes, getAudioReadSize %s
+10-13 16:22:43.374 29975 29975 W ThreadPoolForeg: type=1400 audit(0.0:518027): avc: denied { write } for name="traced_producer" dev="tmpfs" ino=18162 scontext=u:r:gmscore_app:s0:c512,c768 tcontext=u:object_r:traced_producer_socket:s0 tclass=sock_file permissive=0 app=com.google.android.gms
+10-13 16:22:43.458 19051 19051 W milo-handler-th: type=1400 audit(0.0:518028): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46432 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:22:43.458 19051 19051 W milo-handler-th: type=1400 audit(0.0:518029): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46457 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:22:43.458 19051 19051 W milo-handler-th: type=1400 audit(0.0:518030): avc: denied { setattr } for name="stat" dev="proc" ino=35697355 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:22:43.597 20988  6387 I fddz    : (REDACTED) HDM. appOpsListener %s %s
+10-13 16:22:43.598 20988  6387 I fddz    : (REDACTED) HDM. Ignoring irrelevant audio permission changes for package %s
+10-13 16:22:44.466 19051 19051 W milo-handler-th: type=1400 audit(0.0:518035): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46432 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:22:44.466 19051 19051 W milo-handler-th: type=1400 audit(0.0:518036): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46457 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:22:44.466 19051 19051 W milo-handler-th: type=1400 audit(0.0:518037): avc: denied { setattr } for name="stat" dev="proc" ino=35697355 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tclass=file permissive=0 app=com.ss.android.ugc.trill

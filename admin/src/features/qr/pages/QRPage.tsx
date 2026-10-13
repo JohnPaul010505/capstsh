@@ -11,8 +11,18 @@ import { useFitSquare } from '@/hooks/useFitRows'
 import { Eye, Check, X, Plus } from 'lucide-react'
 import AppBackground from '@/components/AppBackground'
 
-const PUBLIC_ORIGIN = import.meta.env.VITE_PUBLIC_URL?.trim() || window.location.origin
+// Enrollment URL. In dev, keep the configured public URL (VITE_PUBLIC_URL)
+// so the printed QR always matches the running dev server. In production the
+// build no longer carries that dev constant, so resolve the URL at runtime
+// from the origin that actually served the page: a build-time constant would
+// bake a dev-server address into the QR, and a phone scanning it anywhere
+// other than that dev machine would get a dead link.
+const PUBLIC_ORIGIN = import.meta.env.DEV
+  ? (import.meta.env.VITE_PUBLIC_URL?.trim() || window.location.origin)
+  : window.location.origin
 const PAGE_URL = new URL('/enroll', PUBLIC_ORIGIN).toString()
+const PAGE_HOST = new URL(PAGE_URL).hostname
+const IS_LOCAL_QR = PAGE_HOST === 'localhost' || PAGE_HOST === '127.0.0.1' || PAGE_HOST.startsWith('192.168.')
 
 /**
  * The page is three views, not one long page.
@@ -140,7 +150,11 @@ export default function QRPage() {
           emergencyContactPhone: formData.emergencyContactPhone || undefined,
         }),
       })
-      if (!res.ok) throw new Error('Failed to create user')
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        const detail = [data.error, data.details].filter(Boolean).join(' — ')
+        throw new Error(detail || `Failed to create user (HTTP ${res.status})`)
+      }
       setShowModal(false); setFormData(emptyForm); setPassword(''); setConfirmPassword('')
       queryClient.invalidateQueries({ queryKey: ['enrollments'] })
     } catch (err) {
@@ -379,6 +393,10 @@ export default function QRPage() {
               <p className="text-base font-semibold text-fg-strong mb-4">Enrollment Form</p>
               <QRCodeSVG value={PAGE_URL} size={enrollSize} bgColor={qrBg} fgColor={qrFg} />
               <p className="text-sm text-fg-muted mt-5 text-center">Scan to open the sign-up form</p>
+              <a href={PAGE_URL} target="_blank" rel="noreferrer" className="max-w-full break-all text-xs text-[#A855F7] mt-2 text-center">
+                {PAGE_URL}
+              </a>
+              {IS_LOCAL_QR && <p className="text-xs text-fg-muted mt-1 text-center">For this local QR, your phone must be on the same Wi-Fi as this computer.</p>}
             </div>
             <div
               data-qr="checkin"

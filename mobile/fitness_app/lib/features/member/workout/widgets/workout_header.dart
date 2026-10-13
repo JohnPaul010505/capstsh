@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/workout_session_provider.dart';
 import 'package:fitness_app/app/design_tokens.dart';
 import '../../../shared/widgets/animations.dart';
+import '../../../shared/widgets/glass_card.dart';
 
 class WorkoutHeader extends ConsumerWidget {
   final WorkoutSessionState session;
@@ -31,13 +32,13 @@ class WorkoutHeader extends ConsumerWidget {
     final Color chipFg;
     if (isRunning) {
       chipBg = const Color(0xFFEF4444); // red — live workout
-      chipFg = Colors.white;
+      chipFg = ClayTokens.clayDarkTextPrimary;
     } else if (isDone) {
       chipBg = const Color(0xFF30D158); // green — workout finished
       chipFg = const Color(0xFF052E16); // dark text stays readable on green
     } else {
       chipBg = ClayTokens.clayPrimary; // purple — not started yet
-      chipFg = Colors.white;
+      chipFg = ClayTokens.clayDarkTextPrimary;
     }
     return Row(
       children: [
@@ -52,10 +53,10 @@ class WorkoutHeader extends ConsumerWidget {
                     'WORKOUT LOG',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 21,
                       fontWeight: FontWeight.w800,
-                      color: Color(0xFFFFFFFF),
+                      color: glassInk(),
                     ),
                   ),
                 ),
@@ -105,7 +106,7 @@ class WorkoutHeader extends ConsumerWidget {
                   ),
                   child: Text(
                     '$totalWorkouts total',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
                       color: Colors.white,
@@ -128,7 +129,7 @@ class WorkoutHeader extends ConsumerWidget {
                     ),
                     child: Text(
                       DateFormat('MMM d').format(DateTime.now()),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
                         color: Colors.white,

@@ -37,7 +37,7 @@ class NotificationBell extends ConsumerWidget {
           children: [
             Icon(
               isActive ? Icons.notifications : Icons.notifications_outlined,
-              color: isActive ? ClayTokens.clayPrimary : ClayTokens.clayDarkTextPrimary,
+              color: isActive ? ClayTokens.clayPrimary : ClayTokens.clayDarkTextSecondary,
               size: 22,
             ),
             if (count > 0)
@@ -60,7 +60,7 @@ class NotificationBell extends ConsumerWidget {
         ),
       ),
       loading: () => const SizedBox(width: 22, height: 22),
-      error: (_, __) => Icon(Icons.notifications_outlined, color: ClayTokens.clayDarkTextPrimary, size: 22),
+      error: (_, __) => Icon(Icons.notifications_outlined, color: ClayTokens.clayDarkTextSecondary, size: 22),
     );
   }
 }
@@ -280,7 +280,7 @@ class _PopupOverlayState extends ConsumerState<_PopupOverlay> {
           left: arrowLeft,
           child: CustomPaint(
             size: const Size(arrowWidth, arrowHeight),
-            painter: _ArrowPainter(Colors.white.withAlpha(36)), // glass
+            painter: _ArrowPainter(ClayTokens.hairline.withAlpha(36)), // glass
           ),
         ),
         Positioned(
@@ -294,14 +294,15 @@ class _PopupOverlayState extends ConsumerState<_PopupOverlay> {
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withAlpha(105),
+                    color: Colors.black.withAlpha(
+                        ClayColors.isLightMode ? 60 : 105),
                     blurRadius: 24,
                     offset: const Offset(0, 10),
                   ),
                   BoxShadow(
                     color: ClayTokens.clayPrimary.withAlpha(36),
                     blurRadius: 44,
-                    offset: const Offset(0, 4),
+                    offset: Offset(0, 4),
                   ),
                 ],
               ),
@@ -312,39 +313,50 @@ class _PopupOverlayState extends ConsumerState<_PopupOverlay> {
                   child: Container(
                     height: 500,
                     decoration: BoxDecoration(
-                      // Dark liquid glass: mostly opaque so text stays crisp,
-                      // but the live background still ghosts through the blur.
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [
-                          const Color(0xFF14142A).withAlpha(150),
-                          const Color(0xFF221A4A).withAlpha(120),
-                          const Color(0xFF14142A).withAlpha(160),
-                        ],
+                        colors: ClayColors.isLightMode
+                            ? [
+                                ClayTokens.claySurfaceLight.withAlpha(220),
+                                ClayTokens.claySurfaceLight.withAlpha(235),
+                                ClayTokens.claySurfaceLight.withAlpha(225),
+                              ]
+                            : [
+                                const Color(0xFF14142A).withAlpha(150),
+                                const Color(0xFF221A4A).withAlpha(120),
+                                const Color(0xFF14142A).withAlpha(160),
+                              ],
                         stops: const [0.0, 0.55, 1.0],
                       ),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.white.withAlpha(38)),
+                      border: Border.all(
+                        color: ClayColors.isLightMode
+                            ? ClayTokens.clayPrimary.withAlpha(45)
+                            : ClayTokens.hairline.withAlpha(38)),
                     ),
                     child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // Header — swaps between plain title and back+title
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                          Colors.white.withAlpha(18),
-                          Colors.white.withAlpha(5),
+                          ClayTokens.hairline.withAlpha(18),
+                          ClayTokens.hairline.withAlpha(5),
                         ],
                       ),
                       borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                      border: const Border(
-                        bottom: BorderSide(color: Colors.white24, width: 1.0),
+                      border: Border(
+                        bottom: BorderSide(
+                          color: ClayColors.isLightMode
+                              ? ClayTokens.clayPrimary.withAlpha(40)
+                              : ClayTokens.clayDarkTextSecondary,
+                          width: 1.0),
                       ),
                     ),
                     child: Row(
@@ -357,7 +369,9 @@ class _PopupOverlayState extends ConsumerState<_PopupOverlay> {
                                   child: Icon(
                                     CupertinoIcons.chevron_left,
                                     size: 20,
-                                    color: ClayTokens.clayDarkTextPrimary,
+                                    color: ClayColors.isLightMode
+                                        ? ClayTokens.clayTextPrimary
+                                        : ClayTokens.clayDarkTextPrimary,
                                   ),
                                 )
                               : null,
@@ -369,7 +383,9 @@ class _PopupOverlayState extends ConsumerState<_PopupOverlay> {
                             style: ClayTokens.titleLarge.copyWith(
                               fontSize: 17,
                               fontWeight: FontWeight.w600,
-                              color: ClayTokens.clayDarkTextPrimary,
+                              color: ClayColors.isLightMode
+                                  ? ClayTokens.clayTextPrimary
+                                  : ClayTokens.clayDarkTextPrimary,
                               letterSpacing: -0.41,
                             ),
                           ),
@@ -391,6 +407,7 @@ class _PopupOverlayState extends ConsumerState<_PopupOverlay> {
                               child: _NotificationDetail(
                                 notification: _selected!,
                                 formatDate: _formatDate,
+                                isLight: ClayColors.isLightMode,
                               ),
                             )
                           : _buildList(),
@@ -436,6 +453,7 @@ class _PopupOverlayState extends ConsumerState<_PopupOverlay> {
         return _NotificationItem(
           notification: n,
           onTap: () => _openDetail(n),
+          isLight: ClayColors.isLightMode,
         );
       },
     );
@@ -445,10 +463,12 @@ class _PopupOverlayState extends ConsumerState<_PopupOverlay> {
 class _NotificationItem extends StatelessWidget {
   final AppNotification notification;
   final VoidCallback onTap;
+  final bool isLight;
 
   const _NotificationItem({
     required this.notification,
     required this.onTap,
+    required this.isLight,
   });
 
   @override
@@ -456,14 +476,16 @@ class _NotificationItem extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           color: notification.read
-              ? Colors.transparent
-              : Colors.white.withAlpha(16),
+              ? (isLight ? ClayTokens.claySurfaceLight.withAlpha(120) : Colors.transparent)
+              : (isLight ? ClayTokens.clayPrimary.withAlpha(25) : ClayTokens.hairline.withAlpha(16)),
           border: Border(
             bottom: BorderSide(
-              color: Colors.white.withAlpha(18),
+              color: isLight
+                  ? ClayTokens.clayPrimary.withAlpha(30)
+                  : ClayTokens.hairline.withAlpha(18),
               width: 1.0,
             ),
           ),
@@ -478,7 +500,7 @@ class _NotificationItem extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: notification.read
-                    ? Colors.transparent
+                    ? (isLight ? ClayTokens.clayPrimary.withAlpha(40) : Colors.transparent)
                     : ClayTokens.clayPrimary,
               ),
             ),
@@ -488,7 +510,7 @@ class _NotificationItem extends StatelessWidget {
                 style: ClayTokens.titleLarge.copyWith(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
-                  color: ClayTokens.clayDarkTextPrimary,
+                  color: isLight ? ClayTokens.clayTextPrimary : ClayTokens.clayDarkTextPrimary,
                   letterSpacing: -0.41,
                 ),
               ),
@@ -503,10 +525,12 @@ class _NotificationItem extends StatelessWidget {
 class _NotificationDetail extends StatelessWidget {
   final AppNotification notification;
   final String Function(DateTime) formatDate;
+  final bool isLight;
 
   const _NotificationDetail({
     required this.notification,
     required this.formatDate,
+    required this.isLight,
   });
 
   @override
@@ -533,7 +557,7 @@ class _NotificationDetail extends StatelessWidget {
             style: ClayTokens.titleLarge.copyWith(
               fontSize: 17,
               fontWeight: FontWeight.w700,
-              color: ClayTokens.clayDarkTextPrimary,
+              color: isLight ? ClayTokens.clayTextPrimary : ClayTokens.clayDarkTextPrimary,
               letterSpacing: -0.41,
             ),
           ),
@@ -542,7 +566,7 @@ class _NotificationDetail extends StatelessWidget {
             formatDate(notification.createdAt),
             style: TextStyle(
               fontSize: 12,
-              color: ClayTokens.clayDarkTextTertiary,
+              color: isLight ? ClayTokens.clayTextSecondary : ClayTokens.clayDarkTextTertiary,
             ),
           ),
           const SizedBox(height: 16),
@@ -551,7 +575,7 @@ class _NotificationDetail extends StatelessWidget {
             style: TextStyle(
               fontSize: 14,
               height: 1.5,
-              color: ClayTokens.clayDarkTextSecondary,
+              color: isLight ? ClayTokens.clayTextSecondary : ClayTokens.clayDarkTextSecondary,
             ),
           ),
           const SizedBox(height: 12),
@@ -561,7 +585,7 @@ class _NotificationDetail extends StatelessWidget {
               '- ${senderName?.isNotEmpty == true ? senderName : 'Admin'}',
               style: TextStyle(
                 fontSize: 12,
-                color: ClayTokens.clayDarkTextTertiary,
+                color: isLight ? ClayTokens.clayTextSecondary : ClayTokens.clayDarkTextTertiary,
                 fontStyle: FontStyle.italic,
               ),
             ),

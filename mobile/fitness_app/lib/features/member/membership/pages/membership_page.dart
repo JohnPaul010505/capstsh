@@ -137,28 +137,31 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
             child: Container(
-              padding: const EdgeInsets.all(22),
+              padding: EdgeInsets.all(22),
               decoration: BoxDecoration(
                 color: ClayTokens.clayDarkSurface.withAlpha(238),
                 borderRadius: BorderRadius.circular(22),
-                border: Border.all(color: Colors.white.withAlpha(35)),
+                border: Border.all(color: ClayTokens.hairline.withAlpha(35)),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text(
+                  Text(
                     'Cancel membership?',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: ClayTokens.clayDarkTextPrimary,
                       fontSize: 19,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 10),
-                  const Text(
+                  Text(
                     'Your membership remains active until the admin reviews your request. Continue to the cancellation details?',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white, fontSize: 14),
+                    style: TextStyle(
+                      color: ClayTokens.clayDarkTextSecondary,
+                      fontSize: 14,
+                    ),
                   ),
                   const SizedBox(height: 20),
                   Row(
@@ -167,9 +170,9 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
                         child: CupertinoButton(
                           color: const Color(0xFF7C3AED),
                           onPressed: () => Navigator.pop(context, false),
-                          child: const Text(
+                          child: Text(
                             'No',
-                            style: TextStyle(color: Colors.white),
+                            style: TextStyle(color: ClayTokens.clayDarkTextPrimary),
                           ),
                         ),
                       ),
@@ -178,9 +181,9 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
                         child: CupertinoButton(
                           color: const Color(0xFFDC2626),
                           onPressed: () => Navigator.pop(context, true),
-                          child: const Text(
+                          child: Text(
                             'Yes',
-                            style: TextStyle(color: Colors.white),
+                            style: TextStyle(color: ClayTokens.clayDarkTextPrimary),
                           ),
                         ),
                       ),
@@ -201,7 +204,7 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
     final stateAsync = ref.watch(membershipProvider);
 
     return CupertinoPageScaffold(
-      backgroundColor: ClayTokens.clayDarkBase,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       child: AppGlowBackground(
         child: SafeArea(
           child: Column(
@@ -288,8 +291,8 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
             borderRadius: BorderRadius.circular(12),
             onPressed: canApply && !_submitting ? _applyForRenewal : null,
             child: _submitting
-                ? const CupertinoActivityIndicator(
-                    color: Colors.white,
+                ? CupertinoActivityIndicator(
+                    color: ClayTokens.clayDarkTextPrimary,
                     radius: 10,
                   )
                 : Text(
@@ -328,12 +331,12 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
               borderRadius: BorderRadius.circular(12),
               color: const Color(0xFFDC2626),
               onPressed: _submitting ? null : _requestCancellation,
-              child: const Text(
+              child: Text(
                 'Request Membership Cancellation',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
-                  color: Colors.white,
+                  color: ClayTokens.clayDarkTextPrimary,
                 ),
               ),
             ),
@@ -381,12 +384,12 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
         : '${endD.year}-${endD.month.toString().padLeft(2, '0')}-${endD.day.toString().padLeft(2, '0')}';
     final cancelled = membership.status == 'cancelled';
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      margin: EdgeInsets.only(bottom: 8),
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white.withAlpha(10),
+        color: ClayTokens.hairline.withAlpha(10),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withAlpha(24)),
+        border: Border.all(color: ClayTokens.hairline.withAlpha(24)),
       ),
       child: Row(
         children: [
@@ -398,10 +401,10 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
               children: [
                 Text(
                   '${membership.planName} plan',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: Colors.white,
+                    color: ClayTokens.clayDarkTextPrimary,
                   ),
                 ),
                 Text(
@@ -443,12 +446,12 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
         : 'DECLINED';
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      margin: EdgeInsets.only(bottom: 8),
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white.withAlpha(10),
+        color: ClayTokens.hairline.withAlpha(10),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withAlpha(24)),
+        border: Border.all(color: ClayTokens.hairline.withAlpha(24)),
       ),
       child: Row(
         children: [
@@ -459,10 +462,10 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
                 Text(
                   '${request.planName} renewal'
                   '${request.months > 1 ? ' - ${request.months} months' : ''}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: Colors.white,
+                    color: ClayTokens.clayDarkTextPrimary,
                   ),
                 ),
                 Text(
@@ -514,12 +517,12 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
         : const Color(0xFFFF9F0A);
     final refund = (request['refund_amount'] as num?)?.toDouble();
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      margin: EdgeInsets.only(bottom: 8),
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white.withAlpha(10),
+        color: ClayTokens.hairline.withAlpha(10),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withAlpha(24)),
+        border: Border.all(color: ClayTokens.hairline.withAlpha(24)),
       ),
       child: Row(
         children: [
@@ -527,12 +530,12 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Membership cancellation',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: Colors.white,
+                    color: ClayTokens.clayDarkTextPrimary,
                   ),
                 ),
                 Text(
@@ -588,9 +591,9 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
-                color: Color(0xFFD8D8DE),
+                color: ClayTokens.clayDarkTextSecondary,
                 height: 1.35,
               ),
             ),
@@ -612,16 +615,19 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
           CupertinoButton(
             padding: EdgeInsets.zero,
             onPressed: () => context.pop(),
-            child: const Icon(CupertinoIcons.back, color: Colors.white),
+            child: Icon(
+              CupertinoIcons.back,
+              color: ClayTokens.clayDarkTextPrimary,
+            ),
           ),
-          const Expanded(
+          Expanded(
             child: Text(
               'Membership',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w600,
-                color: Colors.white,
+                color: ClayTokens.clayDarkTextPrimary,
               ),
             ),
           ),

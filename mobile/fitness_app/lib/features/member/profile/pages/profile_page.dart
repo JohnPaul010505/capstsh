@@ -17,82 +17,87 @@ class ProfilePage extends ConsumerWidget {
     final authState = ref.watch(authProvider);
 
     return Scaffold(
-      backgroundColor: ClayTokens.clayDarkBase,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: authState.when(
         data: (profile) => AppGlowBackground(
           child: SafeArea(
             child: Column(
-            children: [
-              _buildNavBar(),
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                  children: [
-                    ClayCard(
-                      variant: ClayCardVariant.elevated,
-                      padding: ClayCardPadding.large,
-                      child: Column(
-                        children: [
-                          ClayAvatar(
-                            initials: (profile?.fullName ?? '?')[0].toUpperCase(),
-                            size: ClayAvatarSize.xl,
-                            backgroundColor: ClayTokens.clayPrimary,
-                            textColor: ClayTokens.clayDarkTextPrimary,
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            profile?.fullName ?? '',
-                            textAlign: TextAlign.center,
-                            style: ClayTokens.headlineMedium.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: ClayTokens.clayDarkTextPrimary,
-                              letterSpacing: 0.38,
+              children: [
+                _buildNavBar(),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 16,
+                    ),
+                    children: [
+                      ClayCard(
+                        variant: ClayCardVariant.elevated,
+                        padding: ClayCardPadding.large,
+                        child: Column(
+                          children: [
+                            ClayAvatar(
+                              initials: (profile?.fullName ?? '?')[0]
+                                  .toUpperCase(),
+                              size: ClayAvatarSize.xl,
+                              backgroundColor: ClayTokens.clayPrimary,
+                              textColor: ClayTokens.clayDarkTextPrimary,
                             ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            profile?.email ?? '',
-                            textAlign: TextAlign.center,
-                            style: ClayTokens.bodyLarge.copyWith(
-                              fontSize: 15,
-                              color: ClayTokens.clayDarkTextSecondary,
-                              letterSpacing: -0.24,
+                            const SizedBox(height: 12),
+                            Text(
+                              profile?.fullName ?? '',
+                              textAlign: TextAlign.center,
+                              style: ClayTokens.headlineMedium.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: ClayTokens.clayDarkTextPrimary,
+                                letterSpacing: 0.38,
+                              ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 4),
+                            Text(
+                              profile?.email ?? '',
+                              textAlign: TextAlign.center,
+                              style: ClayTokens.bodyLarge.copyWith(
+                                fontSize: 15,
+                                color: ClayTokens.clayDarkTextSecondary,
+                                letterSpacing: -0.24,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 24),
-                    ClayFeatureCard(
-                      icon: Icons.settings_outlined,
-                      iconColor: ClayTokens.clayPrimary,
-                      title: 'Settings',
-                      subtitle: 'Account and app preferences',
-                      onTap: () => context.push('/member/settings'),
-                      borderRadius: BorderRadius.circular(ClayTokens.radiusButton),
-                    ),
-                    const SizedBox(height: 24),
-                    ClayButton(
-                      label: 'Sign Out',
-                      onPressed: () async {
-                        final confirm =
-                            await showGlassSignOutDialog(context);
-                        if (confirm) {
-                          await ref.read(authProvider.notifier).signOut();
-                        }
-                      },
-                      style: ClayButtonStyle.destructive,
-                      fullWidth: true,
-                      size: ClayButtonSize.large,
-                    ),
-                    const SizedBox(height: 16),
-                  ],
+                      const SizedBox(height: 24),
+                      ClayFeatureCard(
+                        icon: Icons.settings_outlined,
+                        iconColor: ClayTokens.clayPrimary,
+                        title: 'Settings',
+                        subtitle: 'Account and app preferences',
+                        onTap: () => context.push('/member/settings'),
+                        borderRadius: BorderRadius.circular(
+                          ClayTokens.radiusButton,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      ClayButton(
+                        label: 'Sign Out',
+                        onPressed: () async {
+                          final confirm = await showGlassSignOutDialog(context);
+                          if (confirm) {
+                            await ref.read(authProvider.notifier).signOut();
+                          }
+                        },
+                        style: ClayButtonStyle.destructive,
+                        fullWidth: true,
+                        size: ClayButtonSize.large,
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-      ),
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
           child: Text(

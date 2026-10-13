@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared/providers/auth_provider.dart';
 import 'package:shared/services/auth_service.dart';
+import 'package:fitness_app/app/design_tokens.dart';
 import '../../../app/cupertino_theme.dart';
 import '../../shared/widgets/animations.dart';
 import '../../shared/widgets/app_glow_background.dart';
@@ -145,13 +146,14 @@ class _LoginPageState extends ConsumerState<LoginPage>
         child: AnimatedBuilder(
           animation: _bgAnim,
           builder: (context, child) {
-            // Member-home glow background: the same AppGlowBackground every
-            // other screen uses, so the login matches the rest of the app.
+            // Login page is always dark regardless of the theme toggle: the
+            // glow background uses the dark base colour so the page never
+            // turns white when the app is in light mode.
             return Stack(
               children: [
                 Positioned.fill(
                   child: IgnorePointer(
-                    child: AppGlowBackground(child: SizedBox.expand()),
+                    child: _DarkGlowBackground(child: SizedBox.expand()),
                   ),
                 ),
                 child!,
@@ -410,6 +412,33 @@ class _LoginPageState extends ConsumerState<LoginPage>
                                           ),
                                         ),
                                       ),
+                                      Align(
+                                        alignment: Alignment.centerRight,
+                                        child: TextButton(
+                                          onPressed: _loading
+                                              ? null
+                                              : () => context.push(
+                                                  '/forgot-password',
+                                                ),
+                                          style: TextButton.styleFrom(
+                                            foregroundColor:
+                                                CupertinoAppColors.purple,
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 4,
+                                              vertical: 8,
+                                            ),
+                                            visualDensity:
+                                                VisualDensity.compact,
+                                          ),
+                                          child: const Text(
+                                            'Forgot password?',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
                                       if (_error != null) ...[
                                         const SizedBox(height: 14),
                                         AnimatedBuilder(
@@ -622,12 +651,12 @@ class _FloatingLabelInputState extends State<_FloatingLabelInput> {
     final focused = widget.focusNode.hasFocus;
 
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
+      duration: Duration(milliseconds: 200),
       curve: Curves.easeInOut,
       decoration: BoxDecoration(
         // Glass fill: translucent white over the card's backdrop blur so the
         // glow shows through (matches the wizard's glass inputs).
-        color: Colors.white.withValues(alpha: 0.07),
+        color: ClayTokens.hairline.withValues(alpha: 0.07),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: focused
@@ -674,7 +703,7 @@ class _FloatingLabelInputState extends State<_FloatingLabelInput> {
                   sfText(
                     fontSize: 11,
                     color: focused
-                        ? Colors.white
+                        ? ClayTokens.clayDarkTextPrimary
                         : CupertinoAppColors.textTertiary,
                   ),
                 ),
@@ -683,6 +712,138 @@ class _FloatingLabelInputState extends State<_FloatingLabelInput> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Dark-only glow background for the login page. Unlike [AppGlowBackground]
+/// this always renders the dark base colour and full-intensity purple blobs
+/// so the login screen stays dark even when the app is toggled to light mode.
+class _DarkGlowBackground extends StatelessWidget {
+  final Widget child;
+  const _DarkGlowBackground({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: ColoredBox(
+            color: const Color(0xFF0D0D1A),
+          ),
+        ),
+        // Top band
+        Positioned(
+          top: -80,
+          right: -60,
+          child: _GlowBlob(
+            size: 230,
+            colors: [
+              const Color(0x4D7C3AED),
+              const Color(0x007C3AED),
+            ],
+          ),
+        ),
+        Positioned(
+          top: 30,
+          left: -80,
+          child: _GlowBlob(
+            size: 220,
+            colors: [
+              const Color(0x4DA78BFA),
+              const Color(0x00A78BFA),
+            ],
+          ),
+        ),
+        Positioned(
+          top: 120,
+          right: 40,
+          child: _GlowBlob(
+            size: 150,
+            colors: [
+              const Color(0x3DD946EF),
+              const Color(0x00D946EF),
+            ],
+          ),
+        ),
+        // Middle band
+        Positioned(
+          top: 330,
+          left: -90,
+          child: _GlowBlob(
+            size: 250,
+            colors: [
+              const Color(0x3D5E3AEE),
+              const Color(0x005E3AEE),
+            ],
+          ),
+        ),
+        Positioned(
+          top: 430,
+          right: -80,
+          child: _GlowBlob(
+            size: 240,
+            colors: [
+              const Color(0x40EC4899),
+              const Color(0x00EC4899),
+            ],
+          ),
+        ),
+        // Lower band
+        Positioned(
+          bottom: 60,
+          left: 30,
+          child: _GlowBlob(
+            size: 170,
+            colors: [
+              const Color(0x3322D3EE),
+              const Color(0x0022D3EE),
+            ],
+          ),
+        ),
+        Positioned(
+          bottom: -70,
+          right: -70,
+          child: _GlowBlob(
+            size: 260,
+            colors: [
+              const Color(0x4D6D28D9),
+              const Color(0x006D28D9),
+            ],
+          ),
+        ),
+        Positioned(
+          bottom: -30,
+          left: -60,
+          child: _GlowBlob(
+            size: 200,
+            colors: [
+              const Color(0x40C56BF0),
+              const Color(0x00C56BF0),
+            ],
+          ),
+        ),
+        child,
+      ],
+    );
+  }
+}
+
+class _GlowBlob extends StatelessWidget {
+  final double size;
+  final List<Color> colors;
+
+  const _GlowBlob({required this.size, required this.colors});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(colors: colors),
       ),
     );
   }

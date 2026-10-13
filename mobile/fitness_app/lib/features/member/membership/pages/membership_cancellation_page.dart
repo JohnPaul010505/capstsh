@@ -1,10 +1,11 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart' show Colors, ScaffoldMessenger, SnackBar;
+import 'package:flutter/material.dart'
+    show ScaffoldMessenger, SnackBar, Theme;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../app/design_tokens.dart';
 import 'package:shared/providers/auth_provider.dart';
 import 'package:shared/services/supabase_client.dart';
-import '../../../../app/design_tokens.dart';
 import '../../../shared/widgets/app_glow_background.dart';
 import '../providers/membership_provider.dart';
 
@@ -67,16 +68,16 @@ class _MembershipCancellationPageState
     final membership = state?.activeMembership;
     if (membership == null) {
       return CupertinoPageScaffold(
-        backgroundColor: ClayTokens.clayDarkBase,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         child: SafeArea(
           child: Column(
             children: [
               _header(),
-              const Expanded(
+              Expanded(
                 child: Center(
                   child: Text(
                     'No active membership to cancel.',
-                    style: TextStyle(color: Colors.white),
+                    style: TextStyle(color: ClayTokens.clayDarkTextPrimary),
                   ),
                 ),
               ),
@@ -100,7 +101,7 @@ class _MembershipCancellationPageState
                           : _attendanceDays!))
               .clamp(0, membership.price);
     return CupertinoPageScaffold(
-      backgroundColor: ClayTokens.clayDarkBase,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       child: AppGlowBackground(
         child: SafeArea(
           child: Column(
@@ -110,18 +111,18 @@ class _MembershipCancellationPageState
                 child: ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
-                    const Text(
+                    Text(
                       'CANCELLATION REQUEST',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: ClayTokens.clayDarkTextPrimary,
                         fontWeight: FontWeight.w800,
                         fontSize: 20,
                       ),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                       'Your request will be reviewed by the gym admin. Your membership stays active until it is approved.',
-                      style: TextStyle(color: Color(0xFFB4B4D0), height: 1.4),
+                      style: TextStyle(color: ClayTokens.clayDarkTextSecondary, height: 1.4),
                     ),
                     const SizedBox(height: 18),
                     _infoCard('Plan', membership.planName),
@@ -138,7 +139,9 @@ class _MembershipCancellationPageState
                     _infoCard(
                       'Estimated refund',
                       estimate == null
-                          ? (_attendanceLoaded ? 'Unavailable' : 'Calculating…')
+                          ? (_attendanceLoaded
+                                ? 'Unavailable'
+                                : 'Calculating…')
                           : '₱${estimate.toStringAsFixed(2)}',
                     ),
                     const SizedBox(height: 10),
@@ -150,20 +153,22 @@ class _MembershipCancellationPageState
                         height: 1.4,
                       ),
                     ),
-                    const SizedBox(height: 18),
+                    SizedBox(height: 18),
                     CupertinoTextField(
                       controller: _note,
                       placeholder: 'Reason or note (optional)',
                       minLines: 3,
                       maxLines: 5,
-                      padding: const EdgeInsets.all(12),
-                      style: const TextStyle(color: Colors.white),
-                      placeholderStyle: const TextStyle(
-                        color: Color(0xFF8E8E93),
+                      padding: EdgeInsets.all(12),
+                      style: TextStyle(
+                        color: ClayTokens.clayDarkTextPrimary,
+                      ),
+                      placeholderStyle: TextStyle(
+                        color: ClayTokens.clayDarkTextTertiary,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white.withAlpha(12),
-                        border: Border.all(color: Colors.white.withAlpha(24)),
+                        color: ClayTokens.hairline.withAlpha(12),
+                        border: Border.all(color: ClayTokens.hairline.withAlpha(24)),
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
@@ -173,8 +178,8 @@ class _MembershipCancellationPageState
                           ? null
                           : () => _submit(membership),
                       child: _saving
-                          ? const CupertinoActivityIndicator(
-                              color: Colors.white,
+                          ? CupertinoActivityIndicator(
+                              color: ClayTokens.clayDarkTextPrimary,
                             )
                           : const Text('Send Cancellation Request'),
                     ),
@@ -195,14 +200,17 @@ class _MembershipCancellationPageState
         CupertinoButton(
           padding: EdgeInsets.zero,
           onPressed: () => context.pop(),
-          child: const Icon(CupertinoIcons.back, color: Colors.white),
+          child: Icon(
+            CupertinoIcons.back,
+            color: ClayTokens.clayDarkTextPrimary,
+          ),
         ),
-        const Expanded(
+        Expanded(
           child: Text(
             'Cancel Membership',
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: Colors.white,
+              color: ClayTokens.clayDarkTextPrimary,
               fontWeight: FontWeight.w700,
               fontSize: 17,
             ),
@@ -214,22 +222,22 @@ class _MembershipCancellationPageState
   );
 
   Widget _infoCard(String label, String value) => Container(
-    margin: const EdgeInsets.only(bottom: 9),
-    padding: const EdgeInsets.all(13),
+    margin: EdgeInsets.only(bottom: 9),
+    padding: EdgeInsets.all(13),
     decoration: BoxDecoration(
-      color: Colors.white.withAlpha(10),
+      color: ClayTokens.hairline.withAlpha(10),
       borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: Colors.white.withAlpha(22)),
+      border: Border.all(color: ClayTokens.hairline.withAlpha(22)),
     ),
     child: Row(
       children: [
         Expanded(
-          child: Text(label, style: const TextStyle(color: Color(0xFFB4B4D0))),
+          child: Text(label, style: TextStyle(color: ClayTokens.clayDarkTextSecondary)),
         ),
         Text(
           value,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: ClayTokens.clayDarkTextPrimary,
             fontWeight: FontWeight.w700,
           ),
         ),

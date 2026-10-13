@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fitness_app/app/design_tokens.dart';
 import '../providers/workout_session_provider.dart';
 import '../../../shared/widgets/animations.dart';
-import '../../../shared/widgets/clay/clay_card.dart';
+import '../../../shared/widgets/glass_card.dart';
 
 class WorkoutClockCard extends ConsumerWidget {
   final WorkoutSessionState session;
@@ -20,11 +20,9 @@ class WorkoutClockCard extends ConsumerWidget {
     final isRunning = session.isRunning;
     final canStart = !isRunning && !session.sessionEnded && session.exercises.isNotEmpty;
 
-    return ClayCard(
-      variant: ClayCardVariant.outlined,
-      backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
-      customPadding: const EdgeInsets.symmetric(vertical: 22),
-      padding: ClayCardPadding.none,
+    return MemberGlassCard(
+      padding: const EdgeInsets.symmetric(vertical: 22),
+      borderRadius: BorderRadius.circular(ClayTokens.radiusCard),
       child: Column(
         children: [
           Row(
@@ -36,10 +34,10 @@ class WorkoutClockCard extends ConsumerWidget {
               ),
               const SizedBox(width: 6),
               Text(
-                isRunning ? 'SESSION ACTIVE' : 'SESSION DURATION',
+                session.isPaused ? 'REST BREAK' : isRunning ? 'SESSION ACTIVE' : 'SESSION DURATION',
                 style: TextStyle(
                   fontSize: 10,
-                  color: isRunning ? const Color(0xFF64D2FF) : const Color(0xFF8E8E93),
+                  color: isRunning && !session.isPaused ? const Color(0xFF64D2FF) : const Color(0xFF8E8E93),
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -52,12 +50,16 @@ class WorkoutClockCard extends ConsumerWidget {
               fontSize: 42,
               fontWeight: FontWeight.w700,
               fontFamily: 'monospace',
-              color: isRunning ? const Color(0xFF64D2FF) : const Color(0xFFFFFFFF),
+              color: isRunning && !session.isPaused
+                  ? const Color(0xFF64D2FF)
+                  : ClayTokens.clayDarkTextPrimary,
             ),
           ),
           const SizedBox(height: 6),
           Text(
-            isRunning
+            session.isPaused
+                ? 'Rest time is included in the session duration'
+                : isRunning
                 ? 'Record proof then tap Done for each exercise'
                 : session.exercises.isNotEmpty
                     ? 'Ready to start — ${session.exercises.length} exercise${session.exercises.length == 1 ? '' : 's'}'
@@ -65,9 +67,41 @@ class WorkoutClockCard extends ConsumerWidget {
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 10,
-              color: isRunning ? const Color(0xFF64D2FF).withAlpha(150) : const Color(0xFF8E8E93),
+              color: isRunning && !session.isPaused ? const Color(0xFF64D2FF).withAlpha(150) : const Color(0xFF8E8E93),
             ),
           ),
+          if (isRunning) ...[
+            const SizedBox(height: 10),
+            Text(
+              'Active ${_format(session.activeSeconds)}  ·  Rest ${_format(session.restSeconds)}',
+              style: TextStyle(
+                color: ClayTokens.clayDarkTextSecondary,
+                fontSize: 10,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.symmetric(horizontal: 14),
+              decoration: BoxDecoration(
+                color: const Color(0xFF8D50F5).withAlpha(60),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFB58AFF).withAlpha(100)),
+              ),
+              child: TextButton.icon(
+                onPressed: session.isPaused ? notifier.resumeSession : notifier.pauseSession,
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+                icon: Icon(session.isPaused ? Icons.play_arrow : Icons.pause, size: 18),
+                label: Text(
+                  session.isPaused ? 'Resume Workout' : 'Take a Break',
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+          ],
           if (canStart) ...[
             const SizedBox(height: 14),
             Container(

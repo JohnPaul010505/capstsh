@@ -14,10 +14,12 @@ class OnboardingSplashScreen extends ConsumerStatefulWidget {
   const OnboardingSplashScreen({super.key});
 
   @override
-  ConsumerState<OnboardingSplashScreen> createState() => _OnboardingSplashScreenState();
+  ConsumerState<OnboardingSplashScreen> createState() =>
+      _OnboardingSplashScreenState();
 }
 
-class _OnboardingSplashScreenState extends ConsumerState<OnboardingSplashScreen> {
+class _OnboardingSplashScreenState
+    extends ConsumerState<OnboardingSplashScreen> {
   final _heightController = TextEditingController();
   final _weightController = TextEditingController();
 
@@ -49,7 +51,9 @@ class _OnboardingSplashScreenState extends ConsumerState<OnboardingSplashScreen>
       _error = null;
     });
     try {
-      await ref.read(authProvider.notifier).completeOnboarding(
+      await ref
+          .read(authProvider.notifier)
+          .completeOnboarding(
             gender: _gender!,
             heightCm: _heightCm,
             weightKg: _weightKg,
@@ -57,7 +61,11 @@ class _OnboardingSplashScreenState extends ConsumerState<OnboardingSplashScreen>
           );
       ref.invalidate(needsOnboardingProvider);
     } catch (e) {
-      if (mounted) setState(() => _error = 'Could not save your profile. Please try again.');
+      if (mounted) {
+        setState(
+          () => _error = 'Could not save your profile. Please try again.',
+        );
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -91,12 +99,33 @@ class _OnboardingSplashScreenState extends ConsumerState<OnboardingSplashScreen>
     final (bmiCategory, bmiColor) = _bmiCategory;
 
     return Scaffold(
-      backgroundColor: ClayTokens.clayDarkBase,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
         children: [
-          const Positioned(top: -80, right: -60, child: _GlowBlob(size: 220, colors: [Color(0x337C3AED), Color(0x007C3AED)])),
-          const Positioned(top: 40, left: -70, child: _GlowBlob(size: 200, colors: [Color(0x33A78BFA), Color(0x00A78BFA)])),
-          const Positioned(top: 260, right: -90, child: _GlowBlob(size: 260, colors: [Color(0x33A78BFA), Color(0x00A78BFA)])),
+          const Positioned(
+            top: -80,
+            right: -60,
+            child: _GlowBlob(
+              size: 220,
+              colors: [Color(0x337C3AED), Color(0x007C3AED)],
+            ),
+          ),
+          const Positioned(
+            top: 40,
+            left: -70,
+            child: _GlowBlob(
+              size: 200,
+              colors: [Color(0x33A78BFA), Color(0x00A78BFA)],
+            ),
+          ),
+          const Positioned(
+            top: 260,
+            right: -90,
+            child: _GlowBlob(
+              size: 260,
+              colors: [Color(0x33A78BFA), Color(0x00A78BFA)],
+            ),
+          ),
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
@@ -120,13 +149,13 @@ class _OnboardingSplashScreenState extends ConsumerState<OnboardingSplashScreen>
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           if (_step == 0) ...[
-                            _buildWelcomeStep()
+                            _buildWelcomeStep(),
                           ] else if (_step == 1) ...[
-                            _buildStatsStep(bmiCategory, bmiColor)
+                            _buildStatsStep(bmiCategory, bmiColor),
                           ] else if (_step == 2) ...[
-                            _buildGenderStep()
+                            _buildGenderStep(),
                           ] else if (_step == 3) ...[
-                            _buildProfileStep()
+                            _buildProfileStep(),
                           ],
                         ],
                       ),
@@ -158,11 +187,18 @@ class _OnboardingSplashScreenState extends ConsumerState<OnboardingSplashScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Text('Triple j', style: ClayTokens.darkDisplaySmall, textAlign: TextAlign.center),
+        Text(
+          'Triple j',
+          style: ClayTokens.darkDisplaySmall,
+          textAlign: TextAlign.center,
+        ),
         const SizedBox(height: 8),
         Text(
           "Your fitness journey starts here. Track your workouts, monitor your progress, and stay motivated as you work toward your fitness goals. Let's personalize your experience and build a healthier, stronger you one step at a time!",
-          style: ClayTokens.darkBodyMedium.copyWith(color: ClayTokens.clayDarkTextTertiary, height: 1.4),
+          style: ClayTokens.darkBodyMedium.copyWith(
+            color: ClayTokens.clayDarkTextTertiary,
+            height: 1.4,
+          ),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 24),
@@ -186,7 +222,11 @@ class _OnboardingSplashScreenState extends ConsumerState<OnboardingSplashScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Text('Your Stats', style: ClayTokens.darkTitleLarge, textAlign: TextAlign.center),
+        Text(
+          'Your Stats',
+          style: ClayTokens.darkTitleLarge,
+          textAlign: TextAlign.center,
+        ),
         const SizedBox(height: 12),
         Align(
           alignment: Alignment.centerLeft,
@@ -200,11 +240,16 @@ class _OnboardingSplashScreenState extends ConsumerState<OnboardingSplashScreen>
                 hint: 'e.g. 170',
                 keyboardType: TextInputType.number,
                 textInputAction: TextInputAction.next,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(3)],
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(3),
+                ],
                 prefixIcon: const Icon(Icons.height),
                 suffixIcon: _unitLabel('cm'),
                 onChanged: _onHeightChanged,
-                errorText: (!_heightValid && _heightController.text.isNotEmpty) ? 'Enter a height between 140 and 210 cm' : null,
+                errorText: (!_heightValid && _heightController.text.isNotEmpty)
+                    ? 'Enter a height between 140 and 210 cm'
+                    : null,
               ),
             ],
           ),
@@ -222,11 +267,16 @@ class _OnboardingSplashScreenState extends ConsumerState<OnboardingSplashScreen>
                 hint: 'e.g. 65',
                 keyboardType: TextInputType.number,
                 textInputAction: TextInputAction.done,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(3)],
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(3),
+                ],
                 prefixIcon: const Icon(Icons.monitor_weight_outlined),
                 suffixIcon: _unitLabel('kg'),
                 onChanged: _onWeightChanged,
-                errorText: (!_weightValid && _weightController.text.isNotEmpty) ? 'Enter a weight between 35 and 150 kg' : null,
+                errorText: (!_weightValid && _weightController.text.isNotEmpty)
+                    ? 'Enter a weight between 35 and 150 kg'
+                    : null,
               ),
             ],
           ),
@@ -248,7 +298,11 @@ class _OnboardingSplashScreenState extends ConsumerState<OnboardingSplashScreen>
                     color: bmiColor.withAlpha(30),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(Icons.calculate_outlined, color: bmiColor, size: 20),
+                  child: Icon(
+                    Icons.calculate_outlined,
+                    color: bmiColor,
+                    size: 20,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -260,7 +314,10 @@ class _OnboardingSplashScreenState extends ConsumerState<OnboardingSplashScreen>
                           Text('BMI', style: ClayTokens.darkTitleMedium),
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: bmiColor.withAlpha(25),
                               borderRadius: BorderRadius.circular(20),
@@ -268,7 +325,11 @@ class _OnboardingSplashScreenState extends ConsumerState<OnboardingSplashScreen>
                             ),
                             child: Text(
                               bmiCategory.label,
-                              style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: bmiColor),
+                              style: TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                                color: bmiColor,
+                              ),
                             ),
                           ),
                         ],
@@ -278,7 +339,10 @@ class _OnboardingSplashScreenState extends ConsumerState<OnboardingSplashScreen>
                 ),
                 Text(
                   _bmi.toStringAsFixed(1),
-                  style: ClayTokens.darkDisplaySmall.copyWith(color: bmiColor, fontSize: 24),
+                  style: ClayTokens.darkDisplaySmall.copyWith(
+                    color: bmiColor,
+                    fontSize: 24,
+                  ),
                 ),
               ],
             ),
@@ -286,7 +350,13 @@ class _OnboardingSplashScreenState extends ConsumerState<OnboardingSplashScreen>
         ],
         if (_error != null) ...[
           const SizedBox(height: 12),
-          Text(_error!, style: ClayTokens.darkBodySmall.copyWith(color: ClayTokens.clayError), textAlign: TextAlign.center),
+          Text(
+            _error!,
+            style: ClayTokens.darkBodySmall.copyWith(
+              color: ClayTokens.clayError,
+            ),
+            textAlign: TextAlign.center,
+          ),
         ],
         const SizedBox(height: 20),
         Row(
@@ -303,7 +373,9 @@ class _OnboardingSplashScreenState extends ConsumerState<OnboardingSplashScreen>
             Expanded(
               child: ClayButton(
                 label: 'Next',
-                onPressed: _heightValid && _weightValid ? () => setState(() => _step = 2) : null,
+                onPressed: _heightValid && _weightValid
+                    ? () => setState(() => _step = 2)
+                    : null,
                 fullWidth: true,
                 style: ClayButtonStyle.primary,
               ),
@@ -318,16 +390,32 @@ class _OnboardingSplashScreenState extends ConsumerState<OnboardingSplashScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Text('About You', style: ClayTokens.darkTitleLarge, textAlign: TextAlign.center),
+        Text(
+          'About You',
+          style: ClayTokens.darkTitleLarge,
+          textAlign: TextAlign.center,
+        ),
         const SizedBox(height: 12),
         Row(
           children: [
             Expanded(
-              child: _genderCard('male', 'Male', ClayTokens.clayPrimary, 'L2.gif', _gender == 'male'),
+              child: _genderCard(
+                'male',
+                'Male',
+                ClayTokens.clayPrimary,
+                'L2.gif',
+                _gender == 'male',
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: _genderCard('female', 'Female', ClayTokens.claySecondary, 'W3.gif', _gender == 'female'),
+              child: _genderCard(
+                'female',
+                'Female',
+                ClayTokens.claySecondary,
+                'W3.gif',
+                _gender == 'female',
+              ),
             ),
           ],
         ),
@@ -346,7 +434,9 @@ class _OnboardingSplashScreenState extends ConsumerState<OnboardingSplashScreen>
             Expanded(
               child: ClayButton(
                 label: 'Next',
-                onPressed: _gender != null ? () => setState(() => _step = 3) : null,
+                onPressed: _gender != null
+                    ? () => setState(() => _step = 3)
+                    : null,
                 fullWidth: true,
                 style: ClayButtonStyle.primary,
               ),
@@ -365,7 +455,11 @@ class _OnboardingSplashScreenState extends ConsumerState<OnboardingSplashScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Text('Choose Your Profile', style: ClayTokens.darkTitleLarge, textAlign: TextAlign.center),
+        Text(
+          'Choose Your Profile',
+          style: ClayTokens.darkTitleLarge,
+          textAlign: TextAlign.center,
+        ),
         const SizedBox(height: 12),
         Row(
           children: List.generate(profiles.length, (index) {
@@ -380,11 +474,15 @@ class _OnboardingSplashScreenState extends ConsumerState<OnboardingSplashScreen>
                 child: AnimatedContainer(
                   duration: ClayTokens.fast,
                   curve: ClayTokens.easeOut,
-                  margin: EdgeInsets.only(right: index < profiles.length - 1 ? 8 : 0),
+                  margin: EdgeInsets.only(
+                    right: index < profiles.length - 1 ? 8 : 0,
+                  ),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: isSelected ? selectionColor : ClayTokens.clayDarkBorder,
+                      color: isSelected
+                          ? selectionColor
+                          : ClayTokens.clayDarkBorder,
                       width: isSelected ? 3 : 1,
                     ),
                   ),
@@ -398,7 +496,11 @@ class _OnboardingSplashScreenState extends ConsumerState<OnboardingSplashScreen>
                       errorBuilder: (_, __, ___) => Container(
                         height: 120,
                         color: ClayTokens.clayDarkSurfaceElevated,
-                        child: Icon(Icons.person, color: ClayTokens.clayDarkTextSecondary, size: 40),
+                        child: Icon(
+                          Icons.person,
+                          color: ClayTokens.clayDarkTextSecondary,
+                          size: 40,
+                        ),
                       ),
                     ),
                   ),
@@ -412,7 +514,9 @@ class _OnboardingSplashScreenState extends ConsumerState<OnboardingSplashScreen>
           width: double.infinity,
           child: ClayButton(
             label: _saving ? 'Saving...' : 'Save',
-            onPressed: _selectedProfile != null && !_saving ? _handleSave : null,
+            onPressed: _selectedProfile != null && !_saving
+                ? _handleSave
+                : null,
             fullWidth: true,
             size: ClayButtonSize.large,
             loading: _saving,
@@ -421,13 +525,25 @@ class _OnboardingSplashScreenState extends ConsumerState<OnboardingSplashScreen>
         ),
         if (_error != null) ...[
           const SizedBox(height: 12),
-          Text(_error!, style: ClayTokens.darkBodySmall.copyWith(color: ClayTokens.clayError), textAlign: TextAlign.center),
+          Text(
+            _error!,
+            style: ClayTokens.darkBodySmall.copyWith(
+              color: ClayTokens.clayError,
+            ),
+            textAlign: TextAlign.center,
+          ),
         ],
       ],
     );
   }
 
-  Widget _genderCard(String value, String label, Color accent, String gifAsset, bool isSelected) {
+  Widget _genderCard(
+    String value,
+    String label,
+    Color accent,
+    String gifAsset,
+    bool isSelected,
+  ) {
     return GestureDetector(
       onTap: () => _selectGender(value),
       child: AnimatedContainer(
@@ -453,7 +569,11 @@ class _OnboardingSplashScreenState extends ConsumerState<OnboardingSplashScreen>
               errorBuilder: (_, __, ___) => Container(
                 height: 100,
                 color: ClayTokens.clayDarkSurfaceElevated,
-                child: Icon(Icons.person, color: ClayTokens.clayDarkTextSecondary, size: 32),
+                child: Icon(
+                  Icons.person,
+                  color: ClayTokens.clayDarkTextSecondary,
+                  size: 32,
+                ),
               ),
             ),
             const SizedBox(height: 4),
@@ -474,7 +594,10 @@ class _OnboardingSplashScreenState extends ConsumerState<OnboardingSplashScreen>
       padding: const EdgeInsets.symmetric(horizontal: 6),
       child: Text(
         unit,
-        style: ClayTokens.darkLabelMedium.copyWith(color: ClayTokens.clayDarkTextTertiary, fontWeight: FontWeight.w600),
+        style: ClayTokens.darkLabelMedium.copyWith(
+          color: ClayTokens.clayDarkTextTertiary,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -562,15 +685,20 @@ class _NamedStepHeader extends StatelessWidget {
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: done || active ? _purple : Colors.transparent,
+                              color: done || active
+                                  ? _purple
+                                  : Colors.transparent,
                               border: Border.all(
                                 color: done || active ? _purple : _pending,
                                 width: 1.6,
                               ),
                             ),
                             child: done
-                                ? const Icon(Icons.check,
-                                    size: 16, color: Color(0xFFFFFFFF))
+                                ? const Icon(
+                                    Icons.check,
+                                    size: 16,
+                                    color: Color(0xFFFFFFFF),
+                                  )
                                 : Text(
                                     '${i + 1}',
                                     style: TextStyle(
@@ -591,7 +719,9 @@ class _NamedStepHeader extends StatelessWidget {
                                   ? const Color(0xFFECECFC)
                                   : const Color(0xFF7070A0),
                               fontSize: 10,
-                              fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                              fontWeight: active
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
                             ),
                           ),
                         ],
@@ -607,4 +737,3 @@ class _NamedStepHeader extends StatelessWidget {
     );
   }
 }
-

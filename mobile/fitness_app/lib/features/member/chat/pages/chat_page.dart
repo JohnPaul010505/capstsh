@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared/services/supabase_client.dart';
 import '../../../shared/widgets/animations.dart';
 import '../../../shared/widgets/app_glow_background.dart';
+import '../../../shared/widgets/glass_card.dart';
 import '../../../../app/design_tokens.dart';
 
 final trainerChatProvider = FutureProvider.autoDispose<Map<String, dynamic>?>((
@@ -39,7 +40,9 @@ final trainerChatProvider = FutureProvider.autoDispose<Map<String, dynamic>?>((
   final existingRoom = await client
       .from('chat_rooms')
       .select('id')
-      .or('and(participant_one.eq.$userId,participant_two.eq.$trainerId),and(participant_one.eq.$trainerId,participant_two.eq.$userId)')
+      .or(
+        'and(participant_one.eq.$userId,participant_two.eq.$trainerId),and(participant_one.eq.$trainerId,participant_two.eq.$userId)',
+      )
       .limit(1);
 
   String? roomId;
@@ -47,7 +50,12 @@ final trainerChatProvider = FutureProvider.autoDispose<Map<String, dynamic>?>((
     roomId = existingRoom[0]['id'] as String;
   }
 
-  return {'trainer': trainer, 'trainerId': trainerId, 'roomId': roomId, 'assignedAt': assignedAt};
+  return {
+    'trainer': trainer,
+    'trainerId': trainerId,
+    'roomId': roomId,
+    'assignedAt': assignedAt,
+  };
 });
 
 class ChatPage extends ConsumerStatefulWidget {
@@ -109,7 +117,9 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           _messages = cutoff == null
               ? all
               : all.where((m) {
-                  final t = DateTime.tryParse(m['created_at']?.toString() ?? '');
+                  final t = DateTime.tryParse(
+                    m['created_at']?.toString() ?? '',
+                  );
                   return t == null || !t.isBefore(cutoff);
                 }).toList();
           _loadingMessages = false;
@@ -153,7 +163,9 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       if (mounted) {
         _messageController.text = text;
         ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-          const SnackBar(content: Text('Failed to send message. Please try again.')),
+          const SnackBar(
+            content: Text('Failed to send message. Please try again.'),
+          ),
         );
       }
     }
@@ -184,7 +196,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     final chatAsync = ref.watch(trainerChatProvider);
 
     return Scaffold(
-      backgroundColor: ClayTokens.clayDarkBase,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: AppGlowBackground(
         child: SafeArea(
           child: chatAsync.when(
@@ -320,7 +332,9 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                                       decoration: BoxDecoration(
                                         color: isMe
                                             ? const Color(0xFF0A84FF)
-                                            : const Color(0xFF2C2C2E),
+                                            : (ClayColors.isLightMode
+                                                  ? Colors.white
+                                                  : const Color(0xFF2C2C2E)),
                                         borderRadius: BorderRadius.only(
                                           topLeft: const Radius.circular(18),
                                           topRight: const Radius.circular(18),
@@ -334,10 +348,13 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                                       ),
                                       child: Text(
                                         content,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 12,
                                           height: 1.4,
-                                          color: Color(0xFFFFFFFF),
+                                          color:
+                                              ClayColors.isLightMode && !isMe
+                                              ? ClayTokens.clayTextPrimary
+                                              : const Color(0xFFFFFFFF),
                                         ),
                                       ),
                                     ),
@@ -368,43 +385,16 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                     child: Row(
                       children: [
                         Expanded(
-                          child: TextField(
-                            controller: _messageController,
-                            maxLines: 3,
-                            minLines: 1,
-                            textInputAction: TextInputAction.send,
-                            onSubmitted: (_) => _sendMessage(),
-                            style: const TextStyle(
-                              color: Color(0xFFFFFFFF),
-                              fontSize: 13,
-                            ),
-                            decoration: InputDecoration(
-                              hintText: 'Message your trainer',
-                              hintStyle: const TextStyle(
-                                color: Color(0xFF8E8E93),
-                                fontSize: 13,
-                              ),
-                              isDense: true,
-                              filled: true,
-                              fillColor: const Color(0x12FFFFFF),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 12,
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14),
-                                borderSide: const BorderSide(
-                                  color: Color(0x2EFFFFFF),
-                                ),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14),
-                                borderSide: const BorderSide(
-                                  color: Color(0xFFBF5AF2),
-                                ),
-                              ),
-                            ),
-                          ),
+                          // Light mode: the composer sits on the shared
+                          // liquid-glass body (same as the nav bar). Dark mode
+                          // keeps its own translucent pill.
+                          child: ClayColors.isLightMode
+                              ? GlassSurface(
+                                  padding: EdgeInsets.zero,
+                                  borderRadius: BorderRadius.circular(14),
+                                  child: _messageField(glass: true),
+                                )
+                              : _messageField(glass: false),
                         ),
                         const SizedBox(width: 8),
                         GestureDetector(
@@ -444,6 +434,48 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     );
   }
 
+  /// The composer field. [glass] drops the field's own fill and borders so
+  /// the surrounding [GlassSurface] shows through (light mode only).
+  Widget _messageField({required bool glass}) {
+    return TextField(
+      controller: _messageController,
+      maxLines: 3,
+      minLines: 1,
+      textInputAction: TextInputAction.send,
+      onSubmitted: (_) => _sendMessage(),
+      style: TextStyle(
+        color: glass ? const Color(0xFFFFFFFF) : glassInk(),
+        fontSize: 13,
+      ),
+      decoration: InputDecoration(
+        hintText: 'Message your trainer',
+        hintStyle: TextStyle(
+          color: glass ? Colors.white.withAlpha(200) : const Color(0xFF8E8E93),
+          fontSize: 13,
+        ),
+        isDense: true,
+        filled: !glass,
+        fillColor: const Color(0x12FFFFFF),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 12,
+        ),
+        enabledBorder: glass
+            ? InputBorder.none
+            : OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Color(0x2EFFFFFF)),
+              ),
+        focusedBorder: glass
+            ? InputBorder.none
+            : OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Color(0xFFBF5AF2)),
+              ),
+      ),
+    );
+  }
+
   void _goBack() {
     // Chat is a pushed full-screen route; pop back to whatever screen the
     // member came from (Home, Workout, ...). Cold-start fallback: Home.
@@ -462,8 +494,10 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Color(0xFF38383A))),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: glassLine(const Color(0xFF38383A))),
+        ),
       ),
       child: Row(
         children: [
@@ -472,7 +506,11 @@ class _ChatPageState extends ConsumerState<ChatPage> {
             onTap: onBack,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              child: Icon(CupertinoIcons.back, color: Colors.white, size: 24),
+              child: Icon(
+                CupertinoIcons.back,
+                color: ClayTokens.clayDarkTextPrimary,
+                size: 24,
+              ),
             ),
           ),
           const SizedBox(width: 6),
@@ -488,8 +526,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
             alignment: Alignment.center,
             child: Text(
               initials ?? '?',
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: ClayTokens.clayDarkTextPrimary,
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
               ),
@@ -502,10 +540,10 @@ class _ChatPageState extends ConsumerState<ChatPage> {
               children: [
                 Text(
                   name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFFFFFFFF),
+                    color: glassInk(),
                   ),
                 ),
                 if (initials != null)

@@ -39,7 +39,11 @@ const METRIC_LABELS: Record<string, string> = {
 
 const isRisk = (f: Forecast) => f.prediction_type === 'retention_risk'
 const riskHistoryInsufficient = (f: Forecast) =>
-  isRisk(f) && (f.sufficient === false || (f.data_points != null && f.data_points < 4))
+  isRisk(f) && (
+    f.sufficient === false ||
+    f.method === 'insufficient-history' ||
+    (f.data_points != null && f.data_points < 4)
+  )
 
 /** Risk bands match services/ml.py retention_risk() thresholds. */
 function riskLevel(score: number): 'low' | 'medium' | 'high' {
@@ -243,7 +247,7 @@ export default function PredictionsPage() {
       key: 'confidence',
       header: 'Confidence',
       render: p => (riskHistoryInsufficient(toForecast(p)) ? (
-        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#7C3AED]/15 text-[#C4B5FD]">
+        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#7C3AED]/10 text-accent-purple">
           insufficient history
         </span>
       ) : isRisk(toForecast(p)) ? (
@@ -335,7 +339,12 @@ export default function PredictionsPage() {
                   <MemberSelect
                     options={memberOptions}
                     value={selectedMemberId}
-                    onChange={setSelectedMemberId}
+                    onChange={memberId => {
+                      setSelectedMemberId(memberId)
+                      setAiResults(null)
+                      setAiResultSource(null)
+                      setError(null)
+                    }}
                     placeholder="Select member..."
                     className="flex-1 min-w-0"
                     /* 987 members and no way to narrow them. The label carries the
@@ -359,7 +368,10 @@ export default function PredictionsPage() {
                   <span>High confidence</span>
                 </div>
                 <p className="text-2xl font-bold text-fg-strong">
-                  {predictions?.filter(p => p.confidence >= 0.7).length ?? 0}
+                  {predictions?.filter(p => {
+                    const forecast = toForecast(p)
+                    return p.confidence >= 0.7 && !riskHistoryInsufficient(forecast) && forecast.method !== 'baseline-only'
+                  }).length ?? 0}
                 </p>
                 <p className="text-sm leading-5 text-fg mt-1">At least 70% confidence among the newest 50.</p>
               </div>
@@ -397,7 +409,7 @@ export default function PredictionsPage() {
                     Last Generated Results — {selectedMember?.full_name ?? 'Member'}
                   </h2>
                   {aiResultSource === 'fallback' && (
-                    <div className="flex items-center gap-1 px-2 py-1 text-xs rounded-full bg-[#F59E0B]/15 text-[#F59E0B]">
+                    <div className="flex items-center gap-1 px-2 py-1 text-xs rounded-full bg-[#F59E0B]/15 text-accent-amber">
                       <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                     <span>AI service offline — saved local estimate</span>
                     </div>
@@ -407,7 +419,7 @@ export default function PredictionsPage() {
                   {aiResults.map((r, i) => {
                     const level = riskLevel(r.predicted_value)
                     return (
-                      <div key={i} className="bg-[#111840]/90 backdrop-blur-lg p-4 rounded-lg border border-line shadow-sm">
+                      <div key={i} className="glass-card p-4 rounded-lg">
                         <p className="text-base font-semibold text-fg-strong">{METRIC_LABELS[r.prediction_type] ?? r.prediction_type}</p>
 
                         {r.method === 'baseline-only' ? (
@@ -418,15 +430,15 @@ export default function PredictionsPage() {
                             <p className="text-sm leading-6 text-fg mt-1">
                               {r.note ?? 'This is a baseline only. More weigh-ins are needed before a trend can be forecast.'}
                             </p>
-                            <span className="inline-flex mt-2 px-2 py-0.5 rounded-full text-xs font-medium bg-[#7C3AED]/15 text-[#C4B5FD]">
+                            <span className="inline-flex mt-2 px-2 py-0.5 rounded-full text-xs font-medium bg-[#7C3AED]/10 text-accent-purple">
                               Baseline only · not saved as a forecast
                             </span>
                           </>
-                        ) : isRisk(r) && r.sufficient === false ? (
+                        ) : isRisk(r) && riskHistoryInsufficient(r) ? (
                           <>
                             <p className="text-base font-semibold text-fg-strong mt-2">Not enough attendance history</p>
                             <p className="text-sm leading-6 text-fg mt-1">{r.note}</p>
-                            <span className="inline-flex mt-2 px-2 py-0.5 rounded-full text-xs font-medium bg-[#7C3AED]/15 text-[#C4B5FD]">
+                            <span className="inline-flex mt-2 px-2 py-0.5 rounded-full text-xs font-medium bg-[#7C3AED]/10 text-accent-purple">
                               Status only · not saved as a risk forecast
                             </span>
                           </>
@@ -476,7 +488,7 @@ export default function PredictionsPage() {
                       </div>
                     )
                   })}
-                  <section className="md:col-span-2 bg-[#111840]/90 backdrop-blur-lg p-4 rounded-lg border border-line">
+                  <section className="md:col-span-2 glass-card p-4 rounded-lg">
                     <h3 className="text-base font-semibold text-fg-strong">How these estimates are based</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3 text-sm text-fg">
                       <div>

@@ -409,7 +409,7 @@ class ClayStepProgress extends StatelessWidget {
                           child: Icon(
                             isLast ? Icons.check : Icons.check,
                             size: nodeSize * 0.5,
-                            color: Colors.white,
+                            color: ClayTokens.clayDarkTextPrimary,
                           ),
                         )
                       : null,

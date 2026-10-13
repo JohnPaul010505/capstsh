@@ -60,9 +60,9 @@ final trainerConversationsProvider = FutureProvider<List<Map<String, dynamic>>>(
     });
   }
   rows.sort(
-    (x, y) => (x['full_name'] as String)
-        .toLowerCase()
-        .compareTo((y['full_name'] as String).toLowerCase()),
+    (x, y) => (x['full_name'] as String).toLowerCase().compareTo(
+      (y['full_name'] as String).toLowerCase(),
+    ),
   );
   return rows;
 });
@@ -88,9 +88,10 @@ class _ChatListPageState extends ConsumerState<ChatListPage> {
   Widget build(BuildContext context) {
     final roomsAsync = ref.watch(trainerConversationsProvider);
 
-    return Scaffold(
-      backgroundColor: ClayTokens.clayDarkBase,
-      body: AppGlowBackground(
+    return Scaffold(        backgroundColor: ClayColors.isLightMode
+            ? ClayTokens.claySurfaceLight.withAlpha(250)
+            : ClayTokens.clayDarkSurface,
+        body: AppGlowBackground(
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -141,14 +142,14 @@ class _ChatListPageState extends ConsumerState<ChatListPage> {
                       isDense: true,
                       filled: true,
                       fillColor: Colors.transparent,
-                      contentPadding: const EdgeInsets.symmetric(
+                      contentPadding: EdgeInsets.symmetric(
                         horizontal: 14,
                         vertical: 10,
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide(
-                          color: Colors.white.withAlpha(24),
+                          color: ClayTokens.hairline.withAlpha(24),
                         ),
                       ),
                       focusedBorder: OutlineInputBorder(
@@ -168,10 +169,12 @@ class _ChatListPageState extends ConsumerState<ChatListPage> {
                     final filtered = _query.isEmpty
                         ? rooms
                         : rooms
-                            .where((r) => (r['full_name'] as String? ?? '')
-                                .toLowerCase()
-                                .contains(_query))
-                            .toList();
+                              .where(
+                                (r) => (r['full_name'] as String? ?? '')
+                                    .toLowerCase()
+                                    .contains(_query),
+                              )
+                              .toList();
                     if (filtered.isEmpty) {
                       return Center(
                         child: Column(

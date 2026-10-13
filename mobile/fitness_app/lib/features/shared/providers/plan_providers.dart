@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/services/supabase_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../trainer/set_plan/data/plan_repository.dart';
+import '../utils/plan_day.dart';
 
 final planRepositoryProvider = Provider<PlanRepository>((ref) {
   return PlanRepository();
@@ -58,28 +59,23 @@ class PlanOverlayController extends ChangeNotifier {
 
   bool get isExpanded => isOpen;
 
-  void openForWorkout(String memberId, String startDate) {
+  void openForWorkout(String memberId, String startDate, {int totalDays = 7}) {
     isOpen = true;
-    currentDay = _dayNumberFrom(startDate);
+    currentDay = _dayNumberFrom(startDate, totalDays);
     notifyListeners();
   }
 
-  void openForFood(String memberId, String startDate) {
+  void openForFood(String memberId, String startDate, {int totalDays = 7}) {
     isOpen = true;
-    currentDay = _dayNumberFrom(startDate);
+    currentDay = _dayNumberFrom(startDate, totalDays);
     notifyListeners();
   }
 
-  int _dayNumberFrom(String startDate) {
-    try {
-      final start = DateTime.parse(startDate);
-      final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day);
-      final diff = today.difference(start).inDays;
-      return (diff + 1).clamp(1, 7);
-    } on FormatException {
-      return currentDay;
-    }
+  /// Day 1 runs on the plan's start date, Day 2 one calendar day later, ...
+  /// clamped to the plan's own day count so a 3-day plan never shows Day 4.
+  int _dayNumberFrom(String startDate, int totalDays) {
+    final day = activePlanDay(startDate: startDate, totalDays: totalDays);
+    return day;
   }
 
   void close() {

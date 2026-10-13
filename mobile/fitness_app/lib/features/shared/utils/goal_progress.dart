@@ -10,7 +10,7 @@
 ///
 /// Two modes, matching the member GoalCard rules exactly:
 /// * **Weight journey** (goal has a `goal_type`, live weight and baseline
-///   both known): progress = distance travelled across the baseline→target
+///   both known): progress = distance travelled across the baseline?target
 ///   range. `Lose Weight` travels down, everything else travels up.
 /// * **Legacy / seeded goals** (no goal_type, or live weight/baseline not
 ///   available): the stored `current_value / target_value` ratio is

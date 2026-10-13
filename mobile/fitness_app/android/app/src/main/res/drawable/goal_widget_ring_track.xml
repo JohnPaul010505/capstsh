@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Static muted-purple ring track for the goal widget.
+  Drawn with plain vector primitives (supported by RemoteViews on every API
+  level the app targets) so the progress ring is never blank, even before the
+  Flutter-rendered arc has been produced.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="78dp"
+    android:height="78dp"
+    android:viewportWidth="78"
+    android:viewportHeight="78">
+
+    <!-- Muted track -->
+    <path
+        android:pathData="M39,39 m-29,0 a29,29 0 1,0 58,0 a29,29 0 1,0 -58,0"
+        android:strokeColor="#3D356B"
+        android:strokeWidth="7"
+        android:strokeLineCap="round" />
+
+    <!-- Soft inner glow under the rendered arc -->
+    <path
+        android:pathData="M39,39 m-23,0 a23,23 0 1,0 46,0 a23,23 0 1,0 -46,0"
+        android:strokeColor="#447C3AED"
+        android:strokeWidth="1" />
+</vector>

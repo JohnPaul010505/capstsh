@@ -87,7 +87,7 @@ class _WorkoutsTabState extends ConsumerState<WorkoutsTab> {
                   stops: const [0.0, 0.55, 1.0],
                 ),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withAlpha(38)),
+                border: Border.all(color: ClayTokens.hairline.withAlpha(38)),
               ),
               child: child ?? const SizedBox.shrink(),
             ),
@@ -228,10 +228,10 @@ class _WorkoutRowCard extends StatelessWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w700,
-                    color: Colors.white,
+                    color: ClayTokens.clayDarkTextPrimary,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -295,9 +295,9 @@ class _MetaChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      padding: EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: Colors.white.withAlpha(14),
+        color: ClayTokens.hairline.withAlpha(14),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Row(

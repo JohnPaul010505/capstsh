@@ -7,6 +7,9 @@ import '../services/supabase_client.dart';
 
 final authServiceProvider = Provider<AuthService>((ref) => AuthService());
 
+/// True only while Supabase has opened a password recovery session.
+final passwordRecoveryModeProvider = StateProvider<bool>((ref) => false);
+
 // User-scoped cache buster: every user-dependent provider below watches this.
 // On sign-out / account switch it changes (null -> profile / profile A ->
 // profile B), which auto-disposes the old user's cached data instead of
@@ -15,12 +18,24 @@ final activeUserIdProvider = Provider<String?>((ref) {
   return ref.watch(authProvider).valueOrNull?.id;
 });
 
-final authProvider = StateNotifierProvider<AuthNotifier, AsyncValue<Profile?>>((ref) {
-  return AuthNotifier(ref.read(authServiceProvider));
+final authProvider = StateNotifierProvider<AuthNotifier, AsyncValue<Profile?>>((
+  ref,
+) {
+  return AuthNotifier(
+    ref.read(authServiceProvider),
+    onPasswordRecovery: () {
+      ref.read(passwordRecoveryModeProvider.notifier).state = true;
+    },
+    onSignedOut: () {
+      ref.read(passwordRecoveryModeProvider.notifier).state = false;
+    },
+  );
 });
 
 class AuthNotifier extends StateNotifier<AsyncValue<Profile?>> {
   final AuthService _authService;
+  final void Function() _onPasswordRecovery;
+  final void Function() _onSignedOut;
   StreamSubscription<AuthState>? _authSubscription;
 
   /// One live channel on the signed-in user's own `profiles` row. An admin
@@ -35,12 +50,46 @@ class AuthNotifier extends StateNotifier<AsyncValue<Profile?>> {
   RealtimeChannel? _profileChannel;
   String? _profileChannelUserId;
 
-  AuthNotifier(this._authService) : super(const AsyncValue.loading()) {
+  AuthNotifier(
+    this._authService, {
+    required void Function() onPasswordRecovery,
+    required void Function() onSignedOut,
+  }) : _onPasswordRecovery = onPasswordRecovery,
+       _onSignedOut = onSignedOut,
+       super(const AsyncValue.loading()) {
     _init();
   }
 
   Future<void> _init() async {
     final client = SupabaseClientService().client;
+    // Subscribe before async profile loading. When the app is launched from a
+    // recovery link, Supabase can emit passwordRecovery while that fetch runs.
+    _authSubscription = client.auth.onAuthStateChange.listen(
+      (data) async {
+        final event = data.event;
+        if (event == AuthChangeEvent.signedIn ||
+            event == AuthChangeEvent.tokenRefreshed) {
+          final user = data.session?.user;
+          if (user != null && state.valueOrNull?.id != user.id) {
+            try {
+              final profile = await _authService.refreshProfile();
+              state = AsyncValue.data(profile);
+              _watchOwnProfileRow(user.id);
+            } catch (_) {}
+          }
+        } else if (event == AuthChangeEvent.signedOut) {
+          _onSignedOut();
+          _dropProfileChannel();
+          state = const AsyncValue.data(null);
+        } else if (event == AuthChangeEvent.passwordRecovery) {
+          _onPasswordRecovery();
+        }
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        // A transient refresh failure should not crash the app's auth zone.
+      },
+    );
+
     final currentUser = client.auth.currentUser;
     if (currentUser != null) {
       try {
@@ -53,23 +102,6 @@ class AuthNotifier extends StateNotifier<AsyncValue<Profile?>> {
     } else {
       state = const AsyncValue.data(null);
     }
-
-    _authSubscription = client.auth.onAuthStateChange.listen((data) async {
-      final event = data.event;
-      if (event == AuthChangeEvent.signedIn || event == AuthChangeEvent.tokenRefreshed) {
-        final user = data.session?.user;
-        if (user != null && state.valueOrNull?.id != user.id) {
-          try {
-            final profile = await _authService.refreshProfile();
-            state = AsyncValue.data(profile);
-            _watchOwnProfileRow(user.id);
-          } catch (_) {}
-        }
-      } else if (event == AuthChangeEvent.signedOut) {
-        _dropProfileChannel();
-        state = const AsyncValue.data(null);
-      }
-    });
   }
 
   /// (Re)subscribes the live profile channel for [userId]; a no-op when it is
@@ -115,7 +147,10 @@ class AuthNotifier extends StateNotifier<AsyncValue<Profile?>> {
   Future<void> signIn(String email, String password) async {
     state = const AsyncValue.loading();
     try {
-      final profile = await _authService.signIn(email: email, password: password);
+      final profile = await _authService.signIn(
+        email: email,
+        password: password,
+      );
       state = AsyncValue.data(profile);
       if (profile != null) _watchOwnProfileRow(profile.id);
     } catch (e) {

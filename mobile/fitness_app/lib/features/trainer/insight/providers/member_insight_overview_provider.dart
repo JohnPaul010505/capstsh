@@ -121,14 +121,14 @@ final memberInsightOverviewProvider = FutureProvider.autoDispose
             .from('profiles')
             .select('id, full_name, avatar_url, code')
             .inFilter('id', memberIds),
-        // Check-ins inside the window → active count.
+        // Check-ins inside the window ? active count.
         client
             .from('attendance')
             .select('member_id, check_in_time')
             .inFilter('member_id', memberIds)
             .gte('check_in_time', range.start.toUtc().toIso8601String())
             .lte('check_in_time', range.end.toUtc().toIso8601String()),
-        // Full recent history (newest first) → days-inactive per member.
+        // Full recent history (newest first) ? days-inactive per member.
         client
             .from('attendance')
             .select('member_id, check_in_time')
@@ -166,7 +166,7 @@ final memberInsightOverviewProvider = FutureProvider.autoDispose
         if (mid != null) activeInWindow.add(mid);
       }
 
-      // Most recent check-in per member (across all time) → days inactive.
+      // Most recent check-in per member (across all time) ? days inactive.
       final lastCheckIn = <String, DateTime>{};
       for (final c in allCheckins) {
         final mid = c['member_id'] as String?;

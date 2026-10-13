@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:fitness_app/app/design_tokens.dart';
+import 'package:fitness_app/app/theme_mode_toggle.dart';
 
 import 'package:shared/services/supabase_client.dart';
 import 'package:shared/providers/auth_provider.dart';
@@ -12,11 +13,16 @@ import '../../../shared/widgets/skeleton.dart';
 import '../../../shared/widgets/pressable.dart';
 import '../../../shared/widgets/animations.dart';
 
-final trainerProfileProvider = FutureProvider.family<Map<String, dynamic>, String>((ref, id) async {
-  final client = SupabaseClientService().client;
-  final response = await client.from('profiles').select('id, full_name, email, created_at, specialty, available_days').eq('id', id).single();
-  return response;
-});
+final trainerProfileProvider =
+    FutureProvider.family<Map<String, dynamic>, String>((ref, id) async {
+      final client = SupabaseClientService().client;
+      final response = await client
+          .from('profiles')
+          .select('id, full_name, email, created_at, specialty, available_days')
+          .eq('id', id)
+          .single();
+      return response;
+    });
 
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
@@ -26,16 +32,19 @@ class ProfilePage extends ConsumerWidget {
     final currentUserId = SupabaseClientService().client.auth.currentUser!.id;
     final profileAsync = ref.watch(trainerProfileProvider(currentUserId));
 
-    return Scaffold(
-      backgroundColor: ClayTokens.clayDarkBase,
-      body: AppGlowBackground(
+    return Scaffold(        backgroundColor: ClayColors.isLightMode
+            ? ClayTokens.claySurfaceLight.withAlpha(250)
+            : ClayTokens.clayDarkSurface,
+        body: AppGlowBackground(
         child: SafeArea(
           child: profileAsync.when(
             data: (profile) {
               final name = profile['full_name'] as String? ?? 'Trainer';
               final email = profile['email'] as String? ?? '';
               final createdAt = profile['created_at'] as String? ?? '';
-              final since = createdAt.length >= 10 ? createdAt.substring(0, 10) : '';
+              final since = createdAt.length >= 10
+                  ? createdAt.substring(0, 10)
+                  : '';
               final initials = name.split(' ').map((n) => n[0]).take(2).join();
 
               return ListView(
@@ -46,7 +55,15 @@ class ProfilePage extends ConsumerWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const SizedBox(width: 24),
-                      const Text('Profile', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF), decoration: TextDecoration.none)),
+                      Text(
+                        'Profile',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          color: ClayTokens.clayDarkTextPrimary,
+                          decoration: TextDecoration.none,
+                        ),
+                      ),
                       const SizedBox(width: 24),
                     ],
                   ),
@@ -56,7 +73,11 @@ class ProfilePage extends ConsumerWidget {
                     decoration: BoxDecoration(
                       color: ClayTokens.clayPrimaryLight.withAlpha(25),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.white.withAlpha(18)),
+                      border: Border.all(
+                        color: ClayColors.isLightMode
+                            ? ClayTokens.clayPrimary.withAlpha(45)
+                            : Colors.white.withAlpha(18),
+                      ),
                     ),
                     child: Row(
                       children: [
@@ -66,27 +87,65 @@ class ProfilePage extends ConsumerWidget {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: ClayTokens.clayPrimaryLight.withAlpha(35),
-                            border: Border.all(color: ClayTokens.clayPrimary.withAlpha(50)),
+                            border: Border.all(
+                              color: ClayTokens.clayPrimary.withAlpha(50),
+                            ),
                           ),
                           alignment: Alignment.center,
-                          child: Text(initials, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: ClayTokens.clayPrimary)),
+                          child: Text(
+                            initials,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: ClayTokens.clayPrimary,
+                            ),
+                          ),
                         ),
                         const SizedBox(width: 14),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(name, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF), decoration: TextDecoration.none)),
+                              Text(
+                                name,
+                                style: TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w600,
+                                  color: ClayTokens.clayDarkTextPrimary,
+                                  decoration: TextDecoration.none,
+                                ),
+                              ),
                               const SizedBox(height: 4),
                               if (email.isNotEmpty)
-                                Text(email, style: const TextStyle(fontSize: 12, color: Color(0xFF8E8E93), decoration: TextDecoration.none)),
+                                Text(
+                                  email,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: ClayTokens.clayDarkTextSecondary,
+                                    decoration: TextDecoration.none,
+                                  ),
+                                ),
                               const SizedBox(height: 4),
                               Row(
                                 children: [
-                                  Text('Trainer', style: TextStyle(fontSize: 12, color: ClayTokens.clayPrimary, fontWeight: FontWeight.w600)),
+                                  Text(
+                                    'Trainer',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: ClayTokens.clayPrimary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                   if (since.isNotEmpty) ...[
                                     const SizedBox(width: 8),
-                                    Text('· Since $since', style: const TextStyle(fontSize: 12, color: Color(0xFF8E8E93), decoration: TextDecoration.none)),
+                                    Text(
+                                      '· Since $since',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: ClayTokens.clayDarkTextSecondary,
+                                        decoration: TextDecoration.none,
+                                      ),
+                                    ),
                                   ],
                                 ],
                               ),
@@ -96,16 +155,44 @@ class ProfilePage extends ConsumerWidget {
                       ],
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  const ThemeModeToggle(),
                   const SizedBox(height: 24),
                   const Divider(color: Color(0xFF38383A)),
                   const SizedBox(height: 8),
-                  Text('Features', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF8E8E93), decoration: TextDecoration.none)),
+                  Text(
+                    'Features',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: ClayTokens.clayDarkTextSecondary,
+                      decoration: TextDecoration.none,
+                    ),
+                  ),
                   const SizedBox(height: 8),
-                  _SettingItem(index: 1, icon: CupertinoIcons.flag, iconColor: Color(0xFFBF5AF2), label: 'Create Plan', onTap: () => context.go('/trainer/set-plan')),
+                  _SettingItem(
+                    index: 1,
+                    icon: CupertinoIcons.flag,
+                    iconColor: Color(0xFFBF5AF2),
+                    label: 'Create Plan',
+                    onTap: () => context.go('/trainer/set-plan'),
+                  ),
                   const SizedBox(height: 8),
-                  _SettingItem(index: 2, icon: CupertinoIcons.doc_text, iconColor: Color(0xFF0A84FF), label: 'Record', onTap: () => context.go('/trainer/record')),
+                  _SettingItem(
+                    index: 2,
+                    icon: CupertinoIcons.doc_text,
+                    iconColor: Color(0xFF0A84FF),
+                    label: 'Record',
+                    onTap: () => context.go('/trainer/record'),
+                  ),
                   const SizedBox(height: 8),
-                  _SettingItem(index: 3, icon: Icons.rate_review_outlined, iconColor: Color(0xFF30D158), label: 'Feedback', onTap: () => context.push('/trainer/feedback')),
+                  _SettingItem(
+                    index: 3,
+                    icon: Icons.rate_review_outlined,
+                    iconColor: Color(0xFF30D158),
+                    label: 'Feedback',
+                    onTap: () => context.push('/trainer/feedback'),
+                  ),
                   const SizedBox(height: 24),
                   InkWell(
                     onTap: () async {
@@ -122,12 +209,16 @@ class ProfilePage extends ConsumerWidget {
                       decoration: BoxDecoration(
                         color: ClayTokens.clayPrimaryLight.withAlpha(25),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.white.withAlpha(18)),
+                        border: Border.all(color: ClayColors.isLightMode ? ClayTokens.clayPrimary.withAlpha(45) : Colors.white.withAlpha(18)),
                       ),
                       child: Center(
                         child: Text(
                           'Sign Out',
-                          style: TextStyle(color: ClayTokens.clayError, fontSize: 14, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            color: ClayTokens.clayError,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ),
@@ -151,7 +242,12 @@ class ProfilePage extends ConsumerWidget {
                 ],
               ),
             ),
-            error: (e, _) => Center(child: Text('Error: $e', style: TextStyle(color: ClayTokens.clayError))),
+            error: (e, _) => Center(
+              child: Text(
+                'Error: $e',
+                style: TextStyle(color: ClayTokens.clayError),
+              ),
+            ),
           ),
         ),
       ),
@@ -167,7 +263,10 @@ class _SettingItem extends StatelessWidget {
   final VoidCallback onTap;
 
   const _SettingItem({
-    required this.index, required this.icon, required this.iconColor, required this.label,
+    required this.index,
+    required this.icon,
+    required this.iconColor,
+    required this.label,
     required this.onTap,
   });
 
@@ -182,17 +281,31 @@ class _SettingItem extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
           color: ClayTokens.clayPrimaryLight.withAlpha(25),
           borderRadius: BorderRadius.circular(12),
-          border: const Border.fromBorderSide(BorderSide(color: Color(0x18FFFFFF))),
+          border: Border.fromBorderSide(
+            BorderSide(
+              color: ClayColors.isLightMode
+                  ? ClayTokens.clayPrimary.withAlpha(45)
+                  : const Color(0x18FFFFFF),
+            ),
+          ),
           child: Row(
             children: [
               Icon(icon, color: iconColor, size: 20),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(label, style: const TextStyle(
-                  color: Color(0xFFFFFFFF), fontSize: 14,
-                )),
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: ClayTokens.clayDarkTextPrimary,
+                    fontSize: 14,
+                  ),
+                ),
               ),
-              const Icon(Icons.chevron_right, color: Color(0xFF8E8E93), size: 18),
+              Icon(
+                Icons.chevron_right,
+                color: ClayTokens.clayDarkTextSecondary,
+                size: 18,
+              ),
             ],
           ),
         ),

@@ -40,15 +40,14 @@ class TrainerNotesScreen extends StatelessWidget {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return Scaffold(
-      backgroundColor: ClayTokens.clayDarkBase,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: AppGlowBackground(
         child: SafeArea(
           child: Column(
             children: [
               // Centred header with X on the right — same grammar as the sheets.
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
@@ -66,8 +65,10 @@ class TrainerNotesScreen extends StatelessWidget {
                       alignment: Alignment.centerRight,
                       child: IconButton(
                         onPressed: () => Navigator.of(context).pop(),
-                        icon: Icon(Icons.close,
-                            color: ClayTokens.clayDarkTextSecondary),
+                        icon: Icon(
+                          Icons.close,
+                          color: ClayTokens.clayDarkTextSecondary,
+                        ),
                       ),
                     ),
                   ],
@@ -80,7 +81,9 @@ class TrainerNotesScreen extends StatelessWidget {
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: ClayTokens.clayPrimary.withAlpha(38),
                         borderRadius: BorderRadius.circular(20),
@@ -100,9 +103,11 @@ class TrainerNotesScreen extends StatelessWidget {
                       GlassPanel(
                         child: Row(
                           children: [
-                            Icon(Icons.sticky_note_2_outlined,
-                                color: ClayTokens.clayDarkTextTertiary,
-                                size: 20),
+                            Icon(
+                              Icons.sticky_note_2_outlined,
+                              color: ClayTokens.clayDarkTextTertiary,
+                              size: 20,
+                            ),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(

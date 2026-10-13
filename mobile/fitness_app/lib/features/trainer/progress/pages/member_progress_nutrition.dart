@@ -84,7 +84,7 @@ class _NutritionTabState extends ConsumerState<NutritionTab> {
                   stops: const [0.0, 0.55, 1.0],
                 ),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withAlpha(38)),
+                border: Border.all(color: ClayTokens.hairline.withAlpha(38)),
               ),
               child: child ?? const SizedBox.shrink(),
             ),
@@ -253,12 +253,12 @@ class _MacroDonut extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Nutrition',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
-                  color: Colors.white,
+                  color: ClayTokens.clayDarkTextPrimary,
                 ),
               ),
               Container(
@@ -300,10 +300,10 @@ class _MacroDonut extends StatelessWidget {
                       children: [
                         Text(
                           '${data.totalKcal}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
-                            color: Colors.white,
+                            color: ClayTokens.clayDarkTextPrimary,
                           ),
                         ),
                         Text(
@@ -384,10 +384,10 @@ class _MacroLegend extends StatelessWidget {
         ),
         Text(
           '${grams.toStringAsFixed(0)} g',
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w700,
-            color: Colors.white,
+            color: ClayTokens.clayDarkTextPrimary,
           ),
         ),
       ],
@@ -449,10 +449,10 @@ class _MealRowCard extends StatelessWidget {
                   meal.foodName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w700,
-                    color: Colors.white,
+                    color: ClayTokens.clayDarkTextPrimary,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -490,7 +490,7 @@ class _MealRowCard extends StatelessWidget {
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
-                  color: Colors.white.withAlpha(14),
+                  color: ClayTokens.hairline.withAlpha(14),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
@@ -528,12 +528,12 @@ class _MealRowCard extends StatelessWidget {
                     ),
                   );
                 },
-                errorBuilder: (_, __, ___) => const SizedBox(
+                errorBuilder: (_, __, ___) => SizedBox(
                   height: 220,
                   child: Center(
                     child: Icon(
                       Icons.broken_image_outlined,
-                      color: Colors.white54,
+                      color: ClayTokens.clayDarkTextSecondary,
                       size: 34,
                     ),
                   ),

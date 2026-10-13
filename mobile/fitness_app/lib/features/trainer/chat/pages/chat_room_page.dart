@@ -155,9 +155,10 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage> {
   Widget build(BuildContext context) {
     final userId = SupabaseClientService().client.auth.currentUser!.id;
 
-    return Scaffold(
-      backgroundColor: ClayTokens.clayDarkBase,
-      body: AppGlowBackground(
+    return Scaffold(        backgroundColor: ClayColors.isLightMode
+            ? ClayTokens.claySurfaceLight.withAlpha(250)
+            : ClayTokens.clayDarkSurface,
+        body: AppGlowBackground(
         child: SafeArea(
           child: Column(
             children: [
@@ -214,100 +215,99 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage> {
               Expanded(
                 child: _loading
                     ? Center(
-                          child: CupertinoActivityIndicator(
-                            radius: 12,
-                            color: ClayTokens.clayPrimary,
+                        child: CupertinoActivityIndicator(
+                          radius: 12,
+                          color: ClayTokens.clayPrimary,
+                        ),
+                      )
+                    : _messages.isEmpty
+                    ? Center(
+                        child: Text(
+                          'Start a conversation',
+                          style: ClayTokens.bodySmall.copyWith(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w400,
+                            color: ClayTokens.clayDarkTextTertiary,
+                            letterSpacing: -0.08,
                           ),
-                        )
-                      : _messages.isEmpty
-                      ? Center(
-                          child: Text(
-                            'Start a conversation',
-                            style: ClayTokens.bodySmall.copyWith(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w400,
-                              color: ClayTokens.clayDarkTextTertiary,
-                              letterSpacing: -0.08,
-                            ),
-                          ),
-                        )
-                      : ListView.builder(
-                          controller: _scrollController,
-                          padding: const EdgeInsets.all(12),
-                          itemCount: _messages.length,
-                          itemBuilder: (_, i) {
-                            final msg = _messages[i];
-                            final isMe = msg['sender_id'] == userId;
-                            final content = msg['content'] as String? ?? '';
-                            final time = msg['created_at'] as String? ?? '';
-                            final timeStr = time.length >= 16
-                                ? time.substring(11, 16)
-                                : '';
+                        ),
+                      )
+                    : ListView.builder(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.all(12),
+                        itemCount: _messages.length,
+                        itemBuilder: (_, i) {
+                          final msg = _messages[i];
+                          final isMe = msg['sender_id'] == userId;
+                          final content = msg['content'] as String? ?? '';
+                          final time = msg['created_at'] as String? ?? '';
+                          final timeStr = time.length >= 16
+                              ? time.substring(11, 16)
+                              : '';
 
-                            return Column(
-                              crossAxisAlignment: isMe
-                                  ? CrossAxisAlignment.end
-                                  : CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  constraints: BoxConstraints(
-                                    maxWidth:
-                                        MediaQuery.of(context).size.width *
-                                        0.75,
+                          return Column(
+                            crossAxisAlignment: isMe
+                                ? CrossAxisAlignment.end
+                                : CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                constraints: BoxConstraints(
+                                  maxWidth:
+                                      MediaQuery.of(context).size.width * 0.75,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 9,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isMe
+                                      ? ClayTokens.clayPrimary
+                                      : ClayTokens.clayDarkSurfaceElevated,
+                                  borderRadius: BorderRadius.only(
+                                    topLeft: const Radius.circular(14),
+                                    topRight: const Radius.circular(14),
+                                    bottomLeft: isMe
+                                        ? const Radius.circular(14)
+                                        : const Radius.circular(3),
+                                    bottomRight: isMe
+                                        ? const Radius.circular(3)
+                                        : const Radius.circular(14),
                                   ),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 9,
-                                  ),
-                                  decoration: BoxDecoration(
+                                ),
+                                child: Text(
+                                  content,
+                                  style: ClayTokens.bodySmall.copyWith(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w400,
                                     color: isMe
-                                        ? ClayTokens.clayPrimary
-                                        : ClayTokens.clayDarkSurfaceElevated,
-                                    borderRadius: BorderRadius.only(
-                                      topLeft: const Radius.circular(14),
-                                      topRight: const Radius.circular(14),
-                                      bottomLeft: isMe
-                                          ? const Radius.circular(14)
-                                          : const Radius.circular(3),
-                                      bottomRight: isMe
-                                          ? const Radius.circular(3)
-                                          : const Radius.circular(14),
-                                    ),
+                                        ? ClayTokens.clayDarkTextPrimary
+                                        : ClayTokens.clayDarkTextPrimary,
+                                    letterSpacing: -0.08,
+                                  ),
+                                ),
+                              ),
+                              if (timeStr.isNotEmpty)
+                                Padding(
+                                  padding: EdgeInsets.only(
+                                    top: 2,
+                                    left: isMe ? 0 : 2,
+                                    right: isMe ? 2 : 0,
                                   ),
                                   child: Text(
-                                    content,
-                                    style: ClayTokens.bodySmall.copyWith(
-                                      fontSize: 13,
+                                    timeStr,
+                                    style: ClayTokens.labelMedium.copyWith(
+                                      fontSize: 11,
                                       fontWeight: FontWeight.w400,
-                                      color: isMe
-                                          ? ClayTokens.clayDarkTextPrimary
-                                          : ClayTokens.clayDarkTextPrimary,
+                                      color: ClayTokens.clayDarkTextTertiary,
                                       letterSpacing: -0.08,
                                     ),
                                   ),
                                 ),
-                                if (timeStr.isNotEmpty)
-                                  Padding(
-                                    padding: EdgeInsets.only(
-                                      top: 2,
-                                      left: isMe ? 0 : 2,
-                                      right: isMe ? 2 : 0,
-                                    ),
-                                    child: Text(
-                                      timeStr,
-                                      style: ClayTokens.labelMedium.copyWith(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w400,
-                                        color: ClayTokens.clayDarkTextTertiary,
-                                        letterSpacing: -0.08,
-                                      ),
-                                    ),
-                                  ),
-                                const SizedBox(height: 6),
-                              ],
-                            );
-                          },
-                        ),
+                              const SizedBox(height: 6),
+                            ],
+                          );
+                        },
+                      ),
               ),
               GlassPanel(
                 margin: const EdgeInsets.fromLTRB(10, 6, 10, 12),
@@ -334,14 +334,14 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage> {
                           hintStyle: ClayTokens.darkBodyMedium.copyWith(
                             color: ClayTokens.clayDarkTextTertiary,
                           ),
-                          contentPadding: const EdgeInsets.symmetric(
+                          contentPadding: EdgeInsets.symmetric(
                             horizontal: 14,
                             vertical: 12,
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: Colors.white.withAlpha(24),
+                              color: ClayTokens.hairline.withAlpha(24),
                             ),
                           ),
                           focusedBorder: OutlineInputBorder(

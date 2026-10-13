@@ -33,7 +33,7 @@ class MembersListPage extends ConsumerWidget {
     final membersAsync = ref.watch(assignedMembersProvider);
 
     return Scaffold(
-      backgroundColor: ClayTokens.clayDarkBase,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: AppGlowBackground(
         child: SafeArea(
           child: Column(

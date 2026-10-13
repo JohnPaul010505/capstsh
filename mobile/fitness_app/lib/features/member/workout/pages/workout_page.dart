@@ -10,8 +10,10 @@ import 'package:shared/providers/auth_provider.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../shared/widgets/app_glow_background.dart';
 import '../../../shared/widgets/proof_video_viewer.dart';
+import '../../../shared/widgets/glass_card.dart';
 import '../../../shared/widgets/plan_floating_logo.dart';
 import '../../../shared/providers/plan_providers.dart';
+import '../../../shared/utils/plan_day.dart';
 import '../../../shared/widgets/trainer_plan_overlay.dart';
 import '../widgets/workout_header.dart';
 import '../widgets/workout_clock_card.dart';
@@ -94,13 +96,15 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
     }
   }
 
-  /// Opens the trainer's Day-1 recommendation sheet for the floating logo.
+  /// Opens the trainer's plan sheet for the floating logo, showing the day
+  /// that is active TODAY: Day 1 on the plan's start date, Day 2 once one
+  /// calendar day (24 h) has passed, and so on up to the plan's last day.
   ///
   /// `activePlanProvider` is `autoDispose`, so `ref.read(...)` on a provider
   /// nobody is watching hands back an unresolved `AsyncValue` whose `.value`
   /// is null — the old code returned right there, which is why tapping the
   /// logo did nothing at all. Awaiting `.future` loads it on demand.
-  Future<void> _openDayOnePlanSheet(BuildContext context, WidgetRef ref) async {
+  Future<void> _openActivePlanSheet(BuildContext context, WidgetRef ref) async {
     final overlay = ref.read(planOverlayControllerProvider);
     if (overlay.isOpen) {
       overlay.close();
@@ -113,7 +117,9 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
     overlay.openForWorkout(
       SupabaseClientService().client.auth.currentUser!.id,
       plan['start_date'] as String? ?? '',
+      totalDays: planDayCount(plan['exercise_plan']),
     );
+    final dayNumber = overlay.currentDay;
     showModalBottomSheet(
       context: context,
       // Root navigator: the sheet (and its scrim) covers the shell's bottom
@@ -124,7 +130,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
       backgroundColor: Colors.transparent,
       builder: (_) => TrainerPlanWorkoutOverlay(
         planId: plan['id'] as String,
-        dayNumber: 1, // Day 1 only, per design
+        dayNumber: dayNumber,
         notes: plan['notes'] as String?,
       ),
     ).then((_) {
@@ -228,7 +234,9 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
         }
       },
       child: Scaffold(
-        backgroundColor: ClayTokens.clayDarkBase,
+        backgroundColor: ClayColors.isLightMode
+            ? ClayTokens.claySurfaceLight.withAlpha(250)
+            : ClayTokens.clayDarkSurface,
         body: AppGlowBackground(
           child: SafeArea(
             // LayoutBuilder must wrap the Stack, not sit inside it: `Positioned`
@@ -326,7 +334,8 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                                 .watch(planOverlayControllerProvider)
                                 .isOpen,
                             bounds: bounds,
-                            onTap: () => _openDayOnePlanSheet(context, ref),
+                            withGlass: false,
+                            onTap: () => _openActivePlanSheet(context, ref),
                           ),
                         );
                       },
@@ -373,13 +382,16 @@ class _PreviousSessionCards extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: 10),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFF1C1C2E),
+            color: glassBody(const Color(0xFF1C1C2E)),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFF2A2A45)),
+            border: Border.all(color: glassRimSoft(const Color(0xFF2A2A45))),
             gradient: RadialGradient(
               center: Alignment(0.9, -0.9),
               radius: 1.2,
-              colors: [Color(0xFF7C3AED).withAlpha(60), Color(0xFF1C1C2E)],
+              colors: [
+                const Color(0xFF7C3AED).withAlpha(60),
+                glassBody(const Color(0xFF1C1C2E)),
+              ],
             ),
           ),
           child: Column(
@@ -387,12 +399,12 @@ class _PreviousSessionCards extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const Text(
+                  Text(
                     'Workout Complete',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
-                      color: Color(0xFFFFFFFF),
+                      color: glassInk(),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -417,19 +429,19 @@ class _PreviousSessionCards extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 3),
-              const Text(
+              Text(
                 'Great job! Here\'s your session summary.',
-                style: TextStyle(fontSize: 10, color: Color(0xFFB4B4D0)),
+                style: TextStyle(fontSize: 10, color: ClayTokens.clayDarkTextSecondary),
               ),
               const SizedBox(height: 12),
-              Container(height: 1, color: const Color(0xFF2A2A45)),
-              const SizedBox(height: 12),
+              Container(height: 1, color: glassLine(const Color(0xFF2A2A45))),
+              SizedBox(height: 12),
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.white.withAlpha(8),
+                  color: ClayTokens.hairline.withAlpha(8),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white.withAlpha(12)),
+                  border: Border.all(color: ClayTokens.hairline.withAlpha(12)),
                 ),
                 child: Row(
                   children: [
@@ -451,10 +463,10 @@ class _PreviousSessionCards extends StatelessWidget {
                         ),
                         Text(
                           _format(s.elapsedSeconds),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w800,
-                            color: Color(0xFFFFFFFF),
+                            color: glassInk(),
                           ),
                         ),
                       ],
@@ -494,13 +506,13 @@ class _PreviousSessionCards extends StatelessWidget {
                     : null;
                 final hasVideo = proofUrl != null;
                 return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
+                  padding: EdgeInsets.only(bottom: 8),
                   child: Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: Colors.white.withAlpha(6),
+                      color: ClayTokens.hairline.withAlpha(6),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.white.withAlpha(10)),
+                      border: Border.all(color: ClayTokens.hairline.withAlpha(10)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -522,7 +534,7 @@ class _PreviousSessionCards extends StatelessWidget {
                                     : null,
                                 color: hasVideo
                                     ? null
-                                    : const Color(0xFF3A3A4A),
+                                    : glassRim(const Color(0xFF3A3A4A)),
                               ),
                               child: Icon(
                                 hasVideo ? Icons.check : Icons.close,
@@ -539,10 +551,10 @@ class _PreviousSessionCards extends StatelessWidget {
                                 children: [
                                   Text(
                                     name,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w700,
-                                      color: Color(0xFFF2F5F7),
+                                      color: glassInk(const Color(0xFFF2F5F7)),
                                     ),
                                   ),
                                   if (i < s.exerciseCategories.length &&
@@ -658,7 +670,7 @@ class _PreviousSessionCards extends StatelessWidget {
 Widget _buildCongratsBanner(String message) {
   return Container(
     margin: const EdgeInsets.only(bottom: 10),
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
     decoration: BoxDecoration(
       gradient: const LinearGradient(
         colors: [Color(0xFF7C3AED), Color(0xFFC56BF0)],
@@ -674,15 +686,19 @@ Widget _buildCongratsBanner(String message) {
     ),
     child: Row(
       children: [
-        const Icon(Icons.emoji_events_outlined, size: 18, color: Colors.white),
-        const SizedBox(width: 8),
+        Icon(
+          Icons.emoji_events_outlined,
+          size: 18,
+          color: purpleLabel,
+        ),
+        SizedBox(width: 8),
         Expanded(
           child: Text(
             message,
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
-              color: Colors.white,
+              color: purpleLabel,
             ),
           ),
         ),

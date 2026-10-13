@@ -13,7 +13,9 @@ class TrainerNotificationsPage extends ConsumerWidget {
     final notifAsync = ref.watch(trainerNotificationsProvider);
 
     return CupertinoPageScaffold(
-      backgroundColor: ClayTokens.clayDarkBase,
+      backgroundColor: ClayColors.isLightMode
+          ? ClayTokens.claySurfaceLight.withAlpha(250)
+          : ClayTokens.clayDarkSurface,
       child: AppGlowBackground(
         child: SafeArea(
           child: Column(
@@ -62,32 +64,43 @@ class TrainerNotificationsPage extends ConsumerWidget {
                                           await ref
                                               .read(notificationServiceProvider)
                                               .markAsRead(n.id);
-                                          ref.invalidate(trainerNotificationsProvider);
-                                          ref.invalidate(unreadNotificationsProvider);
+                                          ref.invalidate(
+                                            trainerNotificationsProvider,
+                                          );
+                                          ref.invalidate(
+                                            unreadNotificationsProvider,
+                                          );
                                         }
                                       },
                                       child: Padding(
-                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 12,
+                                        ),
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Text(
                                               n.title,
-                                              style: ClayTokens.titleLarge.copyWith(
-                                                fontSize: 17,
-                                                fontWeight: FontWeight.w500,
-                                                color: ClayTokens.clayDarkTextPrimary,
-                                                letterSpacing: -0.41,
-                                              ),
+                                              style: ClayTokens.titleLarge
+                                                  .copyWith(
+                                                    fontSize: 17,
+                                                    fontWeight: FontWeight.w500,
+                                                    color: ClayTokens
+                                                        .clayDarkTextPrimary,
+                                                    letterSpacing: -0.41,
+                                                  ),
                                             ),
                                             const SizedBox(height: 2),
                                             Text(
                                               n.body ?? '',
-                                              style: ClayTokens.titleMedium.copyWith(
-                                                fontSize: 15,
-                                                color: ClayTokens.clayDarkTextSecondary,
-                                                letterSpacing: -0.24,
-                                              ),
+                                              style: ClayTokens.titleMedium
+                                                  .copyWith(
+                                                    fontSize: 15,
+                                                    color: ClayTokens
+                                                        .clayDarkTextSecondary,
+                                                    letterSpacing: -0.24,
+                                                  ),
                                             ),
                                           ],
                                         ),
@@ -95,7 +108,10 @@ class TrainerNotificationsPage extends ConsumerWidget {
                                     ),
                                   ),
                                   Padding(
-                                    padding: const EdgeInsets.only(right: 8, bottom: 8),
+                                    padding: const EdgeInsets.only(
+                                      right: 8,
+                                      bottom: 8,
+                                    ),
                                     child: CupertinoSwitch(
                                       value: n.read,
                                       onChanged: (value) async {
@@ -103,8 +119,12 @@ class TrainerNotificationsPage extends ConsumerWidget {
                                           await ref
                                               .read(notificationServiceProvider)
                                               .markAsRead(n.id);
-                                          ref.invalidate(trainerNotificationsProvider);
-                                          ref.invalidate(unreadNotificationsProvider);
+                                          ref.invalidate(
+                                            trainerNotificationsProvider,
+                                          );
+                                          ref.invalidate(
+                                            unreadNotificationsProvider,
+                                          );
                                         }
                                       },
                                       activeTrackColor: ClayTokens.clayAccent,
@@ -112,19 +132,21 @@ class TrainerNotificationsPage extends ConsumerWidget {
                                   ),
                                 ],
                               ),
-                              if (!isLast)
-                                const SizedBox(height: 0.5),
+                              if (!isLast) const SizedBox(height: 0.5),
                             ],
                           );
                         },
                       ),
                     );
                   },
-                  loading: () => const Center(child: CupertinoActivityIndicator()),
+                  loading: () =>
+                      const Center(child: CupertinoActivityIndicator()),
                   error: (e, _) => Center(
                     child: Text(
                       'Error: $e',
-                      style: ClayTokens.bodyMedium.copyWith(color: ClayTokens.clayError),
+                      style: ClayTokens.bodyMedium.copyWith(
+                        color: ClayTokens.clayError,
+                      ),
                     ),
                   ),
                 ),
@@ -144,10 +166,7 @@ class TrainerNotificationsPage extends ConsumerWidget {
           CupertinoButton(
             padding: EdgeInsets.zero,
             onPressed: () => context.pop(),
-            child: Icon(
-              CupertinoIcons.back,
-              color: ClayTokens.clayPrimary,
-            ),
+            child: Icon(CupertinoIcons.back, color: ClayTokens.clayPrimary),
           ),
           Expanded(
             child: Text(

@@ -29,6 +29,7 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
   String? selectedWorkoutType;
   final Map<int, TextEditingController> _notesByDay = {};
   final TextEditingController foodSearchController = TextEditingController();
+  final TextEditingController foodNameController = TextEditingController();
   final TextEditingController exerciseNameController = TextEditingController();
   final TextEditingController setsController = TextEditingController();
   final TextEditingController repsController = TextEditingController();
@@ -284,7 +285,7 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
 
   void _addFood() {
     if (_selectedMealType == null) return;
-    if (foodSearchController.text.trim().isEmpty) return;
+    if (foodNameController.text.trim().isEmpty) return;
     final currentFoods = foodsByDay[_currentDay] ?? [];
     final addedTypes = currentFoods
         .map((f) => f['meal_type'] as String? ?? '')
@@ -294,7 +295,7 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
 
     setState(() {
       foodsByDay.putIfAbsent(_currentDay, () => []).add({
-        'name': foodSearchController.text.trim(),
+        'name': foodNameController.text.trim(),
         'meal_type': _selectedMealType,
         'amount': '',
         'unit': '',
@@ -304,6 +305,7 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
         'fat': '',
       });
       foodSearchController.clear();
+      foodNameController.clear();
     });
   }
 
@@ -371,6 +373,7 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
       controller.dispose();
     }
     foodSearchController.dispose();
+    foodNameController.dispose();
     exerciseNameController.dispose();
     setsController.dispose();
     repsController.dispose();
@@ -392,9 +395,10 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
     final hasActivePlan =
         selectedClient != null && memberHasActivePlan[selectedClient!] == true;
 
-    return Scaffold(
-      backgroundColor: ClayTokens.clayDarkBase,
-      body: AppGlowBackground(
+    return Scaffold(        backgroundColor: ClayColors.isLightMode
+            ? ClayTokens.claySurfaceLight.withAlpha(250)
+            : ClayTokens.clayDarkSurface,
+        body: AppGlowBackground(
         child: SafeArea(
           child: Column(
             children: [
@@ -467,14 +471,14 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
                                 ),
                               ),
                           ] else ...[
-                            const SizedBox(height: 10),
+                            SizedBox(height: 10),
                             Container(
-                              padding: const EdgeInsets.all(12),
+                              padding: EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: Colors.white.withAlpha(10),
+                                color: ClayTokens.hairline.withAlpha(10),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: Colors.white.withAlpha(28),
+                                  color: ClayTokens.hairline.withAlpha(28),
                                 ),
                               ),
                               child: Row(
@@ -516,32 +520,32 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
                               setState(() => _currentDay = day);
                             },
                           ),
-                          const SizedBox(height: 16),
+                          SizedBox(height: 16),
                           Text(
                             'START DATE',
                             style: ClayTokens.displaySmall.copyWith(
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
                               letterSpacing: 1.2,
-                              color: Colors.white,
+                              color: ClayTokens.clayDarkTextPrimary,
                             ),
                           ),
-                          const SizedBox(height: 8),
+                          SizedBox(height: 8),
                           GestureDetector(
                             onTap: _pickStartDate,
                             child: Container(
                               width: double.infinity,
-                              padding: const EdgeInsets.symmetric(
+                              padding: EdgeInsets.symmetric(
                                 horizontal: 14,
                                 vertical: 14,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.white.withAlpha(14),
+                                color: ClayTokens.hairline.withAlpha(14),
                                 borderRadius: BorderRadius.circular(
                                   ClayTokens.radiusMd,
                                 ),
                                 border: Border.all(
-                                  color: Colors.white.withAlpha(30),
+                                  color: ClayTokens.hairline.withAlpha(30),
                                 ),
                               ),
                               child: Row(
@@ -573,6 +577,7 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
                           _NutritionSection(
                             foods: currentFoods,
                             searchController: foodSearchController,
+                            foodNameController: foodNameController,
                             onAddFood: _addFood,
                             onRemoveFood: _removeFood,
                             selectedMealType: _selectedMealType,
@@ -646,7 +651,10 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
           CupertinoButton(
             padding: EdgeInsets.zero,
             onPressed: () => context.go('/trainer/profile'),
-            child: Icon(CupertinoIcons.back, color: Colors.white),
+            child: Icon(
+              CupertinoIcons.back,
+              color: ClayTokens.clayDarkTextPrimary,
+            ),
           ),
           Expanded(
             child: Text(
@@ -656,7 +664,7 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
                 letterSpacing: -0.2,
-                color: Colors.white,
+                color: ClayTokens.clayDarkTextPrimary,
               ),
             ),
           ),
@@ -702,7 +710,7 @@ class _NotificationGlassPanel extends StatelessWidget {
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
           child: Container(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
@@ -715,7 +723,7 @@ class _NotificationGlassPanel extends StatelessWidget {
                 stops: const [0.0, 0.55, 1.0],
               ),
               borderRadius: _radius,
-              border: Border.all(color: Colors.white.withAlpha(38)),
+              border: Border.all(color: ClayTokens.hairline.withAlpha(38)),
             ),
             child: child,
           ),
@@ -747,7 +755,7 @@ class _DaySelector extends StatelessWidget {
             fontSize: 18,
             fontWeight: FontWeight.w800,
             letterSpacing: 1.2,
-            color: Colors.white,
+            color: ClayTokens.clayDarkTextPrimary,
           ),
         ),
         const SizedBox(height: 10),
@@ -763,18 +771,18 @@ class _DaySelector extends StatelessWidget {
             if (complete && isSelected) {
               backgroundColor = const Color(0xFF7C3AED);
               borderColor = const Color(0xFF7C3AED);
-              textColor = Colors.white;
+              textColor = ClayTokens.clayDarkTextPrimary;
             } else if (complete) {
               backgroundColor = const Color(0xFF7C3AED);
               borderColor = const Color(0xFF7C3AED);
-              textColor = Colors.white;
+              textColor = ClayTokens.clayDarkTextPrimary;
             } else if (isSelected) {
-              backgroundColor = Colors.white.withAlpha(14);
+              backgroundColor = ClayTokens.hairline.withAlpha(14);
               borderColor = ClayTokens.clayPrimary;
               textColor = ClayTokens.clayPrimary;
             } else {
-              backgroundColor = Colors.white.withAlpha(14);
-              borderColor = Colors.white.withAlpha(30);
+              backgroundColor = ClayTokens.hairline.withAlpha(14);
+              borderColor = ClayTokens.hairline.withAlpha(30);
               textColor = ClayTokens.clayDarkTextSecondary;
             }
 
@@ -842,19 +850,19 @@ class _ClientSection extends StatelessWidget {
             fontSize: 18,
             fontWeight: FontWeight.w800,
             letterSpacing: 1.2,
-            color: Colors.white,
+            color: ClayTokens.clayDarkTextPrimary,
           ),
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: 10),
         GestureDetector(
           onTap: () => _openMemberPicker(context),
           child: Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            padding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
             decoration: BoxDecoration(
-              color: Colors.white.withAlpha(14),
+              color: ClayTokens.hairline.withAlpha(14),
               borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
-              border: Border.all(color: Colors.white.withAlpha(30)),
+              border: Border.all(color: ClayTokens.hairline.withAlpha(30)),
             ),
             child: Row(
               children: [
@@ -934,7 +942,7 @@ class _MemberPickerDialogState extends State<_MemberPickerDialog> {
       elevation: 0,
       insetPadding: const EdgeInsets.symmetric(horizontal: 24),
       child: GlassPanel(
-        padding: const EdgeInsets.all(14),
+        padding: EdgeInsets.all(14),
         borderRadius: BorderRadius.circular(18),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -945,10 +953,10 @@ class _MemberPickerDialogState extends State<_MemberPickerDialog> {
               style: ClayTokens.darkBodyMedium.copyWith(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
-                color: Colors.white,
+                color: ClayTokens.clayDarkTextPrimary,
               ),
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             TextField(
               controller: _searchController,
               autofocus: true,
@@ -959,16 +967,16 @@ class _MemberPickerDialogState extends State<_MemberPickerDialog> {
                   fontSize: 13,
                   color: Color(0xFF7070A0),
                 ),
-                prefixIcon: const Icon(
+                prefixIcon: Icon(
                   Icons.search,
                   size: 18,
                   color: Color(0xFF7070A0),
                 ),
                 filled: true,
-                fillColor: Colors.white.withAlpha(14),
+                fillColor: ClayTokens.hairline.withAlpha(14),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.white.withAlpha(30)),
+                  borderSide: BorderSide(color: ClayTokens.hairline.withAlpha(30)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -979,7 +987,7 @@ class _MemberPickerDialogState extends State<_MemberPickerDialog> {
                   vertical: 12,
                 ),
               ),
-              style: const TextStyle(fontSize: 13, color: Colors.white),
+              style: TextStyle(fontSize: 13, color: ClayTokens.clayDarkTextPrimary),
             ),
             const SizedBox(height: 10),
             if (filtered.isEmpty)
@@ -1070,6 +1078,7 @@ class _MemberPickerDialogState extends State<_MemberPickerDialog> {
 class _NutritionSection extends StatefulWidget {
   final List<Map<String, dynamic>> foods;
   final TextEditingController searchController;
+  final TextEditingController foodNameController;
   final VoidCallback onAddFood;
   final ValueChanged<int> onRemoveFood;
   final String? selectedMealType;
@@ -1078,6 +1087,7 @@ class _NutritionSection extends StatefulWidget {
   const _NutritionSection({
     required this.foods,
     required this.searchController,
+    required this.foodNameController,
     required this.onAddFood,
     required this.onRemoveFood,
     required this.selectedMealType,
@@ -1162,17 +1172,15 @@ class _NutritionSectionState extends State<_NutritionSection> {
     });
   }
 
-  /// Fill the field with the picked FNRI food and add it to the meal.
+  /// Put the picked FNRI food in the editable name field for review.
   void _pickFood(NutritionFood food) {
-    widget.searchController.text = food.foodName;
+    widget.foodNameController.text = food.foodName;
+    widget.searchController.clear();
     setState(() {
       _foodResults = [];
       _hasFoodQuery = false;
       _searchingFoods = false;
     });
-    if (widget.selectedMealType != null && widget.foods.length < 3) {
-      widget.onAddFood();
-    }
   }
 
   String _mealTypeLabel(String type) {
@@ -1204,15 +1212,15 @@ class _NutritionSectionState extends State<_NutritionSection> {
             fontSize: 18,
             fontWeight: FontWeight.w800,
             letterSpacing: 1.2,
-            color: Colors.white,
+            color: ClayTokens.clayDarkTextPrimary,
           ),
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: 10),
         Container(
           decoration: BoxDecoration(
-            color: Colors.white.withAlpha(10),
+            color: ClayTokens.hairline.withAlpha(10),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withAlpha(28)),
+            border: Border.all(color: ClayTokens.hairline.withAlpha(28)),
           ),
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -1228,7 +1236,7 @@ class _NutritionSectionState extends State<_NutritionSection> {
                           ? null
                           : () => widget.onMealTypeChanged(type),
                       child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
+                        duration: Duration(milliseconds: 200),
                         height: 36,
                         margin: EdgeInsets.only(
                           right: type != _mealTypes.last ? 6 : 0,
@@ -1238,14 +1246,14 @@ class _NutritionSectionState extends State<_NutritionSection> {
                               ? ClayTokens.clayPrimary
                               : isAdded
                               ? ClayTokens.clayPrimary.withAlpha(40)
-                              : Colors.white.withAlpha(14),
+                              : ClayTokens.hairline.withAlpha(14),
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(
                             color: isSelected
                                 ? ClayTokens.clayPrimary
                                 : isAdded
                                 ? ClayTokens.clayPrimary.withAlpha(120)
-                                : Colors.white.withAlpha(30),
+                                : ClayTokens.hairline.withAlpha(30),
                           ),
                         ),
                         child: Center(
@@ -1278,31 +1286,70 @@ class _NutritionSectionState extends State<_NutritionSection> {
                       : const Color(0xFF8E8E93),
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Row(
                 children: [
                   Expanded(
                     child: CupertinoTextField(
                       controller: widget.searchController,
-                      placeholder: 'Search or enter food',
+                      placeholder: 'Search FNRI foods',
                       placeholderStyle: ClayTokens.darkBodyMedium.copyWith(
                         color: ClayTokens.clayDarkTextTertiary,
                       ),
-                      padding: const EdgeInsets.symmetric(
+                      padding: EdgeInsets.symmetric(
                         horizontal: 14,
                         vertical: 14,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white.withAlpha(14),
+                        color: ClayTokens.hairline.withAlpha(14),
                         borderRadius: BorderRadius.circular(
                           ClayTokens.radiusMd,
                         ),
-                        border: Border.all(color: Colors.white.withAlpha(30)),
+                        border: Border.all(color: ClayTokens.hairline.withAlpha(30)),
                       ),
                       style: ClayTokens.darkBodyMedium,
                       cursorColor: ClayTokens.clayPrimary,
                       enabled: widget.selectedMealType != null && !isFull,
                       onChanged: _onFoodQueryChanged,
+                      onSubmitted: _onFoodQueryChanged,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Food name',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                  color: const Color(0xFFFFFFFF),
+                ),
+              ),
+              SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: CupertinoTextField(
+                      controller: widget.foodNameController,
+                      placeholder: 'Enter food or select a search result',
+                      placeholderStyle: ClayTokens.darkBodyMedium.copyWith(
+                        color: ClayTokens.clayDarkTextTertiary,
+                      ),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 14,
+                      ),
+                      decoration: BoxDecoration(
+                        color: ClayTokens.hairline.withAlpha(14),
+                        borderRadius: BorderRadius.circular(
+                          ClayTokens.radiusMd,
+                        ),
+                        border: Border.all(color: ClayTokens.hairline.withAlpha(30)),
+                      ),
+                      style: ClayTokens.darkBodyMedium,
+                      cursorColor: ClayTokens.clayPrimary,
+                      enabled: widget.selectedMealType != null && !isFull,
+                      onChanged: (_) => setState(() {}),
                       onSubmitted: (_) {
                         if (widget.selectedMealType != null && !isFull) {
                           widget.onAddFood();
@@ -1318,7 +1365,10 @@ class _NutritionSectionState extends State<_NutritionSection> {
                     ),
                     color: ClayTokens.clayPrimary,
                     borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
-                    onPressed: (widget.selectedMealType != null && !isFull)
+                    onPressed:
+                        (widget.selectedMealType != null &&
+                            !isFull &&
+                            widget.foodNameController.text.trim().isNotEmpty)
                         ? widget.onAddFood
                         : null,
                     child: Text(
@@ -1353,11 +1403,11 @@ class _NutritionSectionState extends State<_NutritionSection> {
                 ),
               ],
               if (_foodResults.isNotEmpty) ...[
-                const SizedBox(height: 10),
+                SizedBox(height: 10),
                 // Glass suggestion list — frosted panel matching the
                 // create-plan section cards.
                 ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 220),
+                  constraints: BoxConstraints(maxHeight: 220),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
                     child: BackdropFilter(
@@ -1368,12 +1418,12 @@ class _NutritionSectionState extends State<_NutritionSection> {
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                             colors: [
-                              Colors.white.withAlpha(24),
+                              ClayTokens.hairline.withAlpha(24),
                               ClayTokens.clayPrimary.withAlpha(22),
                             ],
                           ),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.white.withAlpha(38)),
+                          border: Border.all(color: ClayTokens.hairline.withAlpha(38)),
                         ),
                         child: ListView.builder(
                           shrinkWrap: true,
@@ -1413,10 +1463,10 @@ class _NutritionSectionState extends State<_NutritionSection> {
                                         children: [
                                           Text(
                                             food.foodName,
-                                            style: const TextStyle(
+                                            style: TextStyle(
                                               fontSize: 12.5,
                                               fontWeight: FontWeight.w600,
-                                              color: Colors.white,
+                                              color: ClayTokens.clayDarkTextPrimary,
                                             ),
                                           ),
                                           Text(
@@ -1450,12 +1500,12 @@ class _NutritionSectionState extends State<_NutritionSection> {
               const SizedBox(height: 12),
               if (widget.foods.isEmpty)
                 Container(
-                  padding: const EdgeInsets.symmetric(
+                  padding: EdgeInsets.symmetric(
                     vertical: 16,
                     horizontal: 12,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(14),
+                    color: ClayTokens.hairline.withAlpha(14),
                     borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
                   ),
                   child: Row(
@@ -1490,12 +1540,12 @@ class _NutritionSectionState extends State<_NutritionSection> {
                   final food = entry.value;
                   final mealType = food['meal_type'] as String? ?? '';
                   return Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.all(12),
+                    margin: EdgeInsets.only(bottom: 8),
+                    padding: EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.white.withAlpha(10),
+                      color: ClayTokens.hairline.withAlpha(10),
                       borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
-                      border: Border.all(color: Colors.white.withAlpha(28)),
+                      border: Border.all(color: ClayTokens.hairline.withAlpha(28)),
                     ),
                     child: Row(
                       children: [
@@ -1522,10 +1572,10 @@ class _NutritionSectionState extends State<_NutritionSection> {
                         Expanded(
                           child: Text(
                             food['name'] ?? '',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 13.5,
                               fontWeight: FontWeight.w600,
-                              color: Colors.white,
+                              color: ClayTokens.clayDarkTextPrimary,
                             ),
                           ),
                         ),
@@ -1705,9 +1755,9 @@ class _TrainingSectionState extends State<_TrainingSection> {
     if (widget.exercises.isEmpty) {
       return [
         Container(
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+          padding: EdgeInsets.symmetric(vertical: 16, horizontal: 12),
           decoration: BoxDecoration(
-            color: Colors.white.withAlpha(14),
+            color: ClayTokens.hairline.withAlpha(14),
             borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
           ),
           child: Row(
@@ -1733,12 +1783,12 @@ class _TrainingSectionState extends State<_TrainingSection> {
       final index = entry.key;
       final exercise = entry.value;
       return Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(12),
+        margin: EdgeInsets.only(bottom: 8),
+        padding: EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white.withAlpha(10),
+          color: ClayTokens.hairline.withAlpha(10),
           borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
-          border: Border.all(color: Colors.white.withAlpha(28)),
+          border: Border.all(color: ClayTokens.hairline.withAlpha(28)),
         ),
         child: Row(
           children: [
@@ -1750,7 +1800,7 @@ class _TrainingSectionState extends State<_TrainingSection> {
                     exercise['name'] ?? '',
                     style: ClayTokens.darkBodyMedium.copyWith(
                       fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                      color: ClayTokens.clayDarkTextPrimary,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -1789,15 +1839,15 @@ class _TrainingSectionState extends State<_TrainingSection> {
             fontSize: 18,
             fontWeight: FontWeight.w800,
             letterSpacing: 1.2,
-            color: Colors.white,
+            color: ClayTokens.clayDarkTextPrimary,
           ),
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: 10),
         Container(
           decoration: BoxDecoration(
-            color: Colors.white.withAlpha(10),
+            color: ClayTokens.hairline.withAlpha(10),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withAlpha(28)),
+            border: Border.all(color: ClayTokens.hairline.withAlpha(28)),
           ),
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -1811,17 +1861,17 @@ class _TrainingSectionState extends State<_TrainingSection> {
                   color: Color(0xFFFFFFFF),
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               DropdownField<String>(
                 value: widget.workoutType,
-                fillColor: Colors.white.withAlpha(14),
+                fillColor: ClayTokens.hairline.withAlpha(14),
                 items: widget.workoutTypes.map((type) {
                   return DropdownItem<String>(label: type, value: type);
                 }).toList(),
                 onChanged: widget.onWorkoutTypeChanged,
                 placeholder: 'Select workout type',
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               TextField(
                 controller: _searchController,
                 onChanged: _onQueryChanged,
@@ -1831,16 +1881,16 @@ class _TrainingSectionState extends State<_TrainingSection> {
                     fontSize: 13,
                     color: Color(0xFF7070A0),
                   ),
-                  prefixIcon: const Icon(
+                  prefixIcon: Icon(
                     Icons.search,
                     color: Color(0xFF7070A0),
                     size: 18,
                   ),
                   filled: true,
-                  fillColor: Colors.white.withAlpha(14),
+                  fillColor: ClayTokens.hairline.withAlpha(14),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.white.withAlpha(30)),
+                    borderSide: BorderSide(color: ClayTokens.hairline.withAlpha(30)),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -1882,14 +1932,14 @@ class _TrainingSectionState extends State<_TrainingSection> {
                     // Glass result row — frosted panel like the create-plan
                     // section cards instead of a solid dark tile.
                     return Container(
-                      margin: const EdgeInsets.only(bottom: 6),
+                      margin: EdgeInsets.only(bottom: 6),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(12),
                         child: BackdropFilter(
                           filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
                           child: PressableCard(
                             onTap: () => _addExerciseFromSearch(e),
-                            padding: const EdgeInsets.symmetric(
+                            padding: EdgeInsets.symmetric(
                               horizontal: 12,
                               vertical: 10,
                             ),
@@ -1899,13 +1949,13 @@ class _TrainingSectionState extends State<_TrainingSection> {
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                                 colors: [
-                                  Colors.white.withAlpha(24),
+                                  ClayTokens.hairline.withAlpha(24),
                                   ClayTokens.clayPrimary.withAlpha(20),
                                 ],
                               ),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: Colors.white.withAlpha(38),
+                                color: ClayTokens.hairline.withAlpha(38),
                               ),
                             ),
                             child: Row(
@@ -1958,20 +2008,20 @@ class _TrainingSectionState extends State<_TrainingSection> {
                   }).toList(),
                 ),
               ],
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               TextField(
                 controller: widget.nameController,
                 decoration: InputDecoration(
                   hintText: 'Exercise name',
-                  hintStyle: const TextStyle(
+                  hintStyle: TextStyle(
                     fontSize: 13,
                     color: Color(0xFF7070A0),
                   ),
                   filled: true,
-                  fillColor: Colors.white.withAlpha(14),
+                  fillColor: ClayTokens.hairline.withAlpha(14),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.white.withAlpha(30)),
+                    borderSide: BorderSide(color: ClayTokens.hairline.withAlpha(30)),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -1984,7 +2034,7 @@ class _TrainingSectionState extends State<_TrainingSection> {
                 ),
                 style: const TextStyle(fontSize: 13, color: Color(0xFFFFFFFF)),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Row(
                 children: [
                   Expanded(
@@ -1992,16 +2042,16 @@ class _TrainingSectionState extends State<_TrainingSection> {
                       controller: widget.setsController,
                       decoration: InputDecoration(
                         hintText: 'Sets',
-                        hintStyle: const TextStyle(
+                        hintStyle: TextStyle(
                           fontSize: 13,
                           color: Color(0xFF7070A0),
                         ),
                         filled: true,
-                        fillColor: Colors.white.withAlpha(14),
+                        fillColor: ClayTokens.hairline.withAlpha(14),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
-                            color: Colors.white.withAlpha(30),
+                            color: ClayTokens.hairline.withAlpha(30),
                           ),
                         ),
                         focusedBorder: OutlineInputBorder(
@@ -2026,22 +2076,22 @@ class _TrainingSectionState extends State<_TrainingSection> {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Expanded(
                     child: TextField(
                       controller: widget.repsController,
                       decoration: InputDecoration(
                         hintText: 'Reps',
-                        hintStyle: const TextStyle(
+                        hintStyle: TextStyle(
                           fontSize: 13,
                           color: Color(0xFF7070A0),
                         ),
                         filled: true,
-                        fillColor: Colors.white.withAlpha(14),
+                        fillColor: ClayTokens.hairline.withAlpha(14),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
-                            color: Colors.white.withAlpha(30),
+                            color: ClayTokens.hairline.withAlpha(30),
                           ),
                         ),
                         focusedBorder: OutlineInputBorder(
@@ -2066,22 +2116,22 @@ class _TrainingSectionState extends State<_TrainingSection> {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Expanded(
                     child: TextField(
                       controller: widget.weightController,
                       decoration: InputDecoration(
                         hintText: 'Weight (kg)',
-                        hintStyle: const TextStyle(
+                        hintStyle: TextStyle(
                           fontSize: 13,
                           color: Color(0xFF7070A0),
                         ),
                         filled: true,
-                        fillColor: Colors.white.withAlpha(14),
+                        fillColor: ClayTokens.hairline.withAlpha(14),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
-                            color: Colors.white.withAlpha(30),
+                            color: ClayTokens.hairline.withAlpha(30),
                           ),
                         ),
                         focusedBorder: OutlineInputBorder(
@@ -2184,15 +2234,15 @@ class _NotesSection extends StatelessWidget {
             fontSize: 18,
             fontWeight: FontWeight.w800,
             letterSpacing: 1.2,
-            color: Colors.white,
+            color: ClayTokens.clayDarkTextPrimary,
           ),
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: 10),
         Container(
           decoration: BoxDecoration(
-            color: Colors.white.withAlpha(10),
+            color: ClayTokens.hairline.withAlpha(10),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withAlpha(28)),
+            border: Border.all(color: ClayTokens.hairline.withAlpha(28)),
           ),
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -2206,7 +2256,7 @@ class _NotesSection extends StatelessWidget {
                   color: Color(0xFFFFFFFF),
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               TextField(
                 controller: controller,
                 maxLines: 5,
@@ -2218,7 +2268,7 @@ class _NotesSection extends StatelessWidget {
                     color: ClayTokens.clayDarkTextTertiary,
                   ),
                   filled: true,
-                  fillColor: Colors.white.withAlpha(14),
+                  fillColor: ClayTokens.hairline.withAlpha(14),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
                   ),
@@ -2373,14 +2423,14 @@ class _DropdownFieldState<T> extends State<DropdownField<T>> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeInOut,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          padding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
           decoration: BoxDecoration(
             color: widget.fillColor ?? ClayTokens.clayDarkBase,
             borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
             border: Border.all(
               color: _open
                   ? ClayTokens.clayPrimary.withAlpha(128)
-                  : Colors.white.withAlpha(30),
+                  : ClayTokens.hairline.withAlpha(30),
             ),
           ),
           child: Row(

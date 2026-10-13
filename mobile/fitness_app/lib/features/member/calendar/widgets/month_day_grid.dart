@@ -113,21 +113,21 @@ class MonthDayGrid extends StatelessWidget {
             onTap: () =>
                 onDayTap(DateTime(visibleMonth.year, visibleMonth.month, d)),
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              margin: const EdgeInsets.all(3),
+              duration: Duration(milliseconds: 200),
+              margin: EdgeInsets.all(3),
               decoration: BoxDecoration(
                 color: isToday
                     ? ClayTokens.clayPrimary.withAlpha(30)
                     : isSelected
-                    ? Colors.white.withAlpha(12)
-                    : Colors.white.withAlpha(5),
+                    ? ClayTokens.hairline.withAlpha(12)
+                    : ClayTokens.hairline.withAlpha(5),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: isSelected
                       ? ClayTokens.clayPrimaryLight
                       : isToday
                       ? ClayTokens.clayPrimary.withAlpha(100)
-                      : Colors.white.withAlpha(10),
+                      : ClayTokens.hairline.withAlpha(10),
                   width: isSelected ? 1.5 : 1,
                 ),
               ),
@@ -237,14 +237,14 @@ class MonthDayGrid extends StatelessWidget {
               GestureDetector(
                 onTap: () => onShiftMonth(-1),
                 child: Container(
-                  padding: const EdgeInsets.all(4),
+                  padding: EdgeInsets.all(4),
                   decoration: BoxDecoration(
                     color: ClayTokens.clayPrimary.withAlpha(190),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
                     Icons.chevron_left,
-                    color: Colors.white,
+                    color: ClayTokens.clayDarkTextPrimary,
                     size: 20,
                   ),
                 ),
@@ -260,14 +260,14 @@ class MonthDayGrid extends StatelessWidget {
               GestureDetector(
                 onTap: () => onShiftMonth(1),
                 child: Container(
-                  padding: const EdgeInsets.all(4),
+                  padding: EdgeInsets.all(4),
                   decoration: BoxDecoration(
                     color: ClayTokens.clayPrimary.withAlpha(190),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
                     Icons.chevron_right,
-                    color: Colors.white,
+                    color: ClayTokens.clayDarkTextPrimary,
                     size: 20,
                   ),
                 ),

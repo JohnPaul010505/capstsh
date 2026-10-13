@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fitness_app/app/design_tokens.dart';
 import '../providers/workout_session_provider.dart';
 import '../data/met_exercise_repository.dart';
-import '../../../shared/widgets/clay/clay_card.dart';
+import '../../../shared/widgets/glass_card.dart';
 import '../../../shared/widgets/pressable.dart';
 
 class WorkoutAddForm extends ConsumerStatefulWidget {
@@ -99,11 +99,9 @@ class _WorkoutAddFormState extends ConsumerState<WorkoutAddForm> {
   Widget build(BuildContext context) {
     // Same clay surface as the Session Duration card (workout_clock_card.dart):
     // outlined variant, translucent primary fill, radius 32, 1.5px border.
-    return ClayCard(
-      variant: ClayCardVariant.outlined,
-      backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
-      customPadding: const EdgeInsets.all(16),
-      padding: ClayCardPadding.none,
+    return MemberGlassCard(
+      padding: const EdgeInsets.all(16),
+      borderRadius: BorderRadius.circular(ClayTokens.radiusCard),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -124,13 +122,19 @@ class _WorkoutAddFormState extends ConsumerState<WorkoutAddForm> {
             onChanged: _onQueryChanged,
             decoration: InputDecoration(
               hintText: 'Search exercises…',
-              hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF7070A0)),
-              prefixIcon: const Icon(Icons.search, color: Color(0xFF7070A0), size: 18),
+              hintStyle: TextStyle(fontSize: 13, color: ClayTokens.clayDarkTextTertiary),
+              prefixIcon: Icon(Icons.search, color: ClayTokens.clayDarkTextTertiary, size: 18),
               filled: true,
-              fillColor: ClayTokens.clayDarkSurfaceElevated,
+              fillColor: ClayColors.isLightMode
+                  ? Colors.white
+                  : ClayTokens.clayDarkSurfaceElevated,
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFF2A2A45)),
+                borderSide: BorderSide(
+                  color: ClayColors.isLightMode
+                      ? ClayTokens.clayPrimary.withAlpha(50)
+                      : const Color(0xFF2A2A45),
+                ),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -138,7 +142,7 @@ class _WorkoutAddFormState extends ConsumerState<WorkoutAddForm> {
               ),
               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             ),
-            style: const TextStyle(fontSize: 13, color: Color(0xFFFFFFFF)),
+            style: TextStyle(fontSize: 13, color: ClayTokens.clayDarkTextPrimary),
           ),
           if (_isSearching) ...[
             const SizedBox(height: 8),
@@ -162,6 +166,7 @@ class _WorkoutAddFormState extends ConsumerState<WorkoutAddForm> {
             Column(
               children: _searchResults.map((e) {
                 return PressableCard(
+                  glass: true,
                   onTap: () => _addExercise(e),
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   margin: const EdgeInsets.only(bottom: 6),
@@ -190,7 +195,7 @@ class _WorkoutAddFormState extends ConsumerState<WorkoutAddForm> {
                               children: [
                                 Text(
                                   e.name,
-                                  style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF)),
+                                  style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: ClayTokens.clayDarkTextPrimary),
                                 ),
                               ],
                             ),

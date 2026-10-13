@@ -1,7 +1,7 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../app/design_tokens.dart';
+import 'glass_card.dart';
 
 class TrainerNavBar extends StatelessWidget {
   final int currentIndex;
@@ -16,9 +16,17 @@ class TrainerNavBar extends StatelessWidget {
   static const _raise = 27.0;
 
   static const _tabs = <({IconData inactive, IconData active, String label})>[
-    (inactive: Icons.dashboard_outlined, active: Icons.dashboard, label: 'Dashboard'),
+    (
+      inactive: Icons.dashboard_outlined,
+      active: Icons.dashboard,
+      label: 'Dashboard',
+    ),
     (inactive: Icons.people_outlined, active: Icons.people, label: 'Members'),
-    (inactive: Icons.qr_code_scanner_outlined, active: Icons.qr_code_scanner, label: 'In & Out'),
+    (
+      inactive: Icons.qr_code_scanner_outlined,
+      active: Icons.qr_code_scanner,
+      label: 'In & Out',
+    ),
     (inactive: Icons.chat_bubble_outline, active: Icons.chat, label: 'Chat'),
     (inactive: Icons.person_outlined, active: Icons.person, label: 'Profile'),
   ];
@@ -38,115 +46,72 @@ class TrainerNavBar extends StatelessWidget {
           alignment: Alignment.topCenter,
           clipBehavior: Clip.none,
           children: [
-            // Bar body — liquid glass over the live page background
+            // Bar body — the same liquid glass as the member-home cards.
             Positioned(
               left: 0,
               right: 0,
               bottom: 0,
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(40),
-                  boxShadow: [
-                    BoxShadow(
-                      color: purple.withValues(alpha: 0.16),
-                      blurRadius: 22,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(40),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                    child: Container(
-                      height: barH,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Colors.white.withAlpha(21),
-                            ClayTokens.clayPrimaryLight.withAlpha(20),
-                            ClayTokens.clayPrimary.withAlpha(24),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(40),
-                        border: Border.all(color: Colors.white.withAlpha(38)),
-                      ),
-                      child: Stack(
-                        children: [
-                          // Top specular sheen
-                          Positioned(
-                            top: 0,
-                            left: 40,
-                            right: 40,
-                            child: IgnorePointer(
-                              child: Container(
-                                height: 1,
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(colors: [
-                                    Colors.white.withAlpha(0),
-                                    Colors.white.withAlpha(120),
-                                    Colors.white.withAlpha(0),
-                                  ]),
+              child: GlassSurface(
+                borderRadius: BorderRadius.circular(40),
+                padding: EdgeInsets.zero,
+                child: SizedBox(
+                  height: barH,
+                  child: Row(
+                    children: List.generate(_tabs.length, (i) {
+                      if (i == 2) {
+                        // Center slot: label under the raised button.
+                        return Expanded(
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () => onTap(2),
+                            child: Padding(
+                              padding: EdgeInsets.only(top: circleD - 21),
+                              child: Text(
+                                _tabs[i].label,
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: ClayTokens.clayDarkTextSecondary,
                                 ),
                               ),
                             ),
                           ),
-                          Row(
-                            children: List.generate(_tabs.length, (i) {
-                              if (i == 2) {
-                                // Center slot: text only for "In & Out"
-                                return Expanded(
-                                  child: GestureDetector(
-                                    behavior: HitTestBehavior.opaque,
-                                    onTap: () => onTap(2),
-                                    child: Padding(
-                                      padding: EdgeInsets.only(top: circleD - 21),
-                                      child: Text(
-                                        _tabs[i].label,
-                                        textAlign: TextAlign.center,
-                                        style: GoogleFonts.dmSans(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w600,
-                                          color: ClayTokens.clayDarkTextSecondary,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }
-                              final isActive = i == currentIndex;
-                              return Expanded(
-                                child: GestureDetector(
-                                  behavior: HitTestBehavior.opaque,
-                                  onTap: () => onTap(i),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        isActive ? _tabs[i].active : _tabs[i].inactive,
-                                        size: 24,
-                                        color: isActive ? purple : ClayTokens.clayDarkTextSecondary,
-                                      ),
-                                      const SizedBox(height: 3),
-                                      Text(
-                                        _tabs[i].label,
-                                        style: GoogleFonts.dmSans(
-                                          fontSize: 10,
-                                          fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                                          color: isActive ? ClayTokens.clayDarkTextPrimary : ClayTokens.clayDarkTextSecondary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                        );
+                      }
+                      final isActive = i == currentIndex;
+                      return Expanded(
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => onTap(i),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                isActive ? _tabs[i].active : _tabs[i].inactive,
+                                size: 24,
+                                color: isActive
+                                    ? purple
+                                    : ClayTokens.clayDarkTextSecondary,
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                _tabs[i].label,
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 10,
+                                  fontWeight: isActive
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                                  color: isActive
+                                      ? ClayTokens.clayDarkTextPrimary
+                                      : ClayTokens.clayDarkTextSecondary,
                                 ),
-                              );
-                            }),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
+                        ),
+                      );
+                    }),
                   ),
                 ),
               ),
@@ -178,7 +143,9 @@ class TrainerNavBar extends StatelessWidget {
                       border: Border.all(color: Colors.transparent),
                     ),
                     child: Icon(
-                      currentIndex == 2 ? Icons.qr_code_scanner : Icons.qr_code_scanner_outlined,
+                      currentIndex == 2
+                          ? Icons.qr_code_scanner
+                          : Icons.qr_code_scanner_outlined,
                       color: Colors.white,
                       size: 26,
                     ),
@@ -191,4 +158,4 @@ class TrainerNavBar extends StatelessWidget {
       ),
     );
   }
-}
+}

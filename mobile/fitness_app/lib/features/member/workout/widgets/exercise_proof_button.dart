@@ -175,18 +175,18 @@ class _ExerciseProofTileState extends State<ExerciseProofTile> {
   Widget _buildPlaceholderStrip() {
     return Container(
       height: 64,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      padding: EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Colors.white.withAlpha(14),
+            ClayTokens.hairline.withAlpha(14),
             ClayTokens.clayPrimaryLight.withAlpha(22),
           ],
         ),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withAlpha(30)),
+        border: Border.all(color: ClayTokens.hairline.withAlpha(30)),
       ),
       child: Row(
         children: [
@@ -228,7 +228,7 @@ class _ExerciseProofTileState extends State<ExerciseProofTile> {
       borderRadius: BorderRadius.circular(12),
       child: Container(
         height: 64,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        padding: EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
           gradient: RadialGradient(
             center: const Alignment(0.9, -0.9),
@@ -239,15 +239,15 @@ class _ExerciseProofTileState extends State<ExerciseProofTile> {
             ],
           ),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withAlpha(30)),
+          border: Border.all(color: ClayTokens.hairline.withAlpha(30)),
         ),
         child: Row(
           children: [
-            const Icon(Icons.play_circle_outline, size: 26, color: Colors.white54),
+            Icon(Icons.play_circle_outline, size: 26, color: ClayTokens.clayDarkTextSecondary),
             const SizedBox(width: 10),
-            const Expanded(
+            Expanded(
               child: Text('Video saved · tap to view', style: TextStyle(
-                fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFFB4B4D0),
+                fontSize: 11, fontWeight: FontWeight.w700, color: ClayTokens.clayDarkTextSecondary,
               )),
             ),
             Container(

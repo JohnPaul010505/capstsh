@@ -54,7 +54,10 @@ final ThemeData clayThemeData = ThemeData(
       borderRadius: BorderRadius.circular(ClayTokens.radiusSm),
       borderSide: BorderSide(color: ClayTokens.clayError, width: 1.5),
     ),
-    contentPadding: EdgeInsets.symmetric(horizontal: ClayTokens.md, vertical: ClayTokens.sm),
+    contentPadding: EdgeInsets.symmetric(
+      horizontal: ClayTokens.md,
+      vertical: ClayTokens.sm,
+    ),
     labelStyle: ClayTokens.darkBodyMedium,
     hintStyle: ClayTokens.darkBodySmall,
     errorStyle: ClayTokens.darkLabelSmall.copyWith(color: ClayTokens.clayError),
@@ -77,26 +80,30 @@ final ThemeData clayThemeData = ThemeData(
     labelSmall: ClayTokens.darkLabelSmall,
   ),
   elevatedButtonTheme: ElevatedButtonThemeData(
-    style: ElevatedButton.styleFrom(
-      backgroundColor: ClayTokens.clayPrimary,
-      foregroundColor: ClayTokens.clayTextOnPrimary,
-      elevation: 0,
-      padding: EdgeInsets.symmetric(horizontal: ClayTokens.xl, vertical: ClayTokens.sm),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(ClayTokens.radiusButton),
-      ),
-      textStyle: ClayTokens.darkTitleMedium,
-    ).copyWith(
-      overlayColor: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.pressed)) {
-          return Colors.black.withAlpha(30);
-        }
-        if (states.contains(WidgetState.hovered)) {
-          return Colors.black.withAlpha(15);
-        }
-        return null;
-      }),
-    ),
+    style:
+        ElevatedButton.styleFrom(
+          backgroundColor: ClayTokens.clayPrimary,
+          foregroundColor: ClayTokens.clayTextOnPrimary,
+          elevation: 0,
+          padding: EdgeInsets.symmetric(
+            horizontal: ClayTokens.xl,
+            vertical: ClayTokens.sm,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(ClayTokens.radiusButton),
+          ),
+          textStyle: ClayTokens.darkTitleMedium,
+        ).copyWith(
+          overlayColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.pressed)) {
+              return Colors.black.withAlpha(30);
+            }
+            if (states.contains(WidgetState.hovered)) {
+              return Colors.black.withAlpha(15);
+            }
+            return null;
+          }),
+        ),
   ),
   textButtonTheme: TextButtonThemeData(
     style: TextButton.styleFrom(
@@ -124,7 +131,9 @@ final ThemeData clayThemeData = ThemeData(
     surfaceTintColor: Colors.transparent,
     labelTextStyle: WidgetStateProperty.resolveWith((states) {
       if (states.contains(WidgetState.selected)) {
-        return ClayTokens.darkLabelMedium.copyWith(color: ClayTokens.clayPrimaryLight);
+        return ClayTokens.darkLabelMedium.copyWith(
+          color: ClayTokens.clayPrimaryLight,
+        );
       }
       return ClayTokens.darkLabelSmall;
     }),
@@ -164,6 +173,187 @@ final ThemeData clayThemeData = ThemeData(
   ),
   dialogTheme: DialogThemeData(
     backgroundColor: ClayTokens.clayDarkSurface,
+    surfaceTintColor: Colors.transparent,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
+    ),
+  ),
+);
+
+/// Light counterpart to [clayThemeData]. Used when the Appearance toggle is on
+/// so Material components (text fields, dialogs, switches, chips, app bars)
+/// render with readable dark-on-light styling instead of the dark palette.
+final ThemeData clayLightThemeData = ThemeData(
+  useMaterial3: true,
+  brightness: Brightness.light,
+  colorScheme: ColorScheme.light(
+    primary: ClayTokens.clayPrimary,
+    onPrimary: ClayTokens.clayTextOnPrimary,
+    primaryContainer: ClayTokens.clayPrimary.withAlpha(40),
+    onPrimaryContainer: ClayTokens.clayPrimaryDark,
+    secondary: ClayTokens.claySecondary,
+    onSecondary: Colors.white,
+    error: ClayTokens.clayError,
+    onError: Colors.white,
+    errorContainer: ClayTokens.clayError.withAlpha(40),
+    onErrorContainer: ClayTokens.clayError,
+    surface: ClayTokens.claySurface,
+    onSurface: ClayTokens.clayTextPrimary,
+    onSurfaceVariant: ClayTokens.clayTextSecondary,
+    outline: ClayTokens.clayBorder,
+    outlineVariant: ClayTokens.clayBorderStrong,
+  ),
+  scaffoldBackgroundColor: ClayTokens.clayBase,
+  appBarTheme: AppBarTheme(
+    backgroundColor: Colors.transparent,
+    elevation: 0,
+    scrolledUnderElevation: 0.5,
+    centerTitle: false,
+    titleTextStyle: ClayTokens.titleLarge,
+    iconTheme: IconThemeData(color: ClayTokens.clayTextPrimary),
+  ),
+  inputDecorationTheme: InputDecorationTheme(
+    filled: true,
+    fillColor: ClayTokens.claySurface,
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(ClayTokens.radiusSm),
+      borderSide: BorderSide(color: ClayTokens.clayBorder),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(ClayTokens.radiusSm),
+      borderSide: BorderSide(color: ClayTokens.clayBorder),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(ClayTokens.radiusSm),
+      borderSide: BorderSide(color: ClayTokens.clayPrimary, width: 1.5),
+    ),
+    errorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(ClayTokens.radiusSm),
+      borderSide: BorderSide(color: ClayTokens.clayError),
+    ),
+    focusedErrorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(ClayTokens.radiusSm),
+      borderSide: BorderSide(color: ClayTokens.clayError, width: 1.5),
+    ),
+    contentPadding: EdgeInsets.symmetric(
+      horizontal: ClayTokens.md,
+      vertical: ClayTokens.sm,
+    ),
+    labelStyle: ClayTokens.bodyMedium,
+    hintStyle: ClayTokens.bodySmall,
+    errorStyle: ClayTokens.labelSmall.copyWith(color: ClayTokens.clayError),
+  ),
+  textTheme: TextTheme(
+    displayLarge: ClayTokens.displayLarge,
+    displayMedium: ClayTokens.displayMedium,
+    displaySmall: ClayTokens.displaySmall,
+    headlineLarge: ClayTokens.headlineLarge,
+    headlineMedium: ClayTokens.headlineMedium,
+    headlineSmall: ClayTokens.headlineSmall,
+    titleLarge: ClayTokens.titleLarge,
+    titleMedium: ClayTokens.titleMedium,
+    titleSmall: ClayTokens.titleSmall,
+    bodyLarge: ClayTokens.bodyLarge,
+    bodyMedium: ClayTokens.bodyMedium,
+    bodySmall: ClayTokens.bodySmall,
+    labelLarge: ClayTokens.labelLarge,
+    labelMedium: ClayTokens.labelMedium,
+    labelSmall: ClayTokens.labelSmall,
+  ),
+  elevatedButtonTheme: ElevatedButtonThemeData(
+    style:
+        ElevatedButton.styleFrom(
+          backgroundColor: ClayTokens.clayPrimary,
+          foregroundColor: ClayTokens.clayTextOnPrimary,
+          elevation: 0,
+          padding: EdgeInsets.symmetric(
+            horizontal: ClayTokens.xl,
+            vertical: ClayTokens.sm,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(ClayTokens.radiusButton),
+          ),
+          textStyle: ClayTokens.titleMedium,
+        ).copyWith(
+          overlayColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.pressed)) {
+              return Colors.black.withAlpha(30);
+            }
+            if (states.contains(WidgetState.hovered)) {
+              return Colors.black.withAlpha(15);
+            }
+            return null;
+          }),
+        ),
+  ),
+  textButtonTheme: TextButtonThemeData(
+    style: TextButton.styleFrom(
+      foregroundColor: ClayTokens.clayPrimaryDark,
+      textStyle: ClayTokens.bodyLarge,
+    ),
+  ),
+  cardTheme: CardThemeData(
+    color: ClayTokens.clayCard,
+    elevation: 0,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(ClayTokens.radiusCard),
+    ),
+    margin: EdgeInsets.zero,
+    shadowColor: Colors.transparent,
+  ),
+  dividerTheme: DividerThemeData(
+    color: ClayTokens.clayDivider,
+    thickness: 0.5,
+    space: 0,
+  ),
+  navigationBarTheme: NavigationBarThemeData(
+    backgroundColor: ClayTokens.clayBase,
+    indicatorColor: ClayTokens.clayPrimary.withAlpha(35),
+    surfaceTintColor: Colors.transparent,
+    labelTextStyle: WidgetStateProperty.resolveWith((states) {
+      if (states.contains(WidgetState.selected)) {
+        return ClayTokens.labelMedium.copyWith(
+          color: ClayTokens.clayPrimaryDark,
+        );
+      }
+      return ClayTokens.labelSmall;
+    }),
+    iconTheme: WidgetStateProperty.resolveWith((states) {
+      if (states.contains(WidgetState.selected)) {
+        return IconThemeData(color: ClayTokens.clayPrimaryDark, size: 20);
+      }
+      return IconThemeData(color: ClayTokens.clayTextTertiary, size: 20);
+    }),
+    height: 66,
+    elevation: 0,
+    overlayColor: WidgetStateProperty.all(Colors.transparent),
+  ),
+  snackBarTheme: SnackBarThemeData(
+    backgroundColor: ClayTokens.claySurfaceElevated,
+    contentTextStyle: ClayTokens.bodyMedium,
+    behavior: SnackBarBehavior.floating,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(ClayTokens.radiusSm),
+    ),
+  ),
+  chipTheme: ChipThemeData(
+    backgroundColor: ClayTokens.claySurface,
+    labelStyle: ClayTokens.labelMedium,
+    side: BorderSide(color: ClayTokens.clayBorderStrong),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+    padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+  ),
+  bottomSheetTheme: BottomSheetThemeData(
+    backgroundColor: ClayTokens.claySurface,
+    surfaceTintColor: Colors.transparent,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(
+        top: Radius.circular(ClayTokens.radiusLg),
+      ),
+    ),
+  ),
+  dialogTheme: DialogThemeData(
+    backgroundColor: ClayTokens.claySurface,
     surfaceTintColor: Colors.transparent,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(ClayTokens.radiusMd),

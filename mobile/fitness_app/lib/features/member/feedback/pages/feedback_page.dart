@@ -1,4 +1,4 @@
-﻿import 'package:flutter/cupertino.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,7 +8,7 @@ import 'package:shared/services/feedback_service.dart';
 import 'package:shared/services/supabase_client.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../shared/widgets/app_glow_background.dart';
-import '../../../shared/widgets/clay/clay_card.dart';
+import '../../../shared/widgets/glass_card.dart';
 
 /// Feedback the trainer has written for this member (Figure 20), newest first.
 /// The trainer's name is embedded through the trainer_id foreign key.
@@ -16,10 +16,11 @@ import '../../../shared/widgets/clay/clay_card.dart';
 /// Scoped to the CURRENT trainer only: the active assignment is resolved
 /// first, so after an admin reassignment the old trainer's rows stay in the
 /// DB but no longer show here. No active trainer means an empty list.
-final trainerFeedbackProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+final trainerFeedbackProvider = FutureProvider<List<Map<String, dynamic>>>((
+  ref,
+) async {
   final userId = SupabaseClientService().client.auth.currentUser!.id;
-  final assignment = await SupabaseClientService()
-      .client
+  final assignment = await SupabaseClientService().client
       .from('trainer_assignments')
       .select('trainer_id')
       .eq('member_id', userId)
@@ -61,7 +62,8 @@ class _FeedbackPageState extends ConsumerState<FeedbackPage> {
 
   void _onRouteChanged() {
     final isFeedback =
-        _router!.routerDelegate.currentConfiguration.uri.path == '/member/feedback';
+        _router!.routerDelegate.currentConfiguration.uri.path ==
+        '/member/feedback';
     if (isFeedback && !_wasFeedback && mounted) {
       ref.invalidate(trainerFeedbackProvider);
     }
@@ -96,9 +98,9 @@ class _FeedbackPageState extends ConsumerState<FeedbackPage> {
     } catch (e) {
       // Surface the backend message (missing 0038 columns vs RLS deny).
       if (mounted) {
-        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-          SnackBar(content: Text('$e')),
-        );
+        ScaffoldMessenger.maybeOf(
+          context,
+        )?.showSnackBar(SnackBar(content: Text('$e')));
       }
     } finally {
       if (mounted) setState(() => _commentSaving = null);
@@ -118,7 +120,9 @@ class _FeedbackPageState extends ConsumerState<FeedbackPage> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-          const SnackBar(content: Text('Could not save your rating. Please try again.')),
+          const SnackBar(
+            content: Text('Could not save your rating. Please try again.'),
+          ),
         );
       }
     } finally {
@@ -131,7 +135,7 @@ class _FeedbackPageState extends ConsumerState<FeedbackPage> {
     final feedbackAsync = ref.watch(trainerFeedbackProvider);
 
     return CupertinoPageScaffold(
-      backgroundColor: ClayTokens.clayDarkBase,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       child: AppGlowBackground(
         child: SafeArea(
           child: Column(
@@ -140,7 +144,10 @@ class _FeedbackPageState extends ConsumerState<FeedbackPage> {
               _buildHeader('Feedback'),
               Expanded(
                 child: ListView(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
                   children: [
                     Padding(
                       padding: const EdgeInsets.only(left: 4, bottom: 8),
@@ -155,46 +162,65 @@ class _FeedbackPageState extends ConsumerState<FeedbackPage> {
                     ),
                     feedbackAsync.when(
                       data: (feedback) => feedback.isEmpty
-                          ? ClayCard(
-                              variant: ClayCardVariant.outlined,
-                              backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
-                              customPadding: const EdgeInsets.all(20),
-                              padding: ClayCardPadding.none,
+                          ? MemberGlassCard(
+                              padding: const EdgeInsets.all(20),
                               borderRadius: BorderRadius.circular(16),
-                              child: const Column(
+                              child: Column(
                                 children: [
-                                  Icon(Icons.rate_review_outlined, color: Color(0xFF7070A0), size: 28),
+                                  Icon(
+                                    Icons.rate_review_outlined,
+                                    color: ClayTokens.clayDarkTextTertiary,
+                                    size: 28,
+                                  ),
                                   SizedBox(height: 8),
                                   Text(
                                     'No feedback from your trainer yet.\nIt will appear here after your next session.',
                                     textAlign: TextAlign.center,
-                                    style: TextStyle(fontSize: 12, color: Color(0xFF7070A0), height: 1.5),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: ClayTokens.clayDarkTextTertiary,
+                                      height: 1.5,
+                                    ),
                                   ),
                                 ],
                               ),
                             )
-                          : ClayCard(
-                              variant: ClayCardVariant.outlined,
-                              backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
-                              customPadding: const EdgeInsets.all(16),
-                              padding: ClayCardPadding.none,
+                          : MemberGlassCard(
+                              padding: const EdgeInsets.all(16),
                               borderRadius: BorderRadius.circular(16),
                               child: Column(
                                 children: feedback.asMap().entries.map((entry) {
-                                  final isLast = entry.key == feedback.length - 1;
+                                  final isLast =
+                                      entry.key == feedback.length - 1;
                                   return Column(
                                     children: [
                                       _FeedbackEntry(
                                         feedback: entry.value,
-                                        busy: _ratingInProgress == entry.value['id'],
-                                        onRate: (stars) => _rate(entry.value, stars),
-                                        editing: _editingId == entry.value['id'],
-                                        commentSaving: _commentSaving == entry.value['id'],
-                                        onEditComment: () => setState(() => _editingId = entry.value['id'] as String),
-                                        onCancelComment: () => setState(() => _editingId = null),
-                                        onSaveComment: (text) => _saveComment(entry.value, text),
+                                        busy:
+                                            _ratingInProgress ==
+                                            entry.value['id'],
+                                        onRate: (stars) =>
+                                            _rate(entry.value, stars),
+                                        editing:
+                                            _editingId == entry.value['id'],
+                                        commentSaving:
+                                            _commentSaving == entry.value['id'],
+                                        onEditComment: () => setState(
+                                          () => _editingId =
+                                              entry.value['id'] as String,
+                                        ),
+                                        onCancelComment: () =>
+                                            setState(() => _editingId = null),
+                                        onSaveComment: (text) =>
+                                            _saveComment(entry.value, text),
                                       ),
-                                      if (!isLast) const Divider(color: Color(0xFF38383A), height: 1),
+                                      if (!isLast)
+                                        Divider(
+                                          color: glassLine(
+                                            const Color(0xFF38383A),
+                                          ),
+                                          height: 1,
+                                        ),
                                     ],
                                   );
                                 }).toList(),
@@ -210,7 +236,9 @@ class _FeedbackPageState extends ConsumerState<FeedbackPage> {
                         padding: const EdgeInsets.all(16),
                         child: Text(
                           'Error: $e',
-                          style: ClayTokens.bodyMedium.copyWith(color: ClayTokens.clayError),
+                          style: ClayTokens.bodyMedium.copyWith(
+                            color: ClayTokens.clayError,
+                          ),
                         ),
                       ),
                     ),
@@ -232,7 +260,10 @@ class _FeedbackPageState extends ConsumerState<FeedbackPage> {
           CupertinoButton(
             padding: EdgeInsets.zero,
             onPressed: () => context.pop(),
-            child: const Icon(CupertinoIcons.back, color: Colors.white),
+            child: Icon(
+              CupertinoIcons.back,
+              color: ClayTokens.clayDarkTextPrimary,
+            ),
           ),
           Expanded(
             child: Text(
@@ -276,9 +307,16 @@ class _FeedbackEntry extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final trainer = (feedback['trainer'] as Map<String, dynamic>?)?['full_name'] as String? ?? 'Trainer';
+    final trainer =
+        (feedback['trainer'] as Map<String, dynamic>?)?['full_name']
+            as String? ??
+        'Trainer';
     final content = feedback['content'] as String? ?? '';
-    final createdAt = DateTime.tryParse(feedback['created_at']?.toString() ?? '')?.toLocal() ?? DateTime.now();
+    final createdAt =
+        DateTime.tryParse(
+          feedback['created_at']?.toString() ?? '',
+        )?.toLocal() ??
+        DateTime.now();
     final rating = feedback['rating'] as int?;
 
     return Padding(
@@ -295,20 +333,29 @@ class _FeedbackEntry extends StatelessWidget {
                   color: ClayTokens.clayPrimary.withAlpha(25),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.fitness_center, color: Color(0xFFA78BFA), size: 15),
+                child: const Icon(
+                  Icons.fitness_center,
+                  color: Color(0xFFA78BFA),
+                  size: 15,
+                ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   trainer,
                   style: ClayTokens.titleLarge.copyWith(
-                    fontSize: 14, fontWeight: FontWeight.w600, color: ClayTokens.clayDarkTextPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: ClayTokens.clayDarkTextPrimary,
                   ),
                 ),
               ),
               Text(
                 DateFormat('MMM d, yyyy').format(createdAt),
-                style: ClayTokens.titleMedium.copyWith(fontSize: 11, color: ClayTokens.clayDarkTextTertiary),
+                style: ClayTokens.titleMedium.copyWith(
+                  fontSize: 11,
+                  color: ClayTokens.clayDarkTextTertiary,
+                ),
               ),
             ],
           ),
@@ -316,7 +363,9 @@ class _FeedbackEntry extends StatelessWidget {
           Text(
             content,
             style: ClayTokens.titleLarge.copyWith(
-              fontSize: 13, color: ClayTokens.clayDarkTextPrimary, height: 1.5,
+              fontSize: 13,
+              color: ClayTokens.clayDarkTextPrimary,
+              height: 1.5,
             ),
           ),
           const SizedBox(height: 10),
@@ -509,11 +558,13 @@ class _MemberCommentState extends State<_MemberComment> {
           onChanged: (_) => setState(() {}),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: const Color(0xFF1C1C1E),
+            color: ClayColors.isLightMode
+                ? Colors.white
+                : const Color(0xFF1C1C1E),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFF38383A)),
+            border: Border.all(color: glassLine(const Color(0xFF38383A))),
           ),
-          style: const TextStyle(fontSize: 13, color: Colors.white),
+          style: TextStyle(fontSize: 13, color: ClayTokens.clayDarkTextPrimary),
           placeholderStyle: const TextStyle(
             fontSize: 13,
             color: Color(0xFF8E8E93),
@@ -536,19 +587,18 @@ class _MemberCommentState extends State<_MemberComment> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               color: const Color(0xFFA78BFA),
               borderRadius: BorderRadius.circular(10),
-              onPressed:
-                  canSave ? () => widget.onSave(_controller.text) : null,
+              onPressed: canSave ? () => widget.onSave(_controller.text) : null,
               child: widget.saving
-                  ? const CupertinoActivityIndicator(
+                  ? CupertinoActivityIndicator(
                       radius: 7,
-                      color: Colors.white,
+                      color: ClayTokens.clayDarkTextPrimary,
                     )
-                  : const Text(
+                  : Text(
                       'Save',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: Colors.white,
+                        color: ClayTokens.clayDarkTextPrimary,
                       ),
                     ),
             ),
@@ -564,7 +614,11 @@ class _StarSelector extends StatelessWidget {
   final bool busy;
   final ValueChanged<int> onRate;
 
-  const _StarSelector({required this.current, required this.busy, required this.onRate});
+  const _StarSelector({
+    required this.current,
+    required this.busy,
+    required this.onRate,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -577,15 +631,21 @@ class _StarSelector extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.only(right: 4),
               child: Icon(
-                (current ?? 0) >= i ? Icons.star_rounded : Icons.star_outline_rounded,
+                (current ?? 0) >= i
+                    ? Icons.star_rounded
+                    : Icons.star_outline_rounded,
                 size: 26,
-                color: (current ?? 0) >= i ? const Color(0xFFFFC107) : const Color(0xFF5A5A78),
+                color: (current ?? 0) >= i
+                    ? const Color(0xFFFFC107)
+                    : const Color(0xFF5A5A78),
               ),
             ),
           ),
         const SizedBox(width: 6),
         Text(
-          rated ? 'You rated $current\u2605' : 'Tap a star to rate your trainer',
+          rated
+              ? 'You rated $current\u2605'
+              : 'Tap a star to rate your trainer',
           style: const TextStyle(fontSize: 11, color: Color(0xFF8E8E93)),
         ),
         if (busy) ...[

@@ -53,7 +53,7 @@ class WorkoutIdleOverlay extends ConsumerWidget {
                   Text(
                     'No activity for ${WorkoutConstants.idleTimeoutMinutes} minutes. The session will restart in ${session.idleWarningSeconds}s.',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 11, color: Color(0xFFB4B4D0)),
+                    style: TextStyle(fontSize: 11, color: ClayTokens.clayDarkTextSecondary),
                   ),
                   const SizedBox(height: 18),
                   Row(

@@ -50,18 +50,18 @@ class _MemberWeekChartState extends State<MemberWeekChart> {
             overflow: TextOverflow.ellipsis,
             style: ClayTokens.titleMedium.copyWith(
               fontWeight: FontWeight.w800,
-              color: Colors.white,
+              color: ClayTokens.clayDarkTextPrimary,
             ),
           ),
-          const SizedBox(height: 1),
+          SizedBox(height: 1),
           if (_selectedDay != null)
             Text(
               '${labels[_selectedDay!]}: ${widget.weekCounts[_selectedDay!]} workout${widget.weekCounts[_selectedDay!] == 1 ? '' : 's'}',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10,
-                color: Colors.white,
+                color: ClayTokens.clayDarkTextPrimary,
                 fontWeight: FontWeight.w600,
               ),
             )
@@ -70,7 +70,7 @@ class _MemberWeekChartState extends State<MemberWeekChart> {
               'Tap a bar for details',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 10, color: Colors.white),
+              style: TextStyle(fontSize: 10, color: ClayTokens.clayDarkTextPrimary),
             ),
           const SizedBox(height: 12),
           SizedBox(
@@ -117,10 +117,10 @@ class _MemberWeekChartState extends State<MemberWeekChart> {
                 child: Text(
                   labels[i],
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
-                    color: Colors.white,
+                    color: ClayTokens.clayDarkTextPrimary,
                   ),
                 ),
               );
@@ -166,7 +166,7 @@ class MemberMonthChart extends StatelessWidget {
                         'This Month',
                         style: ClayTokens.titleMedium.copyWith(
                           fontWeight: FontWeight.w800,
-                          color: Colors.white,
+                          color: ClayTokens.clayDarkTextPrimary,
                         ),
                       ),
                       const SizedBox(width: 6),
@@ -182,12 +182,12 @@ class MemberMonthChart extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 2),
-                  const Text(
+                  Text(
                     'Check-ins per month',
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                      color: ClayTokens.clayDarkTextPrimary,
                     ),
                   ),
                 ],
@@ -253,17 +253,17 @@ class MemberGrowthChart extends StatelessWidget {
                     'Growth Over Time',
                     style: ClayTokens.titleMedium.copyWith(
                       fontWeight: FontWeight.w800,
-                      color: Colors.white,
+                      color: ClayTokens.clayDarkTextPrimary,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  SizedBox(height: 2),
                   Text(
                     'BMI per month',
                     style: TextStyle(
                       fontSize: 10,
                       fontFamily: ClayTypography.headingFamily,
                       fontWeight: FontWeight.w800,
-                      color: Colors.white,
+                      color: ClayTokens.clayDarkTextPrimary,
                     ),
                   ),
                 ],

@@ -1,0 +1,282 @@
+﻿--------- beginning of main
+10-13 16:31:38.886 32701 32701 I abb     : StartCommandInProcess(73657474696e67730067657400676c6f settings.get.glo [truncated])
+10-13 16:31:38.902 32701 32701 I abb     : StartCommandInProcess(7061636b61676500696e7374616c6c00 package.install. [truncated])
+10-13 16:31:39.586 19051 19051 W milo-handler-th: type=1400 audit(0.0:519799): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46432 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:31:39.586 19051 19051 W milo-handler-th: type=1400 audit(0.0:519800): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46457 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:31:39.586 19051 19051 W milo-handler-th: type=1400 audit(0.0:519801): avc: denied { setattr } for name="stat" dev="proc" ino=35697355 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:31:40.618 19051 19051 W milo-handler-th: type=1400 audit(0.0:519802): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46432 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:31:40.618 19051 19051 W milo-handler-th: type=1400 audit(0.0:519803): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46457 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:31:40.618 19051 19051 W milo-handler-th: type=1400 audit(0.0:519804): avc: denied { setattr } for name="stat" dev="proc" ino=35697355 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:31:41.630 19051 19051 W milo-handler-th: type=1400 audit(0.0:519805): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46432 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:31:41.630 19051 19051 W milo-handler-th: type=1400 audit(0.0:519806): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46457 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:31:41.630 19051 19051 W milo-handler-th: type=1400 audit(0.0:519807): avc: denied { setattr } for name="stat" dev="proc" ino=35697355 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:31:41.639 20988 16170 I native  : I0000 00:00:1791880301.639213   16170 soda_async_impl.cc:1420] Current audio timestamp: 1791880301249559
+10-13 16:31:42.638 19051 19051 W milo-handler-th: type=1400 audit(0.0:519808): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46432 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:31:42.638 19051 19051 W milo-handler-th: type=1400 audit(0.0:519809): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46457 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:31:42.638 19051 19051 W milo-handler-th: type=1400 audit(0.0:519810): avc: denied { setattr } for name="stat" dev="proc" ino=35697355 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:31:42.878 20988 21029 I fdjy    : (REDACTED) #onAudioData: %s bytes, getAudioReadSize %s
+10-13 16:31:43.650 19051 19051 W milo-handler-th: type=1400 audit(0.0:519811): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46432 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:31:43.650 19051 19051 W milo-handler-th: type=1400 audit(0.0:519812): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46457 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:31:43.650 19051 19051 W milo-handler-th: type=1400 audit(0.0:519813): avc: denied { setattr } for name="stat" dev="proc" ino=35697355 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:31:43.682 29975 29975 W ThreadPoolForeg: type=1400 audit(0.0:519814): avc: denied { write } for name="traced_producer" dev="tmpfs" ino=18162 scontext=u:r:gmscore_app:s0:c512,c768 tcontext=u:object_r:traced_producer_socket:s0 tclass=sock_file permissive=0 app=com.google.android.gms
+10-13 16:31:44.658 19051 19051 W milo-handler-th: type=1400 audit(0.0:519815): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46432 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:31:44.658 19051 19051 W milo-handler-th: type=1400 audit(0.0:519816): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46457 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:31:44.658 19051 19051 W milo-handler-th: type=1400 audit(0.0:519817): avc: denied { setattr } for name="stat" dev="proc" ino=35697355 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:31:45.666 19051 19051 W milo-handler-th: type=1400 audit(0.0:519818): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46432 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:31:45.670 19051 19051 W milo-handler-th: type=1400 audit(0.0:519819): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46457 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:31:45.670 19051 19051 W milo-handler-th: type=1400 audit(0.0:519820): avc: denied { setattr } for name="stat" dev="proc" ino=35697355 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:31:46.004 24452 24452 I Finsky  : [2] VerifyApps: Install-time verification requested for package com.example.fitness_app, PackageManager id = 39, Verifier id = bc948fc8-cdc7-40ff-9b2c-3f84a9320432
+10-13 16:31:46.005 24452 24452 I Finsky  : [2] playLoggingServerUrl: https://play.googleapis.com/play/log
+10-13 16:31:46.006 24452 24452 I Finsky  : [2] playLoggingServerTimestampUrl: https://play.googleapis.com/play/log/timestamp
+10-13 16:31:46.033 24452 24466 I Finsky  : [1467] RECEIVER_PACKAGE_VERIFICATION#logWorkEndAndFinishGoAsync: SUCCESS
+10-13 16:31:46.061 29975 29975 D BoundBrokerSvc: onBind: Intent { act=com.google.android.gms.safetynet.service.START pkg=com.google.android.gms }
+10-13 16:31:46.062 29975 29975 D BoundBrokerSvc: Loading bound service for intent: Intent { act=com.google.android.gms.safetynet.service.START pkg=com.google.android.gms }
+10-13 16:31:46.080 24452 24483 W Finsky  : [1483] VerifyApps: [ADV] No verification policy was set for user 0. Using default policy.
+10-13 16:31:46.081 24452 24483 I Finsky  : [1483] VerifyApps: [ADV] Initial fallback verdict decided: 1
+10-13 16:31:46.081 24452 24483 I Finsky  : [1483] VerifyApps: [ADV] Starting verification task for com.example.fitness_app (id=39)
+10-13 16:31:46.081 24452 24483 I Finsky  : [1483] VerifyApps: [ADV] Calling Verifier app for com.example.fitness_app
+--------- beginning of system
+10-13 16:31:46.089 24452 24480 W PackageParser: Unknown element under <manifest>: queries at /data/app/vmdl108863452.tmp/base.apk Binary XML file line #25
+10-13 16:31:46.584 24452 24484 W Finsky  : [1484] Unable to fetch package certificates: java.lang.IllegalStateException: `packageName` is null.. Defaulting to empty.
+10-13 16:31:46.588 24452 24484 I Finsky  : [1484] VerifyApps: [ADV] Calling Verifier app for com.example.fitness_app
+10-13 16:31:46.589 24452 24484 I Finsky  : [1484] VerifyApps: [ADV] Call Strategy for com.example.fitness_app (id=39): CALL_VERIFIER_APP
+10-13 16:31:46.589 24452 24484 W Finsky  : [1484] VerifyApps: [ADV] No verification policy was set for user 0. Using default policy.
+10-13 16:31:46.590 24452 24484 I Finsky  : [1484] VerifyApps: [ADV] Calling Verifier app for com.example.fitness_app (id=39)
+10-13 16:31:46.628 25352 25352 I ndroid.verifier: Using generational CollectorTypeCC GC.
+10-13 16:31:46.638 25352 25352 D nativeloader: Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
+10-13 16:31:46.657 25352 25352 D CompatibilityChangeReporter: Compat change id reported: 171979766; UID 10271; state: ENABLED
+10-13 16:31:46.678 19051 19051 W milo-handler-th: type=1400 audit(0.0:519821): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46432 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:31:46.678 19051 19051 W milo-handler-th: type=1400 audit(0.0:519822): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46457 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:31:46.678 19051 19051 W milo-handler-th: type=1400 audit(0.0:519823): avc: denied { setattr } for name="stat" dev="proc" ino=35697355 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:31:46.704 25352 25352 W ndroid.verifier: Failed to find entry 'classes.dex': Entry not found
+10-13 16:31:46.706 25352 25352 W ndroid.verifier: Failed to find entry 'classes.dex': Entry not found
+10-13 16:31:46.708 25352 25352 W ndroid.verifier: Failed to find entry 'classes.dex': Entry not found
+10-13 16:31:46.709 25352 25352 D nativeloader: Configuring clns-4 for other apk /data/app/~~BXhBnPP9JH3dhEX_ic1XGQ==/com.google.android.verifier-fcrI6dn0VqrAOeWMkT7JCw==/base.apk:/data/app/~~BXhBnPP9JH3dhEX_ic1XGQ==/com.google.android.verifier-fcrI6dn0VqrAOeWMkT7JCw==/split_config.arm64_v8a.apk:/data/app/~~BXhBnPP9JH3dhEX_ic1XGQ==/com.google.android.verifier-fcrI6dn0VqrAOeWMkT7JCw==/split_config.en.apk:/data/app/~~BXhBnPP9JH3dhEX_ic1XGQ==/com.google.android.verifier-fcrI6dn0VqrAOeWMkT7JCw==/split_config.xxhdpi.apk. target_sdk_version=37, uses_libraries=, library_path=/data/app/~~BXhBnPP9JH3dhEX_ic1XGQ==/com.google.android.verifier-fcrI6dn0VqrAOeWMkT7JCw==/lib/arm64:/data/app/~~BXhBnPP9JH3dhEX_ic1XGQ==/com.google.android.verifier-fcrI6dn0VqrAOeWMkT7JCw==/base.apk!/lib/arm64-v8a:/data/app/~~BXhBnPP9JH3dhEX_ic1XGQ==/com.google.android.verifier-fcrI6dn0VqrAOeWMkT7JCw==/split_config.arm64_v8a.apk!/lib/arm64-v8a:/data/app/~~BXhBnPP9JH3dhEX_ic1XGQ==/com.google.android.verifier-fcrI6dn0VqrAOeWMkT7JCw==/split_config.en.apk!/lib/arm64-v8a:/data/app/~~BXhBnPP9JH3dh
+10-13 16:31:46.729 25352 25352 D nativeloader: Load libframework-connectivity-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity.jar: ok
+10-13 16:31:46.735 25352 25352 V GraphicsEnvironment: ANGLE Developer option for 'com.google.android.verifier' set to: 'default'
+10-13 16:31:46.736 25352 25352 V GraphicsEnvironment: ANGLE GameManagerService for com.google.android.verifier: false
+10-13 16:31:46.736 25352 25352 V GraphicsEnvironment: App is not on the allowlist for updatable production driver.
+10-13 16:31:46.741 25352 25352 D NetworkSecurityConfig: No Network Security Config specified, using platform default
+10-13 16:31:46.741 25352 25352 D NetworkSecurityConfig: No Network Security Config specified, using platform default
+10-13 16:31:46.801 25352 25352 D CompatibilityChangeReporter: Compat change id reported: 183155436; UID 10271; state: ENABLED
+10-13 16:31:46.841 25352 25352 D WM-Schedulers: Created SystemJobScheduler and enabled SystemJobService
+10-13 16:31:46.843 25352 25376 D WM-ForceStopRunnable: The default process name was not specified.
+10-13 16:31:46.845 25352 25376 D WM-ForceStopRunnable: Performing cleanup operations.
+10-13 16:31:46.850 25352 25352 W ndroid.verifier: Method void fcm.c(android.app.Activity) failed lock verification and will run slower.
+10-13 16:31:46.850 25352 25352 W ndroid.verifier: Common causes for lock verification issues are non-optimized dex code
+10-13 16:31:46.850 25352 25352 W ndroid.verifier: and incorrect proguard optimizations.
+10-13 16:31:46.856 29975 29975 D BoundBrokerSvc: onRebind: Intent { act=com.google.android.gms.time.trustedtime.service.START dat=chimera-action:/... cmp=com.google.android.gms/.chimera.PersistentDirectBootAwareApiService }
+10-13 16:31:46.880 25352 25376 D WM-SystemJobScheduler: Reconciling jobs
+10-13 16:31:46.891 25352 25376 D CompatibilityChangeReporter: Compat change id reported: 160794467; UID 10271; state: ENABLED
+10-13 16:31:46.894 25352 25376 D WM-ForceStopRunnable: Found unfinished work, scheduling it.
+10-13 16:31:46.895 25352 25370 W DynamiteModule: Local module descriptor class for com.google.android.gms.googlecertificates not found.
+10-13 16:31:46.902 25352 25376 D CompatibilityChangeReporter: Compat change id reported: 194532703; UID 10271; state: ENABLED
+10-13 16:31:46.902 25352 25376 D WM-SystemJobScheduler: Scheduling work ID e7564e75-0832-4542-96a5-837180a5a401 (com.google.android.verifier.features.cache.impl.common.RecentsCacheSanitizer), Job ID 1597
+10-13 16:31:46.903 25352 25370 W ndroid.verifier: ClassLoaderContext classpath size mismatch. expected=1, found=0 (DLC[];PCL[base.apk*2890162721]{PCL[/system/framework/org.apache.http.legacy.jar*3114992561]#PCL[/system/framework/com.android.location.provider.jar*3868789109]#PCL[/system/framework/com.android.media.remotedisplay.jar*3886290638]} | DLC[];PCL[])
+10-13 16:31:46.909 25352 25370 I DynamiteModule: Considering local module com.google.android.gms.googlecertificates:0 and remote module com.google.android.gms.googlecertificates:7
+10-13 16:31:46.909 25352 25370 I DynamiteModule: Selected remote version of com.google.android.gms.googlecertificates, version >= 7
+10-13 16:31:46.909 25352 25370 V DynamiteModule: Dynamite loader version >= 2, using loadModule2NoCrashUtils
+10-13 16:31:46.911 25352 25376 D WM-SystemJobScheduler: Scheduling work ID 3532cc7c-784f-4837-9282-0c411a4b82a4 (com.google.android.verifier.helpers.publicapi.impl.standard.metadataservice.AppInstallMetadataCacheCleanupWorker), Job ID 1595
+10-13 16:31:46.911 29975 29975 D BoundBrokerSvc: onBind: Intent { act=com.google.android.gms.time.trustedtime.singleuserapi.service.START dat=chimera-action:/... cmp=com.google.android.gms/.chimera.PersistentSingleUserInternalApiService }
+10-13 16:31:46.911 29975 29975 D BoundBrokerSvc: Loading bound service for intent: Intent { act=com.google.android.gms.time.trustedtime.singleuserapi.service.START dat=chimera-action:/... cmp=com.google.android.gms/.chimera.PersistentSingleUserInternalApiService }
+10-13 16:31:46.915 25352 25376 D WM-SystemJobScheduler: Scheduling work ID 8f3fd2ae-cfad-498e-b3d7-f89a27e55a66 (com.google.android.verifier.features.cache.impl.common.DownloadedCacheSync$Worker), Job ID 1594
+10-13 16:31:46.918 25352 25376 D WM-SystemJobScheduler: Scheduling work ID daa3d6e0-b5cb-4a52-8482-a0c8be304691 (com.google.android.verifier.features.online.impl.standard.rest.OhttpInterceptorFactory$OhttpKeyRefreshWorker), Job ID 1596
+10-13 16:31:46.921 25352 25376 D WM-SystemJobScheduler: Scheduling work ID 853be383-f31b-4341-97e3-2ac7304dceed (com.google.android.libraries.mdi.download.workmanager.workers.PeriodicWorker), Job ID 1599
+10-13 16:31:46.923 25352 25370 W System  : ClassLoader referenced unknown path: 
+10-13 16:31:46.923 25352 25370 D nativeloader: Configuring clns-5 for other apk . target_sdk_version=37, uses_libraries=, library_path=/data/app/~~Ab_1CqvX8A7ktUap_OpbKw==/com.google.android.gms-oT33Q-vUGEuzl-vzgYhZNw==/lib/arm64:/data/app/~~Ab_1CqvX8A7ktUap_OpbKw==/com.google.android.gms-oT33Q-vUGEuzl-vzgYhZNw==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.google.android.gms
+10-13 16:31:46.925 25352 25376 D WM-SystemJobScheduler: Scheduling work ID 19c679b6-2554-4fb1-b68b-6a4f85fab050 (com.google.android.libraries.mdi.download.workmanager.workers.PeriodicWorker), Job ID 1598
+10-13 16:31:46.926 29975 29975 D BoundBrokerSvc: onRebind: Intent { act=com.google.android.gms.common.telemetry.service.START dat=chimera-action:/... cmp=com.google.android.gms/.chimera.PersistentApiService }
+10-13 16:31:46.929 25352 25376 D WM-SystemJobScheduler: Scheduling work ID 9a75e2c1-641e-4e32-ab22-40468689dcfe (com.google.android.libraries.mdi.download.workmanager.workers.PeriodicWorker), Job ID 1600
+10-13 16:31:46.932 25352 25376 D WM-SystemJobScheduler: Scheduling work ID affb8374-d6c8-403a-982d-864ad77bd334 (com.google.android.libraries.mdi.download.workmanager.workers.PeriodicWorker), Job ID 1601
+10-13 16:31:46.934 25352 25376 D WM-GreedyScheduler: Ignoring {WorkSpec: 19c679b6-2554-4fb1-b68b-6a4f85fab050}. Requires device idle.
+10-13 16:31:46.934 25352 25376 D WM-GreedyScheduler: Ignoring {WorkSpec: 9a75e2c1-641e-4e32-ab22-40468689dcfe}. Requires device idle.
+10-13 16:31:46.934 25352 25376 D WM-GreedyScheduler: Ignoring {WorkSpec: affb8374-d6c8-403a-982d-864ad77bd334}. Requires device idle.
+10-13 16:31:46.939 25352 25376 D WM-SystemJobScheduler: Cancelling work ID 8f3fd2ae-cfad-498e-b3d7-f89a27e55a66, Job ID 1594
+10-13 16:31:46.942 25352 25376 D WM-GreedyScheduler: Cancelling work ID 8f3fd2ae-cfad-498e-b3d7-f89a27e55a66
+10-13 16:31:46.952 25352 25376 D WM-SystemJobScheduler: Scheduling work ID 8f3fd2ae-cfad-498e-b3d7-f89a27e55a66 (com.google.android.verifier.features.cache.impl.common.DownloadedCacheSync$Worker), Job ID 1602
+10-13 16:31:46.954 25352 25376 D WM-GreedyScheduler: Ignoring {WorkSpec: 19c679b6-2554-4fb1-b68b-6a4f85fab050}. Requires device idle.
+10-13 16:31:46.954 25352 25376 D WM-GreedyScheduler: Ignoring {WorkSpec: 9a75e2c1-641e-4e32-ab22-40468689dcfe}. Requires device idle.
+10-13 16:31:46.954 25352 25376 D WM-GreedyScheduler: Ignoring {WorkSpec: affb8374-d6c8-403a-982d-864ad77bd334}. Requires device idle.
+10-13 16:31:46.956 25352 25376 D WM-SystemJobScheduler: Cancelling work ID 3532cc7c-784f-4837-9282-0c411a4b82a4, Job ID 1595
+10-13 16:31:46.959 25352 25376 D WM-GreedyScheduler: Cancelling work ID 3532cc7c-784f-4837-9282-0c411a4b82a4
+10-13 16:31:46.966 25352 25370 W ndroid.verifier: ClassLoaderContext classpath element checksum mismatch. expected=2890162721, found=4229663558 (DLC[];PCL[base.apk*2890162721]{PCL[/system/framework/org.apache.http.legacy.jar*3114992561]#PCL[/system/framework/com.android.location.provider.jar*3868789109]#PCL[/system/framework/com.android.media.remotedisplay.jar*3886290638]} | DLC[];PCL[/data/app/~~BXhBnPP9JH3dhEX_ic1XGQ==/com.google.android.verifier-fcrI6dn0VqrAOeWMkT7JCw==/base.apk*4229663558])
+10-13 16:31:46.967 25352 25376 D WM-SystemJobScheduler: Scheduling work ID 3532cc7c-784f-4837-9282-0c411a4b82a4 (com.google.android.verifier.helpers.publicapi.impl.standard.metadataservice.AppInstallMetadataCacheCleanupWorker), Job ID 1603
+10-13 16:31:46.970 25352 25376 D WM-GreedyScheduler: Ignoring {WorkSpec: 19c679b6-2554-4fb1-b68b-6a4f85fab050}. Requires device idle.
+10-13 16:31:46.970 25352 25376 D WM-GreedyScheduler: Ignoring {WorkSpec: 9a75e2c1-641e-4e32-ab22-40468689dcfe}. Requires device idle.
+10-13 16:31:46.970 25352 25376 D WM-GreedyScheduler: Ignoring {WorkSpec: affb8374-d6c8-403a-982d-864ad77bd334}. Requires device idle.
+10-13 16:31:46.972 25352 25376 D WM-SystemJobScheduler: Cancelling work ID daa3d6e0-b5cb-4a52-8482-a0c8be304691, Job ID 1596
+10-13 16:31:46.975 25352 25376 D WM-GreedyScheduler: Cancelling work ID daa3d6e0-b5cb-4a52-8482-a0c8be304691
+10-13 16:31:46.981 25352 25376 D WM-SystemJobScheduler: Scheduling work ID daa3d6e0-b5cb-4a52-8482-a0c8be304691 (com.google.android.verifier.features.online.impl.standard.rest.OhttpInterceptorFactory$OhttpKeyRefreshWorker), Job ID 1604
+10-13 16:31:46.983 25352 25376 D WM-GreedyScheduler: Ignoring {WorkSpec: 19c679b6-2554-4fb1-b68b-6a4f85fab050}. Requires device idle.
+10-13 16:31:46.983 25352 25376 D WM-GreedyScheduler: Ignoring {WorkSpec: 9a75e2c1-641e-4e32-ab22-40468689dcfe}. Requires device idle.
+10-13 16:31:46.983 25352 25376 D WM-GreedyScheduler: Ignoring {WorkSpec: affb8374-d6c8-403a-982d-864ad77bd334}. Requires device idle.
+10-13 16:31:46.985 25352 25376 D WM-SystemJobScheduler: Cancelling work ID e7564e75-0832-4542-96a5-837180a5a401, Job ID 1597
+10-13 16:31:46.988 25352 25376 D WM-GreedyScheduler: Cancelling work ID e7564e75-0832-4542-96a5-837180a5a401
+10-13 16:31:46.994 25352 25376 D WM-SystemJobScheduler: Scheduling work ID e7564e75-0832-4542-96a5-837180a5a401 (com.google.android.verifier.features.cache.impl.common.RecentsCacheSanitizer), Job ID 1605
+10-13 16:31:46.998 25352 25376 D WM-GreedyScheduler: Ignoring {WorkSpec: 19c679b6-2554-4fb1-b68b-6a4f85fab050}. Requires device idle.
+10-13 16:31:46.998 25352 25376 D WM-GreedyScheduler: Ignoring {WorkSpec: 9a75e2c1-641e-4e32-ab22-40468689dcfe}. Requires device idle.
+10-13 16:31:46.998 25352 25376 D WM-GreedyScheduler: Ignoring {WorkSpec: affb8374-d6c8-403a-982d-864ad77bd334}. Requires device idle.
+10-13 16:31:47.001 25352 25376 D WM-SystemJobScheduler: Cancelling work ID 19c679b6-2554-4fb1-b68b-6a4f85fab050, Job ID 1598
+10-13 16:31:47.003 25352 25376 D WM-GreedyScheduler: Cancelling work ID 19c679b6-2554-4fb1-b68b-6a4f85fab050
+10-13 16:31:47.009 25352 25376 D WM-SystemJobScheduler: Scheduling work ID 19c679b6-2554-4fb1-b68b-6a4f85fab050 (com.google.android.libraries.mdi.download.workmanager.workers.PeriodicWorker), Job ID 1606
+10-13 16:31:47.012 25352 25376 D WM-GreedyScheduler: Ignoring {WorkSpec: 19c679b6-2554-4fb1-b68b-6a4f85fab050}. Requires device idle.
+10-13 16:31:47.012 25352 25376 D WM-GreedyScheduler: Ignoring {WorkSpec: 9a75e2c1-641e-4e32-ab22-40468689dcfe}. Requires device idle.
+10-13 16:31:47.012 25352 25376 D WM-GreedyScheduler: Ignoring {WorkSpec: affb8374-d6c8-403a-982d-864ad77bd334}. Requires device idle.
+10-13 16:31:47.015 25352 25376 D WM-SystemJobScheduler: Cancelling work ID 853be383-f31b-4341-97e3-2ac7304dceed, Job ID 1599
+10-13 16:31:47.018 25352 25376 D WM-GreedyScheduler: Cancelling work ID 853be383-f31b-4341-97e3-2ac7304dceed
+10-13 16:31:47.024 25352 25376 D WM-SystemJobScheduler: Scheduling work ID 853be383-f31b-4341-97e3-2ac7304dceed (com.google.android.libraries.mdi.download.workmanager.workers.PeriodicWorker), Job ID 1607
+10-13 16:31:47.026 25352 25376 D WM-GreedyScheduler: Ignoring {WorkSpec: 19c679b6-2554-4fb1-b68b-6a4f85fab050}. Requires device idle.
+10-13 16:31:47.026 25352 25376 D WM-GreedyScheduler: Ignoring {WorkSpec: 9a75e2c1-641e-4e32-ab22-40468689dcfe}. Requires device idle.
+10-13 16:31:47.026 25352 25376 D WM-GreedyScheduler: Ignoring {WorkSpec: affb8374-d6c8-403a-982d-864ad77bd334}. Requires device idle.
+10-13 16:31:47.033 25352 25376 D WM-SystemJobScheduler: Cancelling work ID 9a75e2c1-641e-4e32-ab22-40468689dcfe, Job ID 1600
+10-13 16:31:47.034 25352 25374 I ThinJourneySpanListener: Creating ThinJourney token for trace <ByteString@2cf436e size=16 contents="\340\3536\242\301\267\252\fYc\306\374z~H\245">
+10-13 16:31:47.035 25352 25376 D WM-GreedyScheduler: Cancelling work ID 9a75e2c1-641e-4e32-ab22-40468689dcfe
+10-13 16:31:47.044 25352 25376 D WM-SystemJobScheduler: Scheduling work ID 9a75e2c1-641e-4e32-ab22-40468689dcfe (com.google.android.libraries.mdi.download.workmanager.workers.PeriodicWorker), Job ID 1608
+10-13 16:31:47.046 25352 25383 I VerificationCheck: Verifying com.example.fitness_app (id: 7bd404b3862302afdec3a6a75da7363a)
+10-13 16:31:47.054 25352 25376 D WM-GreedyScheduler: Ignoring {WorkSpec: 19c679b6-2554-4fb1-b68b-6a4f85fab050}. Requires device idle.
+10-13 16:31:47.055 25352 25376 D WM-GreedyScheduler: Ignoring {WorkSpec: 9a75e2c1-641e-4e32-ab22-40468689dcfe}. Requires device idle.
+10-13 16:31:47.055 25352 25376 D WM-GreedyScheduler: Ignoring {WorkSpec: affb8374-d6c8-403a-982d-864ad77bd334}. Requires device idle.
+10-13 16:31:47.059 25352 25376 D WM-SystemJobScheduler: Cancelling work ID affb8374-d6c8-403a-982d-864ad77bd334, Job ID 1601
+10-13 16:31:47.061 25352 25376 D WM-GreedyScheduler: Cancelling work ID affb8374-d6c8-403a-982d-864ad77bd334
+10-13 16:31:47.065 25352 25372 I AppInstallMetadataManag: No metadata found for session 108863452
+10-13 16:31:47.070 25352 25376 D WM-SystemJobScheduler: Scheduling work ID affb8374-d6c8-403a-982d-864ad77bd334 (com.google.android.libraries.mdi.download.workmanager.workers.PeriodicWorker), Job ID 1609
+10-13 16:31:47.073 25352 25376 D WM-GreedyScheduler: Ignoring {WorkSpec: 19c679b6-2554-4fb1-b68b-6a4f85fab050}. Requires device idle.
+10-13 16:31:47.073 25352 25376 D WM-GreedyScheduler: Ignoring {WorkSpec: 9a75e2c1-641e-4e32-ab22-40468689dcfe}. Requires device idle.
+10-13 16:31:47.073 25352 25376 D WM-GreedyScheduler: Ignoring {WorkSpec: affb8374-d6c8-403a-982d-864ad77bd334}. Requires device idle.
+10-13 16:31:47.074 24452 24551 I Finsky  : [1520] VerifyApps: [ADV] Received getInstallerInfo request. VerificationId: 39
+10-13 16:31:47.075 24452 24551 I Finsky  : [1520] VerifyApps: [ADV] Returning installer info for 39: 
+10-13 16:31:47.087 25352 25373 I VerificationCheck: Verification finished for com.example.fitness_app. Result: Pass(reason=SHELL_INSTALL, message=null)
+10-13 16:31:47.092 24452 24481 I Finsky  : [1481] VerifyApps: [ADV] Verifier app returned response for com.example.fitness_app (id=39): verdict=1, reason=2
+10-13 16:31:47.093 24452 24481 I Finsky  : [1481] VerifyApps: [ADV] Scan finished for com.example.fitness_app (id=39) with verdict 0
+10-13 16:31:47.094 24452 24481 W Finsky  : [1481] VerifyApps: [ADV] No verification policy was set for user 0. Using default policy.
+10-13 16:31:47.094 24452 24481 I Finsky  : [1481] VerifyApps: [ADV] Enforcing policy 0 for com.example.fitness_app. Scan verdict: 0
+10-13 16:31:47.094 24452 24481 I Finsky  : [1481] VerifyApps: [ADV] Enforced verdict for com.example.fitness_app: VERIFICATION_ALLOW
+10-13 16:31:47.095 24452 24481 I Finsky  : [1481] VerifyApps: [ADV] Policy enforced for com.example.fitness_app (id=39). Verdict: VERIFICATION_ALLOW
+10-13 16:31:47.096 24452 25344 I Finsky  : [1550] VerifyApps: Anti-malware verification task started for package=com.example.fitness_app
+10-13 16:31:47.103 24452 25344 E AbstractLogEventBuilder: The provided ProductIdOrigin 3 is not one of the process-level expected values: 1 or 2
+10-13 16:31:47.109 24452 25344 I Finsky  : [1550] Single user settings service is not running, bind it now
+10-13 16:31:47.124 24452 24452 I Finsky  : [2] Single user settings service is connected
+10-13 16:31:47.127 24452 24452 W Finsky  : [2] Not all users are synced, requesting all users send setting to primary phonesky
+10-13 16:31:47.342 24452 24483 E AbstractLogEventBuilder: The provided ProductIdOrigin 3 is not one of the process-level expected values: 1 or 2
+10-13 16:31:47.686 19051 19051 W milo-handler-th: type=1400 audit(0.0:519824): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46432 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:31:47.686 19051 19051 W milo-handler-th: type=1400 audit(0.0:519825): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46457 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:31:47.686 19051 19051 W milo-handler-th: type=1400 audit(0.0:519826): avc: denied { setattr } for name="stat" dev="proc" ino=35697355 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:31:48.208 24452 24452 I Finsky  : [2] VerifyApps: Device wide unknown source restriction updated
+10-13 16:31:48.212 24452 24469 I Finsky  : [1470] RECEIVER_SINGLE_USER_SETTINGS#logWorkEndAndFinishGoAsync: SUCCESS
+10-13 16:31:48.233 24452 24467 I Finsky  : [1468] RECEIVER_SINGLE_USER_SETTINGS#logWorkEndAndFinishGoAsync: SUCCESS
+10-13 16:31:48.477 24452 25344 I Finsky  : [1550] VerifyApps: APK is not malformed
+10-13 16:31:48.492 24452 25344 W Settings: Setting install_non_market_apps has moved from android.provider.Settings.Global to android.provider.Settings.Secure, returning read-only value.
+10-13 16:31:48.505 24452 25344 I Finsky  : [1550] VerifyApps: Installer app: com.android.shell
+10-13 16:31:48.515 24452 25344 I Finsky  : [1550] Task 7 requested foreground
+10-13 16:31:48.517 24452 25344 I Finsky  : [1550] Not entering foreground
+10-13 16:31:48.519 24452 25344 I Finsky  : [1550] VerifyApps: chooseScanResult for package=com.example.fitness_app with timeout=15000ms
+10-13 16:31:48.521 24452 24484 I Finsky  : [1484] VerifyApps: Starting APK Analysis scan for com.example.fitness_app.
+10-13 16:31:48.524 24452 24484 I Finsky  : [1484] Scanning package com.example.fitness_app contents with client side protections. File: [0GkiKKcr_RwRiDHRv36ACvR_XZ1GG2gs_zk_MgVKS-o]
+10-13 16:31:48.525 24452 24484 I Finsky  : [1484] VerifyApps: APK Analysis scan finished for com.example.fitness_app. Verdict: 0
+10-13 16:31:48.527 24452 25344 I Finsky  : [1550] VerifyApps: firstScanResult for package=com.example.fitness_app: 0
+10-13 16:31:48.526 24452 25345 I Finsky  : [1551] Apk Analysis scan verification duration=PT0.006S 
+10-13 16:31:48.527 24452 25344 I Finsky  : [1550] VerifyApps: firstScanResult verdict is 0. Checking for extended timeout.
+10-13 16:31:48.527 24452 25344 I Finsky  : [1550] VerifyApps: Timeout for second result: 14992ms
+10-13 16:31:48.694 19051 19051 W milo-handler-th: type=1400 audit(0.0:519827): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46432 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:31:48.694 19051 19051 W milo-handler-th: type=1400 audit(0.0:519828): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46457 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:31:48.694 19051 19051 W milo-handler-th: type=1400 audit(0.0:519829): avc: denied { setattr } for name="stat" dev="proc" ino=35697355 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:31:49.022 19051 19216 E ActivityThread: Failed to find provider info for com.ss.android.ugc.trill.apm
+10-13 16:31:49.229 24452 24452 E AbstractLogEventBuilder: The provided ProductIdOrigin 3 is not one of the process-level expected values: 1 or 2
+10-13 16:31:49.232 24452 25345 I Finsky  : [1551] VerifyApps: Verification package=com.example.fitness_app, id=39, response=0, upload_requested=false, enable_ecm=false
+10-13 16:31:49.235 24452 25345 I Finsky  : [1551] VerifyApps: PAM result saving to datastore delayed for package: com.example.fitness_app
+10-13 16:31:49.236 24452 25344 I Finsky  : [1550] VerifyApps: overallScanResult for package=com.example.fitness_app: 0
+10-13 16:31:49.237 24452 25344 I Finsky  : [1550] VerifyApps: chooseScanResult returning verdict 0 for package=com.example.fitness_app
+10-13 16:31:49.238 24452 25344 E AbstractLogEventBuilder: The provided ProductIdOrigin 3 is not one of the process-level expected values: 1 or 2
+10-13 16:31:49.240 24452 25344 I Finsky  : [1550] VerifyApps AdvancedProtection: Verify AP install started
+10-13 16:31:49.240 24452 25344 I Finsky  : [1550] VerifyApps AdvancedProtection: Allowing install because there are no Advanced Protection users
+10-13 16:31:49.246 24452 24452 I Finsky  : [2] VerifyApps AdvancedProtection: Reported Advanced Protection verification result: ALLOW
+10-13 16:31:49.247 24452 25344 E Finsky  : [1550] Package name null is not an installed package
+10-13 16:31:49.249 24452 25344 I Finsky  : [1550] Skipping logging for attempted installation. The source is a system package.
+10-13 16:31:49.250 24452 25344 I Finsky  : [1550] VerifyApps: Returning package verification result id=39, result=ALLOW
+10-13 16:31:49.256 24452 24452 I Finsky  : [2] VerifyApps: Install-time verification complete: id=39, package_name=com.example.fitness_app
+10-13 16:31:49.706 19051 19051 W milo-handler-th: type=1400 audit(0.0:519830): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46432 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:31:49.706 19051 19051 W milo-handler-th: type=1400 audit(0.0:519831): avc: denied { setattr } for name="time_in_state" dev="sysfs" ino=46457 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:object_r:sysfs_devices_system_cpu:s0 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:31:49.706 19051 19051 W milo-handler-th: type=1400 audit(0.0:519832): avc: denied { setattr } for name="stat" dev="proc" ino=35697355 scontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tcontext=u:r:untrusted_app:s0:c47,c257,c512,c768 tclass=file permissive=0 app=com.ss.android.ugc.trill
+10-13 16:31:49.766  4834  4834 W MediaProvider: WorkProfileOwnerApps cache miss for package com.example.fitness_app
+10-13 16:31:49.766  4834  4834 D PickerSyncLockManager: Trying to acquire lock com.android.providers.media.photopicker.sync.CloseableReentrantLock@fc4970a[Unlocked]. Lock Name = CLOUD_PROVIDER_LOCK. Threads that may be waiting to acquire this lock = []
+10-13 16:31:49.766  4834  4834 D CloseableReentrantLock: Successfully acquired lock com.android.providers.media.photopicker.sync.CloseableReentrantLock@fc4970a[Locked by thread main]. Lock Name = CLOUD_PROVIDER_LOCK. Threads that may be waiting to acquire this lock = []
+10-13 16:31:49.766  4834  4834 D CloseableReentrantLock: Successfully released lock com.android.providers.media.photopicker.sync.CloseableReentrantLock@fc4970a[Unlocked]. Lock Name = CLOUD_PROVIDER_LOCK. Threads that may be waiting to acquire this lock = []
+10-13 16:31:49.794 24452 24452 I Finsky  : [2] anoy - Received: android.intent.action.PACKAGE_REMOVED, [5isY8fX4F6TJEk3xr9dtsFADH1aPItmxDfqv4fFA0Rg]
+10-13 16:31:49.887 24452 24452 I Finsky  : [2] Resetting scheduler db
+10-13 16:31:49.906 24452 24452 I Finsky  : [2] AIM: AppInfoCacheUpdater -> invalidating apps: [com.example.fitness_app]
+10-13 16:31:49.906 24452 24452 I Finsky  : [2] AIM: AppInfoManager-Perf > Creating AppInfoManager ...
+10-13 16:31:49.926 24452 24480 I Finsky  : [1480] SCH: Scheduling phonesky job Id: 1-1337, CT: 1791876590011, Constraints: [{ L: 37444356, D: 80644356, C: CHARGING_NONE, I: IDLE_NONE, N: NET_ANY, B: BATTERY_ANY }]
+10-13 16:31:49.926 24452 24480 I Finsky  : [1480] SCH: Scheduling phonesky job Id: 10-79, CT: 1791876587999, Constraints: [{ L: 0, D: 86400000, C: CHARGING_NONE, I: IDLE_REQUIRED, N: NET_ANY, B: BATTERY_ANY }]
+10-13 16:31:49.927 24452 24480 I Finsky  : [1480] SCH: Scheduling phonesky job Id: 24-77777777, CT: 1791876576842, Constraints: [{ L: 1, D: 82800000, C: CHARGING_NONE, I: IDLE_REQUIRED, N: NET_NONE, B: BATTERY_ANY }]
+10-13 16:31:49.927 24452 24480 I Finsky  : [1480] SCH: Scheduling phonesky job Id: 26-1414141414, CT: 1791876576859, Constraints: [{ L: 37041964, D: 37941964, C: CHARGING_NONE, I: IDLE_NONE, N: NET_NONE, B: BATTERY_ANY }]
+10-13 16:31:49.927 24452 24480 I Finsky  : [1480] SCH: Scheduling phonesky job Id: 34-5434, CT: 1791876587576, Constraints: [{ L: 604800000, D: 2586686591, C: CHARGING_NONE, I: IDLE_NONE, N: NET_ANY, B: BATTERY_ANY }]
+10-13 16:31:49.927 24452 24480 I Finsky  : [1480] SCH: Scheduling phonesky job Id: 34-5435, CT: 1791876587577, Constraints: [{ L: 80439805, D: 1376439805, C: CHARGING_REQUIRED, I: IDLE_REQUIRED, N: NET_UNMETERED, B: BATTERY_ANY }, { L: 80439805, D: 1376439805, C: CHARGING_NONE, I: IDLE_REQUIRED, N: NET_UNMETERED, B: BATTERY_NOT_LOW }]
+10-13 16:31:49.927 24452 24480 I Finsky  : [1480] SCH: Scheduling phonesky job Id: 34-5436, CT: 1791876587577, Constraints: [{ L: 34753083, D: 1330753083, C: CHARGING_NONE, I: IDLE_NONE, N: NET_UNMETERED, B: BATTERY_NOT_LOW }]
+10-13 16:31:49.928 24452 24480 I Finsky  : [1480] SCH: Scheduling phonesky job Id: 34-5437, CT: 1791876587578, Constraints: [{ L: 73886409, D: 1369886409, C: CHARGING_NONE, I: IDLE_NONE, N: NET_ANY, B: BATTERY_ANY }]
+10-13 16:31:49.928 24452 24480 I Finsky  : [1480] SCH: Scheduling phonesky job Id: 44-1027, CT: 1791876596479, Constraints: [{ L: 0, D: 86400000, C: CHARGING_NONE, I: IDLE_REQUIRED, N: NET_NONE, B: BATTERY_NOT_LOW }]
+10-13 16:31:49.951 20988 21008 I ejip    : (REDACTED) maybeUpdateCacheDataForAddedPackage %s
+10-13 16:31:49.952 24452 24452 I Finsky  : [2] AIM: AppInfoManager-Perf > getApps > called for 1 apps
+10-13 16:31:49.966 24452 24480 I Finsky  : [1480] AIM: AppInfoManager-Perf > OnDeviceAppInfo > cacheHitCount=0, cacheMissCount=1. Missed  in cache (limit 10) : [com.example.fitness_app]
+10-13 16:31:49.966 24452 24484 I Finsky  : [1484] SCH: Scheduling 0 system job(s)
+10-13 16:31:49.978 24452 24483 I Finsky  : [1483] AIM: Got app ownership map. App counts: . Unique apps: 0
+10-13 16:31:49.978 24452 24483 E Finsky  : [1483] [Counters] attempted to use a non-positive increment for: 4752
+10-13 16:31:50.004 24452 25415 I Finsky  : [1560] SCH: Received scheduling request: Id: 12-1, Constraints: [{ L: 15000, D: 86400000, C: CHARGING_NONE, I: IDLE_NONE, N: NET_ANY, B: BATTERY_ANY }]
+10-13 16:31:50.007 24452 24452 I Finsky  : [2] anoy - Received: android.intent.action.PACKAGE_ADDED, [5isY8fX4F6TJEk3xr9dtsFADH1aPItmxDfqv4fFA0Rg]
+10-13 16:31:50.028 24452 24483 E Finsky  : [1483] [Counters] attempted to use a non-positive increment for: 4753
+10-13 16:31:50.040 24452 24452 I Finsky  : [2] DTU: Received onPackageAdded, replacing: true
+10-13 16:31:50.097 24452 25415 I Finsky  : [1560] SCH: Received scheduling request: Id: 12-1, Constraints: [{ L: 15000, D: 86400000, C: CHARGING_NONE, I: IDLE_NONE, N: NET_ANY, B: BATTERY_ANY }]
+10-13 16:31:50.100 24452 24483 I Finsky  : [1483] AIM: AppInfoManager-Perf > OnDeviceAppInfo > cacheHitCount=1, cacheMissCount=0. Missed  in cache (limit 10) : []
+10-13 16:31:50.100 24452 24483 I Finsky  : [1483] AIM: Got app ownership map. App counts: . Unique apps: 0
+10-13 16:31:50.100 24452 24483 E Finsky  : [1483] [Counters] attempted to use a non-positive increment for: 4752
+10-13 16:31:50.101 24452 24483 E Finsky  : [1483] [Counters] attempted to use a non-positive increment for: 4753
+10-13 16:31:50.104 24452 24484 I Finsky  : [1484] AIM: AppInfoManager-Perf > ItemModel > CacheSize=96, cacheHitCount=0, cacheMissCount=0, total appsWithNoServerDataCount=0. Missed  in cache (limit 10) : []
+10-13 16:31:50.111 24452 25417 I Finsky  : [1561] Asset module broadcast after update successful for package com.example.fitness_app.
+10-13 16:31:50.120 24452 24452 I Finsky  : [2] AIM: AppInfoCacheUpdater -> invalidating apps: [com.example.fitness_app]
+10-13 16:31:50.120 24452 24452 I Finsky  : [2] AIM: AppInfoManager-Perf > getApps > called for 1 apps
+10-13 16:31:50.131 24452 24452 I Finsky  : [2] anoy - Received: android.intent.action.PACKAGE_ADDED, [5isY8fX4F6TJEk3xr9dtsFADH1aPItmxDfqv4fFA0Rg]
+10-13 16:31:50.137  4839  4850 I ogle.android.as: Background young concurrent copying GC freed 4580KB AllocSpace bytes, 0(0B) LOS objects, 43% free, 6426KB/11MB, paused 254us,555us total 195.278ms
+10-13 16:31:50.137  4839  4850 W ogle.android.as: Reducing the number of considered missed Gc histogram windows from 369 to 100
+10-13 16:31:50.139 24452 24452 I Finsky  : [2] anoy - Deduping intent android.intent.action.PACKAGE_ADDED
+10-13 16:31:50.143 24452 24452 I Finsky  : [2] NCR: notification count changed for account [[4bZibZaNu1cb7ce-P7wN2ZoNnMHRg6-FbE5NYjqpNys]]: old=[0], new=[0], notifications=[]
+10-13 16:31:50.147 24452 24483 I Finsky  : [1483] AIM: AppInfoManager-Perf > OnDeviceAppInfo > cacheHitCount=0, cacheMissCount=1. Missed  in cache (limit 10) : [com.example.fitness_app]
+10-13 16:31:50.163 24452 24484 I Finsky  : [1484] AIM: Got app ownership map. App counts: . Unique apps: 0
+10-13 16:31:50.163 24452 24484 E Finsky  : [1484] [Counters] attempted to use a non-positive increment for: 4752
+10-13 16:31:50.174 24452 24481 E Finsky  : [1481] [Counters] attempted to use a non-positive increment for: 4753
+10-13 16:31:50.189 24452 24481 I Finsky  : [1481] AIM: AppInfoManager-Perf > getApps > data collection finished
+10-13 16:31:50.189 24452 24481 I Finsky  : [1481] AIM: AppInfoManager-Perf > maybeDestroyAppInfoManager is called. actives = 1
+10-13 16:31:50.201 24452 24480 I Finsky  : [1480] AIM: AppInfoManager-Perf > ItemModel > CacheSize=96, cacheHitCount=0, cacheMissCount=0, total appsWithNoServerDataCount=0. Missed  in cache (limit 10) : []
+10-13 16:31:50.208 29975 25461 I AppBackupStateCleanupIO: Backup state cleanup on uninstall is disabled. [CONTEXT service_id=229 ]
+10-13 16:31:50.209 29975 25461 I FraudProtectUtils: Not in testing population, skipping local test bank apps. [CONTEXT service_id=469 ]
+10-13 16:31:50.209 29975 25461 I FraudProtectUtils: (REDACTED) Latest bank app list size: %d, %s isBankApp: false
+10-13 16:31:50.209 29975 25461 I PackageInstallIntentOp: (REDACTED) Package %s is not a bank app. Skipping updates.
+10-13 16:31:50.250 29975 29975 D BoundBrokerSvc: onRebind: Intent { act=com.google.android.gms.auth.aang.events.services.START dat=chimera-action:/... cmp=com.google.android.gms/.chimera.PersistentApiService }
+10-13 16:31:50.261 20988 21008 I aqok    : (REDACTED) Clearing the cache and stopping the fetch for key %s
+10-13 16:31:50.287 29975 25448 I Fitness : (REDACTED) FitCleanupIntentOperation received Intent %s
+10-13 16:31:50.298 29975 25475 I ProximityAuth: [RecentAppsMediator] Package added: (user=UserHandle{0}) com.example.fitness_app
+10-13 16:31:50.309 24452 24483 I Finsky  : [1483] AIM: AppInfoManager-Perf > ItemModel > CacheSize=96, cacheHitCount=0, cacheMissCount=0, total appsWithNoServerDataCount=0. Missed  in cache (limit 10) : []
+10-13 16:31:50.318 24452 24483 I Finsky  : [1483] AIM: AppInfoManager-Perf > getApps > data collection finished
+10-13 16:31:50.324 24452 24483 I Finsky  : [1483] AIM: AppInfoManager-Perf > maybeDestroyAppInfoManager is called. actives = 0
+10-13 16:31:50.351 24452 24473 I Finsky  : [1474] WM::SCH: Logging work initialize for 12-1
+10-13 16:31:50.360 20988 21008 I ewdm    : (REDACTED) AppFlow %s is about to be transmitted
+10-13 16:31:50.363 24452 24483 I Finsky  : [1483] SCH: Scheduling phonesky job Id: 12-1, CT: 1791880310004, Constraints: [{ L: 15000, D: 86400000, C: CHARGING_NONE, I: IDLE_NONE, N: NET_ANY, B: BATTERY_ANY }]
+10-13 16:31:50.371 24452 24472 I Finsky  : [1473] WM::SCH: Logging work initialize for 12-1
+10-13 16:31:50.374 24452 24483 I Finsky  : [1483] SCH: Scheduling 1 system job(s)
+10-13 16:31:50.375 24452 24483 D CompatibilityChangeReporter: Compat change id reported: 194532703; UID 10178; state: ENABLED
+10-13 16:31:50.375 24452 24483 I Finsky  : [1483] SCH: Scheduling system job Id: 9445, L: 14630, D: 76923993, C: false, I: false, N: 1
+10-13 16:31:50.377 20988 21021 I avda    : #getOobeStatus: OptedIn [CONTEXT ratelimit_period="10 SECONDS" ]
+10-13 16:31:50.394 24452 24476 I Finsky  : [1477] [ContentSync] finished, scheduled=true
+10-13 16:31:50.398 24452 24483 I Finsky  : [1483] SCH: Scheduling phonesky job Id: 12-1, CT: 1791880310097, Constraints: [{ L: 15000, D: 86400000, C: CHARGING_NONE, I: IDLE_NONE, N: NET_ANY, B: BATTERY_ANY }]
+10-13 16:31:50.404 24452 24483 I Finsky  : [1483] SCH: Scheduling 0 system job(s)
+10-13 16:31:50.408 24452 24483 I Finsky  : [1483] [ContentSync] finished, scheduled=true
+10-13 16:31:50.418 29975 29979 I gle.android.gms: Background concurrent copying GC freed 7630KB AllocSpace bytes, 11(268KB) LOS objects, 34% free, 44MB/68MB, paused 110us,372us total 664.202ms
+10-13 16:31:50.484 29975 25450 I Auth    : (REDACTED) [SupervisedAccountIntentOperation] onHandleIntent: %s
+10-13 16:31:50.491 29975 25450 W AppInstallOperation: FDL Migration::InstallIntentOperation by FDL Module [CONTEXT service_id=77 ]
+10-13 16:31:50.493 29975 25467 I FraudProtectUtils: Not in testing population, skipping local test bank apps. [CONTEXT service_id=469 ]
+10-13 16:31:50.493 29975 25467 I FraudProtectUtils: (REDACTED) Latest bank app list size: %d, %s isBankApp: false
+10-13 16:31:50.493 29975 25467 I PackageInstallIntentOp: (REDACTED) Package %s is not a bank app. Skipping updates.
+10-13 16:31:50.513 29975 25463 I NearbyDiscovery: (REDACTED) processGrantSlicePermission: %s
+10-13 16:31:50.610 29975 25450 W SQLiteLog: (28) double-quoted string literal: "com.example.fitness_app"
+10-13 16:31:50.691 25511 25511 I ple.fitness_app: Late-enabling -Xcheck:jni
+10-13 16:31:51.660 25560 25586 E VivoPush.Client.Utility: (25560)client is null
+10-13 16:31:51.669 25560 25584 E VivoPush.Client.PushPackageUtils: (25560)client is null
+10-13 16:31:51.685 25560 25584 E VivoPush.Client.CoreConfigManager: (25560)queryFromCoreSdk client is null

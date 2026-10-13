@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:js_interop';
 import 'dart:ui_web' as ui_web;
 import 'package:flutter/material.dart';
+import 'package:fitness_app/app/design_tokens.dart';
 import 'package:shared/services/supabase_client.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:web/web.dart' as web;
@@ -188,24 +189,24 @@ class _WebCameraScreenState extends State<WebCameraScreen> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               child: Row(
                 children: [
                   Material(
-                    color: Colors.white10,
+                    color: ClayTokens.clayDarkTextSecondary,
                     borderRadius: BorderRadius.circular(999),
                     child: InkWell(
                       onTap: _cancel,
                       borderRadius: BorderRadius.circular(999),
-                      child: const Padding(
+                      child: Padding(
                         padding: EdgeInsets.all(10),
-                        child: Icon(Icons.close, color: Colors.white, size: 20),
+                        child: Icon(Icons.close, color: ClayTokens.clayDarkTextPrimary, size: 20),
                       ),
                     ),
                   ),
                   const Spacer(),
-                  const Text('Record Proof', style: TextStyle(
-                    color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700,
+                  Text('Record Proof', style: TextStyle(
+                    color: ClayTokens.clayDarkTextPrimary, fontSize: 15, fontWeight: FontWeight.w700,
                   )),
                   const Spacer(),
                   const SizedBox(width: 40),
@@ -221,8 +222,8 @@ class _WebCameraScreenState extends State<WebCameraScreen> {
                       child: HtmlElementView(viewType: _viewType),
                     )
                   else
-                    const Center(
-                      child: CircularProgressIndicator(color: Colors.white54),
+                    Center(
+                      child: CircularProgressIndicator(color: ClayTokens.clayDarkTextSecondary),
                     ),
                   if (_stage == _WebStage.ready)
                     Center(
@@ -236,36 +237,36 @@ class _WebCameraScreenState extends State<WebCameraScreen> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Text(
+                            Text(
                               'Ready?',
                               style: TextStyle(
-                                color: Colors.white,
+                                color: ClayTokens.clayDarkTextPrimary,
                                 fontSize: 26,
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
                             const SizedBox(height: 6),
-                            const Text(
+                            Text(
                               'The camera auto-records 30s. Start when you are.',
                               textAlign: TextAlign.center,
-                              style: TextStyle(color: Colors.white70, fontSize: 13),
+                              style: TextStyle(color: ClayTokens.clayDarkTextSecondary, fontSize: 13),
                             ),
-                            const SizedBox(height: 16),
+                            SizedBox(height: 16),
                             Material(
                               color: Colors.greenAccent.withAlpha(60),
                               borderRadius: BorderRadius.circular(999),
                               child: InkWell(
                                 onTap: _startFromReady,
                                 borderRadius: BorderRadius.circular(999),
-                                child: const Padding(
+                                child: Padding(
                                   padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(Icons.fiber_manual_record, color: Colors.white, size: 16),
+                                      Icon(Icons.fiber_manual_record, color: ClayTokens.clayDarkTextPrimary, size: 16),
                                       SizedBox(width: 8),
                                       Text('Start',
-                                        style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800),
+                                        style: TextStyle(color: ClayTokens.clayDarkTextPrimary, fontSize: 16, fontWeight: FontWeight.w800),
                                       ),
                                     ],
                                   ),
@@ -309,43 +310,43 @@ class _WebCameraScreenState extends State<WebCameraScreen> {
                               width: 10, height: 10,
                               decoration: const BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle),
                             ),
-                            const SizedBox(width: 8),
+                            SizedBox(width: 8),
                             Text(
                               '$_elapsedSeconds / ${WebCameraScreen.recordDuration.inSeconds}s',
-                              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700),
+                              style: TextStyle(color: ClayTokens.clayDarkTextPrimary, fontSize: 13, fontWeight: FontWeight.w700),
                             ),
                           ],
                         ),
                       ),
                     ),
                   if (_stage == _WebStage.uploading)
-                    const Center(
-                      child: CircularProgressIndicator(color: Colors.white70),
+                    Center(
+                      child: CircularProgressIndicator(color: ClayTokens.clayDarkTextSecondary),
                     ),
                   if (_stage == _WebStage.error)
                     Center(
                       child: Padding(
-                        padding: const EdgeInsets.all(24),
+                        padding: EdgeInsets.all(24),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.videocam_off_outlined, color: Colors.white54, size: 40),
-                            const SizedBox(height: 12),
+                            Icon(Icons.videocam_off_outlined, color: ClayTokens.clayDarkTextSecondary, size: 40),
+                            SizedBox(height: 12),
                             Text(
                               _error ?? 'Recording failed',
                               textAlign: TextAlign.center,
-                              style: const TextStyle(color: Colors.white70, fontSize: 13),
+                              style: TextStyle(color: ClayTokens.clayDarkTextSecondary, fontSize: 13),
                             ),
-                            const SizedBox(height: 16),
+                            SizedBox(height: 16),
                             Material(
-                              color: Colors.white10,
+                              color: ClayTokens.clayDarkTextSecondary,
                               borderRadius: BorderRadius.circular(999),
                               child: InkWell(
                                 onTap: () => Navigator.of(context).pop(null),
                                 borderRadius: BorderRadius.circular(999),
-                                child: const Padding(
+                                child: Padding(
                                   padding: EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-                                  child: Text('Close', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                                  child: Text('Close', style: TextStyle(color: ClayTokens.clayDarkTextPrimary, fontWeight: FontWeight.w700)),
                                 ),
                               ),
                             ),
@@ -357,14 +358,14 @@ class _WebCameraScreenState extends State<WebCameraScreen> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.only(bottom: 20),
+              padding: EdgeInsets.only(bottom: 20),
               child: Text(
                 _stage == _WebStage.recording
                     ? 'Recording… auto-stops after ${WebCameraScreen.recordDuration.inSeconds}s'
                     : _stage == _WebStage.ready
                         ? 'Tap Start to begin recording'
                         : 'Auto-records ${WebCameraScreen.recordDuration.inSeconds}s',
-                style: const TextStyle(color: Colors.white54, fontSize: 11),
+                style: TextStyle(color: ClayTokens.clayDarkTextSecondary, fontSize: 11),
               ),
             ),
           ],

@@ -10,6 +10,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared/services/supabase_client.dart';
 
 import '../../../../app/design_tokens.dart';
+import '../../../shared/widgets/glass_card.dart';
 import '../../../shared/widgets/app_glow_background.dart';
 
 /// Add-food wizard (see docs/superpowers/specs/2026-09-25-food-intake-philfct-wizard-design.md).
@@ -55,12 +56,22 @@ const _stepLabels = <String>[
   'Confirm',
 ];
 
-/// App glass recipe (same as the login card / glass widgets): a translucent
-/// white fill with a soft white border instead of an opaque clay surface, so
-/// the glow background shows through the cards.
-const _glassFill = Color(0x12FFFFFF); // white @ 7%
-const _glassFillStrong = Color(0x1FFFFFFF); // white @ 12%
-const _glassBorder = Color(0x2EFFFFFF); // white @ 18%
+// App glass recipe (same as the login card / glass widgets), now brightness
+// aware: dark mode keeps the exact translucent-white-on-dark values it had,
+// light mode uses the shared light glass body (white fill, lilac rim, dark
+// ink) so the wizard reads as the same material as the nav bar. Each helper
+// keeps the exact dark value it replaces, so these swaps are LIGHT MODE ONLY.
+Color _ink() => glassInk(const Color(0xFFECECFC));
+Color _inkDim() => glassInkDim(const Color(0xFFB4B4D0));
+Color _inkFaint() => glassInkFaint(const Color(0xFF7070A0));
+Color get _glassFill => glassFill();
+Color get _glassFillStrong => glassFillStrong();
+Color get _glassBorder => glassRim();
+Color _glassBorderSoft() => glassRimSoft();
+Color _panelRecess() => glassPanel(const Color(0xFF1C1C35));
+Color _panelRecessEnd() =>
+    ClayColors.isLightMode ? const Color(0xFFEFE7FF) : const Color(0xFF2A1F4D);
+
 
 BoxDecoration _glassDecoration({
   BorderRadius? borderRadius,
@@ -273,8 +284,9 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
   Future<void> _save() async {
     final food = _selectedFood;
     final mealType = _mealType;
-    final foodName =
-        _manual ? _manualNameController.text.trim() : (food?.foodName ?? '');
+    final foodName = _manual
+        ? _manualNameController.text.trim()
+        : (food?.foodName ?? '');
     if (foodName.isEmpty || mealType == null || _grams <= 0) {
       return;
     }
@@ -333,15 +345,15 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: ClayColors.clayDarkBase,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(
+          icon: Icon(
             CupertinoIcons.chevron_left,
-            color: Color(0xFFFFFFFF),
+            color: glassInk(),
           ),
           onPressed: _back,
         ),
@@ -355,8 +367,8 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
             const SizedBox(height: 2),
             Text(
               'Step ${_step.index + 1} of 5',
-              style: const TextStyle(
-                color: Color(0xFFB4B4D0),
+              style: TextStyle(
+                color: _inkDim(),
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
               ),
@@ -366,9 +378,9 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(
+            icon: Icon(
               CupertinoIcons.xmark,
-              color: Color(0xFFB4B4D0),
+              color: _inkDim(),
               size: 20,
             ),
             onPressed: () => Navigator.of(context).pop(),
@@ -479,9 +491,9 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
               setState(() => _image = null);
               _next();
             },
-            child: const Text(
+            child: Text(
               'Skip photo',
-              style: TextStyle(color: Color(0xFFB4B4D0), fontSize: 13),
+              style: TextStyle(color: _inkDim(), fontSize: 13),
             ),
           ),
         ),
@@ -539,8 +551,8 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
                         children: [
                           Text(
                             label,
-                            style: const TextStyle(
-                              color: Color(0xFFECECFC),
+                            style: TextStyle(
+                              color: _ink(),
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
                             ),
@@ -548,8 +560,8 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
                           const SizedBox(height: 2),
                           Text(
                             description,
-                            style: const TextStyle(
-                              color: Color(0xFFB4B4D0),
+                            style: TextStyle(
+                              color: _inkDim(),
                               fontSize: 12.5,
                               height: 1.35,
                             ),
@@ -571,10 +583,10 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
                         ),
                       ),
                       child: selected
-                          ? const Icon(
+                          ? Icon(
                               CupertinoIcons.check_mark,
                               size: 14,
-                              color: Colors.white,
+                              color: ClayTokens.clayDarkTextPrimary,
                             )
                           : null,
                     ),
@@ -629,48 +641,51 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
             controller: _searchController,
             autofocus: true,
             onChanged: _search,
-          style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 14),
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: _glassFill,
-            hintText: 'e.g. rice, adobo, Mais, tilapia',
-            hintStyle: const TextStyle(color: Color(0xFF7070A0), fontSize: 14),
-            prefixIcon: const Icon(
-              CupertinoIcons.search,
-              size: 18,
-              color: Color(0xFFB4B4D0),
-            ),
-            suffixIcon: _searchController.text.isEmpty
-                ? null
-                : IconButton(
-                    icon: const Icon(
-                      CupertinoIcons.clear_circled_solid,
-                      size: 16,
-                      color: Color(0xFFB4B4D0),
+            style: TextStyle(color: glassInk(), fontSize: 14),
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: _glassFill,
+              hintText: 'e.g. rice, adobo, Mais, tilapia',
+              hintStyle: TextStyle(
+                color: _inkFaint(),
+                fontSize: 14,
+              ),
+              prefixIcon: Icon(
+                CupertinoIcons.search,
+                size: 18,
+                color: _inkDim(),
+              ),
+              suffixIcon: _searchController.text.isEmpty
+                  ? null
+                  : IconButton(
+                      icon: Icon(
+                        CupertinoIcons.clear_circled_solid,
+                        size: 16,
+                        color: _inkDim(),
+                      ),
+                      onPressed: () {
+                        _searchController.clear();
+                        _search('');
+                        setState(() {});
+                      },
                     ),
-                    onPressed: () {
-                      _searchController.clear();
-                      _search('');
-                      setState(() {});
-                    },
-                  ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: _glassBorder),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: _glassBorder),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(
-                color: Color(0xFF7C3AED),
-                width: 1.6,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: _glassBorder),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: _glassBorder),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(
+                  color: Color(0xFF7C3AED),
+                  width: 1.6,
+                ),
               ),
             ),
           ),
-        ),
         ] else ...[
           _GlassTextField(
             controller: _manualNameController,
@@ -679,58 +694,62 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
             onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'You will enter its kcal, protein, carbs and fat in the next step.',
-            style: TextStyle(color: Color(0xFFB4B4D0), fontSize: 12, height: 1.4),
+            style: TextStyle(
+              color: _inkDim(),
+              fontSize: 12,
+              height: 1.4,
+            ),
           ),
         ],
         if (!_manual) ...[
           const SizedBox(height: 12),
           if (_searching)
-            const LinearProgressIndicator(
-            color: Color(0xFF7C3AED),
-            minHeight: 2,
-            backgroundColor: Color(0xFF1C1C35),
-          ),
-        if (_searchError != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Text(
-              _searchError!,
-              style: const TextStyle(color: Color(0xFFFF453A), fontSize: 12),
+            LinearProgressIndicator(
+              color: Color(0xFF7C3AED),
+              minHeight: 2,
+              backgroundColor: _panelRecess(),
             ),
-          ),
-        if (!_manual &&
-            _searchController.text.trim().length >= 2 &&
-            !_searching &&
-            _results.isEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 14),
-            child: Text(
-              'No FNRI food matches "${_searchController.text.trim()}". '
-              'Try a shorter word (e.g. "rice" instead of "fried rice with egg").',
-              style: const TextStyle(
-                color: Color(0xFFB4B4D0),
-                fontSize: 12,
-                height: 1.4,
+          if (_searchError != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                _searchError!,
+                style: const TextStyle(color: Color(0xFFFF453A), fontSize: 12),
               ),
             ),
-          ),
-        if (!_manual) const SizedBox(height: 8),
-        if (!_manual)
-          ..._results.map(
-            (food) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: _FoodResultTile(
-                food: food,
-                selected: _selectedFood?.id == food.id,
-                onTap: () => setState(() {
-                  _selectedFood = food;
-                  _gramsController.text = '100';
-                }),
+          if (!_manual &&
+              _searchController.text.trim().length >= 2 &&
+              !_searching &&
+              _results.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 14),
+              child: Text(
+                'No FNRI food matches "${_searchController.text.trim()}". '
+                'Try a shorter word (e.g. "rice" instead of "fried rice with egg").',
+                style: TextStyle(
+                  color: _inkDim(),
+                  fontSize: 12,
+                  height: 1.4,
+                ),
               ),
             ),
-          ),
+          if (!_manual) const SizedBox(height: 8),
+          if (!_manual)
+            ..._results.map(
+              (food) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _FoodResultTile(
+                  food: food,
+                  selected: _selectedFood?.id == food.id,
+                  onTap: () => setState(() {
+                    _selectedFood = food;
+                    _gramsController.text = '100';
+                  }),
+                ),
+              ),
+            ),
         ],
       ],
     );
@@ -752,7 +771,7 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
           subtitle: _manual
               ? 'Enter the nutrition per 100 g for "$_foodNameForQuantity", then how much you ate — the total updates automatically.'
               : 'FNRI values are per 100 g. Enter how much you ate and the '
-                  'nutrition updates automatically.',
+                    'nutrition updates automatically.',
         ),
         const SizedBox(height: 16),
         if (_manual)
@@ -761,10 +780,10 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
           _SelectedFoodCard(food: food!),
         const SizedBox(height: 18),
         if (_manual) ...[
-          const Text(
+          Text(
             'Nutrition per 100 g',
             style: TextStyle(
-              color: Color(0xFFB4B4D0),
+              color: _inkDim(),
               fontSize: 12.5,
               fontWeight: FontWeight.w600,
             ),
@@ -827,10 +846,10 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
           ),
           const SizedBox(height: 18),
         ],
-        const Text(
+        Text(
           'Quantity (grams)',
           style: TextStyle(
-            color: Color(0xFFB4B4D0),
+            color: _inkDim(),
             fontSize: 12.5,
             fontWeight: FontWeight.w600,
           ),
@@ -841,8 +860,8 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           onChanged: (_) => setState(() {}),
           textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Color(0xFFECECFC),
+          style: TextStyle(
+            color: _ink(),
             fontSize: 30,
             fontWeight: FontWeight.w800,
           ),
@@ -850,14 +869,14 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
             filled: true,
             fillColor: _glassFill,
             hintText: '100',
-            hintStyle: const TextStyle(
-              color: Color(0xFF7070A0),
+            hintStyle: TextStyle(
+              color: _inkFaint(),
               fontSize: 30,
               fontWeight: FontWeight.w800,
             ),
             suffixText: 'g',
-            suffixStyle: const TextStyle(
-              color: Color(0xFFB4B4D0),
+            suffixStyle: TextStyle(
+              color: _inkDim(),
               fontSize: 20,
               fontWeight: FontWeight.w700,
             ),
@@ -911,8 +930,9 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
 
   Widget _reviewStep() {
     final food = _selectedFood;
-    final foodName =
-        _manual ? _manualNameController.text.trim() : (food?.foodName ?? '');
+    final foodName = _manual
+        ? _manualNameController.text.trim()
+        : (food?.foodName ?? '');
     final (mealLabel, _, mealIcon, mealColor) = _mealTypeOptions[_mealType]!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -951,8 +971,8 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
           subtitle: _manual
               ? 'Entered manually'
               : food!.aliases.isNotEmpty
-                  ? 'aka ${food.aliases.join(', ')}'
-                  : food.category,
+              ? 'aka ${food.aliases.join(', ')}'
+              : food.category,
           onEdit: () => setState(() => _step = _WizardStep.search),
         ),
         _ReviewRow(
@@ -963,7 +983,7 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
           subtitle: _manual
               ? '${_baseKcal.toStringAsFixed(0)} kcal per 100 g · Manual'
               : '${food!.caloriesKcal.toStringAsFixed(0)} kcal per 100 g · '
-                  '${food.source.isEmpty ? 'FNRI' : food.source}',
+                    '${food.source.isEmpty ? 'FNRI' : food.source}',
           onEdit: () => setState(() => _step = _WizardStep.quantity),
         ),
         _ReviewRow(
@@ -1010,7 +1030,8 @@ class _StepIndicator extends StatelessWidget {
   const _StepIndicator({required this.current});
 
   static const _purple = Color(0xFF7C3AED);
-  static const _pending = Color(0xFF353555);
+  static Color get _pending =>
+      ClayColors.isLightMode ? const Color(0xFFE2DCF2) : const Color(0xFF353555);
 
   @override
   Widget build(BuildContext context) {
@@ -1083,7 +1104,7 @@ class _StepIndicator extends StatelessWidget {
                                     style: TextStyle(
                                       color: active
                                           ? const Color(0xFFFFFFFF)
-                                          : const Color(0xFF7070A0),
+                                          : _inkFaint(),
                                       fontSize: 12,
                                       fontWeight: FontWeight.w700,
                                     ),
@@ -1095,8 +1116,8 @@ class _StepIndicator extends StatelessWidget {
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: active
-                                  ? const Color(0xFFECECFC)
-                                  : const Color(0xFF7070A0),
+                                  ? _ink()
+                                  : _inkFaint(),
                               fontSize: 10,
                               fontWeight: active
                                   ? FontWeight.w700
@@ -1129,8 +1150,8 @@ class _StepHeading extends StatelessWidget {
       children: [
         Text(
           title,
-          style: const TextStyle(
-            color: Color(0xFFECECFC),
+          style: TextStyle(
+            color: _ink(),
             fontSize: 27,
             fontWeight: FontWeight.w800,
             letterSpacing: -0.5,
@@ -1139,8 +1160,8 @@ class _StepHeading extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           subtitle,
-          style: const TextStyle(
-            color: Color(0xFFB4B4D0),
+          style: TextStyle(
+            color: _inkDim(),
             fontSize: 13.5,
             height: 1.45,
           ),
@@ -1183,27 +1204,29 @@ class _PhotoPlaceholder extends StatelessWidget {
                 end: Alignment.bottomRight,
               ),
             ),
-            child: const Icon(
+            child: Icon(
               CupertinoIcons.camera_viewfinder,
-              color: Color(0xFFD6A5FF),
+              color: ClayColors.isLightMode
+                  ? Colors.white
+                  : const Color(0xFFD6A5FF),
               size: 38,
             ),
           ),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'No photo yet',
             style: TextStyle(
-              color: Color(0xFFECECFC),
+              color: _ink(),
               fontSize: 16,
               fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 6),
-          const Text(
+          Text(
             'Take a photo of your meal or choose one from your gallery.',
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: Color(0xFFB4B4D0),
+              color: _inkDim(),
               fontSize: 13,
               height: 1.4,
             ),
@@ -1234,7 +1257,9 @@ class _PhotoPlaceholder extends StatelessWidget {
                   icon: const Icon(CupertinoIcons.photo, size: 18),
                   label: const Text('Gallery'),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFFD6A5FF),
+                    foregroundColor: ClayColors.isLightMode
+                        ? ClayTokens.clayPrimary
+                        : const Color(0xFFD6A5FF),
                     side: const BorderSide(color: Color(0xFF7C3AED)),
                     minimumSize: const Size.fromHeight(50),
                     padding: const EdgeInsets.symmetric(vertical: 14),
@@ -1272,7 +1297,9 @@ class _GhostButton extends StatelessWidget {
         icon: Icon(icon, size: 16),
         label: Text(label, style: const TextStyle(fontSize: 13)),
         style: OutlinedButton.styleFrom(
-          foregroundColor: const Color(0xFFD6A5FF),
+          foregroundColor: ClayColors.isLightMode
+              ? ClayTokens.clayPrimary
+              : const Color(0xFFD6A5FF),
           side: const BorderSide(color: Color(0xFF7C3AED)),
           padding: const EdgeInsets.symmetric(vertical: 12),
           shape: RoundedRectangleBorder(
@@ -1317,8 +1344,8 @@ class _FoodResultTile extends StatelessWidget {
                 children: [
                   Text(
                     food.foodName,
-                    style: const TextStyle(
-                      color: Color(0xFFFFFFFF),
+                    style: TextStyle(
+                      color: glassInk(),
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
@@ -1327,8 +1354,8 @@ class _FoodResultTile extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       food.aliases.join(', '),
-                      style: const TextStyle(
-                        color: Color(0xFFB4B4D0),
+                      style: TextStyle(
+                        color: _inkDim(),
                         fontSize: 11,
                       ),
                     ),
@@ -1336,8 +1363,8 @@ class _FoodResultTile extends StatelessWidget {
                   const SizedBox(height: 3),
                   Text(
                     '${food.category} · ${food.caloriesKcal.toStringAsFixed(0)} kcal / 100 g',
-                    style: const TextStyle(
-                      color: Color(0xFF7070A0),
+                    style: TextStyle(
+                      color: _inkFaint(),
                       fontSize: 11,
                     ),
                   ),
@@ -1371,8 +1398,8 @@ class _SelectedFoodCard extends StatelessWidget {
         children: [
           Text(
             food.foodName,
-            style: const TextStyle(
-              color: Color(0xFFECECFC),
+            style: TextStyle(
+              color: _ink(),
               fontSize: 15,
               fontWeight: FontWeight.w700,
             ),
@@ -1381,7 +1408,7 @@ class _SelectedFoodCard extends StatelessWidget {
             const SizedBox(height: 2),
             Text(
               food.aliases.join(', '),
-              style: const TextStyle(color: Color(0xFFB4B4D0), fontSize: 11),
+              style: TextStyle(color: _inkDim(), fontSize: 11),
             ),
           ],
           const SizedBox(height: 8),
@@ -1434,7 +1461,7 @@ class _Per100 extends StatelessWidget {
         children: [
           Text(
             label,
-            style: const TextStyle(color: Color(0xFF7070A0), fontSize: 10),
+            style: TextStyle(color: _inkFaint(), fontSize: 10),
           ),
           const SizedBox(height: 2),
           Text(
@@ -1469,7 +1496,7 @@ class _GramChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFF7C3AED).withAlpha(30) : _glassFill,
+          color: selected ? Color(0xFF7C3AED).withAlpha(30) : _glassFill,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: selected ? const Color(0xFF7C3AED) : _glassBorder,
@@ -1478,7 +1505,9 @@ class _GramChip extends StatelessWidget {
         child: Text(
           '$grams g',
           style: TextStyle(
-            color: selected ? Colors.white : const Color(0xFFB4B4D0),
+            color: selected
+                ? ClayTokens.clayDarkTextPrimary
+                : ClayTokens.clayDarkTextSecondary,
             fontSize: 12.5,
             fontWeight: FontWeight.w600,
           ),
@@ -1506,8 +1535,8 @@ class _MacroPreview extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1C1C35), Color(0xFF2A1F4D)],
+        gradient: LinearGradient(
+          colors: [_panelRecess(), _panelRecessEnd()],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -1517,10 +1546,10 @@ class _MacroPreview extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'AUTO-CALCULATED NUTRITION',
             style: TextStyle(
-              color: Color(0xFFB4B4D0),
+              color: _inkDim(),
               fontSize: 10,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.6,
@@ -1529,8 +1558,8 @@ class _MacroPreview extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             '${calories.toStringAsFixed(0)} kcal',
-            style: const TextStyle(
-              color: Color(0xFFECECFC),
+            style: TextStyle(
+              color: _ink(),
               fontSize: 28,
               fontWeight: FontWeight.w800,
             ),
@@ -1582,7 +1611,7 @@ class _MacroPill extends StatelessWidget {
         children: [
           Text(
             label,
-            style: const TextStyle(color: Color(0xFFB4B4D0), fontSize: 10.5),
+            style: TextStyle(color: _inkDim(), fontSize: 10.5),
           ),
           const SizedBox(height: 2),
           Text(
@@ -1634,16 +1663,16 @@ class _ReviewRow extends StatelessWidget {
                 children: [
                   Text(
                     label,
-                    style: const TextStyle(
-                      color: Color(0xFF7070A0),
+                    style: TextStyle(
+                      color: _inkFaint(),
                       fontSize: 10,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     value,
-                    style: const TextStyle(
-                      color: Color(0xFFECECFC),
+                    style: TextStyle(
+                      color: _ink(),
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
@@ -1652,8 +1681,8 @@ class _ReviewRow extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       subtitle!,
-                      style: const TextStyle(
-                        color: Color(0xFFB4B4D0),
+                      style: TextStyle(
+                        color: _inkDim(),
                         fontSize: 11,
                       ),
                     ),
@@ -1670,9 +1699,9 @@ class _ReviewRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 4),
-            const Icon(
+            Icon(
               CupertinoIcons.chevron_right,
-              color: Color(0xFF7070A0),
+              color: _inkFaint(),
               size: 14,
             ),
           ],
@@ -1705,9 +1734,9 @@ class _BottomBar extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (uploading) ...[
-            const Text(
+            Text(
               'Uploading photo…',
-              style: TextStyle(color: Color(0xFFB4B4D0), fontSize: 11),
+              style: TextStyle(color: _inkDim(), fontSize: 11),
             ),
             const SizedBox(height: 6),
           ],
@@ -1718,8 +1747,8 @@ class _BottomBar extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF7C3AED),
                 foregroundColor: Colors.white,
-                disabledBackgroundColor: const Color(0xFF1C1C35),
-                disabledForegroundColor: const Color(0xFF7070A0),
+                disabledBackgroundColor: _panelRecess(),
+                disabledForegroundColor: _inkFaint(),
                 minimumSize: const Size.fromHeight(54),
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 elevation: enabled ? 6 : 0,
@@ -1729,8 +1758,8 @@ class _BottomBar extends StatelessWidget {
                 ),
               ),
               child: busy
-                  ? const CupertinoActivityIndicator(
-                      color: Colors.white,
+                  ? CupertinoActivityIndicator(
+                      color: ClayTokens.clayDarkTextPrimary,
                       radius: 10,
                     )
                   : Row(
@@ -1782,9 +1811,7 @@ class _SourceChoice extends StatelessWidget {
               : _glassFill,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: selected
-                ? const Color(0xFF7C3AED)
-                : const Color(0x26FFFFFF),
+            color: selected ? const Color(0xFF7C3AED) : _glassBorderSoft(),
             width: selected ? 1.6 : 1,
           ),
         ),
@@ -1795,16 +1822,18 @@ class _SourceChoice extends StatelessWidget {
               icon,
               size: 18,
               color: selected
-                  ? const Color(0xFFB79CFF)
-                  : const Color(0xFFB4B4D0),
+                  ? (ClayColors.isLightMode
+                        ? ClayTokens.clayPrimary
+                        : const Color(0xFFB79CFF))
+                  : _inkDim(),
             ),
             const SizedBox(width: 8),
             Text(
               label,
               style: TextStyle(
                 color: selected
-                    ? const Color(0xFFECECFC)
-                    : const Color(0xFFB4B4D0),
+                    ? _ink()
+                    : _inkDim(),
                 fontSize: 13.5,
                 fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
               ),
@@ -1843,8 +1872,8 @@ class _GlassTextField extends StatelessWidget {
         if (label != null) ...[
           Text(
             label!,
-            style: const TextStyle(
-              color: Color(0xFF7070A0),
+            style: TextStyle(
+              color: _inkFaint(),
               fontSize: 11,
               fontWeight: FontWeight.w600,
             ),
@@ -1856,26 +1885,23 @@ class _GlassTextField extends StatelessWidget {
           keyboardType: keyboardType,
           textCapitalization: textCapitalization,
           onChanged: onChanged,
-          style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 14),
+          style: TextStyle(color: glassInk(), fontSize: 14),
           decoration: InputDecoration(
             filled: true,
             fillColor: _glassFill,
             hintText: hintText,
-            hintStyle: const TextStyle(
-              color: Color(0xFF7070A0),
-              fontSize: 14,
-            ),
+            hintStyle: TextStyle(color: _inkFaint(), fontSize: 14),
             contentPadding: const EdgeInsets.symmetric(
               vertical: 13,
               horizontal: 14,
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: _glassBorder),
+              borderSide: BorderSide(color: _glassBorder),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: _glassBorder),
+              borderSide: BorderSide(color: _glassBorder),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
@@ -1908,16 +1934,16 @@ class _ManualFoodCard extends StatelessWidget {
         children: [
           Text(
             name,
-            style: const TextStyle(
-              color: Color(0xFFECECFC),
+            style: TextStyle(
+              color: _ink(),
               fontSize: 15,
               fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 2),
-          const Text(
+          Text(
             'Entered manually · values per 100 g below',
-            style: TextStyle(color: Color(0xFFB4B4D0), fontSize: 11),
+            style: TextStyle(color: _inkDim(), fontSize: 11),
           ),
           const SizedBox(height: 8),
           const Row(
@@ -1927,11 +1953,7 @@ class _ManualFoodCard extends StatelessWidget {
                 value: 'Manual',
                 color: Color(0xFF7C3AED),
               ),
-              _Per100(
-                label: 'per',
-                value: '100 g',
-                color: Color(0xFF0A84FF),
-              ),
+              _Per100(label: 'per', value: '100 g', color: Color(0xFF0A84FF)),
             ],
           ),
         ],

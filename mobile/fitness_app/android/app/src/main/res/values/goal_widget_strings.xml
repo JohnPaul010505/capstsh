@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="goal_widget_description">Shows your active fitness goal and progress</string>
+    <string name="goal_widget_label">Goal Progress</string>
+</resources>

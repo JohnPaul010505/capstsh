@@ -8,14 +8,12 @@ import '../../../shared/widgets/app_glow_background.dart';
 
 final dashboardStatsProvider = FutureProvider((ref) async {
   final userId = SupabaseClientService().client.auth.currentUser!.id;
-  final activeGoal = await SupabaseClientService()
-      .client
+  final activeGoal = await SupabaseClientService().client
       .from('goals')
       .select('id')
       .eq('member_id', userId)
       .eq('status', 'active');
-  final unreadNotifications = await SupabaseClientService()
-      .client
+  final unreadNotifications = await SupabaseClientService().client
       .from('notifications')
       .select('id')
       .eq('user_id', userId)
@@ -34,66 +32,70 @@ class DashboardPage extends ConsumerWidget {
     final statsAsync = ref.watch(dashboardStatsProvider);
 
     return Scaffold(
-      backgroundColor: ClayTokens.clayDarkBase,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: AppGlowBackground(
         child: SafeArea(
           child: Column(
-          children: [
-            _buildNavBar(),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                children: [
-                  ClayFeatureCard(
-                    icon: Icons.flag_outlined,
-                    iconColor: ClayTokens.clayWarning,
-                    title: '${statsAsync.value?['goals'] ?? 0} Active Goals',
-                    onTap: () => context.go('/member/goals'),
+            children: [
+              _buildNavBar(),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
                   ),
-                  const SizedBox(height: 8),
-                  ClayFeatureCard(
-                    icon: Icons.notifications_outlined,
-                    iconColor: ClayTokens.clayPrimary,
-                    title: '${statsAsync.value?['unread'] ?? 0} Unread Notifications',
-                    onTap: () => context.go('/member/notifications'),
-                  ),
-                  const SizedBox(height: 8),
-                  ClayFeatureCard(
-                    icon: Icons.restaurant,
-                    iconColor: ClayTokens.clayPrimary,
-                    title: 'Log Meals',
-                    onTap: () => context.go('/member/meals'),
-                  ),
-                  const SizedBox(height: 24),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 4, bottom: 12),
-                    child: Text(
-                      'Weekly Progress',
-                      style: ClayTokens.headlineMedium.copyWith(
-                        letterSpacing: -0.36,
-                        color: ClayTokens.clayDarkTextPrimary,
+                  children: [
+                    ClayFeatureCard(
+                      icon: Icons.flag_outlined,
+                      iconColor: ClayTokens.clayWarning,
+                      title: '${statsAsync.value?['goals'] ?? 0} Active Goals',
+                      onTap: () => context.go('/member/goals'),
+                    ),
+                    const SizedBox(height: 8),
+                    ClayFeatureCard(
+                      icon: Icons.notifications_outlined,
+                      iconColor: ClayTokens.clayPrimary,
+                      title:
+                          '${statsAsync.value?['unread'] ?? 0} Unread Notifications',
+                      onTap: () => context.go('/member/notifications'),
+                    ),
+                    const SizedBox(height: 8),
+                    ClayFeatureCard(
+                      icon: Icons.restaurant,
+                      iconColor: ClayTokens.clayPrimary,
+                      title: 'Log Meals',
+                      onTap: () => context.go('/member/meals'),
+                    ),
+                    const SizedBox(height: 24),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 4, bottom: 12),
+                      child: Text(
+                        'Weekly Progress',
+                        style: ClayTokens.headlineMedium.copyWith(
+                          letterSpacing: -0.36,
+                          color: ClayTokens.clayDarkTextPrimary,
+                        ),
                       ),
                     ),
-                  ),
-                  ClayCard(
-                    variant: ClayCardVariant.elevated,
-                    padding: ClayCardPadding.large,
-                    child: Text(
-                      'Your activity chart will appear here.',
-                      textAlign: TextAlign.center,
-                      style: ClayTokens.bodyLarge.copyWith(
-                        fontSize: 15,
-                        color: ClayTokens.clayDarkTextTertiary,
-                        letterSpacing: -0.24,
+                    ClayCard(
+                      variant: ClayCardVariant.elevated,
+                      padding: ClayCardPadding.large,
+                      child: Text(
+                        'Your activity chart will appear here.',
+                        textAlign: TextAlign.center,
+                        style: ClayTokens.bodyLarge.copyWith(
+                          fontSize: 15,
+                          color: ClayTokens.clayDarkTextTertiary,
+                          letterSpacing: -0.24,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
       ),
     );
   }

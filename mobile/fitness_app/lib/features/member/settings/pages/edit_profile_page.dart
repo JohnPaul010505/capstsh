@@ -33,22 +33,32 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   Future<void> _save() async {
     try {
       final profile = ref.read(authProvider).valueOrNull;
-      await ref.read(authProvider.notifier).updateProfile(
-        fullName: profile?.fullName ?? '',
-        email: profile?.email ?? '',
-        gender: profile?.gender,
-        avatarAsset: _selectedAvatar != null ? 'assets/profiles/$_selectedAvatar.gif' : null,
-      );
+      await ref
+          .read(authProvider.notifier)
+          .updateProfile(
+            fullName: profile?.fullName ?? '',
+            email: profile?.email ?? '',
+            gender: profile?.gender,
+            avatarAsset: _selectedAvatar != null
+                ? 'assets/profiles/$_selectedAvatar.gif'
+                : null,
+          );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile updated'), backgroundColor: Color(0xFF7C3AED)),
+          const SnackBar(
+            content: Text('Profile updated'),
+            backgroundColor: Color(0xFF7C3AED),
+          ),
         );
         context.pop();
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update profile: $e'), backgroundColor: const Color(0xFFFF453A)),
+          SnackBar(
+            content: Text('Failed to update profile: $e'),
+            backgroundColor: const Color(0xFFFF453A),
+          ),
         );
       }
     }
@@ -57,7 +67,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: ClayTokens.clayDarkBase,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: AppGlowBackground(
         child: SafeArea(
           child: ListView(
@@ -69,14 +79,31 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
                 children: [
                   GestureDetector(
                     onTap: () => context.pop(),
-                    child: Icon(CupertinoIcons.chevron_back, color: const Color(0xFFFFFFFF), size: 24),
+                    child: Icon(
+                      CupertinoIcons.chevron_back,
+                      color: ClayTokens.clayDarkTextPrimary,
+                      size: 24,
+                    ),
                   ),
-                  const Text('Edit Profile', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF), decoration: TextDecoration.none)),
+                  Text(
+                    'Edit Profile',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w600,
+                      color: ClayTokens.clayDarkTextPrimary,
+                      decoration: TextDecoration.none,
+                    ),
+                  ),
                   const SizedBox(width: 24),
                 ],
               ),
               const SizedBox(height: 20),
-              Text('Choose Profile', style: ClayTokens.darkBodySmall.copyWith(color: ClayTokens.clayDarkTextSecondary)),
+              Text(
+                'Choose Profile',
+                style: ClayTokens.darkBodySmall.copyWith(
+                  color: ClayTokens.clayDarkTextSecondary,
+                ),
+              ),
               const SizedBox(height: 10),
               GridView.count(
                 shrinkWrap: true,
@@ -92,11 +119,18 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
                       duration: ClayTokens.normal,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: selected ? ClayTokens.clayPrimary : Colors.transparent, width: 3),
+                        border: Border.all(
+                          color: selected
+                              ? ClayTokens.clayPrimary
+                              : Colors.transparent,
+                          width: 3,
+                        ),
                       ),
                       child: CircleAvatar(
                         radius: 36,
-                        backgroundImage: AssetImage('assets/profiles/$asset.gif'),
+                        backgroundImage: AssetImage(
+                          'assets/profiles/$asset.gif',
+                        ),
                         backgroundColor: Colors.transparent,
                       ),
                     ),
@@ -112,9 +146,18 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
                       style: TextButton.styleFrom(
                         foregroundColor: ClayTokens.clayDarkTextSecondary,
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: Color(0xFF38383A))),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: const BorderSide(color: Color(0xFF38383A)),
+                        ),
                       ),
-                      child: const Text('Cancel', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -125,9 +168,17 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
                         backgroundColor: ClayTokens.clayPrimary,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                      child: const Text('Save', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                      child: const Text(
+                        'Save',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
                   ),
                 ],

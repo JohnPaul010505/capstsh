@@ -3,19 +3,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:shared/providers/body_measurement_provider.dart';
+import '../../../../app/design_tokens.dart';
 import '../../../shared/utils/goal_progress.dart';
 import '../../../shared/widgets/animations.dart' show AnimatedPulseDot;
+import '../services/goal_home_widget.dart';
 
 const bgDark = Color(0xFF0B0D1A);
 const cardDark = Color(0xFF15172A);
 const inputDark = Color(0xFF1E2035);
 const primaryPurple = Color(0xFF7C3AED);
 const highlightPurple = Color(0xFFA855F7);
-const textPrimary = Color(0xFFFFFFFF);
-const textSecondary = Color(0xFFA0A4B8);
 const goalSuccessGreen = Color(0xFF22C55E);
 const goalWarningAmber = Color(0xFFFBBF24);
 const goalDangerRed = Color(0xFFF87171);
+
+// Brightness-aware text colors: the goal card sits on a translucent glass
+// panel (not an opaque dark surface), so its text must flip to dark ink in
+// light mode to stay readable — matching the rest of the app's glass system.
+Color get textPrimary => ClayTokens.clayDarkTextPrimary;
+Color get textSecondary => ClayTokens.clayDarkTextSecondary;
 
 class GoalCard extends ConsumerWidget {
   final Map<String, dynamic> goal;
@@ -199,7 +205,9 @@ class GoalCard extends ConsumerWidget {
                   ),
                   // Active goals are completed by progress/time rules, not by
                   // a manual button. Keep only the history-side Reopen action.
-                  if (onToggleStatus != null && isCompleted && !isCancelled) ...[
+                  if (onToggleStatus != null &&
+                      isCompleted &&
+                      !isCancelled) ...[
                     const SizedBox(height: 8),
                     Semantics(
                       button: true,
@@ -292,14 +300,14 @@ class GoalCard extends ConsumerWidget {
                                 children: [
                                   Text(
                                     '${(value * 100).toStringAsFixed(0)}%',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       color: textPrimary,
                                       fontWeight: FontWeight.w800,
                                       fontSize: 28,
                                       letterSpacing: -0.4,
                                     ),
                                   ),
-                                  const Text(
+                                  Text(
                                     'of target',
                                     style: TextStyle(
                                       color: textSecondary,
@@ -315,7 +323,7 @@ class GoalCard extends ConsumerWidget {
                     ),
                     if (progressPct <= 0) ...[
                       const SizedBox(height: 8),
-                      const Text(
+                      Text(
                         'Log a weight in Progress to grow this ring',
                         textAlign: TextAlign.center,
                         style: TextStyle(color: textSecondary, fontSize: 13),
@@ -357,13 +365,13 @@ class GoalCard extends ConsumerWidget {
                 dateRange:
                     '${_shortDate(startDate)} – ${_shortDate(endDate)}, ${endDate.year}',
               ),
-              const SizedBox(height: 14),
+              SizedBox(height: 14),
               ClipRRect(
                 borderRadius: BorderRadius.circular(999),
                 child: LinearProgressIndicator(
                   value: timeProgress,
                   minHeight: 8,
-                  backgroundColor: Colors.white.withAlpha(18),
+                  backgroundColor: ClayTokens.hairline.withAlpha(18),
                   valueColor: AlwaysStoppedAnimation<Color>(
                     isCompleted ? goalSuccessGreen : highlightPurple,
                   ),
@@ -374,8 +382,62 @@ class GoalCard extends ConsumerWidget {
                 isOverdue && !isCompleted
                     ? 'Ended ${_shortDate(endDate)}, ${endDate.year}'
                     : 'Day $elapsedDays of $totalDays',
-                style: const TextStyle(fontSize: 12, color: textSecondary),
+                style: TextStyle(fontSize: 12, color: textSecondary),
               ),
+              if (status == 'active' && !isOverdue) ...[
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: FilledButton.icon(
+                    onPressed: () async {
+                      // Pushing the goal data to the widget is best-effort: a
+                      // data or render hiccup must never stop the member from
+                      // pinning the widget, which is what they asked for.
+                      try {
+                        await GoalHomeWidget.syncGoal(
+                          goal,
+                          liveWeight: liveWeight,
+                        );
+                      } catch (error) {
+                        debugPrint('Goal widget sync failed: $error');
+                      }
+                      try {
+                        final requested = await GoalHomeWidget.requestPin();
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              requested
+                                  ? 'Follow the phone prompt to add your goal to the home screen.'
+                                  : 'Your Android launcher does not support adding this widget directly. Long-press the home screen and choose Widgets.',
+                            ),
+                          ),
+                        );
+                      } catch (error) {
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Could not add widget: $error'),
+                          ),
+                        );
+                      }
+                    },
+                    icon: const Icon(
+                      CupertinoIcons.device_phone_portrait,
+                      size: 17,
+                    ),
+                    label: const Text('Add to Home Screen'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: highlightPurple,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
               if (onCancel != null && !isCompleted && !isOverdue) ...[
                 const SizedBox(height: 14),
                 Align(
@@ -466,8 +528,7 @@ class _GoalStat extends StatelessWidget {
         children: [
           Text(
             label.toUpperCase(),
-            style: const TextStyle(
-              fontSize: 10,
+            style: TextStyle(              fontSize: 10,
               fontWeight: FontWeight.w700,
               color: textSecondary,
               letterSpacing: 0.8,
@@ -555,7 +616,7 @@ class _DaysBanner extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   dateRange,
-                  style: const TextStyle(fontSize: 12, color: textSecondary),
+                  style: TextStyle(fontSize: 12, color: textSecondary),
                 ),
               ],
             ),

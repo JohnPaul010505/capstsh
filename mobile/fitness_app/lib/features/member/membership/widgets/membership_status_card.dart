@@ -1,5 +1,4 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart' show Colors;
 import 'package:shared/models/membership.dart';
 
 import '../../../../app/design_tokens.dart';
@@ -79,7 +78,7 @@ class MembershipStatusCard extends StatelessWidget {
       statusActive: active && !hasPendingRequest,
       title: m.planName,
       subtitle: subtitle,
-      details: '₱${m.price.toStringAsFixed(m.price.truncateToDouble() == m.price ? 0 : 2)} · '
+      details: '?${m.price.toStringAsFixed(m.price.truncateToDouble() == m.price ? 0 : 2)} · '
           'Started ${_fmt(m.startDate)}',
     );
   }
@@ -93,16 +92,21 @@ class MembershipStatusCard extends StatelessWidget {
   }) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: ClayTokens.clayPrimaryLight.withAlpha(25),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withAlpha(24)),
+        border: Border.all(color: ClayTokens.hairline.withAlpha(24)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('MEMBERSHIP', style: ClayTokens.labelSmall.copyWith(color: Colors.white)),
+          Text(
+            'MEMBERSHIP',
+            style: ClayTokens.labelSmall.copyWith(
+              color: ClayTokens.clayDarkTextSecondary,
+            ),
+          ),
           const SizedBox(height: 6),
           Text(title, style: ClayTokens.titleLarge.copyWith(color: ClayTokens.clayDarkTextPrimary)),
           const SizedBox(height: 4),
@@ -134,7 +138,9 @@ class MembershipStatusCard extends StatelessWidget {
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
-                color: statusActive ? Colors.white : ClayTokens.clayWarning,
+                color: statusActive
+                    ? ClayTokens.clayPrimaryDark
+                    : ClayTokens.clayWarning,
               ),
             ),
           ),

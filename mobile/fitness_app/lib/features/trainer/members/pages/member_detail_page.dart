@@ -8,7 +8,10 @@ import '../../../shared/widgets/clay/clay_card.dart';
 import '../../../shared/widgets/clay/clay_avatar.dart';
 import '../../../shared/widgets/app_glow_background.dart';
 
-final memberDetailProvider = FutureProvider.family<Profile?, String>((ref, id) async {
+final memberDetailProvider = FutureProvider.family<Profile?, String>((
+  ref,
+  id,
+) async {
   final client = SupabaseClientService().client;
   final response = await client.from('profiles').select().eq('id', id).single();
   return Profile.fromJson(response);
@@ -36,7 +39,7 @@ class _MemberDetailPageState extends ConsumerState<MemberDetailPage> {
     final memberAsync = ref.watch(memberDetailProvider(widget.id));
 
     return Scaffold(
-      backgroundColor: ClayTokens.clayDarkBase,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: AppGlowBackground(
         child: SafeArea(
           child: Column(
@@ -54,7 +57,11 @@ class _MemberDetailPageState extends ConsumerState<MemberDetailPage> {
                           children: [
                             GestureDetector(
                               onTap: () => context.pop(),
-                              child: Icon(Icons.chevron_left, color: ClayTokens.clayDarkTextPrimary, size: 22),
+                              child: Icon(
+                                Icons.chevron_left,
+                                color: ClayTokens.clayDarkTextPrimary,
+                                size: 22,
+                              ),
                             ),
                             const SizedBox(width: 12),
                             ClayAvatar(
@@ -62,7 +69,12 @@ class _MemberDetailPageState extends ConsumerState<MemberDetailPage> {
                               size: ClayAvatarSize.md,
                             ),
                             const SizedBox(width: 10),
-                            Text(member.fullName, style: ClayTokens.titleLarge.copyWith(color: ClayTokens.clayDarkTextPrimary)),
+                            Text(
+                              member.fullName,
+                              style: ClayTokens.titleLarge.copyWith(
+                                color: ClayTokens.clayDarkTextPrimary,
+                              ),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 16),
@@ -82,8 +94,18 @@ class _MemberDetailPageState extends ConsumerState<MemberDetailPage> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(member.fullName, style: ClayTokens.titleLarge.copyWith(color: ClayTokens.clayDarkTextPrimary)),
-                                    Text(member.email, style: ClayTokens.bodySmall.copyWith(color: ClayTokens.clayDarkTextTertiary)),
+                                    Text(
+                                      member.fullName,
+                                      style: ClayTokens.titleLarge.copyWith(
+                                        color: ClayTokens.clayDarkTextPrimary,
+                                      ),
+                                    ),
+                                    Text(
+                                      member.email,
+                                      style: ClayTokens.bodySmall.copyWith(
+                                        color: ClayTokens.clayDarkTextTertiary,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -99,12 +121,16 @@ class _MemberDetailPageState extends ConsumerState<MemberDetailPage> {
                               _DetailTile(
                                 icon: Icons.directions_walk,
                                 title: 'View Workouts',
-                                onTap: () => context.push('/trainer/members/${widget.id}/progress'),
+                                onTap: () => context.push(
+                                  '/trainer/members/${widget.id}/progress',
+                                ),
                               ),
                               _DetailTile(
                                 icon: Icons.trending_up,
                                 title: 'View Progress',
-                                onTap: () => context.push('/trainer/members/${widget.id}/progress'),
+                                onTap: () => context.push(
+                                  '/trainer/members/${widget.id}/progress',
+                                ),
                               ),
                             ],
                           ),
@@ -112,8 +138,16 @@ class _MemberDetailPageState extends ConsumerState<MemberDetailPage> {
                       ],
                     );
                   },
-                  loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (e, _) => Center(child: Text('Error: $e', style: ClayTokens.bodySmall.copyWith(color: ClayTokens.clayError))),
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (e, _) => Center(
+                    child: Text(
+                      'Error: $e',
+                      style: ClayTokens.bodySmall.copyWith(
+                        color: ClayTokens.clayError,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -158,7 +192,11 @@ class _DetailTile extends StatelessWidget {
   final String title;
   final VoidCallback onTap;
 
-  const _DetailTile({required this.icon, required this.title, required this.onTap});
+  const _DetailTile({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -173,8 +211,19 @@ class _DetailTile extends StatelessWidget {
           children: [
             Icon(icon, color: ClayTokens.clayDarkTextTertiary, size: 18),
             const SizedBox(width: 10),
-            Expanded(child: Text(title, style: ClayTokens.bodyMedium.copyWith(color: ClayTokens.clayDarkTextPrimary))),
-            Icon(Icons.chevron_right, color: ClayTokens.clayDarkTextTertiary, size: 18),
+            Expanded(
+              child: Text(
+                title,
+                style: ClayTokens.bodyMedium.copyWith(
+                  color: ClayTokens.clayDarkTextPrimary,
+                ),
+              ),
+            ),
+            Icon(
+              Icons.chevron_right,
+              color: ClayTokens.clayDarkTextTertiary,
+              size: 18,
+            ),
           ],
         ),
       ),

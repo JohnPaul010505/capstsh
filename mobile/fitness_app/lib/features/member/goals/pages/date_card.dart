@@ -1,15 +1,21 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/design_tokens.dart';
+import '../../../shared/widgets/glass_card.dart';
 
 const bgDark = Color(0xFF0B0D1A);
 const cardDark = Color(0xFF15172A);
 const inputDark = Color(0xFF1E2035);
 const primaryPurple = Color(0xFF7C3AED);
 const highlightPurple = Color(0xFFA855F7);
-const textPrimary = Color(0xFFFFFFFF);
-const textSecondary = Color(0xFFA0A4B8);
-const goalFieldFill = Color(0xFF33335C);
+
+// Brightness-aware ink: the date chip sits on a translucent glass panel, so it
+// must flip to dark text in light mode (see goal_card.dart / create_goal_card).
+Color get textPrimary => ClayTokens.clayDarkTextPrimary;
+Color get textSecondary => ClayTokens.clayDarkTextSecondary;
+/// Field fill: white on the light glass body, the original navy in dark mode.
+Color get goalFieldFill =>
+    ClayColors.isLightMode ? Colors.white : const Color(0xFF33335C);
 const fieldIdleBorder = Color(0x12B4B4D0);
 
 class DateCard extends StatelessWidget {
@@ -34,19 +40,25 @@ class DateCard extends StatelessWidget {
 
     return GestureDetector(
       onTap: onTap,
-      child: Container(
+      child: MemberGlassCard(
         padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: ClayTokens.clayPrimaryLight.withAlpha(25),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: fieldIdleBorder),
-          boxShadow: [
-            BoxShadow(
-              color: ClayTokens.clayDarkShadowDark,
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
+        borderRadius: BorderRadius.circular(12),
+        // Dark mode keeps its exact lilac chip.
+        darkBuilder: (cardChild) => Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: ClayTokens.clayPrimaryLight.withAlpha(25),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: fieldIdleBorder),
+            boxShadow: [
+              BoxShadow(
+                color: ClayTokens.clayDarkShadowDark,
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: cardChild,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -63,7 +75,7 @@ class DateCard extends StatelessWidget {
                   label,
                   style: TextStyle(
                     color: textSecondary,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
                     fontSize: 12,
                   ),
                 ),

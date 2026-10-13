@@ -1,9 +1,9 @@
 import 'dart:async';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:shared/providers/activity_status_provider.dart';
 import 'package:shared/providers/auth_provider.dart';
 import 'package:shared/services/supabase_client.dart'
@@ -15,13 +15,14 @@ import '../../onboarding/pages/onboarding_splash_screen.dart';
 import '../../onboarding/providers/onboarding_provider.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../shared/widgets/app_glow_background.dart';
-import '../../../shared/widgets/clay/clay_card.dart';
+import '../../../shared/widgets/glass_card.dart';
 import '../../../shared/widgets/clay/clay_button.dart';
 import '../../../shared/widgets/clay/clay_avatar.dart';
 import '../../../shared/widgets/clay_area_chart.dart';
 import '../../../shared/widgets/notification_popup.dart';
 import '../../../shared/widgets/activity_status_badge.dart';
 import '../../../shared/services/prediction_service.dart';
+import '../../goals/services/goal_home_widget.dart';
 
 // Kept alive for the whole session: independent queries run in parallel, and
 // the previous result stays cached so returning to Home renders instantly
@@ -212,7 +213,10 @@ class _HomePageState extends ConsumerState<HomePage>
     WidgetsBinding.instance.addObserver(this);
     // Refresh on every visit while showing the cached data instantly.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _invalidateHomeData();
+      if (mounted) {
+        _invalidateHomeData();
+        _syncGoalWidget();
+      }
     });
     _startRealtimeListeners();
     _startPeriodicInvalidation();
@@ -221,6 +225,13 @@ class _HomePageState extends ConsumerState<HomePage>
   void _invalidateHomeData() {
     final memberId = ref.read(activeUserIdProvider);
     if (memberId != null) ref.invalidate(homeDataProvider(memberId));
+  }
+
+  Future<void> _syncGoalWidget() async {
+    final profile = ref.read(authProvider).valueOrNull;
+    if (profile?.role == 'member') {
+      await GoalHomeWidget.syncForCurrentMember();
+    }
   }
 
   void _startRealtimeListeners() {
@@ -285,6 +296,7 @@ class _HomePageState extends ConsumerState<HomePage>
         _router!.routerDelegate.currentConfiguration.uri.path == '/member/home';
     if (isHome && !_wasHome && mounted) {
       _invalidateHomeData();
+      _syncGoalWidget();
     }
     _wasHome = isHome;
   }
@@ -293,6 +305,7 @@ class _HomePageState extends ConsumerState<HomePage>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _invalidateHomeData();
+      _syncGoalWidget();
     }
   }
 
@@ -321,7 +334,7 @@ class _HomePageState extends ConsumerState<HomePage>
     final onboardingAsync = ref.watch(needsOnboardingProvider);
 
     return Scaffold(
-      backgroundColor: ClayTokens.clayDarkBase,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: AppGlowBackground(
         child: SafeArea(
           child: onboardingAsync.when(
@@ -513,8 +526,26 @@ class _PredictionCard extends StatefulWidget {
   State<_PredictionCard> createState() => _PredictionCardState();
 }
 
+class _GoalForecastData {
+  final Map<String, dynamic> goal;
+  final double? currentWeight;
+  final DateTime? deadline;
+  final int daysAhead;
+  final MemberForecast? forecast;
+
+  const _GoalForecastData({
+    required this.goal,
+    required this.currentWeight,
+    required this.deadline,
+    required this.daysAhead,
+    required this.forecast,
+  });
+}
+
 class _PredictionCardState extends State<_PredictionCard> {
-  MemberForecast? _forecast;
+  _GoalForecastData? _data;
+  bool _loading = true;
+  String? _loadError;
 
   @override
   void initState() {
@@ -522,47 +553,237 @@ class _PredictionCardState extends State<_PredictionCard> {
     _load();
   }
 
-  Future<void> _load() async {
-    final forecast = await PredictionService().getForecast(widget.memberId);
-    if (mounted) setState(() => _forecast = forecast);
+  @override
+  void didUpdateWidget(covariant _PredictionCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.memberId != widget.memberId) _load();
   }
 
-  Widget _buildMoreWeightDataPrompt(BuildContext context) {
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _loadError = null;
+    });
+    try {
+      final client = SupabaseClientService().client;
+      final goals = await client
+          .from('goals')
+          .select('title, goal_type, target_value, current_value, end_date')
+          .eq('member_id', widget.memberId)
+          .eq('status', 'active')
+          .order('created_at', ascending: false)
+          .limit(1);
+
+      if (goals.isEmpty) {
+        if (mounted) {
+          setState(() {
+            _data = null;
+            _loading = false;
+          });
+        }
+        return;
+      }
+
+      final goal = Map<String, dynamic>.from(goals.first);
+      final measurements = await client
+          .from('body_measurements')
+          .select('weight_kg')
+          .eq('member_id', widget.memberId)
+          .order('measured_at', ascending: false)
+          .limit(1);
+      final measuredWeight = measurements.isEmpty
+          ? null
+          : (measurements.first['weight_kg'] as num?)?.toDouble();
+      final currentWeight =
+          measuredWeight ?? (goal['current_value'] as num?)?.toDouble();
+      final deadline = DateTime.tryParse(goal['end_date']?.toString() ?? '');
+      final today = DateUtils.dateOnly(DateTime.now());
+      final daysAhead = deadline == null
+          ? 30
+          : DateUtils.dateOnly(deadline).difference(today).inDays;
+      final forecast = daysAhead > 0
+          ? await PredictionService().getForecast(
+              widget.memberId,
+              daysAhead: daysAhead,
+            )
+          : null;
+
+      if (!mounted) return;
+      setState(() {
+        _data = _GoalForecastData(
+          goal: goal,
+          currentWeight: currentWeight,
+          deadline: deadline,
+          daysAhead: daysAhead,
+          forecast: forecast,
+        );
+        _loading = false;
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _loadError = 'Could not load your goal right now.';
+          _loading = false;
+        });
+      }
+    }
+  }
+
+  String _weightLabel(double? weight) =>
+      weight == null ? 'Weight not logged' : '${weight.toStringAsFixed(1)} kg';
+
+  String _goalOutcome(_GoalForecastData data, double predictedWeight) {
+    final goalType = (data.goal['goal_type'] as String? ?? '').toLowerCase();
+    final target = (data.goal['target_value'] as num?)?.toDouble();
+    if (target == null || target <= 0) return 'Goal target unavailable';
+
+    if (goalType == 'lose weight') {
+      final amountOver = predictedWeight - target;
+      return amountOver <= 0.05
+          ? 'On track for ${target.toStringAsFixed(1)} kg'
+          : '${amountOver.toStringAsFixed(1)} kg above your target';
+    }
+    if (goalType == 'gain muscle') {
+      final amountShort = target - predictedWeight;
+      return amountShort <= 0.05
+          ? 'On track for ${target.toStringAsFixed(1)} kg'
+          : '${amountShort.toStringAsFixed(1)} kg short of your target';
+    }
+
+    final difference = predictedWeight - target;
+    return difference.abs() <= 0.5
+        ? 'Forecast is near your ${target.toStringAsFixed(1)} kg target'
+        : 'Forecast ${difference > 0 ? '+' : ''}${difference.toStringAsFixed(1)} kg from target';
+  }
+
+  Future<void> _openWeightLog(BuildContext context) async {
+    await context.push('/member/bmi');
+    if (!mounted) return;
+    PredictionService.clearMemberCache(widget.memberId);
+    _load();
+  }
+
+  Widget _buildGoalBody(BuildContext context, _GoalForecastData data) {
+    final goal = data.goal;
+    final goalType = goal['goal_type'] as String? ?? 'Fitness';
+    final goalTitle = (goal['title'] as String?)?.trim().isNotEmpty == true
+        ? (goal['title'] as String).trim()
+        : '$goalType goal';
+    final target = (goal['target_value'] as num?)?.toDouble();
+    final targetLabel = target == null
+        ? 'Target not set'
+        : 'Target ${target.toStringAsFixed(1)} kg';
+    final deadlineLabel = data.deadline == null
+        ? null
+        : DateFormat('MMM d').format(data.deadline!);
+    final prediction = data.forecast?.byType('weight');
+    final hasTrend =
+        prediction != null &&
+        data.forecast?.notEnoughData != true &&
+        prediction.method != 'baseline-only' &&
+        prediction.predictedValue > 0;
+
+    if (data.daysAhead <= 0) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            goalTitle,
+            style: TextStyle(fontSize: 12, color: ClayTokens.clayDarkTextSecondary),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '$targetLabel${deadlineLabel == null ? '' : ' \u2022 due $deadlineLabel'}',
+            style: TextStyle(fontSize: 13, color: ClayTokens.clayDarkTextPrimary),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            'This goal has ended. Update it to forecast a new deadline.',
+            style: TextStyle(fontSize: 11, color: ClayTokens.clayDarkTextSecondary),
+          ),
+        ],
+      );
+    }
+
+    if (hasTrend) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            goalTitle,
+            style: TextStyle(fontSize: 12, color: ClayTokens.clayDarkTextSecondary),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${_weightLabel(prediction.currentValue)}  \u2192  ${_weightLabel(prediction.predictedValue)}${deadlineLabel == null ? '' : ' by $deadlineLabel'}',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: ClayTokens.clayDarkTextPrimary,
+            ),
+          ),
+          if (target != null) ...[
+            const SizedBox(height: 3),
+            Text(
+              '$targetLabel \u00b7 ${_goalOutcome(data, prediction.predictedValue)}',
+              style: TextStyle(fontSize: 11, color: ClayTokens.clayDarkTextSecondary),
+            ),
+          ],
+          const SizedBox(height: 2),
+          Text(
+            'Estimate based on your recent weigh-ins.',
+            style: TextStyle(fontSize: 10, color: ClayTokens.clayDarkTextTertiary),
+          ),
+        ],
+      );
+    }
+
+    final serviceFailed = data.forecast?.error != null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'A weigh-in means saving your current weight in BMI. Your setup weight is the first entry. Add 2 more entries, with the first and last at least 7 days apart, to unlock a weight trend forecast.',
-          style: TextStyle(fontSize: 12, color: Color(0xFFB9B9C2)),
+        Text(
+          goalTitle,
+          style: TextStyle(fontSize: 12, color: ClayTokens.clayDarkTextSecondary),
         ),
-        const SizedBox(height: 6),
-        TextButton.icon(
-          style: TextButton.styleFrom(
-            foregroundColor: const Color(0xFFD6A5FF),
-            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
-            visualDensity: VisualDensity.compact,
-          ),
-          onPressed: () async {
-            await context.push('/member/bmi');
-            if (!mounted) return;
-            PredictionService.clearMemberCache(widget.memberId);
-            setState(() => _forecast = null);
-            _load();
-          },
-          icon: const Icon(Icons.monitor_weight_outlined, size: 16),
-          label: const Text('Log weight in BMI'),
+        const SizedBox(height: 4),
+        Text(
+          'Current ${_weightLabel(data.currentWeight)} \u00b7 $targetLabel${deadlineLabel == null ? '' : ' by $deadlineLabel'}',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(fontSize: 12, color: ClayTokens.clayDarkTextPrimary),
         ),
+        const SizedBox(height: 3),
+        Text(
+          serviceFailed
+              ? 'Your forecast is unavailable right now.'
+              : 'Log at least 3 weigh-ins over 7 days to estimate progress toward this goal.',
+          style: TextStyle(fontSize: 11, color: ClayTokens.clayDarkTextSecondary),
+        ),
+        if (!serviceFailed) _logWeightAction(context),
       ],
     );
   }
 
+  Widget _logWeightAction(BuildContext context) => TextButton.icon(
+    onPressed: () => _openWeightLog(context),
+    style: TextButton.styleFrom(
+      foregroundColor: const Color(0xFFD6A5FF),
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+      visualDensity: VisualDensity.compact,
+    ),
+    icon: const Icon(Icons.monitor_weight_outlined, size: 16),
+    label: const Text('Log weight'),
+  );
+
   @override
   Widget build(BuildContext context) {
-    final forecast = _forecast;
-
-    Widget body;
-    if (forecast == null) {
-      body = const Row(
+    final data = _data;
+    final Widget body;
+    if (_loading) {
+      body = Row(
         children: [
           SizedBox(
             width: 14,
@@ -575,54 +796,38 @@ class _PredictionCardState extends State<_PredictionCard> {
           SizedBox(width: 10),
           Flexible(
             child: Text(
-              'Forecasting your progress...',
-              style: TextStyle(fontSize: 12, color: Color(0xFFB9B9C2)),
+              'Loading your goal forecast...',
+              style: TextStyle(fontSize: 12, color: ClayTokens.clayDarkTextSecondary),
             ),
           ),
         ],
       );
-    } else if (forecast.notEnoughData) {
-      body = _buildMoreWeightDataPrompt(context);
-    } else if (forecast.error != null || forecast.results.isEmpty) {
+    } else if (_loadError != null) {
       body = Text(
-        forecast.error ?? 'No forecast available right now.',
-        style: const TextStyle(fontSize: 12, color: Color(0xFFB9B9C2)),
+        _loadError!,
+        style: TextStyle(fontSize: 12, color: ClayTokens.clayDarkTextSecondary),
+      );
+    } else if (data == null) {
+      body = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Create a weight goal to see your forecast.',
+            style: TextStyle(fontSize: 13, color: ClayTokens.clayDarkTextSecondary),
+          ),
+          TextButton.icon(
+            onPressed: () => context.push('/member/goals'),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFFD6A5FF),
+              padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+            ),
+            icon: const Icon(Icons.flag_outlined, size: 16),
+            label: const Text('Set a goal'),
+          ),
+        ],
       );
     } else {
-      final weight = forecast.byType('weight');
-      // Weight only: body fat is not forecast because no screen records it.
-      body = weight == null
-          ? _buildMoreWeightDataPrompt(context)
-          : weight.method == 'baseline-only'
-              ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Starting weight: ${weight.currentValue.toStringAsFixed(1)} ${weight.unit}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'This is your starting point, not a trend forecast yet.',
-                      style: TextStyle(fontSize: 12, color: Color(0xFFB9B9C2)),
-                    ),
-                    const SizedBox(height: 4),
-                    _buildMoreWeightDataPrompt(context),
-                  ],
-                )
-              : _ForecastRow(
-              icon: Icons.monitor_weight_outlined,
-              label: 'Weight',
-              current:
-                  '${weight.currentValue.toStringAsFixed(1)} ${weight.unit}',
-              predicted:
-                  '${weight.predictedValue.toStringAsFixed(1)} ${weight.unit} in ${weight.daysAhead} days',
-              confidence: weight.confidence,
-            );
+      body = _buildGoalBody(context, data);
     }
 
     return _HomeGlassCard(
@@ -635,10 +840,12 @@ class _PredictionCardState extends State<_PredictionCard> {
                 width: 28,
                 height: 28,
                 decoration: BoxDecoration(
-                  // Solid purple badge, white glyph (design pass).
-                  color: const Color(0xFF7C3AED),
+                  // Soft purple tile, white glyph.
+                  color: ClayTokens.clayPrimary.withAlpha(170),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFA78BFA)),
+                  border: Border.all(
+                    color: ClayTokens.clayPrimaryLight.withAlpha(120),
+                  ),
                 ),
                 child: const Icon(
                   Icons.insights,
@@ -647,15 +854,15 @@ class _PredictionCardState extends State<_PredictionCard> {
                 ),
               ),
               const SizedBox(width: 8),
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'AI PROGRESS FORECAST',
+                  'AI GOAL FORECAST',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFFD6D6DC),
+                    color: ClayTokens.clayDarkTextSecondary,
                     letterSpacing: 0.6,
                   ),
                 ),
@@ -671,10 +878,8 @@ class _PredictionCardState extends State<_PredictionCard> {
 }
 
 // Shared glass surface for the two top home cards (AI forecast + active
-// days). The frosted blur is clipped to the rounded card and the fill is
-// translucent, so the neon glow behind the list shows through — matching
-// the admin/login glass language. The inner top highlight is the lit edge
-// that makes glass read as glass.
+// days). Delegates to the app-wide [GlassSurface] so the home cards are
+// literally the same material as every dashboard panel and nav bar.
 class _HomeGlassCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -685,57 +890,8 @@ class _HomeGlassCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(18),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-        child: Container(
-          padding: padding,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0x8C1B1E41), Color(0x66140F2A)],
-            ),
-            border: Border.all(color: const Color(0x33BF5AF2)),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x2EBF5AF2),
-                blurRadius: 18,
-                spreadRadius: -6,
-              ),
-            ],
-          ),
-          child: Stack(
-            children: [
-              child,
-              Positioned(
-                top: 0,
-                left: 14,
-                right: 14,
-                child: IgnorePointer(
-                  child: Container(
-                    height: 1,
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Color(0x00FFFFFF),
-                          Color(0x59FFFFFF),
-                          Color(0x00FFFFFF),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) =>
+      GlassSurface(padding: padding, child: child);
 }
 
 // Full-width "Active days" stat card with the live fire streak badge,
@@ -758,10 +914,12 @@ class _ActiveDaysCard extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              // Solid purple badge, white glyph (design pass).
-              color: const Color(0xFF7C3AED),
+              // Soft purple badge, white glyph.
+              color: ClayTokens.clayPrimary.withAlpha(170),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFA78BFA)),
+              border: Border.all(
+                color: ClayTokens.clayPrimaryLight.withAlpha(120),
+              ),
             ),
             child: const Icon(
               Icons.event_available,
@@ -777,22 +935,22 @@ class _ActiveDaysCard extends StatelessWidget {
               children: [
                 AnimatedCountUp(
                   target: activeDays,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w800,
-                    color: Colors.white,
+                    color: ClayTokens.clayDarkTextPrimary,
                     height: 1.1,
                   ),
                 ),
                 const SizedBox(height: 2),
-                const Text(
+                Text(
                   'Active days this month',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFFD6D6DC),
+                    color: ClayTokens.clayDarkTextSecondary,
                     letterSpacing: 0.1,
                   ),
                 ),
@@ -803,57 +961,6 @@ class _ActiveDaysCard extends StatelessWidget {
           ActivityStatusBadgeCompact(memberId: memberId, size: 46),
         ],
       ),
-    );
-  }
-}
-
-class _ForecastRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String current;
-  final String predicted;
-  final double confidence;
-
-  const _ForecastRow({
-    required this.icon,
-    required this.label,
-    required this.current,
-    required this.predicted,
-    required this.confidence,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 15, color: const Color(0xFFA1A1AA)),
-        const SizedBox(width: 6),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 12, color: Color(0xFFB9B9C2)),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            '$current → $predicted',
-            textAlign: TextAlign.right,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFFFFFFFF),
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          '${(confidence * 100).toStringAsFixed(0)}%',
-          style: const TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF30D158),
-          ),
-        ),
-      ],
     );
   }
 }
@@ -906,9 +1013,9 @@ class _GreetingRow extends ConsumerWidget {
                       width: 44,
                       height: 44,
                       fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => const Icon(
+                      errorBuilder: (_, __, ___) => Icon(
                         Icons.fitness_center,
-                        color: Colors.white,
+                        color: ClayTokens.clayDarkTextPrimary,
                         size: 30,
                       ),
                     ),
@@ -927,7 +1034,7 @@ class _GreetingRow extends ConsumerWidget {
                           overflow: TextOverflow.ellipsis,
                           style: ClayTokens.displaySmall.copyWith(
                             letterSpacing: 0,
-                            color: Colors.white,
+                            color: ClayTokens.clayDarkTextPrimary,
                             height: 1.0,
                           ),
                         ),
@@ -937,9 +1044,9 @@ class _GreetingRow extends ConsumerWidget {
                             const SizedBox(width: 6),
                             Text(
                               greeting,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 11,
-                                color: Colors.white,
+                                color: ClayTokens.clayDarkTextSecondary,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -969,7 +1076,7 @@ class _GreetingRow extends ConsumerWidget {
               backgroundColor: ClayTokens.clayDarkSurface,
               borderColor: Colors.transparent,
               borderWidth: 0,
-              textColor: Colors.white,
+              textColor: ClayTokens.clayDarkTextPrimary,
               onTap: onAvatarTap,
             ),
           ],
@@ -1012,10 +1119,9 @@ class _WeekChartState extends State<_WeekChart> {
     final labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     final today = DateTime.now().weekday - 1;
 
-    return ClayCard(
-      variant: ClayCardVariant.outlined,
-      padding: ClayCardPadding.medium,
-      backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
+    return MemberGlassCard(
+      padding: const EdgeInsets.all(16),
+      borderRadius: BorderRadius.circular(ClayTokens.radiusCard),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1032,7 +1138,7 @@ class _WeekChartState extends State<_WeekChart> {
                       overflow: TextOverflow.ellipsis,
                       style: ClayTokens.titleMedium.copyWith(
                         fontWeight: FontWeight.w800,
-                        color: Colors.white,
+                        color: ClayTokens.clayDarkTextPrimary,
                       ),
                     ),
                     const SizedBox(height: 1),
@@ -1046,7 +1152,7 @@ class _WeekChartState extends State<_WeekChart> {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 10,
-                            color: Colors.white,
+                            color: ClayTokens.clayDarkTextSecondary,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -1056,7 +1162,10 @@ class _WeekChartState extends State<_WeekChart> {
                         'Tap a bar for details',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 10, color: Colors.white),
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: ClayTokens.clayDarkTextTertiary,
+                        ),
                       ),
                   ],
                 ),
@@ -1116,7 +1225,7 @@ class _WeekChartState extends State<_WeekChart> {
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
-                    color: Colors.white,
+                    color: ClayTokens.clayDarkTextSecondary,
                   ),
                 ),
               );
@@ -1138,10 +1247,9 @@ class _TrainerCard extends StatelessWidget {
     final name = trainer['full_name'] as String? ?? 'Your Trainer';
     final initials = name.split(' ').map((n) => n[0]).take(2).join();
 
-    return ClayCard(
-      variant: ClayCardVariant.outlined,
-      padding: ClayCardPadding.medium,
-      backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
+    return MemberGlassCard(
+      padding: const EdgeInsets.all(16),
+      borderRadius: BorderRadius.circular(ClayTokens.radiusCard),
       child: Column(
         children: [
           Row(
@@ -1237,10 +1345,9 @@ class _YearChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClayCard(
-      variant: ClayCardVariant.outlined,
-      padding: ClayCardPadding.medium,
-      backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
+    return MemberGlassCard(
+      padding: const EdgeInsets.all(16),
+      borderRadius: BorderRadius.circular(ClayTokens.radiusCard),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1256,7 +1363,7 @@ class _YearChart extends StatelessWidget {
                         'This Month',
                         style: ClayTokens.titleMedium.copyWith(
                           fontWeight: FontWeight.w800,
-                          color: Colors.white,
+                          color: ClayTokens.clayDarkTextPrimary,
                         ),
                       ),
                       const SizedBox(width: 6),
@@ -1277,7 +1384,7 @@ class _YearChart extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                      color: ClayTokens.clayDarkTextSecondary,
                     ),
                   ),
                 ],
@@ -1351,10 +1458,9 @@ class _GrowthChart extends StatelessWidget {
     final weights = monthlyWeights.whereType<double>().toList();
     final latestWeight = weights.isEmpty ? null : weights.last;
 
-    return ClayCard(
-      variant: ClayCardVariant.outlined,
-      padding: ClayCardPadding.medium,
-      backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
+    return MemberGlassCard(
+      padding: const EdgeInsets.all(16),
+      borderRadius: BorderRadius.circular(ClayTokens.radiusCard),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1368,7 +1474,7 @@ class _GrowthChart extends StatelessWidget {
                     'Growth Over Time',
                     style: ClayTokens.titleMedium.copyWith(
                       fontWeight: FontWeight.w800,
-                      color: Colors.white,
+                      color: ClayTokens.clayDarkTextPrimary,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -1378,7 +1484,7 @@ class _GrowthChart extends StatelessWidget {
                       fontSize: 10,
                       fontFamily: ClayTypography.headingFamily,
                       fontWeight: FontWeight.w800,
-                      color: Colors.white,
+                      color: ClayTokens.clayDarkTextSecondary,
                     ),
                   ),
                 ],

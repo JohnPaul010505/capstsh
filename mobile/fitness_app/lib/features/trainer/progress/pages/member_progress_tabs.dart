@@ -30,8 +30,7 @@ class MemberProgressTabsPage extends ConsumerStatefulWidget {
       _MemberProgressTabsPageState();
 }
 
-class _MemberProgressTabsPageState
-    extends ConsumerState<MemberProgressTabsPage>
+class _MemberProgressTabsPageState extends ConsumerState<MemberProgressTabsPage>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
 
@@ -52,9 +51,10 @@ class _MemberProgressTabsPageState
     final insightAsync = ref.watch(memberInsightProvider(widget.id));
     final riskAsync = ref.watch(memberRiskProvider(widget.id));
 
-    return Scaffold(
-      backgroundColor: ClayTokens.clayDarkBase,
-      body: AppGlowBackground(
+    return Scaffold(        backgroundColor: ClayColors.isLightMode
+            ? ClayTokens.claySurfaceLight.withAlpha(250)
+            : ClayTokens.clayDarkSurface,
+        body: AppGlowBackground(
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -154,10 +154,10 @@ class _MemberProgressTabsPageState
                   displayName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: Colors.white,
+                    color: ClayTokens.clayDarkTextPrimary,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -187,7 +187,7 @@ class _MemberProgressTabsPageState
     return TabBar(
       controller: _tabController,
       isScrollable: false,
-      labelColor: Colors.white,
+      labelColor: ClayTokens.clayDarkTextPrimary,
       unselectedLabelColor: ClayTokens.clayDarkTextTertiary,
       indicatorColor: ClayTokens.clayPrimary,
       indicatorWeight: 2.5,
@@ -205,7 +205,6 @@ class _MemberProgressTabsPageState
     );
   }
 }
-
 
 // ---------------------------------------------------------------------------
 // Streak fire (animated gif) shown to the left of the retention-risk chip
@@ -248,8 +247,8 @@ class _HeaderRiskChip extends StatelessWidget {
         final color = label == 'high'
             ? const Color(0xFFFF453A)
             : label == 'medium'
-                ? const Color(0xFFFF9500)
-                : const Color(0xFF30D158);
+            ? const Color(0xFFFF9500)
+            : const Color(0xFF30D158);
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
@@ -282,7 +281,6 @@ class _HeaderRiskChip extends StatelessWidget {
   }
 }
 
-
 // ---------------------------------------------------------------------------
 // Overview tab: goal summary + This Week / This Month / Growth charts
 // ---------------------------------------------------------------------------
@@ -313,14 +311,13 @@ class _OverviewTab extends ConsumerWidget {
         final weekCounts = (progress['weekCounts'] as List).cast<int>();
         final maxWeek = progress['maxWeek'] as int;
         final monthlyCounts = (progress['monthlyCounts'] as List).cast<int>();
-        final monthlyWeights =
-            (progress['monthlyWeights'] as List).cast<double?>();
-        final goal =
-            insightAsync.valueOrNull?['goal'] as Map<String, dynamic>?;
+        final monthlyWeights = (progress['monthlyWeights'] as List)
+            .cast<double?>();
+        final goal = insightAsync.valueOrNull?['goal'] as Map<String, dynamic>?;
         final measurements =
             (insightAsync.valueOrNull?['measurements'] as List?)
-                    ?.cast<Map<String, dynamic>>() ??
-                const <Map<String, dynamic>>[];
+                ?.cast<Map<String, dynamic>>() ??
+            const <Map<String, dynamic>>[];
 
         return ListView(
           padding: const EdgeInsets.fromLTRB(14, 12, 14, 28),
@@ -342,7 +339,6 @@ class _OverviewTab extends ConsumerWidget {
     );
   }
 }
-
 
 /// Compact goal summary: title, journey progress — the same number the Member
 /// Insight goal card shows, so both screens agree.
@@ -390,7 +386,8 @@ class _GoalSummaryCard extends StatelessWidget {
     final isCompleted =
         status == 'completed' || (isOverdue && status == 'active');
 
-    final unit = goalType.toLowerCase() == 'lose weight' ||
+    final unit =
+        goalType.toLowerCase() == 'lose weight' ||
             goalType.toLowerCase() == 'gain muscle' ||
             goalType.toLowerCase() == 'maintain weight'
         ? 'kg'
@@ -442,11 +439,11 @@ class _GoalSummaryCard extends StatelessWidget {
                       displayTitle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                         letterSpacing: -0.3,
-                        color: Colors.white,
+                        color: ClayTokens.clayDarkTextPrimary,
                       ),
                     ),
                     if (goalType.isNotEmpty) ...[
@@ -480,16 +477,18 @@ class _GoalSummaryCard extends StatelessWidget {
                   vertical: 5,
                 ),
                 decoration: BoxDecoration(
-                  color: (isCompleted
-                          ? const Color(0xFF30D158)
-                          : ClayTokens.clayPrimaryLight)
-                      .withAlpha(28),
+                  color:
+                      (isCompleted
+                              ? const Color(0xFF30D158)
+                              : ClayTokens.clayPrimaryLight)
+                          .withAlpha(28),
                   borderRadius: BorderRadius.circular(999),
                   border: Border.all(
-                    color: (isCompleted
-                            ? const Color(0xFF30D158)
-                            : ClayTokens.clayPrimaryLight)
-                        .withAlpha(90),
+                    color:
+                        (isCompleted
+                                ? const Color(0xFF30D158)
+                                : ClayTokens.clayPrimaryLight)
+                            .withAlpha(90),
                   ),
                 ),
                 child: Text(
@@ -545,14 +544,14 @@ class _GoalSummaryCard extends StatelessWidget {
                 '${_shortDate(startDate)} – ${_shortDate(endDate)}, '
                 '${endDate.year}',
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           // Day-of-window progress bar.
           ClipRRect(
             borderRadius: BorderRadius.circular(999),
             child: LinearProgressIndicator(
               value: timeProgress,
               minHeight: 8,
-              backgroundColor: Colors.white.withAlpha(18),
+              backgroundColor: ClayTokens.hairline.withAlpha(18),
               valueColor: AlwaysStoppedAnimation<Color>(
                 isCompleted ? const Color(0xFF30D158) : ClayTokens.clayPrimary,
               ),
@@ -575,8 +574,18 @@ class _GoalSummaryCard extends StatelessWidget {
 
   String _shortDate(DateTime date) {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${months[date.month - 1]} ${date.day}';
   }
@@ -661,11 +670,11 @@ class _GoalRing extends StatelessWidget {
               children: [
                 Text(
                   '${pct.round()}%',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.w800,
                     letterSpacing: -0.6,
-                    color: Colors.white,
+                    color: ClayTokens.clayDarkTextPrimary,
                   ),
                 ),
                 Text(
@@ -711,13 +720,13 @@ class _GoalStatCell extends StatelessWidget {
               color: ClayTokens.clayDarkTextSecondary,
             ),
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           Text(
             value,
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w800,
-              color: accent ? ClayTokens.clayPrimaryLight : Colors.white,
+              color: accent ? ClayTokens.clayPrimaryLight : ClayTokens.clayDarkTextPrimary,
             ),
           ),
         ],
@@ -809,5 +818,3 @@ class _DaysBanner extends StatelessWidget {
     );
   }
 }
-
-

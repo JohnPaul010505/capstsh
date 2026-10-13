@@ -258,9 +258,10 @@ class _AreaChartPainter extends CustomPainter {
           style: TextStyle(
             fontSize: 9,
             fontWeight: FontWeight.w700,
-            // White so the numbers read on every dark card (member home +
-            // trainer member progress), per the design pass.
-            color: Colors.white,
+            // Mode-aware so the numbers read on every card: near-white on dark
+            // surfaces (member home + trainer member progress), dark ink on the
+            // light-mode glass cards.
+            color: ClayTokens.clayDarkTextPrimary,
           ),
         ),
         textDirection: TextDirection.ltr,
@@ -327,7 +328,7 @@ class _AreaChartPainter extends CustomPainter {
           style: TextStyle(
             fontSize: 8,
             fontWeight: FontWeight.w800,
-            color: Colors.white,
+            color: ClayTokens.clayDarkTextSecondary,
           ),
         ),
         textDirection: TextDirection.ltr,

@@ -11,35 +11,44 @@ import '../../../../app/design_tokens.dart';
 import '../../../shared/widgets/app_glow_background.dart';
 import '../../../shared/widgets/glass_card.dart';
 
-final assignedMembersProvider = FutureProvider.family<List<Map<String, dynamic>>, String>((ref, trainerId) async {
-  final response = await SupabaseClientService()
-      .client
-      .from('trainer_assignments')
-      .select('member_id, profiles!trainer_assignments_member_id_fkey(full_name)')
-      .eq('trainer_id', trainerId)
-      .eq('status', 'active');
-  return (response as List).cast<Map<String, dynamic>>();
-});
+final assignedMembersProvider =
+    FutureProvider.family<List<Map<String, dynamic>>, String>((
+      ref,
+      trainerId,
+    ) async {
+      final response = await SupabaseClientService().client
+          .from('trainer_assignments')
+          .select(
+            'member_id, profiles!trainer_assignments_member_id_fkey(full_name)',
+          )
+          .eq('trainer_id', trainerId)
+          .eq('status', 'active');
+      return (response as List).cast<Map<String, dynamic>>();
+    });
 
-final memberLogsPreviewProvider = StreamProvider.family<List<Map<String, dynamic>>, String>((ref, memberId) {
-  return SupabaseClientService()
-      .client
-      .from('workout_logs')
-      .stream(primaryKey: ['id'])
-      .eq('member_id', memberId)
-      .order('logged_at', ascending: false)
-      .limit(10)
-      .map((logs) => logs.cast<Map<String, dynamic>>());
-});
+final memberLogsPreviewProvider =
+    StreamProvider.family<List<Map<String, dynamic>>, String>((ref, memberId) {
+      return SupabaseClientService().client
+          .from('workout_logs')
+          .stream(primaryKey: ['id'])
+          .eq('member_id', memberId)
+          .order('logged_at', ascending: false)
+          .limit(10)
+          .map((logs) => logs.cast<Map<String, dynamic>>());
+    });
 
 /// Average star rating this trainer has received (relocated from the
 /// trainer profile page so the rating lives on the Feedback screen).
-final trainerRatingSummaryProvider = FutureProvider.family<Map<String, dynamic>, String>(
-    (ref, trainerId) => FeedbackService().getRatingSummary(trainerId));
+final trainerRatingSummaryProvider =
+    FutureProvider.family<Map<String, dynamic>, String>(
+      (ref, trainerId) => FeedbackService().getRatingSummary(trainerId),
+    );
 
 /// History of feedback this trainer has written (with member's rating embedded).
-final givenFeedbackProvider = FutureProvider.autoDispose.family<List<Map<String, dynamic>>, String>(
-    (ref, trainerId) => FeedbackService().getGivenFeedback(trainerId));
+final givenFeedbackProvider = FutureProvider.autoDispose
+    .family<List<Map<String, dynamic>>, String>(
+      (ref, trainerId) => FeedbackService().getGivenFeedback(trainerId),
+    );
 
 /// Figure 27: the Trainer gives written feedback to an assigned member.
 /// Wires the previously-dead FeedbackService.submitFeedback.
@@ -121,17 +130,16 @@ class _GiveFeedbackPageState extends ConsumerState<GiveFeedbackPage> {
   Future<void> _openMemberPicker(List<Map<String, dynamic>> members) async {
     final picked = await showDialog<String>(
       context: context,
-      builder: (_) => _MemberPickerDialog(
-        members: members,
-        selected: _selectedMemberId,
-      ),
+      builder: (_) =>
+          _MemberPickerDialog(members: members, selected: _selectedMemberId),
     );
     if (picked == null || !mounted) return;
     setState(() {
       _selectedMemberId = picked;
-      _selectedMemberName = (members
-                  .firstWhere((m) => m['member_id'] == picked)['profiles']
-              as Map<String, dynamic>?)?['full_name'] as String? ??
+      _selectedMemberName =
+          (members.firstWhere((m) => m['member_id'] == picked)['profiles']
+                  as Map<String, dynamic>?)?['full_name']
+              as String? ??
           'Unknown';
     });
   }
@@ -154,13 +162,15 @@ class _GiveFeedbackPageState extends ConsumerState<GiveFeedbackPage> {
     });
     try {
       final trainerId = SupabaseClientService().client.auth.currentUser!.id;
-      await FeedbackService().submitFeedback(TrainerFeedback(
-        id: '',
-        trainerId: trainerId,
-        memberId: memberId,
-        content: _contentController.text.trim(),
-        createdAt: DateTime.now(),
-      ));
+      await FeedbackService().submitFeedback(
+        TrainerFeedback(
+          id: '',
+          trainerId: trainerId,
+          memberId: memberId,
+          content: _contentController.text.trim(),
+          createdAt: DateTime.now(),
+        ),
+      );
       // Figure 20: the system sends a notification to the Member.
       try {
         await NotificationService().createNotification(
@@ -174,9 +184,9 @@ class _GiveFeedbackPageState extends ConsumerState<GiveFeedbackPage> {
       if (mounted) {
         _contentController.clear();
         ref.invalidate(givenFeedbackProvider(trainerId));
-        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-          const SnackBar(content: Text('Feedback sent.')),
-        );
+        ScaffoldMessenger.maybeOf(
+          context,
+        )?.showSnackBar(const SnackBar(content: Text('Feedback sent.')));
       }
     } catch (e) {
       if (mounted) setState(() => _error = 'Could not send feedback: $e');
@@ -191,7 +201,7 @@ class _GiveFeedbackPageState extends ConsumerState<GiveFeedbackPage> {
     final membersAsync = ref.watch(assignedMembersProvider(trainerId));
 
     return Scaffold(
-      backgroundColor: ClayTokens.clayDarkBase,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: AppGlowBackground(
         child: SafeArea(
           child: Column(
@@ -204,13 +214,20 @@ class _GiveFeedbackPageState extends ConsumerState<GiveFeedbackPage> {
                     CupertinoButton(
                       padding: EdgeInsets.zero,
                       onPressed: () => context.pop(),
-                      child: const Icon(CupertinoIcons.back, color: Colors.white),
+                      child: Icon(
+                        CupertinoIcons.back,
+                        color: ClayTokens.clayDarkTextPrimary,
+                      ),
                     ),
                     const Expanded(
                       child: Text(
                         'Give Feedback',
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF)),
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFFFFFFFF),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 48),
@@ -219,37 +236,62 @@ class _GiveFeedbackPageState extends ConsumerState<GiveFeedbackPage> {
               ),
               Expanded(
                 child: ListView(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   children: [
                     Consumer(
                       builder: (context, ref, _) {
-                        final ratingAsync = ref.watch(trainerRatingSummaryProvider(trainerId));
+                        final ratingAsync = ref.watch(
+                          trainerRatingSummaryProvider(trainerId),
+                        );
                         return ratingAsync.when(
                           data: (summary) {
                             final count = summary['count'] as int;
-                            final average = (summary['average'] as num?)?.toDouble() ?? 0.0;
+                            final average =
+                                (summary['average'] as num?)?.toDouble() ?? 0.0;
                             if (count == 0) return const SizedBox.shrink();
                             return Container(
                               margin: const EdgeInsets.only(bottom: 12),
                               padding: const EdgeInsets.all(14),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFFFC107).withAlpha(25),
+                                color: Color(0xFFFFC107).withAlpha(25),
                                 borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: Colors.white.withAlpha(18)),
+                                border: Border.all(
+                                  color: ClayTokens.hairline.withAlpha(18),
+                                ),
                               ),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.star_rounded, color: Color(0xFFFFC107), size: 22),
+                                  const Icon(
+                                    Icons.star_rounded,
+                                    color: Color(0xFFFFC107),
+                                    size: 22,
+                                  ),
                                   const SizedBox(width: 8),
                                   Text(
                                     average.toStringAsFixed(1),
-                                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white),
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w700,
+                                      color: ClayTokens.clayDarkTextPrimary,
+                                    ),
                                   ),
-                                  const Text(' / 5', style: TextStyle(fontSize: 12, color: Color(0xFF8E8E93))),
+                                  const Text(
+                                    ' / 5',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFF8E8E93),
+                                    ),
+                                  ),
                                   const Spacer(),
                                   Text(
                                     '$count member rating${count == 1 ? '' : 's'}',
-                                    style: const TextStyle(fontSize: 11, color: Color(0xFF8E8E93)),
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Color(0xFF8E8E93),
+                                    ),
                                   ),
                                 ],
                               ),
@@ -264,17 +306,29 @@ class _GiveFeedbackPageState extends ConsumerState<GiveFeedbackPage> {
                       data: (members) => Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Member', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF8E8E93))),
-                          const SizedBox(height: 6),
+                          const Text(
+                            'Member',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF8E8E93),
+                            ),
+                          ),
+                          SizedBox(height: 6),
                           GestureDetector(
                             onTap: () => _openMemberPicker(members),
                             child: Container(
                               width: double.infinity,
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 14,
+                              ),
                               decoration: BoxDecoration(
-                                color: Colors.white.withAlpha(14),
+                                color: ClayTokens.hairline.withAlpha(14),
                                 borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.white.withAlpha(30)),
+                                border: Border.all(
+                                  color: ClayTokens.hairline.withAlpha(30),
+                                ),
                               ),
                               child: Row(
                                 children: [
@@ -286,7 +340,8 @@ class _GiveFeedbackPageState extends ConsumerState<GiveFeedbackPage> {
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      _selectedMemberName ?? 'Search & select a member',
+                                      _selectedMemberName ??
+                                          'Search & select a member',
                                       style: ClayTokens.bodyMedium.copyWith(
                                         color: _selectedMemberId != null
                                             ? ClayTokens.clayDarkTextPrimary
@@ -305,72 +360,140 @@ class _GiveFeedbackPageState extends ConsumerState<GiveFeedbackPage> {
                           ),
                         ],
                       ),
-                      loading: () => const Center(child: Padding(padding: EdgeInsets.all(16), child: CupertinoActivityIndicator())),
-                      error: (e, _) => Text('Error: $e', style: const TextStyle(fontSize: 12, color: Color(0xFFFF453A))),
+                      loading: () => const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(16),
+                          child: CupertinoActivityIndicator(),
+                        ),
+                      ),
+                      error: (e, _) => Text(
+                        'Error: $e',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFFFF453A),
+                        ),
+                      ),
                     ),
                     if (_selectedMemberId != null) ...[
                       const SizedBox(height: 16),
                       Text(
                         'Recent workouts — $_selectedMemberName',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF8E8E93)),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF8E8E93),
+                        ),
                       ),
                       const SizedBox(height: 6),
                       GlassPanel(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
                         borderRadius: BorderRadius.circular(12),
                         child: Consumer(
-                        builder: (context, ref, _) {
-                          final logsAsync = ref.watch(memberLogsPreviewProvider(_selectedMemberId!));
-                          return logsAsync.when(
-                            data: (logs) => logs.isEmpty
-                                ? const Text('No workouts logged yet.', style: TextStyle(fontSize: 12, color: Color(0xFF8E8E93)))
-                                : Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: logs.map((w) {
-                                      final name = (w['exercise_name'] ?? w['workout_name'] ?? 'Workout session').toString();
-                                      final when = DateTime.tryParse(w['logged_at']?.toString() ?? '');
-                                      final day = when == null ? '' : DateFormat('MMM d').format(when.toLocal());
-                                      return Padding(
-                                        padding: const EdgeInsets.only(bottom: 4),
-                                        child: Text(
-                                          day.isEmpty ? '• $name' : '• $name — $day',
-                                          style: const TextStyle(fontSize: 12, color: Color(0xFF8E8E93)),
-                                        ),
-                                      );
-                                    }).toList(),
-                                  ),
-                            loading: () => const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 6),
-                              child: LinearProgressIndicator(minHeight: 2, color: Color(0xFFBF5AF2)),
-                            ),
-                            error: (_, __) => const SizedBox.shrink(),
-                          );
-                        },
+                          builder: (context, ref, _) {
+                            final logsAsync = ref.watch(
+                              memberLogsPreviewProvider(_selectedMemberId!),
+                            );
+                            return logsAsync.when(
+                              data: (logs) => logs.isEmpty
+                                  ? const Text(
+                                      'No workouts logged yet.',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Color(0xFF8E8E93),
+                                      ),
+                                    )
+                                  : Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: logs.map((w) {
+                                        final name =
+                                            (w['exercise_name'] ??
+                                                    w['workout_name'] ??
+                                                    'Workout session')
+                                                .toString();
+                                        final when = DateTime.tryParse(
+                                          w['logged_at']?.toString() ?? '',
+                                        );
+                                        final day = when == null
+                                            ? ''
+                                            : DateFormat(
+                                                'MMM d',
+                                              ).format(when.toLocal());
+                                        return Padding(
+                                          padding: const EdgeInsets.only(
+                                            bottom: 4,
+                                          ),
+                                          child: Text(
+                                            day.isEmpty
+                                                ? '• $name'
+                                                : '• $name — $day',
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              color: Color(0xFF8E8E93),
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
+                              loading: () => const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 6),
+                                child: LinearProgressIndicator(
+                                  minHeight: 2,
+                                  color: Color(0xFFBF5AF2),
+                                ),
+                              ),
+                              error: (_, __) => const SizedBox.shrink(),
+                            );
+                          },
                         ),
                       ),
                     ],
                     const SizedBox(height: 16),
-                    const Text('Your feedback', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF8E8E93))),
-                    const SizedBox(height: 6),
+                    const Text(
+                      'Your feedback',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF8E8E93),
+                      ),
+                    ),
+                    SizedBox(height: 6),
                     CupertinoTextField(
                       controller: _contentController,
-                      placeholder: 'Encouragement, form corrections, next focus...',
-                      placeholderStyle: ClayTokens.bodyMedium.copyWith(color: ClayTokens.clayDarkTextTertiary),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                      placeholder:
+                          'Encouragement, form corrections, next focus...',
+                      placeholderStyle: ClayTokens.bodyMedium.copyWith(
+                        color: ClayTokens.clayDarkTextTertiary,
+                      ),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 14,
+                      ),
                       decoration: BoxDecoration(
-                        color: Colors.white.withAlpha(14),
+                        color: ClayTokens.hairline.withAlpha(14),
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.white.withAlpha(30)),
+                        border: Border.all(color: ClayTokens.hairline.withAlpha(30)),
                       ),
                       maxLines: 5,
                       minLines: 3,
                       cursorColor: ClayTokens.clayPrimary,
-                      style: ClayTokens.bodyMedium.copyWith(color: ClayTokens.clayDarkTextPrimary),
+                      style: ClayTokens.bodyMedium.copyWith(
+                        color: ClayTokens.clayDarkTextPrimary,
+                      ),
                       onChanged: (_) => setState(() {}),
                     ),
                     if (_error != null) ...[
                       const SizedBox(height: 8),
-                      Text(_error!, style: const TextStyle(fontSize: 12, color: Color(0xFFFF453A))),
+                      Text(
+                        _error!,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFFFF453A),
+                        ),
+                      ),
                     ],
                     const SizedBox(height: 12),
                     SizedBox(
@@ -380,17 +503,35 @@ class _GiveFeedbackPageState extends ConsumerState<GiveFeedbackPage> {
                         padding: EdgeInsets.zero,
                         color: ClayTokens.clayPrimary,
                         borderRadius: BorderRadius.circular(12),
-                        onPressed: (_saving || _selectedMemberId == null || _contentController.text.trim().isEmpty) ? null : _submit,
+                        onPressed:
+                            (_saving ||
+                                _selectedMemberId == null ||
+                                _contentController.text.trim().isEmpty)
+                            ? null
+                            : _submit,
                         child: _saving
-                            ? const CupertinoActivityIndicator(color: Colors.white)
-                            : const Text(
+                            ? const CupertinoActivityIndicator(
+                                color: Colors.white,
+                              )
+                            : Text(
                                 'Send feedback',
-                                style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700),
+                                style: TextStyle(
+                                  color: ClayTokens.clayDarkTextPrimary,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                       ),
                     ),
                     const SizedBox(height: 24),
-                    const Text('Feedback history', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF8E8E93))),
+                    const Text(
+                      'Feedback history',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF8E8E93),
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 6,
@@ -405,86 +546,158 @@ class _GiveFeedbackPageState extends ConsumerState<GiveFeedbackPage> {
                     const SizedBox(height: 10),
                     Consumer(
                       builder: (context, ref, _) {
-                        final historyAsync = ref.watch(givenFeedbackProvider(trainerId));
+                        final historyAsync = ref.watch(
+                          givenFeedbackProvider(trainerId),
+                        );
                         return historyAsync.when(
                           data: (rows) {
                             if (rows.isEmpty) {
-                              return const Text('No feedback sent yet.', style: TextStyle(fontSize: 12, color: Color(0xFF8E8E93)));
+                              return const Text(
+                                'No feedback sent yet.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF8E8E93),
+                                ),
+                              );
                             }
                             final cutoff = _historyCutoff();
                             final filtered = rows.where((row) {
-                              final t = DateTime.tryParse(row['created_at']?.toString() ?? '');
+                              final t = DateTime.tryParse(
+                                row['created_at']?.toString() ?? '',
+                              );
                               return t == null || !t.isBefore(cutoff);
                             }).toList();
                             if (filtered.isEmpty) {
-                              return const Text('No feedback in this date range.', style: TextStyle(fontSize: 12, color: Color(0xFF8E8E93)));
+                              return const Text(
+                                'No feedback in this date range.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF8E8E93),
+                                ),
+                              );
                             }
-                            final pageCount = (filtered.length + _historyPageSize - 1) ~/ _historyPageSize;
+                            final pageCount =
+                                (filtered.length + _historyPageSize - 1) ~/
+                                _historyPageSize;
                             final page = _historyPage.clamp(0, pageCount - 1);
                             final startIndex = page * _historyPageSize;
-                            final visible = filtered.skip(startIndex).take(_historyPageSize).toList();
+                            final visible = filtered
+                                .skip(startIndex)
+                                .take(_historyPageSize)
+                                .toList();
                             return Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    ...visible.map((row) {
-                                    final member = (row['member'] as Map<String, dynamic>?)?['full_name'] as String? ?? 'Member';
-                                    final content = row['content'] as String? ?? '';
-                                    final rating = row['rating'] as int?;
-                                    final memberComment = (row['member_comment'] as String? ?? '').trim();
-                                    final created = DateTime.tryParse(row['created_at']?.toString() ?? '');
-                                    final day = created == null ? '' : DateFormat('MMM d, yyyy').format(created.toLocal());
-                                    return GestureDetector(
-                                      onTap: () => _showFeedbackDetail(row),
-                                      child: Container(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                ...visible.map((row) {
+                                  final member =
+                                      (row['member']
+                                              as Map<
+                                                String,
+                                                dynamic
+                                              >?)?['full_name']
+                                          as String? ??
+                                      'Member';
+                                  final content =
+                                      row['content'] as String? ?? '';
+                                  final rating = row['rating'] as int?;
+                                  final memberComment =
+                                      (row['member_comment'] as String? ?? '')
+                                          .trim();
+                                  final created = DateTime.tryParse(
+                                    row['created_at']?.toString() ?? '',
+                                  );
+                                  final day = created == null
+                                      ? ''
+                                      : DateFormat(
+                                          'MMM d, yyyy',
+                                        ).format(created.toLocal());
+                                  return GestureDetector(
+                                    onTap: () => _showFeedbackDetail(row),
+                                    child: Container(
                                       width: double.infinity,
                                       margin: const EdgeInsets.only(bottom: 8),
-                                      padding: const EdgeInsets.all(12),
+                                      padding: EdgeInsets.all(12),
                                       decoration: BoxDecoration(
-                                        color: ClayTokens.clayPrimaryLight.withAlpha(25),
+                                        color: ClayTokens.clayPrimaryLight
+                                            .withAlpha(25),
                                         borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: Colors.white.withAlpha(18)),
+                                        border: Border.all(
+                                          color: ClayTokens.hairline.withAlpha(18),
+                                        ),
                                       ),
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
-                                          Text('$member · $day',
-                                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
+                                          Text(
+                                            '$member · $day',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: ClayTokens.clayDarkTextPrimary,
+                                            ),
+                                          ),
                                           const SizedBox(height: 6),
-                                          Text(content, style: const TextStyle(fontSize: 13, color: Color(0xFFB4B4D0))),
+                                          Text(
+                                            content,
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              color: ClayTokens.clayDarkTextSecondary,
+                                            ),
+                                          ),
                                           const SizedBox(height: 8),
                                           Row(
                                             children: [
                                               for (int i = 1; i <= 5; i++)
                                                 Icon(
-                                                  i <= (rating ?? 0) ? Icons.star_rounded : Icons.star_outline_rounded,
+                                                  i <= (rating ?? 0)
+                                                      ? Icons.star_rounded
+                                                      : Icons
+                                                            .star_outline_rounded,
                                                   size: 15,
-                                                  color: i <= (rating ?? 0) ? const Color(0xFFFFC107) : const Color(0xFF8E8E93),
+                                                  color: i <= (rating ?? 0)
+                                                      ? const Color(0xFFFFC107)
+                                                      : const Color(0xFF8E8E93),
                                                 ),
                                               const SizedBox(width: 6),
                                               Text(
-                                                rating == null ? 'Not rated yet' : '$rating / 5',
-                                                style: const TextStyle(fontSize: 11, color: Color(0xFF8E8E93)),
+                                                rating == null
+                                                    ? 'Not rated yet'
+                                                    : '$rating / 5',
+                                                style: const TextStyle(
+                                                  fontSize: 11,
+                                                  color: Color(0xFF8E8E93),
+                                                ),
                                               ),
                                             ],
                                           ),
                                           if (memberComment.isNotEmpty) ...[
-                                            const SizedBox(height: 8),
+                                            SizedBox(height: 8),
                                             Container(
                                               width: double.infinity,
-                                              padding: const EdgeInsets.all(10),
+                                              padding: EdgeInsets.all(10),
                                               decoration: BoxDecoration(
-                                                color: Colors.white.withAlpha(10),
-                                                borderRadius: BorderRadius.circular(10),
-                                                border: Border.all(color: Colors.white.withAlpha(24)),
+                                                color: ClayTokens.hairline.withAlpha(
+                                                  10,
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                                border: Border.all(
+                                                  color: ClayTokens.hairline.withAlpha(
+                                                    24,
+                                                  ),
+                                                ),
                                               ),
                                               child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
                                                 children: [
                                                   const Text(
                                                     'MEMBER COMMENT',
                                                     style: TextStyle(
                                                       fontSize: 9.5,
-                                                      fontWeight: FontWeight.w700,
+                                                      fontWeight:
+                                                          FontWeight.w700,
                                                       letterSpacing: 0.5,
                                                       color: Color(0xFF8E8E93),
                                                     ),
@@ -492,10 +705,10 @@ class _GiveFeedbackPageState extends ConsumerState<GiveFeedbackPage> {
                                                   const SizedBox(height: 4),
                                                   Text(
                                                     memberComment,
-                                                    style: const TextStyle(
+                                                    style: TextStyle(
                                                       fontSize: 12,
                                                       height: 1.4,
-                                                      color: Color(0xFFB4B4D0),
+                                                      color: ClayTokens.clayDarkTextSecondary,
                                                     ),
                                                   ),
                                                 ],
@@ -504,23 +717,27 @@ class _GiveFeedbackPageState extends ConsumerState<GiveFeedbackPage> {
                                           ],
                                         ],
                                       ),
-                                      ),
-                                    );
-                                    }),
-                                    _HistoryPager(
-                                      start: startIndex + 1,
-                                      shown: visible.length,
-                                      total: filtered.length,
-                                      page: page,
-                                      pageCount: pageCount,
-                                      onPage: (p) => setState(() => _historyPage = p),
                                     ),
-                                  ],
-                                );
+                                  );
+                                }),
+                                _HistoryPager(
+                                  start: startIndex + 1,
+                                  shown: visible.length,
+                                  total: filtered.length,
+                                  page: page,
+                                  pageCount: pageCount,
+                                  onPage: (p) =>
+                                      setState(() => _historyPage = p),
+                                ),
+                              ],
+                            );
                           },
                           loading: () => const Padding(
                             padding: EdgeInsets.symmetric(vertical: 8),
-                            child: LinearProgressIndicator(minHeight: 2, color: Color(0xFFBF5AF2)),
+                            child: LinearProgressIndicator(
+                              minHeight: 2,
+                              color: Color(0xFFBF5AF2),
+                            ),
                           ),
                           error: (_, __) => const SizedBox.shrink(),
                         );
@@ -564,14 +781,20 @@ class _MemberPickerDialogState extends State<_MemberPickerDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final rows = widget.members
-        .map((m) => MapEntry(
-              m['member_id'] as String,
-              (m['profiles'] as Map<String, dynamic>?)?['full_name'] as String? ??
-                  'Unknown',
-            ))
-        .toList()
-      ..sort((a, b) => a.value.toLowerCase().compareTo(b.value.toLowerCase()));
+    final rows =
+        widget.members
+            .map(
+              (m) => MapEntry(
+                m['member_id'] as String,
+                (m['profiles'] as Map<String, dynamic>?)?['full_name']
+                        as String? ??
+                    'Unknown',
+              ),
+            )
+            .toList()
+          ..sort(
+            (a, b) => a.value.toLowerCase().compareTo(b.value.toLowerCase()),
+          );
 
     final q = _query.trim().toLowerCase();
     final filtered = q.isEmpty
@@ -583,7 +806,7 @@ class _MemberPickerDialogState extends State<_MemberPickerDialog> {
       elevation: 0,
       insetPadding: const EdgeInsets.symmetric(horizontal: 24),
       child: GlassPanel(
-        padding: const EdgeInsets.all(14),
+        padding: EdgeInsets.all(14),
         borderRadius: BorderRadius.circular(18),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -594,10 +817,10 @@ class _MemberPickerDialogState extends State<_MemberPickerDialog> {
               style: ClayTokens.bodyMedium.copyWith(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
-                color: Colors.white,
+                color: ClayTokens.clayDarkTextPrimary,
               ),
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             TextField(
               controller: _searchController,
               autofocus: true,
@@ -605,17 +828,20 @@ class _MemberPickerDialogState extends State<_MemberPickerDialog> {
               cursorColor: ClayTokens.clayPrimary,
               decoration: InputDecoration(
                 hintText: 'Search members…',
-                hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF7070A0)),
-                prefixIcon: const Icon(
+                hintStyle: TextStyle(
+                  fontSize: 13,
+                  color: ClayTokens.clayDarkTextTertiary,
+                ),
+                prefixIcon: Icon(
                   Icons.search,
                   size: 18,
-                  color: Color(0xFF7070A0),
+                  color: ClayTokens.clayDarkTextTertiary,
                 ),
                 filled: true,
-                fillColor: Colors.white.withAlpha(14),
+                fillColor: ClayTokens.hairline.withAlpha(14),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.white.withAlpha(30)),
+                  borderSide: BorderSide(color: ClayTokens.hairline.withAlpha(30)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -626,7 +852,7 @@ class _MemberPickerDialogState extends State<_MemberPickerDialog> {
                   vertical: 12,
                 ),
               ),
-              style: const TextStyle(fontSize: 13, color: Colors.white),
+              style: TextStyle(fontSize: 13, color: ClayTokens.clayDarkTextPrimary),
             ),
             const SizedBox(height: 10),
             if (filtered.isEmpty)
@@ -634,7 +860,10 @@ class _MemberPickerDialogState extends State<_MemberPickerDialog> {
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 child: Text(
                   'No members match "$_query"',
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF8E8E93)),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF8E8E93),
+                  ),
                 ),
               )
             else
@@ -649,7 +878,7 @@ class _MemberPickerDialogState extends State<_MemberPickerDialog> {
                     return InkWell(
                       onTap: () => Navigator.pop(context, entry.key),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(
+                        padding: EdgeInsets.symmetric(
                           horizontal: 12,
                           vertical: 12,
                         ),
@@ -669,7 +898,7 @@ class _MemberPickerDialogState extends State<_MemberPickerDialog> {
                                       ? FontWeight.w700
                                       : FontWeight.w400,
                                   color: isSelected
-                                      ? Colors.white
+                                      ? ClayTokens.clayDarkTextPrimary
                                       : ClayTokens.clayDarkTextSecondary,
                                 ),
                               ),
@@ -691,7 +920,10 @@ class _MemberPickerDialogState extends State<_MemberPickerDialog> {
             Align(
               alignment: Alignment.centerRight,
               child: CupertinoButton(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 6,
+                ),
                 onPressed: () => Navigator.pop(context),
                 child: const Text(
                   'Cancel',
@@ -717,14 +949,18 @@ class _FeedbackDetailDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final member =
-        (row['member'] as Map<String, dynamic>?)?['full_name'] as String? ?? 'Member';
+        (row['member'] as Map<String, dynamic>?)?['full_name'] as String? ??
+        'Member';
     final content = row['content'] as String? ?? '';
     final rating = row['rating'] as int?;
     final comment = (row['member_comment'] as String? ?? '').trim();
-    final commentedAt = DateTime.tryParse(row['member_commented_at']?.toString() ?? '');
+    final commentedAt = DateTime.tryParse(
+      row['member_commented_at']?.toString() ?? '',
+    );
     final created = DateTime.tryParse(row['created_at']?.toString() ?? '');
-    final day =
-        created == null ? '' : DateFormat('MMM d, yyyy').format(created.toLocal());
+    final day = created == null
+        ? ''
+        : DateFormat('MMM d, yyyy').format(created.toLocal());
 
     const labelStyle = TextStyle(
       fontSize: 9.5,
@@ -746,29 +982,29 @@ class _FeedbackDetailDialog extends StatelessWidget {
           children: [
             Text(
               day.isEmpty ? member : '$member · $day',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
-                color: Colors.white,
+                color: ClayTokens.clayDarkTextPrimary,
               ),
             ),
             const SizedBox(height: 12),
             const Text('YOUR FEEDBACK', style: labelStyle),
-            const SizedBox(height: 6),
+            SizedBox(height: 6),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white.withAlpha(10),
+                color: ClayTokens.hairline.withAlpha(10),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.white.withAlpha(24)),
+                border: Border.all(color: ClayTokens.hairline.withAlpha(24)),
               ),
               child: Text(
                 content,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   height: 1.4,
-                  color: Color(0xFFB4B4D0),
+                  color: ClayTokens.clayDarkTextSecondary,
                 ),
               ),
             ),
@@ -788,31 +1024,34 @@ class _FeedbackDetailDialog extends StatelessWidget {
                 const SizedBox(width: 6),
                 Text(
                   rating == null ? 'Not rated yet' : '$rating / 5',
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF8E8E93)),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF8E8E93),
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 14),
             const Text('MEMBER COMMENT', style: labelStyle),
-            const SizedBox(height: 6),
+            SizedBox(height: 6),
             if (comment.isNotEmpty) ...[
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(10),
+                padding: EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.white.withAlpha(10),
+                  color: ClayTokens.hairline.withAlpha(10),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.white.withAlpha(24)),
+                  border: Border.all(color: ClayTokens.hairline.withAlpha(24)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       comment,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12.5,
                         height: 1.4,
-                        color: Color(0xFFB4B4D0),
+                        color: ClayTokens.clayDarkTextSecondary,
                       ),
                     ),
                     if (commentedAt != null) ...[
@@ -837,7 +1076,10 @@ class _FeedbackDetailDialog extends StatelessWidget {
             Align(
               alignment: Alignment.centerRight,
               child: CupertinoButton(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 6,
+                ),
                 color: ClayTokens.clayPrimary,
                 borderRadius: BorderRadius.circular(10),
                 onPressed: () => Navigator.pop(context),
@@ -952,4 +1194,4 @@ class _HistoryPagerBtn extends StatelessWidget {
       ),
     );
   }
-}
+}

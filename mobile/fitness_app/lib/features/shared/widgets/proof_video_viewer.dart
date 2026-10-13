@@ -150,10 +150,10 @@ class _ProofViewerDialogState extends State<_ProofViewerDialog> {
                   ),
                 ),
                 if (_error)
-                  const Center(
+                  Center(
                     child: Text(
                       'Video unavailable',
-                      style: TextStyle(color: Colors.white54, fontSize: 12),
+                      style: TextStyle(color: ClayTokens.clayDarkTextSecondary, fontSize: 12),
                     ),
                   )
                 else if (!_initialized && !_waitingForTap)

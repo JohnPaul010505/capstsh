@@ -1,14 +1,16 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart' show Theme;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared/services/supabase_client.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../shared/widgets/app_glow_background.dart';
 
-final notificationsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+final notificationsProvider = FutureProvider<List<Map<String, dynamic>>>((
+  ref,
+) async {
   final userId = SupabaseClientService().client.auth.currentUser!.id;
-  final response = await SupabaseClientService()
-      .client
+  final response = await SupabaseClientService().client
       .from('notifications')
       .select()
       .eq('user_id', userId)
@@ -24,127 +26,139 @@ class NotificationsPage extends ConsumerWidget {
     final notifAsync = ref.watch(notificationsProvider);
 
     return CupertinoPageScaffold(
-      backgroundColor: ClayTokens.clayDarkBase,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       child: AppGlowBackground(
         child: SafeArea(
           child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(context, 'Notifications'),
-            Expanded(
-              child: notifAsync.when(
-                data: (notifs) {
-                  if (notifs.isEmpty) {
-                    return Center(
-                      child: Text(
-                        'No notifications',
-                        style: TextStyle(
-                          fontSize: 17,
-                          color: ClayTokens.clayDarkTextTertiary,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeader(context, 'Notifications'),
+              Expanded(
+                child: notifAsync.when(
+                  data: (notifs) {
+                    if (notifs.isEmpty) {
+                      return Center(
+                        child: Text(
+                          'No notifications',
+                          style: TextStyle(
+                            fontSize: 17,
+                            color: ClayTokens.clayDarkTextTertiary,
+                          ),
                         ),
+                      );
+                    }
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: ClayTokens.clayDarkSurface,
                       ),
-                    );
-                  }
-                  return Container(
-                    decoration: BoxDecoration(
-                      color: ClayTokens.clayDarkSurface,
-                    ),
-                    child: ListView.builder(
-                      itemCount: notifs.length,
-                      itemBuilder: (context, i) {
-                        final n = notifs[i];
-                        final isLast = i == notifs.length - 1;
-                        return Column(
-                          children: [
-                            Row(
-                              children: [
-                                Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Icon(
-                                    CupertinoIcons.bell,
-                                    color: ClayTokens.clayPrimary,
-                                    size: 24,
+                      child: ListView.builder(
+                        itemCount: notifs.length,
+                        itemBuilder: (context, i) {
+                          final n = notifs[i];
+                          final isLast = i == notifs.length - 1;
+                          return Column(
+                            children: [
+                              Row(
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.all(16),
+                                    child: Icon(
+                                      CupertinoIcons.bell,
+                                      color: ClayTokens.clayPrimary,
+                                      size: 24,
+                                    ),
                                   ),
-                                ),
-                                Expanded(
-                                  child: GestureDetector(
-                                    onTap: () async {
-                                      if (n['read'] == false) {
-                                        await SupabaseClientService().client
-                                            .from('notifications')
-                                            .update({'read': true})
-                                            .eq('id', n['id']);
-                                        ref.invalidate(notificationsProvider);
-                                      }
-                                    },
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(vertical: 12),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            n['title'] ?? '',
-                                            style: ClayTokens.titleLarge.copyWith(
-                                              fontSize: 17,
-                                              fontWeight: FontWeight.w500,
-                                              color: ClayTokens.clayDarkTextPrimary,
-                                              letterSpacing: -0.41,
+                                  Expanded(
+                                    child: GestureDetector(
+                                      onTap: () async {
+                                        if (n['read'] == false) {
+                                          await SupabaseClientService().client
+                                              .from('notifications')
+                                              .update({'read': true})
+                                              .eq('id', n['id']);
+                                          ref.invalidate(notificationsProvider);
+                                        }
+                                      },
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 12,
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              n['title'] ?? '',
+                                              style: ClayTokens.titleLarge
+                                                  .copyWith(
+                                                    fontSize: 17,
+                                                    fontWeight: FontWeight.w500,
+                                                    color: ClayTokens
+                                                        .clayDarkTextPrimary,
+                                                    letterSpacing: -0.41,
+                                                  ),
                                             ),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            n['body'] ?? '',
-                                            style: ClayTokens.titleMedium.copyWith(
-                                              fontSize: 15,
-                                              color: ClayTokens.clayDarkTextSecondary,
-                                              letterSpacing: -0.24,
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              n['body'] ?? '',
+                                              style: ClayTokens.titleMedium
+                                                  .copyWith(
+                                                    fontSize: 15,
+                                                    color: ClayTokens
+                                                        .clayDarkTextSecondary,
+                                                    letterSpacing: -0.24,
+                                                  ),
                                             ),
-                                          ),
-                                        ],
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.only(right: 8, bottom: 8),
-                                  child: CupertinoSwitch(
-                                    value: n['read'] == true,
-                                    onChanged: (value) async {
-                                      if (!value) {
-                                        await SupabaseClientService().client
-                                            .from('notifications')
-                                            .update({'read': true})
-                                            .eq('id', n['id']);
-                                        ref.invalidate(notificationsProvider);
-                                      }
-                                    },
-                                    activeTrackColor: ClayTokens.clayAccent,
+                                  Padding(
+                                    padding: const EdgeInsets.only(
+                                      right: 8,
+                                      bottom: 8,
+                                    ),
+                                    child: CupertinoSwitch(
+                                      value: n['read'] == true,
+                                      onChanged: (value) async {
+                                        if (!value) {
+                                          await SupabaseClientService().client
+                                              .from('notifications')
+                                              .update({'read': true})
+                                              .eq('id', n['id']);
+                                          ref.invalidate(notificationsProvider);
+                                        }
+                                      },
+                                      activeTrackColor: ClayTokens.clayAccent,
+                                    ),
                                   ),
-                                ),
-                              ],
-                            ),
-                            if (!isLast)
-                              const SizedBox(height: 0.5),
-                          ],
-                        );
-                      },
+                                ],
+                              ),
+                              if (!isLast) const SizedBox(height: 0.5),
+                            ],
+                          );
+                        },
+                      ),
+                    );
+                  },
+                  loading: () =>
+                      const Center(child: CupertinoActivityIndicator()),
+                  error: (e, _) => Center(
+                    child: Text(
+                      'Error: $e',
+                      style: ClayTokens.bodyMedium.copyWith(
+                        color: ClayTokens.clayError,
+                      ),
                     ),
-                  );
-                },
-                loading: () => const Center(child: CupertinoActivityIndicator()),
-                error: (e, _) => Center(
-                  child: Text(
-                    'Error: $e',
-                    style: ClayTokens.bodyMedium.copyWith(color: ClayTokens.clayError),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
-  );
+    );
   }
 
   Widget _buildHeader(BuildContext context, String title) {
@@ -155,10 +169,7 @@ class NotificationsPage extends ConsumerWidget {
           CupertinoButton(
             padding: EdgeInsets.zero,
             onPressed: () => context.pop(),
-            child: Icon(
-              CupertinoIcons.back,
-              color: ClayTokens.clayPrimary,
-            ),
+            child: Icon(CupertinoIcons.back, color: ClayTokens.clayPrimary),
           ),
           Expanded(
             child: Text(

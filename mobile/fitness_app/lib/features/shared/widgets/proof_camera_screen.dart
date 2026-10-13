@@ -241,8 +241,8 @@ class _ProofCameraScreenState extends State<ProofCameraScreen>
             if (_stage == _ProofStage.ready) _buildReady(),
             if (_stage == _ProofStage.recording) _buildRecordingOverlay(),
             if (_stage == _ProofStage.uploading)
-              const Center(
-                child: CircularProgressIndicator(color: Colors.white70),
+              Center(
+                child: CircularProgressIndicator(color: ClayTokens.clayDarkTextSecondary),
               ),
             _buildTopBar(),
           ],
@@ -280,8 +280,8 @@ class _ProofCameraScreenState extends State<ProofCameraScreen>
                       const SizedBox(width: 8),
                       Text(
                         'REC ${elapsed < 10 ? '0$elapsed' : '$elapsed'}/$seconds s',
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: ClayTokens.clayDarkTextPrimary,
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                         ),
@@ -299,36 +299,36 @@ class _ProofCameraScreenState extends State<ProofCameraScreen>
                             : _close,
                     padding: const EdgeInsets.all(10),
                     borderRadius: BorderRadius.circular(999),
-                    child: const Icon(Icons.close, color: Colors.white, size: 20),
+                    child: Icon(Icons.close, color: ClayTokens.clayDarkTextPrimary, size: 20),
                   ),
                   const Spacer(),
-                  const Text(
+                  Text(
                     'Proof Video',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: ClayTokens.clayDarkTextPrimary,
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0.3,
                     ),
                   ),
-                  const Spacer(),
+                  Spacer(),
                   PressableCard(
                     onTap: _canFlip ? _flipCamera : null,
                     padding: const EdgeInsets.all(10),
                     borderRadius: BorderRadius.circular(999),
-                    child: const Icon(Icons.cameraswitch_outlined,
-                        color: Colors.white, size: 20),
+                    child: Icon(Icons.cameraswitch_outlined,
+                        color: ClayTokens.clayDarkTextPrimary, size: 20),
                   ),
                 ],
               ),
               if (recording) ...[
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 SizedBox(
                   width: double.infinity,
                   child: LinearProgressIndicator(
                     value: _progress?.value ?? 0,
                     minHeight: 4,
-                    backgroundColor: Colors.white24,
+                    backgroundColor: ClayTokens.clayDarkTextSecondary,
                     color: ClayTokens.clayError,
                   ),
                 ),
@@ -357,38 +357,38 @@ class _ProofCameraScreenState extends State<ProofCameraScreen>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text(
+                  Text(
                     'Ready?',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: ClayTokens.clayDarkTextPrimary,
                       fontSize: 26,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
                   const SizedBox(height: 6),
-                  const Text(
+                  Text(
                     'The camera auto-records 30s. Start when you are.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white70, fontSize: 13),
+                    style: TextStyle(color: ClayTokens.clayDarkTextSecondary, fontSize: 13),
                   ),
                   const SizedBox(height: 16),
                   PressableCard(
                     onTap: _startFromReady,
-                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                    padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
                     borderRadius: BorderRadius.circular(999),
                     decoration: BoxDecoration(
                       color: ClayTokens.clayAccent.withAlpha(40),
                       borderRadius: BorderRadius.circular(999),
                       border: Border.all(color: ClayTokens.clayAccent.withAlpha(140)),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.fiber_manual_record, color: Colors.white, size: 16),
+                        Icon(Icons.fiber_manual_record, color: ClayTokens.clayDarkTextPrimary, size: 16),
                         SizedBox(width: 8),
                         Text(
                           'Start',
-                          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800),
+                          style: TextStyle(color: ClayTokens.clayDarkTextPrimary, fontSize: 16, fontWeight: FontWeight.w800),
                         ),
                       ],
                     ),
@@ -413,8 +413,8 @@ class _ProofCameraScreenState extends State<ProofCameraScreen>
             child: Text(
               '$_countdownLeft',
               key: ValueKey(_countdownLeft),
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: ClayTokens.clayDarkTextPrimary,
                 fontSize: 96,
                 fontWeight: FontWeight.w800,
                 shadows: [Shadow(color: Colors.black54, blurRadius: 12)],
@@ -442,9 +442,9 @@ class _ProofCameraScreenState extends State<ProofCameraScreen>
               onTap: _cancelRecording,
               padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
               borderRadius: BorderRadius.circular(999),
-              child: const Text(
+              child: Text(
                 'Cancel',
-                style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700),
+                style: TextStyle(color: ClayTokens.clayDarkTextPrimary, fontSize: 14, fontWeight: FontWeight.w700),
               ),
             ),
           ),
@@ -461,31 +461,31 @@ class _ErrorView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.videocam_off_outlined, color: Colors.white54, size: 48),
+            Icon(Icons.videocam_off_outlined, color: ClayTokens.clayDarkTextSecondary, size: 48),
             const SizedBox(height: 12),
-            const Text(
+            Text(
               'Camera unavailable',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700),
+              style: TextStyle(color: ClayTokens.clayDarkTextPrimary, fontSize: 16, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 6),
-            const Text(
+            Text(
               'Video proof needs camera access on the phone app.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white54, fontSize: 13),
+              style: TextStyle(color: ClayTokens.clayDarkTextSecondary, fontSize: 13),
             ),
             const SizedBox(height: 20),
             PressableCard(
               onTap: () => Navigator.of(context).pop(null),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               borderRadius: BorderRadius.circular(999),
-              child: const Text(
+              child: Text(
                 'Close',
-                style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700),
+                style: TextStyle(color: ClayTokens.clayDarkTextPrimary, fontSize: 14, fontWeight: FontWeight.w700),
               ),
             ),
           ],

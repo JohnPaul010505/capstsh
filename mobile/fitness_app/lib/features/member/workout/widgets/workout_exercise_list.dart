@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/workout_session_provider.dart';
 import 'package:fitness_app/app/design_tokens.dart';
 import '../widgets/exercise_proof_button.dart';
-import '../../../shared/widgets/clay/clay_card.dart';
+import '../../../shared/widgets/glass_card.dart';
 
 class WorkoutExerciseList extends ConsumerWidget {
   final WorkoutSessionState session;
@@ -45,9 +45,10 @@ class WorkoutExerciseList extends ConsumerWidget {
               isCurrent: isCurrent,
               isDone: isDone,
               isRunning: session.isRunning,
+              durationSeconds: isDone ? session.totalSecondsFor(e) : null,
               sessionStartedAt: session.startedAt,
               weightKg: session.weightKg,
-              canStartProof: session.isRunning && isCurrent,
+              canStartProof: session.isRunning && !session.isPaused && isCurrent,
               onProofRecorded: (url) => notifier.markProofRecorded(i, url),
               onProofRemoved: () => notifier.removeProof(i),
               onDone: () => notifier.markDone(i),
@@ -66,6 +67,7 @@ class _ExerciseCard extends StatelessWidget {
   final bool isCurrent;
   final bool isDone;
   final bool isRunning;
+  final int? durationSeconds;
   final DateTime? sessionStartedAt;
   final double weightKg;
   final bool canStartProof;
@@ -80,6 +82,7 @@ class _ExerciseCard extends StatelessWidget {
     required this.isCurrent,
     required this.isDone,
     required this.isRunning,
+    required this.durationSeconds,
     required this.sessionStartedAt,
     required this.weightKg,
     required this.canStartProof,
@@ -94,22 +97,20 @@ class _ExerciseCard extends StatelessWidget {
     final name = exercise.name;
     final hasVideo = exercise.hasProof;
     final duration = exercise.isDone
-        ? (exercise.sessionElapsedSeconds != null
-            ? _fmtClock(exercise.sessionElapsedSeconds!)
+        ? (durationSeconds != null
+            ? _fmtClock(durationSeconds!)
             : _fmt(exercise.doneAt!.difference(exercise.startedAt ?? sessionStartedAt ?? exercise.doneAt!).inSeconds))
         : null;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: ClayCard(
-        variant: ClayCardVariant.outlined,
-        // Same glass recipe as WorkoutClockCard; brighter tint marks the current card.
-        backgroundColor: isCurrent
+      child: MemberGlassCard(
+        // Dark mode keeps its brighter tint for the current card.
+        darkBackground: isCurrent
             ? ClayTokens.clayPrimaryLight.withAlpha(45)
             : ClayTokens.clayPrimaryLight.withAlpha(25),
         borderRadius: BorderRadius.circular(16),
-        padding: ClayCardPadding.none,
-        customPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -145,7 +146,11 @@ class _ExerciseCard extends StatelessWidget {
                         children: [
                           Text(
                             name,
-                            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFFFFFFFF)),
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              color: glassInk(),
+                            ),
                           ),
                         ],
                       ),
@@ -165,14 +170,14 @@ class _ExerciseCard extends StatelessWidget {
               ],
             ),
             if (canStartProof) ...[
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               ExerciseProofTile(
                 videoUrl: exercise.proofUrl,
                 onRecorded: onProofRecorded,
                 onRemoved: onProofRemoved,
                 onDone: onDone,
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Center(
                 child: Container(
                   decoration: hasVideo
@@ -189,15 +194,16 @@ class _ExerciseCard extends StatelessWidget {
                           ],
                         )
                       : BoxDecoration(
-                          color: Colors.white.withAlpha(12),
+                          color: ClayTokens.hairline.withAlpha(12),
                           borderRadius: BorderRadius.circular(999),
-                          border: Border.all(color: Colors.white.withAlpha(30)),
+                          border: Border.all(color: ClayTokens.hairline.withAlpha(30)),
                         ),
                   child: TextButton(
                     onPressed: hasVideo ? onDone : null,
                     style: TextButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      disabledForegroundColor: Colors.white.withAlpha(190),
+                      foregroundColor: ClayTokens.clayDarkTextPrimary,
+                      disabledForegroundColor:
+                          ClayTokens.clayDarkTextTertiary,
                       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
                     ),
                     child: Text(
@@ -205,7 +211,6 @@ class _ExerciseCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: hasVideo ? Colors.white : Colors.white.withAlpha(210),
                       ),
                       textAlign: TextAlign.center,
                     ),

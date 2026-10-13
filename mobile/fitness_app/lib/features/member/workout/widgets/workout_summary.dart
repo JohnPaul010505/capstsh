@@ -5,6 +5,7 @@ import 'package:fitness_app/app/design_tokens.dart';
 import '../../../shared/widgets/animations.dart';
 import '../workout_constants.dart';
 import '../../../shared/widgets/proof_video_viewer.dart';
+import '../../../shared/widgets/glass_card.dart';
 
 class WorkoutSummary extends ConsumerWidget {
   final WorkoutSessionState session;
@@ -30,15 +31,15 @@ class WorkoutSummary extends ConsumerWidget {
         margin: const EdgeInsets.symmetric(vertical: 10),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFF1C1C2E),
+          color: glassBody(const Color(0xFF1C1C2E)),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFF2A2A45)),
+          border: Border.all(color: glassRimSoft(const Color(0xFF2A2A45))),
           gradient: RadialGradient(
             center: const Alignment(0.9, -0.9),
             radius: 1.2,
             colors: [
               const Color(0xFF7C3AED).withAlpha(60),
-              const Color(0xFF1C1C2E),
+              glassBody(const Color(0xFF1C1C2E)),
             ],
           ),
         ),
@@ -47,9 +48,13 @@ class WorkoutSummary extends ConsumerWidget {
           children: [
             Row(
               children: [
-                const Text(
+                Text(
                   'Workout Complete',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFFFFFFFF)),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: glassInk(),
+                  ),
                 ),
                 const SizedBox(width: 8),
                 Container(
@@ -69,7 +74,7 @@ class WorkoutSummary extends ConsumerWidget {
             if (session.sessionCount <= 2)
               Container(
                 margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [Color(0xFF7C3AED), Color(0xFFC56BF0)],
@@ -85,15 +90,19 @@ class WorkoutSummary extends ConsumerWidget {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.emoji_events_outlined, size: 18, color: Colors.white),
-                    const SizedBox(width: 8),
+                    Icon(
+                      Icons.emoji_events_outlined,
+                      size: 18,
+                      color: purpleLabel,
+                    ),
+                    SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'Congratulations for Completing Workout',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: Colors.white,
+                          color: purpleLabel,
                         ),
                       ),
                     ),
@@ -101,19 +110,19 @@ class WorkoutSummary extends ConsumerWidget {
                 ),
               ),
             const SizedBox(height: 3),
-            const Text(
+            Text(
               "Great job! Here's your session summary.",
-              style: TextStyle(fontSize: 10, color: Color(0xFFB4B4D0)),
+              style: TextStyle(fontSize: 10, color: ClayTokens.clayDarkTextSecondary),
             ),
             const SizedBox(height: 12),
-            Container(height: 1, color: const Color(0xFF2A2A45)),
-            const SizedBox(height: 12),
+            Container(height: 1, color: glassLine(const Color(0xFF2A2A45))),
+            SizedBox(height: 12),
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white.withAlpha(8),
+                color: ClayTokens.hairline.withAlpha(8),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withAlpha(12)),
+                border: Border.all(color: ClayTokens.hairline.withAlpha(12)),
               ),
               child: Row(
                 children: [
@@ -127,8 +136,8 @@ class WorkoutSummary extends ConsumerWidget {
                       )),
                       Text(
                         _format(session.elapsedSeconds),
-                        style: const TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFFFFFFFF),
+                        style: TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.w800, color: glassInk(),
                         ),
                       ),
                     ],
@@ -154,22 +163,20 @@ class WorkoutSummary extends ConsumerWidget {
             const SizedBox(height: 12),
             ...session.exercises.map((e) {
               final name = e.name;
-              // Cumulative session-clock time at completion — same basis as
-              // the Session Duration readout above (e.g. done at 00:03:23
-              // shows 00:03:23, not wall-clock time).
+              // Exercise duration includes its attributed rest breaks.
               final duration = e.sessionElapsedSeconds != null
-                  ? _format(e.sessionElapsedSeconds!)
+                  ? _format(session.totalSecondsFor(e))
                   : _formatDuration(e.startedAt, e.doneAt);
               final hasVideo = e.hasProof;
               final kcal = session.caloriesFor(e, session.weightKg);
               return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
+                padding: EdgeInsets.only(bottom: 8),
                 child: Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(6),
+                    color: ClayTokens.hairline.withAlpha(6),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.white.withAlpha(10)),
+                    border: Border.all(color: ClayTokens.hairline.withAlpha(10)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -183,7 +190,7 @@ class WorkoutSummary extends ConsumerWidget {
                               gradient: hasVideo
                                   ? const LinearGradient(colors: [Color(0xFF7C3AED), Color(0xFFC56BF0)])
                                   : null,
-                              color: hasVideo ? null : const Color(0xFF3A3A4A),
+                              color: hasVideo ? null : glassRim(const Color(0xFF3A3A4A)),
                             ),
                             child: Icon(
                               hasVideo ? Icons.check : Icons.close,
@@ -194,8 +201,8 @@ class WorkoutSummary extends ConsumerWidget {
                           const SizedBox(width: 8),
                           Row(
                             children: [
-                              Text(name, style: const TextStyle(
-                                fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFFF2F5F7),
+                              Text(name, style: TextStyle(
+                                fontSize: 13, fontWeight: FontWeight.w700, color: glassInk(const Color(0xFFF2F5F7)),
                               )),
                             ],
                           ),

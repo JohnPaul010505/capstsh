@@ -5,12 +5,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared/providers/auth_provider.dart';
 import '../../../../app/design_tokens.dart';
+import '../../../../app/theme_mode_toggle.dart';
 import '../../bmi/providers/bmi_history_provider.dart';
 import '../../../shared/widgets/glass_sign_out_dialog.dart';
 import '../../../shared/widgets/pressable.dart';
 import '../../../shared/widgets/skeleton.dart';
 import '../../../shared/widgets/animations.dart';
 import '../../../shared/widgets/app_glow_background.dart';
+import '../../../shared/widgets/glass_card.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -20,7 +22,7 @@ class SettingsPage extends ConsumerWidget {
     final authState = ref.watch(authProvider);
 
     return Scaffold(
-      backgroundColor: ClayTokens.clayDarkBase,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: AppGlowBackground(
         child: SafeArea(
           child: authState.when(
@@ -90,18 +92,18 @@ class _SettingsContent extends ConsumerWidget {
           children: [
             GestureDetector(
               onTap: () => context.pop(),
-              child: const Icon(
+              child: Icon(
                 CupertinoIcons.chevron_back,
-                color: Color(0xFFFFFFFF),
+                color: glassInk(),
                 size: 24,
               ),
             ),
-            const Text(
+            Text(
               'Settings',
               style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFFFFFFFF),
+                color: ClayTokens.clayDarkTextPrimary,
                 decoration: TextDecoration.none,
               ),
             ),
@@ -111,18 +113,30 @@ class _SettingsContent extends ConsumerWidget {
         const SizedBox(height: 24),
         StaggeredFadeIn(
           index: 0,
-          child: ClipRRect(
+          child: MemberGlassCard(
+            padding: const EdgeInsets.all(16),
             borderRadius: BorderRadius.circular(16),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: ClayTokens.clayPrimaryLight.withAlpha(25),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.white.withAlpha(18)),
+            // Dark mode keeps its exact blurred lilac panel.
+            darkBuilder: (cardChild) => ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: ClayTokens.clayPrimaryLight.withAlpha(25),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: ClayColors.isLightMode
+                          ? ClayTokens.clayPrimary.withAlpha(45)
+                          : Colors.white.withAlpha(18),
+                    ),
+                  ),
+                  child: cardChild,
                 ),
-                child: Row(
+              ),
+            ),
+            child: Row(
                   children: [
                     Stack(
                       clipBehavior: Clip.none,
@@ -217,19 +231,19 @@ class _SettingsContent extends ConsumerWidget {
                         children: [
                           Text(
                             name,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 17,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFFFFFFFF),
+                              color: ClayTokens.clayDarkTextPrimary,
                               decoration: TextDecoration.none,
                             ),
                           ),
                           if (email.isNotEmpty)
                             Text(
                               email,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12,
-                                color: Color(0xFF636366),
+                                color: ClayTokens.clayDarkTextSecondary,
                                 decoration: TextDecoration.none,
                               ),
                             ),
@@ -242,12 +256,16 @@ class _SettingsContent extends ConsumerWidget {
                               alignment: Alignment.centerLeft,
                             ),
                             onPressed: () => _showAvatarPicker(context, ref),
-                            child: const Text(
+                            child: Text(
                               'Change Profile',
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
-                                color: Color(0xFFD8B4FE),
+                                // Lilac reads on the dark panel but disappears
+                                // on the light glass body.
+                                color: ClayColors.isLightMode
+                                    ? ClayTokens.clayPrimary
+                                    : const Color(0xFFD8B4FE),
                                 decoration: TextDecoration.none,
                               ),
                             ),
@@ -257,15 +275,15 @@ class _SettingsContent extends ConsumerWidget {
                     ),
                   ],
                 ),
-              ),
-            ),
           ),
         ),
+        const SizedBox(height: 16),
+        const ThemeModeToggle(),
         const SizedBox(height: 24),
         Text(
           'Features',
           style: Theme.of(context).textTheme.labelLarge?.copyWith(
-            color: const Color(0xFF8E8E93),
+            color: ClayTokens.clayDarkTextTertiary,
             letterSpacing: 0,
             decoration: TextDecoration.none,
           ),
@@ -314,10 +332,11 @@ class _SettingsContent extends ConsumerWidget {
           onTap: () => context.push('/member/trainer-plan'),
         ),
         const SizedBox(height: 24),
-        const Divider(color: Color(0xFF38383A)),
+        Divider(color: glassLine(const Color(0xFF38383A))),
         const SizedBox(height: 8),
         Consumer(
           builder: (_, ref, __) => PressableCard(
+            glass: true,
             onTap: () async {
               final confirm = await showGlassSignOutDialog(context);
               if (confirm) {
@@ -337,7 +356,7 @@ class _SettingsContent extends ConsumerWidget {
               child: Text(
                 'Sign Out',
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Color(0xFFFF453A),
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -369,19 +388,23 @@ class _SettingsContent extends ConsumerWidget {
       builder: (ctx) => StatefulBuilder(
         builder: (context, setState) => Container(
           padding: const EdgeInsets.all(20),
-          decoration: const BoxDecoration(
-            color: Color(0xFF14142A),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          decoration: BoxDecoration(
+            color: ClayColors.isLightMode
+                ? const Color(0xFFF8F4FF)
+                : const Color(0xFF14142A),
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(20),
+            ),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
+              Text(
                 'Choose Profile',
                 style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFFFFFFFF),
+                  color: glassInk(),
                 ),
               ),
               const SizedBox(height: 16),
@@ -424,11 +447,13 @@ class _SettingsContent extends ConsumerWidget {
                     child: TextButton(
                       onPressed: () => Navigator.of(ctx).pop(),
                       style: TextButton.styleFrom(
-                        foregroundColor: const Color(0xFFB4B4D0),
+                        foregroundColor: ClayTokens.clayDarkTextSecondary,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
-                          side: const BorderSide(color: Color(0xFF38383A)),
+                          side: BorderSide(
+                            color: glassLine(const Color(0xFF38383A)),
+                          ),
                         ),
                       ),
                       child: const Text(
@@ -527,12 +552,17 @@ class _SettingItem extends StatelessWidget {
       child: Semantics(
         label: label,
         child: PressableCard(
+          glass: true,
           onTap: onTap,
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
           color: ClayTokens.clayPrimaryLight.withAlpha(25),
           borderRadius: BorderRadius.circular(12),
-          border: const Border.fromBorderSide(
-            BorderSide(color: Color(0x18FFFFFF)),
+          border: Border.fromBorderSide(
+            BorderSide(
+              color: ClayColors.isLightMode
+                  ? ClayTokens.clayPrimary.withAlpha(45)
+                  : const Color(0x18FFFFFF),
+            ),
           ),
           child: Row(
             children: [
@@ -541,8 +571,8 @@ class _SettingItem extends StatelessWidget {
               Expanded(
                 child: Text(
                   label,
-                  style: const TextStyle(
-                    color: Color(0xFFFFFFFF),
+                  style: TextStyle(
+                    color: ClayTokens.clayDarkTextPrimary,
                     fontSize: 14,
                   ),
                 ),
@@ -552,8 +582,8 @@ class _SettingItem extends StatelessWidget {
                   padding: const EdgeInsets.only(right: 6),
                   child: Text(
                     subtitle!,
-                    style: const TextStyle(
-                      color: Color(0xFF8E8E93),
+                    style: TextStyle(
+                      color: ClayTokens.clayDarkTextSecondary,
                       fontSize: 13,
                     ),
                   ),

@@ -112,16 +112,21 @@ class _CalendarFlipSheetState extends ConsumerState<CalendarFlipSheet> {
         onTap: () {},
         child: Container(
           height: 480,
-          margin: const EdgeInsets.symmetric(horizontal: 18),
+          margin: EdgeInsets.symmetric(horizontal: 18),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(20),
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  color: ClayTokens.clayDarkBase.withAlpha(200),
+                  color: ClayColors.isLightMode
+                      ? ClayTokens.claySurfaceLight.withAlpha(245)
+                      : ClayTokens.clayDarkBase.withAlpha(200),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white.withAlpha(18)),
+                  border: Border.all(
+                    color: ClayColors.isLightMode
+                        ? ClayTokens.clayPrimary.withAlpha(45)
+                        : ClayTokens.hairline.withAlpha(18)),
                 ),
                 child: Column(
                   children: [
@@ -149,7 +154,7 @@ class _CalendarFlipSheetState extends ConsumerState<CalendarFlipSheet> {
                             ),
                             const SizedBox(width: 5),
                             const Text(
-                              'syncingâ€¦',
+                              'syncing…',
                               style: TextStyle(
                                 fontSize: 10,
                                 color: Color(0xFF8E8E93),
@@ -163,22 +168,22 @@ class _CalendarFlipSheetState extends ConsumerState<CalendarFlipSheet> {
                                 color: Color(0xFFFF6B61),
                               ),
                             ),
-                          const SizedBox(width: 8),
+                          SizedBox(width: 8),
                           GestureDetector(
                             onTap: () =>
                                 Navigator.of(context).pop(_selectedDate),
                             child: Container(
-                              padding: const EdgeInsets.all(5),
+                              padding: EdgeInsets.all(5),
                               decoration: BoxDecoration(
-                                color: Colors.white.withAlpha(12),
+                                color: ClayTokens.hairline.withAlpha(12),
                                 borderRadius: BorderRadius.circular(999),
                                 border: Border.all(
-                                  color: Colors.white.withAlpha(20),
+                                  color: ClayTokens.hairline.withAlpha(20),
                                 ),
                               ),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.close,
-                                color: Color(0xFFB4B4D0),
+                                color: ClayTokens.clayDarkTextSecondary,
                                 size: 15,
                               ),
                             ),
@@ -190,7 +195,7 @@ class _CalendarFlipSheetState extends ConsumerState<CalendarFlipSheet> {
                     Expanded(
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(6, 0, 6, 10),
-                        child: GlowCard(
+                        child: _LightAwareGlowCard(
                           borderRadius: 16,
                           borderWidth: 1.6,
                           child: FlipCard(
@@ -296,8 +301,8 @@ class _BackFace extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(height: 1, color: Colors.white.withAlpha(15)),
-        const SizedBox(height: 12),
+        Container(height: 1, color: ClayTokens.hairline.withAlpha(15)),
+        SizedBox(height: 12),
         Expanded(
           child: workouts.isEmpty
               ? Center(
@@ -305,11 +310,11 @@ class _BackFace extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(14),
+                        padding: EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: Colors.white.withAlpha(8),
+                          color: ClayTokens.hairline.withAlpha(8),
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.white.withAlpha(12)),
+                          border: Border.all(color: ClayTokens.hairline.withAlpha(12)),
                         ),
                         child: const Icon(
                           Icons.fitness_center,
@@ -507,11 +512,11 @@ class _WorkoutCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withAlpha(8),
+        color: ClayTokens.hairline.withAlpha(8),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withAlpha(12)),
+        border: Border.all(color: ClayTokens.hairline.withAlpha(12)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -681,11 +686,11 @@ class _StatChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white.withAlpha(8),
+        color: ClayTokens.hairline.withAlpha(8),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white.withAlpha(12)),
+        border: Border.all(color: ClayTokens.hairline.withAlpha(12)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -713,7 +718,7 @@ class _StatChip extends StatelessWidget {
   }
 }
 
-/// Glassmorphic pill button Â· no Material/InkWell splash, just clean tap.
+/// Glassmorphic pill button · no Material/InkWell splash, just clean tap.
 
 /// Duration chip formatted as minutes or minutes:seconds.
 class _DurationChip extends StatelessWidget {
@@ -727,11 +732,11 @@ class _DurationChip extends StatelessWidget {
         ? '${seconds}s'
         : '${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')} min';
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white.withAlpha(8),
+        color: ClayTokens.hairline.withAlpha(8),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white.withAlpha(12)),
+        border: Border.all(color: ClayTokens.hairline.withAlpha(12)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -762,13 +767,13 @@ class _GlassPillButton extends StatelessWidget {
       onTap: onPressed,
       child: Container(
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
+          gradient: LinearGradient(
             colors: [Color(0xFF5E3AEE), Color(0xFFC56BF0)],
           ),
           borderRadius: BorderRadius.circular(9999),
           boxShadow: [
             BoxShadow(
-              color: Colors.white.withAlpha(50),
+              color: ClayTokens.hairline.withAlpha(50),
               blurRadius: 20,
               spreadRadius: -6,
               offset: const Offset(0, -2),
@@ -780,13 +785,63 @@ class _GlassPillButton extends StatelessWidget {
           child: Center(
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
                 color: Colors.white,
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Light-mode-aware glow card: in light mode it renders a clay-surface-tinted
+/// glass panel instead of the dark GlowCard, so the calendar card reads like the
+/// rest of the light screens instead of carrying a dark-mode effect.
+class _LightAwareGlowCard extends StatelessWidget {
+  final Widget child;
+  final double borderRadius;
+  final double borderWidth;
+
+  const _LightAwareGlowCard({
+    required this.child,
+    this.borderRadius = 16,
+    this.borderWidth = 2,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (!ClayColors.isLightMode) {
+      return GlowCard(
+        borderRadius: borderRadius,
+        borderWidth: borderWidth,
+        child: child,
+      );
+    }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(borderRadius),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+        child: Container(
+          decoration: BoxDecoration(
+            color: ClayTokens.claySurfaceLight.withAlpha(245),
+            borderRadius: BorderRadius.circular(borderRadius),
+            border: Border.all(
+              color: ClayTokens.clayPrimary.withAlpha(45),
+              width: borderWidth,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: ClayTokens.clayPrimary.withAlpha(30),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: child,
         ),
       ),
     );

@@ -5,8 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/services/supabase_client.dart';
 import 'package:shared/providers/body_measurement_provider.dart';
 import 'package:shared/services/notification_service.dart';
+import '../services/goal_home_widget.dart';
 import '../../../../app/design_tokens.dart';
-import '../../../shared/widgets/clay/clay_card.dart';
+import '../../../shared/widgets/glass_card.dart';
 import '../../../shared/widgets/animations.dart';
 import 'date_card.dart';
 
@@ -15,11 +16,22 @@ const cardDark = Color(0xFF15172A);
 const inputDark = Color(0xFF1E2035);
 const primaryPurple = Color(0xFF7C3AED);
 const highlightPurple = Color(0xFFA855F7);
-const textPrimary = Color(0xFFFFFFFF);
-const textSecondary = Color(0xFFA0A4B8);
-const goalFieldFill = Color(0xFF33335C);
+
+// Brightness-aware text colors. The create-goal form sits on a translucent
+// glass panel, so its ink must flip to dark in light mode to stay readable —
+// matching the rest of the app's glass system (see goal_card.dart).
+Color get textPrimary => ClayTokens.clayDarkTextPrimary;
+Color get textSecondary => ClayTokens.clayDarkTextSecondary;
+/// Field / dropdown fill: white on the light glass body, the original navy
+/// panel in dark mode.
+Color get goalFieldFill =>
+    ClayColors.isLightMode ? Colors.white : const Color(0xFF33335C);
 const fieldIdleBorder = Color(0x12B4B4D0);
-const fieldPlaceholder = Color(0xFFC4C4DC);
+
+/// Placeholder and chevron ink inside the fields.
+Color get fieldPlaceholder => ClayColors.isLightMode
+    ? ClayTokens.clayTextTertiary
+    : const Color(0xFFC4C4DC);
 final _calendarFill = Color.alphaBlend(
   ClayTokens.clayPrimaryLight.withAlpha(25),
   ClayTokens.clayDarkBase,
@@ -131,8 +143,8 @@ class _CreateGoalCardState extends ConsumerState<CreateGoalCard> {
     // hint instead of locking the whole page behind a padlock view.
     if (widget.hasActiveGoal) {
       setState(
-        () =>
-            _validationMessage = 'You currently have a goal, complete that first.',
+        () => _validationMessage =
+            'You currently have a goal, complete that first.',
       );
       return;
     }
@@ -164,13 +176,13 @@ class _CreateGoalCardState extends ConsumerState<CreateGoalCard> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
-                title: const Text(
+                title: Text(
                   'Adjust target weight',
-                  style: TextStyle(color: Colors.white),
+                  style: TextStyle(color: ClayTokens.clayDarkTextPrimary),
                 ),
                 content: Text(
                   'Your current weight is ${currentWeight.toStringAsFixed(1)} kg. For "Gain Muscle", choose a target above that.',
-                  style: const TextStyle(color: Color(0xFFB4B4D0)),
+                  style: TextStyle(color: ClayTokens.clayDarkTextSecondary),
                 ),
                 actions: [
                   TextButton(
@@ -198,13 +210,13 @@ class _CreateGoalCardState extends ConsumerState<CreateGoalCard> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
-                title: const Text(
+                title: Text(
                   'Adjust target weight',
-                  style: TextStyle(color: Colors.white),
+                  style: TextStyle(color: ClayTokens.clayDarkTextPrimary),
                 ),
                 content: Text(
                   'Your current weight is ${currentWeight.toStringAsFixed(1)} kg. For "Lose Weight", choose a target below that.',
-                  style: const TextStyle(color: Color(0xFFB4B4D0)),
+                  style: TextStyle(color: ClayTokens.clayDarkTextSecondary),
                 ),
                 actions: [
                   TextButton(
@@ -242,6 +254,7 @@ class _CreateGoalCardState extends ConsumerState<CreateGoalCard> {
         params['current_value'] = liveWeight;
       }
       await SupabaseClientService().client.from('goals').insert(params);
+      await GoalHomeWidget.syncForCurrentMember();
 
       // Figure 21: the system notifies the member. Self-notifications are
       // denied by the notifications insert policy (user_id <> auth.uid()), so
@@ -350,20 +363,34 @@ class _CreateGoalCardState extends ConsumerState<CreateGoalCard> {
   }
 
   Widget _calendarBuilder(BuildContext context, Widget? child) {
+    // The picker follows the active theme: the dark surface would leave its
+    // white header ink unreadable on the light calendar fill.
+    final isLight = ClayColors.isLightMode;
+    final calendarFill = isLight ? const Color(0xFFF5F1FF) : _calendarFill;
     return Theme(
       data: Theme.of(context).copyWith(
-        colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF7C3AED),
-          onPrimary: Color(0xFFFFFFFF),
-          surface: Color(0xFF26233F),
-          onSurface: Color(0xFFECECFC),
-          onSurfaceVariant: Color(0xFFB4B4D0),
-        ),
-        scaffoldBackgroundColor: _calendarFill,
+        colorScheme: isLight
+            ? const ColorScheme.light(
+                primary: Color(0xFF7C3AED),
+                onPrimary: Color(0xFFFFFFFF),
+                surface: Color(0xFFFFFFFF),
+                onSurface: Color(0xFF332F3A),
+                onSurfaceVariant: Color(0xFF635F69),
+              )
+            : const ColorScheme.dark(
+                primary: Color(0xFF7C3AED),
+                onPrimary: Color(0xFFFFFFFF),
+                surface: Color(0xFF26233F),
+                onSurface: Color(0xFFECECFC),
+                onSurfaceVariant: Color(0xFFB4B4D0),
+              ),
+        scaffoldBackgroundColor: calendarFill,
         datePickerTheme: DatePickerThemeData(
-          backgroundColor: _calendarFill,
-          headerBackgroundColor: _calendarFill,
-          headerForegroundColor: const Color(0xFFFFFFFF),
+          backgroundColor: calendarFill,
+          headerBackgroundColor: calendarFill,
+          headerForegroundColor: isLight
+              ? const Color(0xFF332F3A)
+              : const Color(0xFFFFFFFF),
         ),
       ),
       child: child ?? const SizedBox.shrink(),
@@ -374,11 +401,8 @@ class _CreateGoalCardState extends ConsumerState<CreateGoalCard> {
   Widget build(BuildContext context) {
     return StaggeredFadeIn(
       index: 0,
-      child: ClayCard(
-        variant: ClayCardVariant.outlined,
-        backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
-        customPadding: const EdgeInsets.all(20),
-        padding: ClayCardPadding.none,
+      child: MemberGlassCard(
+        padding: const EdgeInsets.all(20),
         borderRadius: BorderRadius.circular(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -393,17 +417,17 @@ class _CreateGoalCardState extends ConsumerState<CreateGoalCard> {
                     color: const Color(0xFF22C55E).withAlpha(40),
                   ),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
-                    Icon(
+                    const Icon(
                       CupertinoIcons.checkmark_circle_fill,
                       color: Color(0xFF22C55E),
                     ),
-                    SizedBox(width: 10),
+                    const SizedBox(width: 10),
                     Text(
                       'Goal created',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: ClayTokens.clayDarkTextPrimary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -438,8 +462,10 @@ class _CreateGoalCardState extends ConsumerState<CreateGoalCard> {
                 ),
                 child: Text(
                   _validationMessage!,
-                  style: const TextStyle(
-                    color: Color(0xFFFCA5A5),
+                  style: TextStyle(
+                    color: ClayColors.isLightMode
+                        ? ClayTokens.clayError
+                        : const Color(0xFFFCA5A5),
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
                   ),
@@ -496,8 +522,10 @@ class _CreateGoalCardState extends ConsumerState<CreateGoalCard> {
                   Expanded(
                     child: Text(
                       _targetError!,
-                      style: const TextStyle(
-                        color: Color(0xFFFCA5A5),
+                      style: TextStyle(
+                        color: ClayColors.isLightMode
+                            ? ClayTokens.clayError
+                            : const Color(0xFFFCA5A5),
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
                       ),
@@ -579,13 +607,20 @@ class _CreateGoalCardState extends ConsumerState<CreateGoalCard> {
                   borderRadius: BorderRadius.circular(14),
                   onPressed: _saving ? null : _save,
                   child: _saving
-                      ? CupertinoActivityIndicator(color: textPrimary)
+                      ? CupertinoActivityIndicator(
+                          color: ClayColors.isLightMode
+                              ? Colors.white
+                              : textPrimary,
+                        )
                       : Text(
                           'Add Goal',
                           style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w600,
-                            color: textPrimary,
+                            // Purple fill: the label stays light in both themes.
+                            color: ClayColors.isLightMode
+                                ? Colors.white
+                                : textPrimary,
                           ),
                         ),
                 ),
@@ -662,7 +697,10 @@ class _CreateGoalCardState extends ConsumerState<CreateGoalCard> {
           suffix: suffix != null
               ? Padding(
                   padding: const EdgeInsets.only(right: 12),
-                  child: Text(suffix, style: TextStyle(color: fieldPlaceholder)),
+                  child: Text(
+                    suffix,
+                    style: TextStyle(color: fieldPlaceholder),
+                  ),
                 )
               : null,
           onChanged: onChanged,

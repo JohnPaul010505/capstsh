@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
+import 'package:fitness_app/app/design_tokens.dart';
+import 'glass_card.dart';
 
 class PressableCard extends StatefulWidget {
   final Widget child;
@@ -13,6 +14,10 @@ class PressableCard extends StatefulWidget {
   final List<BoxShadow>? shadows;
   final Decoration? decoration;
 
+  /// Render the shared liquid-glass body ([GlassSurface]) in light mode. Dark
+  /// mode always keeps the original pill, so this is a light-mode-only switch.
+  final bool glass;
+
   const PressableCard({
     super.key,
     required this.child,
@@ -24,6 +29,7 @@ class PressableCard extends StatefulWidget {
     this.border,
     this.shadows,
     this.decoration,
+    this.glass = false,
   });
 
   @override
@@ -74,6 +80,45 @@ class _PressableCardState extends State<PressableCard> with SingleTickerProvider
     widget.onTap!();
   }
 
+  /// Card body. `glass: true` renders the shared [GlassSurface] (the nav bar
+  /// body) in light mode; the default fill and rim also flip for light mode so
+  /// plain pressable cards stay readable there. Dark mode is unchanged.
+  Widget _buildBody() {
+    if (widget.glass && ClayColors.isLightMode) {
+      return GlassSurface(
+        margin: widget.margin,
+        padding: widget.padding,
+        borderRadius: widget.borderRadius is BorderRadius
+            ? widget.borderRadius as BorderRadius
+            : const BorderRadius.all(Radius.circular(16)),
+        child: widget.child,
+      );
+    }
+    return Container(
+      padding: widget.padding,
+      margin: widget.margin,
+      decoration:
+          widget.decoration ??
+          BoxDecoration(
+            color:
+                widget.color ??
+                (ClayColors.isLightMode
+                    ? const Color(0xEBFFFFFF)
+                    : const Color(0xFF131320)),
+            borderRadius: widget.borderRadius ?? BorderRadius.circular(16),
+            border:
+                widget.border ??
+                Border.all(
+                  color: ClayColors.isLightMode
+                      ? ClayTokens.clayPrimary.withAlpha(60)
+                      : const Color(0xFF38383A).withAlpha(100),
+                ),
+            boxShadow: widget.shadows,
+          ),
+      child: widget.child,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -88,17 +133,7 @@ class _PressableCardState extends State<PressableCard> with SingleTickerProvider
             onTap: _handleTap,
             child: Opacity(
               opacity: _pressed ? 0.7 : 1.0,
-              child: Container(
-                padding: widget.padding,
-                margin: widget.margin,
-                decoration: widget.decoration ?? BoxDecoration(
-                  color: widget.color ?? const Color(0xFF131320),
-                  borderRadius: widget.borderRadius ?? BorderRadius.circular(16),
-                  border: widget.border ?? Border.all(color: const Color(0xFF38383A).withAlpha(100)),
-                  boxShadow: widget.shadows,
-                ),
-                child: widget.child,
-              ),
+              child: _buildBody(),
             ),
           ),
         );
@@ -184,16 +219,16 @@ class _GlowButtonState extends State<GlowButton> with SingleTickerProviderStateM
                 ],
               ),
               child: widget.loading
-                  ? const Center(child: CupertinoActivityIndicator(color: Color(0xFF0A84FF), radius: 10))
+                  ? Center(child: CupertinoActivityIndicator(color: Color(0xFF0A84FF), radius: 10))
                   : Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         if (widget.icon != null) ...[
-                          Icon(widget.icon, color: Colors.white, size: 16),
+                          Icon(widget.icon, color: ClayTokens.clayDarkTextPrimary, size: 16),
                           const SizedBox(width: 7),
                         ],
-                        Text(widget.label, style: const TextStyle(
-                          color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700,
+                        Text(widget.label, style: TextStyle(
+                          color: ClayTokens.clayDarkTextPrimary, fontSize: 14, fontWeight: FontWeight.w700,
                         )),
                       ],
                     ),

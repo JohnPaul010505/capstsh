@@ -58,6 +58,22 @@ class ClayColors {
 
   static const Color clayDarkShadowDark = Color(0x1E000000);
   static const Color clayDarkShadowLight = Color(0x0AFFFFFF);
+
+  // Surface colour for light-mode full-screen blocks (e.g. the workout page scaffold).
+  static const Color claySurfaceLight = Color(0xFFF4F1FA);
+
+  // ---- Active theme brightness -------------------------------------------
+  // Driven by ThemeModeProvider (single source of truth). The static
+  // ClayTokens facade reads this so the entire app's "dark" palette resolves
+  // to its light-mode equivalent the moment the user picks Light mode —
+  // without every screen having to branch on brightness itself.
+  static Brightness currentBrightness = Brightness.dark;
+
+  static bool get isLightMode => currentBrightness == Brightness.light;
+
+  static void setBrightness(Brightness brightness) {
+    currentBrightness = brightness;
+  }
 }
 
 class ClaySpacing {
@@ -221,125 +237,215 @@ class ClayTypography {
   static String get bodyFamily => GoogleFonts.dmSans().fontFamily!;
 
   static TextStyle get displayLarge => GoogleFonts.nunito(
-    fontSize: 48, fontWeight: FontWeight.w900, color: ClayColors.clayTextPrimary,
-    letterSpacing: -0.5, height: 1.1,
+    fontSize: 48,
+    fontWeight: FontWeight.w900,
+    color: ClayColors.clayTextPrimary,
+    letterSpacing: -0.5,
+    height: 1.1,
   );
   static TextStyle get displayMedium => GoogleFonts.nunito(
-    fontSize: 36, fontWeight: FontWeight.w800, color: ClayColors.clayTextPrimary,
-    letterSpacing: -0.3, height: 1.2,
+    fontSize: 36,
+    fontWeight: FontWeight.w800,
+    color: ClayColors.clayTextPrimary,
+    letterSpacing: -0.3,
+    height: 1.2,
   );
   static TextStyle get displaySmall => GoogleFonts.nunito(
-    fontSize: 28, fontWeight: FontWeight.w800, color: ClayColors.clayTextPrimary,
-    letterSpacing: -0.2, height: 1.2,
+    fontSize: 28,
+    fontWeight: FontWeight.w800,
+    color: ClayColors.clayTextPrimary,
+    letterSpacing: -0.2,
+    height: 1.2,
   );
   static TextStyle get headlineLarge => GoogleFonts.nunito(
-    fontSize: 24, fontWeight: FontWeight.w700, color: ClayColors.clayTextPrimary,
-    letterSpacing: -0.1, height: 1.3,
+    fontSize: 24,
+    fontWeight: FontWeight.w700,
+    color: ClayColors.clayTextPrimary,
+    letterSpacing: -0.1,
+    height: 1.3,
   );
   static TextStyle get headlineMedium => GoogleFonts.nunito(
-    fontSize: 20, fontWeight: FontWeight.w700, color: ClayColors.clayTextPrimary,
-    letterSpacing: 0, height: 1.3,
+    fontSize: 20,
+    fontWeight: FontWeight.w700,
+    color: ClayColors.clayTextPrimary,
+    letterSpacing: 0,
+    height: 1.3,
   );
   static TextStyle get headlineSmall => GoogleFonts.nunito(
-    fontSize: 18, fontWeight: FontWeight.w600, color: ClayColors.clayTextPrimary,
-    letterSpacing: 0, height: 1.4,
+    fontSize: 18,
+    fontWeight: FontWeight.w600,
+    color: ClayColors.clayTextPrimary,
+    letterSpacing: 0,
+    height: 1.4,
   );
   static TextStyle get titleLarge => GoogleFonts.nunito(
-    fontSize: 16, fontWeight: FontWeight.w700, color: ClayColors.clayTextPrimary,
-    letterSpacing: 0, height: 1.4,
+    fontSize: 16,
+    fontWeight: FontWeight.w700,
+    color: ClayColors.clayTextPrimary,
+    letterSpacing: 0,
+    height: 1.4,
   );
   static TextStyle get titleMedium => GoogleFonts.nunito(
-    fontSize: 14, fontWeight: FontWeight.w600, color: ClayColors.clayTextPrimary,
-    letterSpacing: 0.1, height: 1.4,
+    fontSize: 14,
+    fontWeight: FontWeight.w600,
+    color: ClayColors.clayTextPrimary,
+    letterSpacing: 0.1,
+    height: 1.4,
   );
   static TextStyle get titleSmall => GoogleFonts.nunito(
-    fontSize: 12, fontWeight: FontWeight.w600, color: ClayColors.clayTextSecondary,
-    letterSpacing: 0.2, height: 1.4,
+    fontSize: 12,
+    fontWeight: FontWeight.w600,
+    color: ClayColors.clayTextSecondary,
+    letterSpacing: 0.2,
+    height: 1.4,
   );
   static TextStyle get bodyLarge => GoogleFonts.dmSans(
-    fontSize: 16, fontWeight: FontWeight.w400, color: ClayColors.clayTextPrimary,
-    letterSpacing: -0.1, height: 1.5,
+    fontSize: 16,
+    fontWeight: FontWeight.w400,
+    color: ClayColors.clayTextPrimary,
+    letterSpacing: -0.1,
+    height: 1.5,
   );
   static TextStyle get bodyMedium => GoogleFonts.dmSans(
-    fontSize: 14, fontWeight: FontWeight.w400, color: ClayColors.clayTextPrimary,
-    letterSpacing: 0, height: 1.5,
+    fontSize: 14,
+    fontWeight: FontWeight.w400,
+    color: ClayColors.clayTextPrimary,
+    letterSpacing: 0,
+    height: 1.5,
   );
   static TextStyle get bodySmall => GoogleFonts.dmSans(
-    fontSize: 12, fontWeight: FontWeight.w400, color: ClayColors.clayTextSecondary,
-    letterSpacing: 0.1, height: 1.5,
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    color: ClayColors.clayTextSecondary,
+    letterSpacing: 0.1,
+    height: 1.5,
   );
   static TextStyle get labelLarge => GoogleFonts.dmSans(
-    fontSize: 14, fontWeight: FontWeight.w500, color: ClayColors.clayTextPrimary,
-    letterSpacing: 0.1, height: 1.4,
+    fontSize: 14,
+    fontWeight: FontWeight.w500,
+    color: ClayColors.clayTextPrimary,
+    letterSpacing: 0.1,
+    height: 1.4,
   );
   static TextStyle get labelMedium => GoogleFonts.dmSans(
-    fontSize: 12, fontWeight: FontWeight.w500, color: ClayColors.clayTextSecondary,
-    letterSpacing: 0.2, height: 1.4,
+    fontSize: 12,
+    fontWeight: FontWeight.w500,
+    color: ClayColors.clayTextSecondary,
+    letterSpacing: 0.2,
+    height: 1.4,
   );
   static TextStyle get labelSmall => GoogleFonts.dmSans(
-    fontSize: 10, fontWeight: FontWeight.w500, color: ClayColors.clayTextTertiary,
-    letterSpacing: 0.3, height: 1.4,
+    fontSize: 10,
+    fontWeight: FontWeight.w500,
+    color: ClayColors.clayTextTertiary,
+    letterSpacing: 0.3,
+    height: 1.4,
   );
 
   static TextStyle get darkDisplayLarge => GoogleFonts.nunito(
-    fontSize: 48, fontWeight: FontWeight.w900, color: ClayColors.clayDarkTextPrimary,
-    letterSpacing: -0.5, height: 1.1,
+    fontSize: 48,
+    fontWeight: FontWeight.w900,
+    color: ClayTokens.clayDarkTextPrimary,
+    letterSpacing: -0.5,
+    height: 1.1,
   );
   static TextStyle get darkDisplayMedium => GoogleFonts.nunito(
-    fontSize: 36, fontWeight: FontWeight.w800, color: ClayColors.clayDarkTextPrimary,
-    letterSpacing: -0.3, height: 1.2,
+    fontSize: 36,
+    fontWeight: FontWeight.w800,
+    color: ClayTokens.clayDarkTextPrimary,
+    letterSpacing: -0.3,
+    height: 1.2,
   );
   static TextStyle get darkDisplaySmall => GoogleFonts.nunito(
-    fontSize: 28, fontWeight: FontWeight.w800, color: ClayColors.clayDarkTextPrimary,
-    letterSpacing: -0.2, height: 1.2,
+    fontSize: 28,
+    fontWeight: FontWeight.w800,
+    color: ClayTokens.clayDarkTextPrimary,
+    letterSpacing: -0.2,
+    height: 1.2,
   );
   static TextStyle get darkHeadlineLarge => GoogleFonts.nunito(
-    fontSize: 24, fontWeight: FontWeight.w700, color: ClayColors.clayDarkTextPrimary,
-    letterSpacing: -0.1, height: 1.3,
+    fontSize: 24,
+    fontWeight: FontWeight.w700,
+    color: ClayTokens.clayDarkTextPrimary,
+    letterSpacing: -0.1,
+    height: 1.3,
   );
   static TextStyle get darkHeadlineMedium => GoogleFonts.nunito(
-    fontSize: 20, fontWeight: FontWeight.w700, color: ClayColors.clayDarkTextPrimary,
-    letterSpacing: 0, height: 1.3,
+    fontSize: 20,
+    fontWeight: FontWeight.w700,
+    color: ClayTokens.clayDarkTextPrimary,
+    letterSpacing: 0,
+    height: 1.3,
   );
   static TextStyle get darkHeadlineSmall => GoogleFonts.nunito(
-    fontSize: 18, fontWeight: FontWeight.w600, color: ClayColors.clayDarkTextPrimary,
-    letterSpacing: 0, height: 1.4,
+    fontSize: 18,
+    fontWeight: FontWeight.w600,
+    color: ClayTokens.clayDarkTextPrimary,
+    letterSpacing: 0,
+    height: 1.4,
   );
   static TextStyle get darkTitleLarge => GoogleFonts.nunito(
-    fontSize: 16, fontWeight: FontWeight.w700, color: ClayColors.clayDarkTextPrimary,
-    letterSpacing: 0, height: 1.4,
+    fontSize: 16,
+    fontWeight: FontWeight.w700,
+    color: ClayTokens.clayDarkTextPrimary,
+    letterSpacing: 0,
+    height: 1.4,
   );
   static TextStyle get darkTitleMedium => GoogleFonts.nunito(
-    fontSize: 14, fontWeight: FontWeight.w600, color: ClayColors.clayDarkTextPrimary,
-    letterSpacing: 0.1, height: 1.4,
+    fontSize: 14,
+    fontWeight: FontWeight.w600,
+    color: ClayTokens.clayDarkTextPrimary,
+    letterSpacing: 0.1,
+    height: 1.4,
   );
   static TextStyle get darkTitleSmall => GoogleFonts.nunito(
-    fontSize: 12, fontWeight: FontWeight.w600, color: ClayColors.clayDarkTextSecondary,
-    letterSpacing: 0.2, height: 1.4,
+    fontSize: 12,
+    fontWeight: FontWeight.w600,
+    color: ClayTokens.clayDarkTextSecondary,
+    letterSpacing: 0.2,
+    height: 1.4,
   );
   static TextStyle get darkBodyLarge => GoogleFonts.dmSans(
-    fontSize: 16, fontWeight: FontWeight.w400, color: ClayColors.clayDarkTextPrimary,
-    letterSpacing: -0.1, height: 1.5,
+    fontSize: 16,
+    fontWeight: FontWeight.w400,
+    color: ClayTokens.clayDarkTextPrimary,
+    letterSpacing: -0.1,
+    height: 1.5,
   );
   static TextStyle get darkBodyMedium => GoogleFonts.dmSans(
-    fontSize: 14, fontWeight: FontWeight.w400, color: ClayColors.clayDarkTextPrimary,
-    letterSpacing: 0, height: 1.5,
+    fontSize: 14,
+    fontWeight: FontWeight.w400,
+    color: ClayTokens.clayDarkTextPrimary,
+    letterSpacing: 0,
+    height: 1.5,
   );
   static TextStyle get darkBodySmall => GoogleFonts.dmSans(
-    fontSize: 12, fontWeight: FontWeight.w400, color: ClayColors.clayDarkTextSecondary,
-    letterSpacing: 0.1, height: 1.5,
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    color: ClayTokens.clayDarkTextSecondary,
+    letterSpacing: 0.1,
+    height: 1.5,
   );
   static TextStyle get darkLabelLarge => GoogleFonts.dmSans(
-    fontSize: 14, fontWeight: FontWeight.w500, color: ClayColors.clayDarkTextPrimary,
-    letterSpacing: 0.1, height: 1.4,
+    fontSize: 14,
+    fontWeight: FontWeight.w500,
+    color: ClayTokens.clayDarkTextPrimary,
+    letterSpacing: 0.1,
+    height: 1.4,
   );
   static TextStyle get darkLabelMedium => GoogleFonts.dmSans(
-    fontSize: 12, fontWeight: FontWeight.w500, color: ClayColors.clayDarkTextSecondary,
-    letterSpacing: 0.2, height: 1.4,
+    fontSize: 12,
+    fontWeight: FontWeight.w500,
+    color: ClayTokens.clayDarkTextSecondary,
+    letterSpacing: 0.2,
+    height: 1.4,
   );
   static TextStyle get darkLabelSmall => GoogleFonts.dmSans(
-    fontSize: 10, fontWeight: FontWeight.w500, color: ClayColors.clayDarkTextTertiary,
-    letterSpacing: 0.3, height: 1.4,
+    fontSize: 10,
+    fontWeight: FontWeight.w500,
+    color: ClayTokens.clayDarkTextTertiary,
+    letterSpacing: 0.3,
+    height: 1.4,
   );
 }
 
@@ -398,21 +504,53 @@ class ClayTokens {
   static Color get clayDivider => ClayColors.clayDivider;
   static Color get clayShadowLight => ClayColors.clayShadowLight;
   static Color get clayShadowDark => ClayColors.clayShadowDark;
-  static Color get clayDarkBase => ClayColors.clayDarkBase;
-  static Color get clayDarkSurface => ClayColors.clayDarkSurface;
-  static Color get clayDarkSurfaceElevated => ClayColors.clayDarkSurfaceElevated;
-  static Color get clayDarkCard => ClayColors.clayDarkCard;
-  static Color get clayDarkCardHover => ClayColors.clayDarkCardHover;
-  static Color get clayDarkTextPrimary => ClayColors.clayDarkTextPrimary;
-  static Color get clayDarkTextSecondary => ClayColors.clayDarkTextSecondary;
-  static Color get clayDarkTextTertiary => ClayColors.clayDarkTextTertiary;
-  static Color get clayDarkTextInverse => ClayColors.clayDarkTextInverse;
-
-  static Color get clayDarkBorder => ClayColors.clayDarkBorder;
-  static Color get clayDarkBorderStrong => ClayColors.clayDarkBorderStrong;
-  static Color get clayDarkDivider => ClayColors.clayDarkDivider;
+  static Color get clayDarkBase => ClayColors.isLightMode
+      ? ClayColors.clayBase
+      : ClayColors.clayDarkBase;
+  static Color get clayDarkSurface => ClayColors.isLightMode
+      ? ClayColors.claySurface
+      : ClayColors.clayDarkSurface;
+  static Color get clayDarkSurfaceElevated => ClayColors.isLightMode
+      ? ClayColors.claySurfaceElevated
+      : ClayColors.clayDarkSurfaceElevated;
+  static Color get clayDarkCard => ClayColors.isLightMode
+      ? ClayColors.clayCard
+      : ClayColors.clayDarkCard;
+  static Color get clayDarkCardHover => ClayColors.isLightMode
+      ? ClayColors.clayCardHover
+      : ClayColors.clayDarkCardHover;
+  static Color get clayDarkTextPrimary => ClayColors.isLightMode
+      ? ClayColors.clayTextPrimary
+      : ClayColors.clayDarkTextPrimary;
+  static Color get clayDarkTextSecondary => ClayColors.isLightMode
+      ? ClayColors.clayTextSecondary
+      : ClayColors.clayDarkTextSecondary;
+  static Color get clayDarkTextTertiary => ClayColors.isLightMode
+      ? ClayColors.clayTextTertiary
+      : ClayColors.clayDarkTextTertiary;
+  static Color get clayDarkTextInverse => ClayColors.isLightMode
+      ? ClayColors.clayTextInverse
+      : ClayColors.clayDarkTextInverse;
+  static Color get clayDarkBorder => ClayColors.isLightMode
+      ? ClayColors.clayBorder
+      : ClayColors.clayDarkBorder;
+  static Color get clayDarkBorderStrong => ClayColors.isLightMode
+      ? ClayColors.clayBorderStrong
+      : ClayColors.clayDarkBorderStrong;
+  static Color get clayDarkDivider => ClayColors.isLightMode
+      ? ClayColors.clayDivider
+      : ClayColors.clayDarkDivider;
   static Color get clayDarkShadowDark => ClayColors.clayDarkShadowDark;
   static Color get clayDarkShadowLight => ClayColors.clayDarkShadowLight;
+
+  // Surface colour for light-mode full-screen blocks (e.g. the workout page scaffold).
+  static Color get claySurfaceLight => ClayColors.claySurfaceLight;
+
+  /// Hairline / rim colour for glass borders, dividers and specular highlights.
+  /// White reads as a light sheen on the dark palette but disappears entirely
+  /// over the light one, so it flips to ink instead of vanishing.
+  static Color get hairline =>
+      ClayColors.isLightMode ? Colors.black : Colors.white;
 
   // Spacing
   static double get xxs => ClaySpacing.xxs;

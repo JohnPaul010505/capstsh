@@ -832,7 +832,15 @@ function getWeekNumber(d) {
   return Math.ceil((((d - start) / 86400000) + start.getDay() + 1) / 7)
 }
 
+// Production serves the built admin from this same process as the /api routes.
+const adminDist = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'dist')
+app.use(express.static(adminDist))
+app.use((req, res, next) => {
+  if (req.path === '/api' || req.path.startsWith('/api/')) return next()
+  res.sendFile(resolve(adminDist, 'index.html'))
+})
+
 const port = process.env.PORT || 3001
-app.listen(port, () => {
+app.listen(port, '0.0.0.0', () => {
   console.log(`Admin API server running on port ${port}`)
 })

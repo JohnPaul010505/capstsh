@@ -8,10 +8,11 @@ import '../../../shared/widgets/clay/clay_avatar.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../../../shared/widgets/pressable.dart';
 import '../../../shared/widgets/skeleton.dart';
-import '../../progress/pages/progress_list_page.dart' show assignedMembersProvider;
+import '../../progress/pages/progress_list_page.dart'
+    show assignedMembersProvider;
 
 /// Member Insight search: the dashboard's "find a member" entry. Search by
-/// name or member code, tap a row â†’ MemberInsightPage (goal progress, risk,
+/// name or member code, tap a row → MemberInsightPage (goal progress, risk,
 /// check-ins, measurements). Rows reuse the slimmed assignedMembersProvider
 /// (name + last check-in), so this screen costs zero extra queries once the
 /// Members tab has loaded.
@@ -37,14 +38,11 @@ class _MemberInsightSearchPageState
   void _openFirstMatch(List<Map<String, dynamic>> members) {
     if (_query.isEmpty || members.isEmpty) return;
     final q = _query;
-    final match = members.firstWhere(
-      (m) {
-        final name = (m['full_name'] as String? ?? '').toLowerCase();
-        final code = (m['code'] as String? ?? '').toLowerCase();
-        return name.contains(q) || code.contains(q);
-      },
-      orElse: () => const <String, dynamic>{},
-    );
+    final match = members.firstWhere((m) {
+      final name = (m['full_name'] as String? ?? '').toLowerCase();
+      final code = (m['code'] as String? ?? '').toLowerCase();
+      return name.contains(q) || code.contains(q);
+    }, orElse: () => const <String, dynamic>{});
     final id = match['id'] as String?;
     if (id != null && mounted) context.push('/trainer/insight/$id');
   }
@@ -54,7 +52,7 @@ class _MemberInsightSearchPageState
     final membersAsync = ref.watch(assignedMembersProvider);
 
     return Scaffold(
-      backgroundColor: ClayTokens.clayDarkBase,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: AppGlowBackground(
         child: SafeArea(
           child: Column(
@@ -107,14 +105,14 @@ class _MemberInsightSearchPageState
                       isDense: true,
                       filled: true,
                       fillColor: Colors.transparent,
-                      contentPadding: const EdgeInsets.symmetric(
+                      contentPadding: EdgeInsets.symmetric(
                         horizontal: 14,
                         vertical: 10,
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide(
-                          color: Colors.white.withAlpha(24),
+                          color: ClayTokens.hairline.withAlpha(24),
                         ),
                       ),
                       focusedBorder: OutlineInputBorder(
@@ -160,10 +158,10 @@ class _MemberInsightSearchPageState
                     final filtered = q.isEmpty
                         ? members
                         : members.where((m) {
-                            final name =
-                                (m['full_name'] as String? ?? '').toLowerCase();
-                            final code =
-                                (m['code'] as String? ?? '').toLowerCase();
+                            final name = (m['full_name'] as String? ?? '')
+                                .toLowerCase();
+                            final code = (m['code'] as String? ?? '')
+                                .toLowerCase();
                             return name.contains(q) || code.contains(q);
                           }).toList();
                     if (filtered.isEmpty) {
@@ -263,7 +261,7 @@ Widget _buildInsightNavBar(BuildContext context) {
   );
 }
 
-/// One search result: avatar, name, last check-in â€” opens the member's
+/// One search result: avatar, name, last check-in — opens the member's
 /// insight screen.
 class _SearchResultRow extends StatelessWidget {
   final Map<String, dynamic> data;
@@ -299,7 +297,7 @@ class _SearchResultRow extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       color: ClayTokens.clayPrimaryLight.withAlpha(25),
       borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: Colors.white.withAlpha(18)),
+      border: Border.all(color: ClayTokens.hairline.withAlpha(18)),
       child: Row(
         children: [
           ClayAvatar(
@@ -316,10 +314,10 @@ class _SearchResultRow extends StatelessWidget {
                   name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: Colors.white,
+                    color: ClayTokens.clayDarkTextPrimary,
                   ),
                 ),
                 const SizedBox(height: 4),

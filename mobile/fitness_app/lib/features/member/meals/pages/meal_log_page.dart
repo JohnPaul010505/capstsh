@@ -10,8 +10,10 @@ import '../../../shared/widgets/animations.dart';
 import '../../../shared/widgets/app_glow_background.dart';
 import '../../../shared/widgets/plan_floating_logo.dart';
 import '../../../shared/providers/plan_providers.dart';
+import '../../../shared/utils/plan_day.dart';
 import '../../../shared/widgets/trainer_plan_overlay.dart';
 import '../../../../app/design_tokens.dart';
+import '../../../shared/widgets/glass_card.dart';
 import '../../calendar/providers/month_entries_provider.dart';
 import '../../calendar/widgets/month_day_grid.dart';
 import '../../calendar/widgets/flip_card.dart';
@@ -55,13 +57,15 @@ const mealIconColors = {
   'snack': Color(0xFF30D158),
 };
 
-/// Opens the trainer's Day-1 nutrition sheet for the floating logo.
+/// Opens the trainer's plan sheet for the floating logo, showing the day
+/// that is active TODAY: Day 1 on the plan's start date, Day 2 once one
+/// calendar day (24 h) has passed, and so on up to the plan's last day.
 ///
 /// `activePlanProvider` is `autoDispose`, so `ref.read(...)` on a provider
 /// nobody is watching hands back an unresolved `AsyncValue` whose `.value`
 /// is null — the old code returned right there, which is why tapping the
 /// logo did nothing at all. Awaiting `.future` loads it on demand.
-Future<void> _openDayOnePlanSheet(BuildContext context, WidgetRef ref) async {
+Future<void> _openActivePlanSheet(BuildContext context, WidgetRef ref) async {
   final overlay = ref.read(planOverlayControllerProvider);
   if (overlay.isOpen) {
     overlay.close();
@@ -74,7 +78,9 @@ Future<void> _openDayOnePlanSheet(BuildContext context, WidgetRef ref) async {
   overlay.openForFood(
     SupabaseClientService().client.auth.currentUser!.id,
     plan['start_date'] as String? ?? '',
+    totalDays: planDayCount(plan['food_plan']),
   );
+  final dayNumber = overlay.currentDay;
   showModalBottomSheet(
     context: context,
     // Root navigator: the sheet (and its scrim) covers the shell's bottom
@@ -85,7 +91,7 @@ Future<void> _openDayOnePlanSheet(BuildContext context, WidgetRef ref) async {
     backgroundColor: Colors.transparent,
     builder: (_) => TrainerPlanFoodOverlay(
       planId: plan['id'] as String,
-      dayNumber: 1, // Day 1 only, per design
+      dayNumber: dayNumber,
       notes: plan['notes'] as String?,
     ),
   ).then((_) {
@@ -133,7 +139,7 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
       mealsForDateProvider((memberId, _selectedDate)),
     );
     return Scaffold(
-      backgroundColor: ClayTokens.clayDarkBase,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: AppGlowBackground(
         child: SafeArea(
           // LayoutBuilder must wrap the Stack, not sit inside it: `Positioned`
@@ -155,12 +161,12 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
+                          Text(
                             'FOOD INTAKE',
                             style: TextStyle(
                               fontSize: 21,
                               fontWeight: FontWeight.w900,
-                              color: Color(0xFFFFFFFF),
+                              color: ClayTokens.clayDarkTextPrimary,
                             ),
                           ),
                           Row(
@@ -182,26 +188,26 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
                                 child: mealsAsync.when(
                                   data: (meals) => Text(
                                     '${meals.length} meal${meals.length == 1 ? '' : 's'}',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 10,
                                       fontWeight: FontWeight.w600,
-                                      color: Color(0xFFFFFFFF),
+                                      color: Colors.white,
                                     ),
                                   ),
-                                  loading: () => const Text(
+                                  loading: () => Text(
                                     '...',
                                     style: TextStyle(
                                       fontSize: 10,
                                       fontWeight: FontWeight.w600,
-                                      color: Color(0xFFFFFFFF),
+                                      color: Colors.white,
                                     ),
                                   ),
-                                  error: (_, __) => const Text(
+                                  error: (_, __) => Text(
                                     '0 meals',
                                     style: TextStyle(
                                       fontSize: 10,
                                       fontWeight: FontWeight.w600,
-                                      color: Color(0xFFFFFFFF),
+                                      color: Colors.white,
                                     ),
                                   ),
                                 ),
@@ -228,7 +234,7 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      const Icon(
+                                      Icon(
                                         Icons.calendar_month_rounded,
                                         size: 12,
                                         color: Colors.white,
@@ -238,7 +244,7 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
                                         DateFormat(
                                           'MMM d',
                                         ).format(_selectedDate),
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 10,
                                           fontWeight: FontWeight.w600,
                                           color: Colors.white,
@@ -341,7 +347,8 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
                               .watch(planOverlayControllerProvider)
                               .isOpen,
                           bounds: bounds,
-                          onTap: () => _openDayOnePlanSheet(context, ref),
+                          withGlass: false,
+                          onTap: () => _openActivePlanSheet(context, ref),
                         ),
                       );
                     },
@@ -377,13 +384,13 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
           borderRadius: BorderRadius.circular(14),
         ),
         // Text only — the old "+" icon is gone, per the design pass.
-        child: const Row(
+        child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
               'Add Food',
               style: TextStyle(
-                color: Colors.white,
+                color: ClayTokens.clayDarkTextPrimary,
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
               ),
@@ -431,21 +438,26 @@ class _FoodHistoryCalendarState extends ConsumerState<_FoodHistoryCalendar> {
       child: Container(
         height: 500,
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+        padding: EdgeInsets.fromLTRB(14, 12, 14, 14),
         decoration: BoxDecoration(
-          color: ClayTokens.clayDarkSurface.withAlpha(245),
+          color: ClayColors.isLightMode
+              ? ClayTokens.claySurfaceLight.withAlpha(245)
+              : ClayTokens.clayDarkSurface.withAlpha(245),
           borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: Colors.white.withAlpha(25)),
+          border: Border.all(
+            color: ClayColors.isLightMode
+                ? ClayTokens.clayPrimary.withAlpha(45)
+                : ClayTokens.hairline.withAlpha(25)),
         ),
         child: Column(
           children: [
             Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
                     'CALENDAR FOOD INTAKE',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: ClayTokens.clayDarkTextPrimary,
                       fontSize: 13,
                       fontWeight: FontWeight.w800,
                     ),
@@ -453,9 +465,9 @@ class _FoodHistoryCalendarState extends ConsumerState<_FoodHistoryCalendar> {
                 ),
                 IconButton(
                   onPressed: () => Navigator.pop(context, _selected),
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.close,
-                    color: Color(0xFFB4B4D0),
+                    color: ClayTokens.clayDarkTextSecondary,
                     size: 18,
                   ),
                 ),
@@ -534,8 +546,8 @@ class _FoodHistoryBack extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
           child: Text(
             DateFormat('EEEE, MMM d').format(date),
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: ClayTokens.clayDarkTextPrimary,
               fontSize: 15,
               fontWeight: FontWeight.w800,
             ),
@@ -546,17 +558,17 @@ class _FoodHistoryBack extends ConsumerWidget {
             loading: () => const Center(
               child: CircularProgressIndicator(color: Color(0xFFA78BFA)),
             ),
-            error: (_, __) => const Center(
+            error: (_, __) => Center(
               child: Text(
                 'Could not load meals for this date.',
-                style: TextStyle(color: Color(0xFFB4B4D0)),
+                style: TextStyle(color: ClayTokens.clayDarkTextSecondary),
               ),
             ),
             data: (meals) => meals.isEmpty
-                ? const Center(
+                ? Center(
                     child: Text(
                       'No meals recorded for this date.',
-                      style: TextStyle(color: Color(0xFFB4B4D0)),
+                      style: TextStyle(color: ClayTokens.clayDarkTextSecondary),
                     ),
                   )
                 : ListView.builder(
@@ -570,12 +582,12 @@ class _FoodHistoryBack extends ConsumerWidget {
                       final carbs = meal['carbs_g'] ?? 0;
                       final fat = meal['fat_g'] ?? 0;
                       return Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.all(12),
+                        margin: EdgeInsets.only(bottom: 8),
+                        padding: EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.white.withAlpha(10),
+                          color: ClayTokens.hairline.withAlpha(10),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.white.withAlpha(18)),
+                          border: Border.all(color: ClayTokens.hairline.withAlpha(18)),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -585,8 +597,8 @@ class _FoodHistoryBack extends ConsumerWidget {
                                 Expanded(
                                   child: Text(
                                     name,
-                                    style: const TextStyle(
-                                      color: Colors.white,
+                                    style: TextStyle(
+                                      color: ClayTokens.clayDarkTextPrimary,
                                       fontWeight: FontWeight.w700,
                                       fontSize: 13,
                                     ),
@@ -605,8 +617,8 @@ class _FoodHistoryBack extends ConsumerWidget {
                             const SizedBox(height: 3),
                             Text(
                               '${type[0].toUpperCase()}${type.substring(1)} ? ${DateFormat('h:mm a').format(DateTime.tryParse(meal['meal_time'] as String? ?? '')?.toLocal() ?? date)}',
-                              style: const TextStyle(
-                                color: Color(0xFFB4B4D0),
+                              style: TextStyle(
+                                color: ClayTokens.clayDarkTextSecondary,
                                 fontSize: 11,
                               ),
                             ),
@@ -725,25 +737,31 @@ class _TodayMacroRing extends ConsumerWidget {
         : <PieChartSectionData>[
             PieChartSectionData(
               value: 1,
-              color: const Color(0x1FFFFFFF),
+              color: glassRimSoft(const Color(0x1FFFFFFF)),
               radius: 20,
               showTitle: false,
             ),
           ];
 
-    return Container(
+    return MemberGlassCard(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0x12FFFFFF),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0x2EFFFFFF)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x59000000),
-            blurRadius: 24,
-            offset: Offset(0, 10),
-          ),
-        ],
+      borderRadius: BorderRadius.circular(20),
+      // Dark mode keeps its exact translucent panel.
+      darkBuilder: (cardChild) => Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0x12FFFFFF),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0x2EFFFFFF)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x59000000),
+              blurRadius: 24,
+              offset: Offset(0, 10),
+            ),
+          ],
+        ),
+        child: cardChild,
       ),
       child: Row(
         children: [
@@ -766,28 +784,28 @@ class _TodayMacroRing extends ConsumerWidget {
                   children: [
                     Text(
                       '$totalCal',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 19,
                         fontWeight: FontWeight.w800,
-                        color: Color(0xFFFFFFFF),
+                        color: Colors.white,
                         height: 1.05,
                       ),
                     ),
-                    const Text(
+                    Text(
                       'kcal',
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFFFFFFFF),
+                        color: ClayTokens.clayDarkTextSecondary,
                         height: 1.2,
                       ),
                     ),
-                    const Text(
+                    Text(
                       'consumed',
                       style: TextStyle(
                         fontSize: 8.5,
                         fontWeight: FontWeight.w500,
-                        color: Color(0xFFFFFFFF),
+                        color: ClayTokens.clayDarkTextTertiary,
                         height: 1.2,
                       ),
                     ),
@@ -803,10 +821,10 @@ class _TodayMacroRing extends ConsumerWidget {
               children: [
                 Text(
                   '${date.year == DateTime.now().year && date.month == DateTime.now().month && date.day == DateTime.now().day ? 'Daily' : DateFormat('MMM d').format(date)} Intake',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFFFFFFFF),
+                    color: ClayTokens.clayDarkTextPrimary,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -814,9 +832,9 @@ class _TodayMacroRing extends ConsumerWidget {
                   macroTotal > 0
                       ? '$totalCal kcal · ${meals.length} meal${meals.length == 1 ? '' : 's'}'
                       : 'Nothing logged yet',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
-                    color: Color(0xFFFFFFFF),
+                    color: ClayTokens.clayDarkTextSecondary,
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -879,10 +897,10 @@ class _MacroMiniCard extends StatelessWidget {
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 9.5,
               fontWeight: FontWeight.w600,
-              color: Color(0xFFFFFFFF),
+              color: ClayTokens.clayDarkTextPrimary,
             ),
           ),
         ),
@@ -893,7 +911,7 @@ class _MacroMiniCard extends StatelessWidget {
               Container(
                 height: 4,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2C2C2E),
+                  color: glassRimSoft(const Color(0xFF2C2C2E)),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -915,10 +933,10 @@ class _MacroMiniCard extends StatelessWidget {
           width: 64,
           child: Text(
             '${grams.toStringAsFixed(0)}g · $pctStr',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w600,
-              color: Color(0xFFFFFFFF),
+              color: ClayTokens.clayDarkTextSecondary,
             ),
           ),
         ),
@@ -971,10 +989,10 @@ class _MealCard extends StatelessWidget {
                 children: [
                   Text(
                     name,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFFFFFFFF),
+                      color: ClayTokens.clayDarkTextPrimary,
                     ),
                   ),
                   Text(

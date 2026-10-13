@@ -33,17 +33,13 @@ class _NeumorphicSurface extends StatelessWidget {
   final EdgeInsets? padding;
   final double rx;
 
-  const _NeumorphicSurface({
-    required this.child,
-    this.padding,
-    this.rx = 16,
-  });
+  const _NeumorphicSurface({required this.child, this.padding, this.rx = 16});
 
   @override
   Widget build(BuildContext context) {
     return GlassPanel(
-      padding: padding ??
-          const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding:
+          padding ?? const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       borderRadius: BorderRadius.circular(rx),
       child: child,
     );
@@ -89,24 +85,33 @@ class _KpiCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(value, style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: ClayTokens.clayDarkTextPrimary,
-                )),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: ClayTokens.clayDarkTextPrimary,
+                  ),
+                ),
                 const SizedBox(height: 3),
-                Text(label, style: TextStyle(
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.4,
-                  color: ClayTokens.clayDarkTextTertiary,
-                )),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.4,
+                    color: ClayTokens.clayDarkTextTertiary,
+                  ),
+                ),
                 if (subText != null) ...[
                   const SizedBox(height: 1),
-                  Text(subText, style: TextStyle(
-                    fontSize: 9.5,
-                    color: ClayTokens.clayDarkTextSecondary,
-                  )),
+                  Text(
+                    subText,
+                    style: TextStyle(
+                      fontSize: 9.5,
+                      color: ClayTokens.clayDarkTextSecondary,
+                    ),
+                  ),
                 ],
               ],
             ),
@@ -173,12 +178,15 @@ class _CardShell extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(title, style: TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w600,
-                    color: ClayTokens.clayDarkTextPrimary,
-                    letterSpacing: -0.2,
-                  )),
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w600,
+                      color: ClayTokens.clayDarkTextPrimary,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
                 ),
                 if (headerRight != null) headerRight!,
               ],
@@ -268,18 +276,24 @@ class _InlineBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: small ? 6 : 8, vertical: small ? 2 : 3),
+      padding: EdgeInsets.symmetric(
+        horizontal: small ? 6 : 8,
+        vertical: small ? 2 : 3,
+      ),
       decoration: BoxDecoration(
         color: solid ? color : color.withAlpha(30),
         borderRadius: BorderRadius.circular(small ? 6 : 8),
         border: solid ? null : Border.all(color: color.withAlpha(120)),
       ),
-      child: Text(label, style: TextStyle(
-        fontSize: small ? 9 : 10.5,
-        fontWeight: FontWeight.w700,
-        color: solid ? Colors.white : color,
-        letterSpacing: 0.3,
-      )),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: small ? 9 : 10.5,
+          fontWeight: FontWeight.w700,
+          color: solid ? Colors.white : color,
+          letterSpacing: 0.3,
+        ),
+      ),
     );
   }
 }
@@ -357,7 +371,6 @@ class _TableHead extends StatelessWidget {
 
 // ---------------------------------------------------------------------------
 // Models
-
 
 // ---------------------------------------------------------------------------
 
@@ -527,55 +540,54 @@ final trainerMembersProvider = FutureProvider<List<TrainerMember>>((ref) async {
 /// chronological activity feed for the selected window.
 final trainerCheckinsProvider =
     FutureProvider.family<CheckinData, CheckinRange>((ref, range) async {
-  final members = await ref.watch(trainerMembersProvider.future);
-  if (members.isEmpty) return CheckinData.empty;
+      final members = await ref.watch(trainerMembersProvider.future);
+      if (members.isEmpty) return CheckinData.empty;
 
-  final ids = members.map((m) => m.id).toList();
-  final byId = {for (final m in members) m.id: m};
+      final ids = members.map((m) => m.id).toList();
+      final byId = {for (final m in members) m.id: m};
 
-  final client = SupabaseClientService().client;
-  final rows = await client
-      .from('attendance')
-      .select('member_id, check_in_time, entry_method')
-      .inFilter('member_id', ids)
-      .gte('check_in_time', range.start.toUtc().toIso8601String())
-      .lte('check_in_time', range.end.toUtc().toIso8601String())
-      .order('check_in_time', ascending: false)
-      .limit(2000);
+      final client = SupabaseClientService().client;
+      final rows = await client
+          .from('attendance')
+          .select('member_id, check_in_time, entry_method')
+          .inFilter('member_id', ids)
+          .gte('check_in_time', range.start.toUtc().toIso8601String())
+          .lte('check_in_time', range.end.toUtc().toIso8601String())
+          .order('check_in_time', ascending: false)
+          .limit(2000);
 
-  final list = (rows as List).cast<Map<String, dynamic>>();
-  final times = <DateTime>[];
-  final feed = <CheckinEntry>[];
-  for (final r in list) {
-    final parsed = DateTime.tryParse(r['check_in_time'] as String? ?? '');
-    if (parsed == null) continue;
-    final local = parsed.toLocal();
-    times.add(local);
-    if (feed.length < 60) {
-      final member = byId[r['member_id'] as String];
-      feed.add(
-        CheckinEntry(
-          memberId: r['member_id'] as String,
-          name: member?.name ?? 'Unknown',
-          avatarUrl: member?.avatarUrl,
-          time: local,
-          entryMethod: r['entry_method'] as String?,
-        ),
+      final list = (rows as List).cast<Map<String, dynamic>>();
+      final times = <DateTime>[];
+      final feed = <CheckinEntry>[];
+      for (final r in list) {
+        final parsed = DateTime.tryParse(r['check_in_time'] as String? ?? '');
+        if (parsed == null) continue;
+        final local = parsed.toLocal();
+        times.add(local);
+        if (feed.length < 60) {
+          final member = byId[r['member_id'] as String];
+          feed.add(
+            CheckinEntry(
+              memberId: r['member_id'] as String,
+              name: member?.name ?? 'Unknown',
+              avatarUrl: member?.avatarUrl,
+              time: local,
+              entryMethod: r['entry_method'] as String?,
+            ),
+          );
+        }
+      }
+
+      final now = DateTime.now();
+      final todayStart = DateTime(now.year, now.month, now.day);
+      return CheckinData(
+        total: list.length,
+        uniqueMembers: list.map((r) => r['member_id'] as String).toSet().length,
+        todayCount: times.where((t) => !t.isBefore(todayStart)).length,
+        feed: feed,
+        buckets: _bucketize(times, range.start, range.end),
       );
-    }
-  }
-
-  final now = DateTime.now();
-  final todayStart = DateTime(now.year, now.month, now.day);
-  return CheckinData(
-    total: list.length,
-    uniqueMembers:
-        list.map((r) => r['member_id'] as String).toSet().length,
-    todayCount: times.where((t) => !t.isBefore(todayStart)).length,
-    feed: feed,
-    buckets: _bucketize(times, range.start, range.end),
-  );
-});
+    });
 
 /// Member Overview screen: gender split + active/inactive split. A member is
 /// "active" when they checked in within the last 30 days.
@@ -627,122 +639,125 @@ final trainerMemberOverviewProvider = FutureProvider<MemberOverviewData>((
 /// members' workouts, feedback comments, star ratings, and food logs, scoped
 /// to the selected date window.
 final trainerRecentActivityProvider =
-    FutureProvider.family<List<ActivityEntry>, CheckinRange>((ref, range) async {
-  final members = await ref.watch(trainerMembersProvider.future);
-  if (members.isEmpty) return const <ActivityEntry>[];
+    FutureProvider.family<List<ActivityEntry>, CheckinRange>((
+      ref,
+      range,
+    ) async {
+      final members = await ref.watch(trainerMembersProvider.future);
+      if (members.isEmpty) return const <ActivityEntry>[];
 
-  final ids = members.map((m) => m.id).toList();
-  final byId = {for (final m in members) m.id: m};
-  final client = SupabaseClientService().client;
-  final startIso = range.start.toUtc().toIso8601String();
-  final endIso = range.end.toUtc().toIso8601String();
+      final ids = members.map((m) => m.id).toList();
+      final byId = {for (final m in members) m.id: m};
+      final client = SupabaseClientService().client;
+      final startIso = range.start.toUtc().toIso8601String();
+      final endIso = range.end.toUtc().toIso8601String();
 
-  final results = await Future.wait([
-    client
-        .from('workout_logs')
-        .select('member_id, exercise_name, logged_at')
-        .inFilter('member_id', ids)
-        .gte('logged_at', startIso)
-        .lte('logged_at', endIso)
-        .order('logged_at', ascending: false)
-        .limit(200),
-    client
-        .from('trainer_feedback')
-        .select(
-          'member_id, rating, member_comment, member_commented_at, created_at',
-        )
-        .inFilter('member_id', ids)
-        .gte('created_at', startIso)
-        .lte('created_at', endIso)
-        .order('created_at', ascending: false)
-        .limit(200),
-    client
-        .from('meal_logs')
-        .select('member_id, meal_type, food_name, meal_time')
-        .inFilter('member_id', ids)
-        .gte('meal_time', startIso)
-        .lte('meal_time', endIso)
-        .order('meal_time', ascending: false)
-        .limit(200),
-  ]);
+      final results = await Future.wait([
+        client
+            .from('workout_logs')
+            .select('member_id, exercise_name, logged_at')
+            .inFilter('member_id', ids)
+            .gte('logged_at', startIso)
+            .lte('logged_at', endIso)
+            .order('logged_at', ascending: false)
+            .limit(200),
+        client
+            .from('trainer_feedback')
+            .select(
+              'member_id, rating, member_comment, member_commented_at, created_at',
+            )
+            .inFilter('member_id', ids)
+            .gte('created_at', startIso)
+            .lte('created_at', endIso)
+            .order('created_at', ascending: false)
+            .limit(200),
+        client
+            .from('meal_logs')
+            .select('member_id, meal_type, food_name, meal_time')
+            .inFilter('member_id', ids)
+            .gte('meal_time', startIso)
+            .lte('meal_time', endIso)
+            .order('meal_time', ascending: false)
+            .limit(200),
+      ]);
 
-  final entries = <ActivityEntry>[];
+      final entries = <ActivityEntry>[];
 
-  for (final r in (results[0] as List).cast<Map<String, dynamic>>()) {
-    final t = DateTime.tryParse(r['logged_at'] as String? ?? '');
-    if (t == null) continue;
-    final m = byId[r['member_id'] as String];
-    final exercise = (r['exercise_name'] as String? ?? 'a workout').trim();
-    entries.add(
-      ActivityEntry(
-        type: 'workout',
-        memberId: r['member_id'] as String,
-        memberName: m?.name ?? 'Unknown',
-        avatarUrl: m?.avatarUrl,
-        description: 'Completed $exercise',
-        time: t.toLocal(),
-      ),
-    );
-  }
+      for (final r in (results[0] as List).cast<Map<String, dynamic>>()) {
+        final t = DateTime.tryParse(r['logged_at'] as String? ?? '');
+        if (t == null) continue;
+        final m = byId[r['member_id'] as String];
+        final exercise = (r['exercise_name'] as String? ?? 'a workout').trim();
+        entries.add(
+          ActivityEntry(
+            type: 'workout',
+            memberId: r['member_id'] as String,
+            memberName: m?.name ?? 'Unknown',
+            avatarUrl: m?.avatarUrl,
+            description: 'Completed $exercise',
+            time: t.toLocal(),
+          ),
+        );
+      }
 
-  for (final r in (results[1] as List).cast<Map<String, dynamic>>()) {
-    final mid = r['member_id'] as String;
-    final m = byId[mid];
-    final comment = (r['member_comment'] as String? ?? '').trim();
-    final rating = (r['rating'] as num?)?.toInt();
-    final at =
-        DateTime.tryParse(r['member_commented_at'] as String? ?? '') ??
-        DateTime.tryParse(r['created_at'] as String? ?? '');
-    if (at == null) continue;
-    final time = at.toLocal();
-    if (comment.isNotEmpty) {
-      entries.add(
-        ActivityEntry(
-          type: 'comment',
-          memberId: mid,
-          memberName: m?.name ?? 'Unknown',
-          avatarUrl: m?.avatarUrl,
-          description: 'Commented: "$comment"',
-          time: time,
-        ),
-      );
-    }
-    if (rating != null) {
-      entries.add(
-        ActivityEntry(
-          type: 'rating',
-          memberId: mid,
-          memberName: m?.name ?? 'Unknown',
-          avatarUrl: m?.avatarUrl,
-          description:
-              'Rated your feedback $rating star${rating == 1 ? '' : 's'}',
-          time: time,
-        ),
-      );
-    }
-  }
+      for (final r in (results[1] as List).cast<Map<String, dynamic>>()) {
+        final mid = r['member_id'] as String;
+        final m = byId[mid];
+        final comment = (r['member_comment'] as String? ?? '').trim();
+        final rating = (r['rating'] as num?)?.toInt();
+        final at =
+            DateTime.tryParse(r['member_commented_at'] as String? ?? '') ??
+            DateTime.tryParse(r['created_at'] as String? ?? '');
+        if (at == null) continue;
+        final time = at.toLocal();
+        if (comment.isNotEmpty) {
+          entries.add(
+            ActivityEntry(
+              type: 'comment',
+              memberId: mid,
+              memberName: m?.name ?? 'Unknown',
+              avatarUrl: m?.avatarUrl,
+              description: 'Commented: "$comment"',
+              time: time,
+            ),
+          );
+        }
+        if (rating != null) {
+          entries.add(
+            ActivityEntry(
+              type: 'rating',
+              memberId: mid,
+              memberName: m?.name ?? 'Unknown',
+              avatarUrl: m?.avatarUrl,
+              description:
+                  'Rated your feedback $rating star${rating == 1 ? '' : 's'}',
+              time: time,
+            ),
+          );
+        }
+      }
 
-  for (final r in (results[2] as List).cast<Map<String, dynamic>>()) {
-    final t = DateTime.tryParse(r['meal_time'] as String? ?? '');
-    if (t == null) continue;
-    final m = byId[r['member_id'] as String];
-    final meal = (r['meal_type'] as String? ?? '').trim();
-    final food = (r['food_name'] as String? ?? 'a meal').trim();
-    entries.add(
-      ActivityEntry(
-        type: 'food',
-        memberId: r['member_id'] as String,
-        memberName: m?.name ?? 'Unknown',
-        avatarUrl: m?.avatarUrl,
-        description: 'Logged $food${meal.isEmpty ? '' : ' ($meal)'}',
-        time: t.toLocal(),
-      ),
-    );
-  }
+      for (final r in (results[2] as List).cast<Map<String, dynamic>>()) {
+        final t = DateTime.tryParse(r['meal_time'] as String? ?? '');
+        if (t == null) continue;
+        final m = byId[r['member_id'] as String];
+        final meal = (r['meal_type'] as String? ?? '').trim();
+        final food = (r['food_name'] as String? ?? 'a meal').trim();
+        entries.add(
+          ActivityEntry(
+            type: 'food',
+            memberId: r['member_id'] as String,
+            memberName: m?.name ?? 'Unknown',
+            avatarUrl: m?.avatarUrl,
+            description: 'Logged $food${meal.isEmpty ? '' : ' ($meal)'}',
+            time: t.toLocal(),
+          ),
+        );
+      }
 
-  entries.sort((a, b) => b.time.compareTo(a.time));
-  return entries.take(120).toList();
-});
+      entries.sort((a, b) => b.time.compareTo(a.time));
+      return entries.take(120).toList();
+    });
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -814,8 +829,7 @@ String _initials(String name) {
       .toList();
   if (parts.isEmpty) return '?';
   if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
-  return (parts.first.substring(0, 1) + parts[1].substring(0, 1))
-      .toUpperCase();
+  return (parts.first.substring(0, 1) + parts[1].substring(0, 1)).toUpperCase();
 }
 
 String _timeAgo(DateTime t) {
@@ -1000,7 +1014,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                       stops: const [0.0, 0.55, 1.0],
                     ),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.white.withAlpha(38)),
+                    border: Border.all(color: ClayTokens.hairline.withAlpha(38)),
                   ),
                   child: child ?? const SizedBox.shrink(),
                 ),
@@ -1053,9 +1067,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         ? 'Good afternoon'
         : 'Good evening';
 
-    return Scaffold(
-      backgroundColor: ClayTokens.clayDarkBase,
-      body: AppGlowBackground(
+    return Scaffold(        backgroundColor: ClayColors.isLightMode
+            ? ClayTokens.claySurfaceLight.withAlpha(250)
+            : ClayTokens.clayDarkSurface,
+        body: AppGlowBackground(
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1086,9 +1101,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                         width: 44,
                         height: 44,
                         fit: BoxFit.contain,
-                        errorBuilder: (_, __, ___) => const Icon(
+                        errorBuilder: (_, __, ___) => Icon(
                           Icons.fitness_center,
-                          color: Colors.white,
+                          color: ClayTokens.clayDarkTextPrimary,
                           size: 30,
                         ),
                       ),
@@ -1096,92 +1111,92 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Consumer(
-                      builder: (context, ref, _) {
-                        final authAsync = ref.watch(authProvider);
-                        return authAsync.when(
-                          data: (profile) {
-                            final fullName = profile?.fullName ?? 'Trainer';
-                            final name = fullName.split(' ').first;
-                            final isEvening = DateTime.now().hour >= 17;
-                            return Column(
+                        builder: (context, ref, _) {
+                          final authAsync = ref.watch(authProvider);
+                          return authAsync.when(
+                            data: (profile) {
+                              final fullName = profile?.fullName ?? 'Trainer';
+                              final name = fullName.split(' ').first;
+                              final isEvening = DateTime.now().hour >= 17;
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: ClayTokens.displaySmall.copyWith(
+                                      letterSpacing: 0,
+                                      color: ClayTokens.clayDarkTextPrimary,
+                                      height: 1.0,
+                                    ),
+                                  ),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        isEvening
+                                            ? Icons.nights_stay
+                                            : Icons.wb_sunny,
+                                        size: 16,
+                                        color: isEvening
+                                            ? ClayTokens.clayPrimaryLight
+                                            : ClayTokens.clayWarning,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        greeting,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: ClayTokens.clayDarkTextPrimary,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              );
+                            },
+                            loading: () => Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const SkeletonBox(
+                                  width: 80,
+                                  height: 20,
+                                  borderRadius: 4,
+                                ),
+                                const SizedBox(height: 2),
+                                SkeletonBox(
+                                  width: 60,
+                                  height: 12,
+                                  borderRadius: 4,
+                                ),
+                              ],
+                            ),
+                            error: (_, __) => Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  name,
+                                  'Trainer',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: ClayTokens.displaySmall.copyWith(
                                     letterSpacing: 0,
-                                    color: Colors.white,
+                                    color: ClayTokens.clayDarkTextPrimary,
                                     height: 1.0,
                                   ),
                                 ),
-                                Row(
-                                  children: [
-                                    Icon(
-                                      isEvening
-                                          ? Icons.nights_stay
-                                          : Icons.wb_sunny,
-                                      size: 16,
-                                      color: isEvening
-                                          ? ClayTokens.clayPrimaryLight
-                                          : ClayTokens.clayWarning,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      greeting,
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
+                                Text(
+                                  greeting,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: ClayTokens.clayDarkTextPrimary,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ],
-                            );
-                          },
-                          loading: () => Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const SkeletonBox(
-                                width: 80,
-                                height: 20,
-                                borderRadius: 4,
-                              ),
-                              const SizedBox(height: 2),
-                              const SkeletonBox(
-                                width: 60,
-                                height: 12,
-                                borderRadius: 4,
-                              ),
-                            ],
-                          ),
-                          error: (_, __) => Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Trainer',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: ClayTokens.displaySmall.copyWith(
-                                  letterSpacing: 0,
-                                  color: Colors.white,
-                                  height: 1.0,
-                                ),
-                              ),
-                              Text(
-                                greeting,
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
+                            ),
+                          );
+                        },
                       ),
                     ),
                     const SizedBox(width: 4),
@@ -1367,16 +1382,14 @@ class _PagerBtn extends StatelessWidget {
     return GestureDetector(
       onTap: enabled ? onTap : null,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: enabled
-              ? ClayTokens.clayPrimary
-              : Colors.white.withAlpha(6),
+          color: enabled ? ClayTokens.clayPrimary : ClayTokens.hairline.withAlpha(6),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: enabled
                 ? ClayTokens.clayPrimary
-                : Colors.white.withAlpha(12),
+                : ClayTokens.hairline.withAlpha(12),
           ),
         ),
         child: Text(
@@ -1384,9 +1397,7 @@ class _PagerBtn extends StatelessWidget {
           style: TextStyle(
             fontSize: 10.5,
             fontWeight: FontWeight.w700,
-            color: enabled
-                ? Colors.white
-                : ClayTokens.clayDarkTextTertiary,
+            color: enabled ? Colors.white : ClayTokens.clayDarkTextTertiary,
           ),
         ),
       ),
@@ -1441,12 +1452,15 @@ class _BurgerMenuOverlay extends StatelessWidget {
     const panelWidth = 210.0;
     final screenWidth = MediaQuery.of(context).size.width;
 
-    final panelLeft =
-        (position.dx + size.width / 2 - panelWidth / 2)
-            .clamp(8.0, screenWidth - panelWidth - 8.0);
+    final panelLeft = (position.dx + size.width / 2 - panelWidth / 2).clamp(
+      8.0,
+      screenWidth - panelWidth - 8.0,
+    );
     final burgerCenterX = position.dx + size.width / 2;
-    final arrowLeft = (burgerCenterX - arrowWidth / 2)
-        .clamp(panelLeft + 12, panelLeft + panelWidth - arrowWidth - 12);
+    final arrowLeft = (burgerCenterX - arrowWidth / 2).clamp(
+      panelLeft + 12,
+      panelLeft + panelWidth - arrowWidth - 12,
+    );
     final panelTop = position.dy + size.height + 6;
 
     return Stack(
@@ -1462,7 +1476,7 @@ class _BurgerMenuOverlay extends StatelessWidget {
           left: arrowLeft,
           child: CustomPaint(
             size: const Size(arrowWidth, arrowHeight),
-            painter: _MenuArrowPainter(Colors.white.withAlpha(36)),
+            painter: _MenuArrowPainter(ClayTokens.hairline.withAlpha(36)),
           ),
         ),
         Positioned(
@@ -1494,7 +1508,7 @@ class _BurgerMenuOverlay extends StatelessWidget {
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    padding: EdgeInsets.symmetric(vertical: 6),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
@@ -1507,7 +1521,7 @@ class _BurgerMenuOverlay extends StatelessWidget {
                         stops: const [0.0, 0.55, 1.0],
                       ),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.white.withAlpha(38)),
+                      border: Border.all(color: ClayTokens.hairline.withAlpha(38)),
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -1534,7 +1548,7 @@ class _BurgerMenuOverlay extends StatelessWidget {
       onTap: () => onPick(value),
       behavior: HitTestBehavior.opaque,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        padding: EdgeInsets.symmetric(horizontal: 14, vertical: 11),
         child: Row(
           children: [
             Container(
@@ -1544,7 +1558,7 @@ class _BurgerMenuOverlay extends StatelessWidget {
               decoration: BoxDecoration(
                 color: isSelected
                     ? ClayTokens.clayPrimary.withAlpha(60)
-                    : Colors.white.withAlpha(20),
+                    : ClayTokens.hairline.withAlpha(20),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
@@ -1598,8 +1612,7 @@ class _DailyCheckinsView extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<_DailyCheckinsView> createState() =>
-      _DailyCheckinsViewState();
+  ConsumerState<_DailyCheckinsView> createState() => _DailyCheckinsViewState();
 }
 
 class _DailyCheckinsViewState extends ConsumerState<_DailyCheckinsView> {
@@ -1641,7 +1654,8 @@ class _DailyCheckinsViewState extends ConsumerState<_DailyCheckinsView> {
         const SizedBox(height: 14),
         async.when(
           data: (data) {
-            final spanDays = widget.end
+            final spanDays =
+                widget.end
                     .difference(
                       DateTime(
                         widget.start.year,
@@ -1657,8 +1671,7 @@ class _DailyCheckinsViewState extends ConsumerState<_DailyCheckinsView> {
                 : ((data.feed.length + _pageSize - 1) ~/ _pageSize);
             final page = _page.clamp(0, pageCount - 1);
             final startIndex = page * _pageSize;
-            final visible =
-                data.feed.skip(startIndex).take(_pageSize).toList();
+            final visible = data.feed.skip(startIndex).take(_pageSize).toList();
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1748,9 +1761,7 @@ class _DailyCheckinsViewState extends ConsumerState<_DailyCheckinsView> {
               ],
             );
           },
-          loading: () => const _LoadingColumn(
-            blocks: [200, 130, 130],
-          ),
+          loading: () => const _LoadingColumn(blocks: [200, 130, 130]),
           error: (e, _) => _ErrorCard(error: e),
         ),
         const SizedBox(height: 20),
@@ -1786,17 +1797,9 @@ class _RangeBar extends StatelessWidget {
         children: [
           Row(
             children: [
-              _DateField(
-                label: 'Start date',
-                date: start,
-                onTap: onPickStart,
-              ),
+              _DateField(label: 'Start date', date: start, onTap: onPickStart),
               const SizedBox(width: 8),
-              _DateField(
-                label: 'End date',
-                date: end,
-                onTap: onPickEnd,
-              ),
+              _DateField(label: 'End date', date: end, onTap: onPickEnd),
             ],
           ),
           const SizedBox(height: 10),
@@ -1853,11 +1856,11 @@ class _DateField extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
-            color: Colors.white.withAlpha(14),
+            color: ClayTokens.hairline.withAlpha(14),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.white.withAlpha(30)),
+            border: Border.all(color: ClayTokens.hairline.withAlpha(30)),
           ),
           child: Row(
             children: [
@@ -1918,17 +1921,15 @@ class _PresetChip extends StatelessWidget {
     return GestureDetector(
       onTap: () => onTap(value),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        duration: Duration(milliseconds: 150),
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: selected
-              ? ClayTokens.clayPrimary
-              : Colors.white.withAlpha(14),
+          color: selected ? ClayTokens.clayPrimary : ClayTokens.hairline.withAlpha(14),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: selected
                 ? ClayTokens.clayPrimary
-                : Colors.white.withAlpha(30),
+                : ClayTokens.hairline.withAlpha(30),
           ),
         ),
         child: Text(
@@ -1983,8 +1984,26 @@ class _TrendCard extends StatelessWidget {
 /// y-axis never shows ugly values like 23/46 or duplicate 1/1/1 labels.
 int _trendNiceStep(int raw) {
   const steps = [
-    1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 2500,
-    5000, 10000, 20000, 25000, 50000, 100000,
+    1,
+    2,
+    5,
+    10,
+    20,
+    25,
+    50,
+    100,
+    200,
+    250,
+    500,
+    1000,
+    2000,
+    2500,
+    5000,
+    10000,
+    20000,
+    25000,
+    50000,
+    100000,
   ];
   for (final s in steps) {
     if (s >= raw) return s;
@@ -2008,7 +2027,10 @@ class _TrendChart extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final width = (buckets.length * perBar).clamp(constraints.maxWidth, 6000.0);
+        final width = (buckets.length * perBar).clamp(
+          constraints.maxWidth,
+          6000.0,
+        );
         return SizedBox(
           height: 180,
           child: SingleChildScrollView(
@@ -2035,8 +2057,8 @@ class _TrendChart extends StatelessWidget {
                         if (count == 0) return null;
                         return BarTooltipItem(
                           '$count',
-                          const TextStyle(
-                            color: Colors.white,
+                          TextStyle(
+                            color: ClayTokens.clayDarkTextPrimary,
                             fontWeight: FontWeight.w700,
                             fontSize: 11,
                           ),
@@ -2199,10 +2221,10 @@ class _CheckinFeedTile extends StatelessWidget {
                     entry.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                      color: ClayTokens.clayDarkTextPrimary,
                     ),
                   ),
                 ),
@@ -2250,19 +2272,12 @@ class _MemberOverviewView extends ConsumerWidget {
         const SizedBox(height: 14),
         async.when(
           data: (data) {
-            final members = ref
-                .watch(trainerMembersProvider)
-                .asData
-                ?.value;
+            final members = ref.watch(trainerMembersProvider).asData?.value;
             final joined = members ?? const <TrainerMember>[];
-            final cutoff = DateTime.now().subtract(
-              const Duration(days: 30),
-            );
+            final cutoff = DateTime.now().subtract(const Duration(days: 30));
             final newCount = joined
                 .where(
-                  (m) =>
-                      m.createdAt != null &&
-                      m.createdAt!.isAfter(cutoff),
+                  (m) => m.createdAt != null && m.createdAt!.isAfter(cutoff),
                 )
                 .length;
             return Column(
@@ -2605,8 +2620,6 @@ class _BreakdownGroup extends StatelessWidget {
   }
 }
 
-
-
 // ---------------------------------------------------------------------------
 // Screen 3 — Recent Activity
 // ---------------------------------------------------------------------------
@@ -2678,9 +2691,7 @@ class _RecentActivityViewState extends ConsumerState<_RecentActivityView> {
             final page = _page.clamp(0, pageCount - 1);
             final startIndex = page * _pageSize;
             final visible = entries.skip(startIndex).take(_pageSize).toList();
-            final workouts = entries
-                .where((e) => e.type == 'workout')
-                .length;
+            final workouts = entries.where((e) => e.type == 'workout').length;
             final feedback = entries
                 .where((e) => e.type == 'comment' || e.type == 'rating')
                 .length;
@@ -2759,8 +2770,7 @@ class _RecentActivityViewState extends ConsumerState<_RecentActivityView> {
                                 ],
                               ),
                               const SizedBox(height: 4),
-                              for (final e in visible)
-                                _ActivityTile(entry: e),
+                              for (final e in visible) _ActivityTile(entry: e),
                               _PagerFooter(
                                 start: startIndex + 1,
                                 shown: visible.length,
@@ -2776,9 +2786,7 @@ class _RecentActivityViewState extends ConsumerState<_RecentActivityView> {
               ],
             );
           },
-          loading: () => const _LoadingColumn(
-            blocks: [200, 130, 130],
-          ),
+          loading: () => const _LoadingColumn(blocks: [200, 130, 130]),
           error: (e, _) => _ErrorCard(error: e),
         ),
         const SizedBox(height: 20),
@@ -2825,7 +2833,12 @@ class _ActivityTile extends StatelessWidget {
         children: [
           SizedBox(
             width: 64,
-            child: _InlineBadge(label: label, color: color, small: true, solid: true),
+            child: _InlineBadge(
+              label: label,
+              color: color,
+              small: true,
+              solid: true,
+            ),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -2836,10 +2849,10 @@ class _ActivityTile extends StatelessWidget {
                   entry.memberName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w600,
-                    color: Colors.white,
+                    color: ClayTokens.clayDarkTextPrimary,
                   ),
                 ),
                 const SizedBox(height: 2),

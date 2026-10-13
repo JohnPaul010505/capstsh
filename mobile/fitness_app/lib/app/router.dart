@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/providers/auth_provider.dart';
 import 'package:shared/services/supabase_client.dart';
 import '../features/auth/pages/login_page.dart';
+import '../features/auth/pages/forgot_password_page.dart';
+import '../features/auth/pages/reset_password_page.dart';
 import '../features/member/home/pages/home_page.dart';
 import '../features/member/meals/pages/meal_log_page.dart';
 import '../features/member/workout/pages/workout_page.dart';
@@ -57,6 +59,7 @@ Page<dynamic> _iosPush(Widget child) => CustomTransitionPage(
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
+  final recoveryMode = ref.watch(passwordRecoveryModeProvider);
   final onboardingState = ref.watch(needsOnboardingProvider);
   final profile = authState.valueOrNull;
   final needsOnboarding =
@@ -72,8 +75,17 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isLoggedIn = authState.valueOrNull != null;
       final profile = authState.valueOrNull;
       final isLoginRoute = state.matchedLocation == '/login';
+      final isForgotPasswordRoute = state.matchedLocation == '/forgot-password';
+      final isResetPasswordRoute = state.matchedLocation == '/reset-password';
 
-      if (!isLoggedIn && !isLoginRoute) return '/login';
+      if (isResetPasswordRoute) {
+        return recoveryMode ? null : '/login';
+      }
+      if (recoveryMode) return '/reset-password';
+
+      if (!isLoggedIn && !isLoginRoute && !isForgotPasswordRoute) {
+        return '/login';
+      }
       if (isLoggedIn && isLoginRoute) {
         if (profile?.role == 'trainer') return '/trainer/dashboard';
         if (needsOnboarding) return '/member/onboarding';
@@ -110,6 +122,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/login',
         pageBuilder: (_, __) => _iosPush(const LoginPage()),
+      ),
+      GoRoute(
+        path: '/forgot-password',
+        pageBuilder: (_, __) => _iosPush(const ForgotPasswordPage()),
+      ),
+      GoRoute(
+        path: '/reset-password',
+        pageBuilder: (_, __) => _iosPush(const ResetPasswordPage()),
       ),
       GoRoute(
         path: '/member/onboarding',
@@ -284,7 +304,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/trainer/insight/overview',
         pageBuilder: (_, __) => _iosPush(const MemberInsightOverviewPage()),
       ),
-      // Member Insight: dashboard search → pick a member → goal progress,
+      // Member Insight: dashboard search ? pick a member ? goal progress,
       // retention risk, check-ins and weight on one screen. Both pushed on
       // the root navigator so the trainer nav bar hides and "<" pops back
       // to wherever the trainer came from (dashboard or Members list).
@@ -370,7 +390,7 @@ class _MemberShellState extends State<MemberShell> {
     }
   }
 
-  /// Shell branch → nav-bar tab index for the active highlight. Home=0,
+  /// Shell branch ? nav-bar tab index for the active highlight. Home=0,
   /// Workout=1, Food=3 (QR=2 and Chat=4 are pushes, not branches).
   int get _activeTab {
     switch (widget.navigationShell.currentIndex) {
@@ -428,7 +448,7 @@ class _TrainerShellState extends State<TrainerShell> {
     }
   }
 
-  /// Shell branch → nav-bar tab index for the active highlight. Dashboard=0,
+  /// Shell branch ? nav-bar tab index for the active highlight. Dashboard=0,
   /// Members=1, Chat=3, Profile=4 (QR=2 is a push, not a branch).
   int get _activeTab {
     switch (widget.navigationShell.currentIndex) {

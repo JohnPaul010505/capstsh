@@ -21,8 +21,8 @@ Future<bool?> showGlassConfirmDialog(
           Text(
             title,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: ClayTokens.clayDarkTextPrimary,
               fontSize: 20,
               fontWeight: FontWeight.w700,
             ),
@@ -31,7 +31,7 @@ Future<bool?> showGlassConfirmDialog(
           Text(
             message,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.white70),
+            style: TextStyle(color: ClayTokens.clayDarkTextSecondary),
           ),
           const SizedBox(height: 22),
           Row(

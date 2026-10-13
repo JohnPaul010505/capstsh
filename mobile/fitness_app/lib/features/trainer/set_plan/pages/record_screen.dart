@@ -49,24 +49,25 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
     final cancellationRequests =
         ref.watch(trainerPlanCancellationRequestsProvider).valueOrNull ?? {};
 
-    return Scaffold(
-      backgroundColor: ClayTokens.clayDarkBase,
-      body: AppGlowBackground(
+    return Scaffold(        backgroundColor: ClayColors.isLightMode
+            ? ClayTokens.claySurfaceLight.withAlpha(250)
+            : ClayTokens.clayDarkSurface,
+        body: AppGlowBackground(
         child: SafeArea(
           child: Column(
             children: [
               _buildHeader(context),
               Padding(
-                padding: const EdgeInsets.symmetric(
+                padding: EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 8,
                 ),
                 child: Container(
-                  padding: const EdgeInsets.all(4),
+                  padding: EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(12),
+                    color: ClayTokens.hairline.withAlpha(12),
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.white.withAlpha(20)),
+                    border: Border.all(color: ClayTokens.hairline.withAlpha(20)),
                   ),
                   child: Row(
                     children: [
@@ -375,15 +376,15 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
                                                     }
                                                   }
                                                 },
-                                                icon: const Icon(
+                                                icon: Icon(
                                                   CupertinoIcons.xmark_circle,
-                                                  color: Colors.white,
+                                                  color: ClayTokens.clayDarkTextPrimary,
                                                   size: 17,
                                                 ),
-                                                label: const Text(
+                                                label: Text(
                                                   'Cancel plan',
                                                   style: TextStyle(
-                                                    color: Colors.white,
+                                                    color: ClayTokens.clayDarkTextPrimary,
                                                   ),
                                                 ),
                                                 style: TextButton.styleFrom(
@@ -465,16 +466,19 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
           CupertinoButton(
             padding: EdgeInsets.zero,
             onPressed: () => context.go('/trainer/profile'),
-            child: const Icon(CupertinoIcons.back, color: Colors.white),
+            child: Icon(
+              CupertinoIcons.back,
+              color: ClayTokens.clayDarkTextPrimary,
+            ),
           ),
-          const Expanded(
+          Expanded(
             child: Text(
               'Records',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFFFFFFFF),
+                color: ClayTokens.clayDarkTextPrimary,
                 decoration: TextDecoration.none,
               ),
             ),
@@ -500,19 +504,19 @@ class _PlanCancelDialog extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
+          Text(
             'Cancel trainer plan?',
             style: TextStyle(
-              color: Colors.white,
+              color: ClayTokens.clayDarkTextPrimary,
               fontSize: 20,
               fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 10),
-          const Text(
+          Text(
             'The member will no longer see this plan.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white70),
+            style: TextStyle(color: ClayTokens.clayDarkTextSecondary),
           ),
           const SizedBox(height: 22),
           Row(

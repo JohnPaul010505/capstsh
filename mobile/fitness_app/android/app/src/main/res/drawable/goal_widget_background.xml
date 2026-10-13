@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Main goal card: dark navy -> violet gradient, rounded 26dp, subtle purple
+  border. The outer layer paints the border, the inner layer the surface.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="315"
+                android:startColor="#8039F5"
+                android:centerColor="#6C34D6"
+                android:endColor="#C026F5"
+                android:type="linear" />
+            <corners android:radius="26dp" />
+        </shape>
+    </item>
+    <item android:left="1.5dp" android:top="1.5dp" android:right="1.5dp" android:bottom="1.5dp">
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="315"
+                android:startColor="#FF211B40"
+                android:centerColor="#FF1B1838"
+                android:endColor="#FF171532"
+                android:type="linear" />
+            <corners android:radius="25dp" />
+        </shape>
+    </item>
+</layer-list>
