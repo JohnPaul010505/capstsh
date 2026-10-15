@@ -968,7 +968,10 @@ class _AttentionRow extends StatelessWidget {
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w800,
-                color: ClayTokens.clayDarkTextPrimary,
+                // White on the purple chip in BOTH modes: in light mode
+                // clayDarkTextPrimary flips to dark ink, which reads as
+                // black-on-purple ("557d").
+                color: purpleLabel,
               ),
             ),
           ),

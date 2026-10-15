@@ -7,7 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:shared/services/supabase_client.dart';
 import 'package:fitness_app/app/design_tokens.dart';
 import '../../../shared/widgets/app_glow_background.dart';
-import '../../../shared/widgets/clay/clay_card.dart';
+import '../../../shared/widgets/glass_card.dart';
 import '../../../shared/widgets/clay/clay_avatar.dart';
 import '../../../shared/widgets/clay_area_chart.dart';
 import '../../../member/calendar/widgets/calendar_flip_sheet.dart';
@@ -391,10 +391,9 @@ class _WeekChartState extends State<_WeekChart> {
     final labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     final today = DateTime.now().weekday - 1;
 
-    return ClayCard(
-      variant: ClayCardVariant.outlined,
-      padding: ClayCardPadding.medium,
-      backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
+    return MemberGlassCard(
+      padding: const EdgeInsets.all(16),
+      borderRadius: BorderRadius.circular(ClayTokens.radiusCard),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -425,7 +424,7 @@ class _WeekChartState extends State<_WeekChart> {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 10,
-                            color: ClayTokens.clayDarkTextPrimary,
+                            color: ClayTokens.clayDarkTextSecondary,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -435,7 +434,10 @@ class _WeekChartState extends State<_WeekChart> {
                         'Tap a bar for details',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 10, color: ClayTokens.clayDarkTextPrimary),
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: ClayTokens.clayDarkTextTertiary,
+                        ),
                       ),
                   ],
                 ),
@@ -495,7 +497,7 @@ class _WeekChartState extends State<_WeekChart> {
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
-                    color: ClayTokens.clayDarkTextPrimary,
+                    color: ClayTokens.clayDarkTextSecondary,
                   ),
                 ),
               );
@@ -521,10 +523,9 @@ class _MonthChart extends StatelessWidget {
       return monthlyCounts[i].toDouble();
     });
 
-    return ClayCard(
-      variant: ClayCardVariant.outlined,
-      padding: ClayCardPadding.medium,
-      backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
+    return MemberGlassCard(
+      padding: const EdgeInsets.all(16),
+      borderRadius: BorderRadius.circular(ClayTokens.radiusCard),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -561,7 +562,7 @@ class _MonthChart extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
-                      color: ClayTokens.clayDarkTextPrimary,
+                      color: ClayTokens.clayDarkTextSecondary,
                     ),
                   ),
                 ],
@@ -610,10 +611,9 @@ class _GrowthChart extends StatelessWidget {
     final weights = monthlyWeights.whereType<double>().toList();
     final latestWeight = weights.isEmpty ? null : weights.last;
 
-    return ClayCard(
-      variant: ClayCardVariant.outlined,
-      padding: ClayCardPadding.medium,
-      backgroundColor: ClayTokens.clayPrimaryLight.withAlpha(25),
+    return MemberGlassCard(
+      padding: const EdgeInsets.all(16),
+      borderRadius: BorderRadius.circular(ClayTokens.radiusCard),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -637,7 +637,7 @@ class _GrowthChart extends StatelessWidget {
                       fontSize: 10,
                       fontFamily: ClayTypography.headingFamily,
                       fontWeight: FontWeight.w800,
-                      color: ClayTokens.clayDarkTextPrimary,
+                      color: ClayTokens.clayDarkTextSecondary,
                     ),
                   ),
                 ],

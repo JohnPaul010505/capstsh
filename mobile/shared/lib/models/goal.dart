@@ -15,6 +15,7 @@ class Goal {
   final DateTime? endDate;
   final String? timeframe;
   final double? progressPct;
+  final String? goalCategory;
 
   Goal({
     required this.id,
@@ -33,6 +34,7 @@ class Goal {
     this.endDate,
     this.timeframe,
     this.progressPct,
+    this.goalCategory,
   });
 
   factory Goal.fromJson(Map<String, dynamic> json) => Goal(
@@ -52,6 +54,7 @@ class Goal {
     endDate: json['end_date'] != null ? DateTime.parse(json['end_date'] as String) : null,
     timeframe: json['timeframe'] as String?,
     progressPct: (json['progress_pct'] as num?)?.toDouble(),
+    goalCategory: json['goal_category'] as String?,
   );
 
   Map<String, dynamic> toJson() => {
@@ -70,5 +73,6 @@ class Goal {
     'end_date': endDate?.toIso8601String(),
     'timeframe': timeframe,
     'progress_pct': progressPct,
+    'goal_category': goalCategory,
   };
 }

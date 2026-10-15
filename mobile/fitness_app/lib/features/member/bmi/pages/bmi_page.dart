@@ -27,6 +27,7 @@ class _BmiPageState extends ConsumerState<BmiPage> {
   bool _editing = false;
   bool _saving = false;
   String? _error;
+  int _historyPage = 0;
 
   @override
   void dispose() {
@@ -388,20 +389,30 @@ class _BmiPageState extends ConsumerState<BmiPage> {
             Row(
               children: [
                 Expanded(
-                  child: SizedBox(
-                    height: 44,
-                    child: CupertinoButton(
+                  child: Container(
+                    decoration: BoxDecoration(
                       color: ClayColors.isLightMode
                           ? Colors.white
                           : const Color(0xFF2E2E5A),
                       borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: ClayColors.isLightMode
+                            ? ClayTokens.clayPrimary.withAlpha(45)
+                            : Colors.white.withAlpha(18),
+                      ),
+                    ),
+                    child: CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      borderRadius: BorderRadius.circular(12),
                       onPressed: _saving ? null : _cancelEditing,
-                      child: Text(
-                        'Cancel',
-                        style: TextStyle(
-                          color: ClayTokens.clayDarkTextPrimary,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                      child: Center(
+                        child: Text(
+                          'Cancel',
+                          style: TextStyle(
+                            color: ClayTokens.clayDarkTextPrimary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ),
@@ -563,25 +574,40 @@ class _BmiPageState extends ConsumerState<BmiPage> {
               ),
             );
           }
-          return MemberGlassCard(
-            padding: const EdgeInsets.all(16),
-            borderRadius: BorderRadius.circular(16),
-            child: Column(
-              children: rows.asMap().entries.map((entry) {
-                final m = entry.value;
-                final isLast = entry.key == rows.length - 1;
-                return Column(
-                  children: [
-                    _historyRow(m),
-                    if (!isLast)
-                      Divider(
-                        color: glassLine(const Color(0xFF38383A)),
-                        height: 1,
-                      ),
-                  ],
-                );
-              }).toList(),
-            ),
+          const pageSize = 5;
+          final totalPages = (rows.length / pageSize).ceil();
+          // Clamp the page in case rows shrank (e.g. after the daily reset).
+          final page = _historyPage.clamp(0, totalPages - 1);
+          final start = page * pageSize;
+          final end = (start + pageSize).clamp(0, rows.length);
+          final pageRows = rows.sublist(start, end);
+          return Column(
+            children: [
+              MemberGlassCard(
+                padding: const EdgeInsets.all(16),
+                borderRadius: BorderRadius.circular(16),
+                child: Column(
+                  children: pageRows.asMap().entries.map((entry) {
+                    final m = entry.value;
+                    final isLast = entry.key == pageRows.length - 1;
+                    return Column(
+                      children: [
+                        _historyRow(m),
+                        if (!isLast)
+                          Divider(
+                            color: glassLine(const Color(0xFF38383A)),
+                            height: 1,
+                          ),
+                      ],
+                    );
+                  }).toList(),
+                ),
+              ),
+              if (totalPages > 1) ...[
+                const SizedBox(height: 10),
+                _buildHistoryPager(page, totalPages),
+              ],
+            ],
           );
         },
         loading: () => const Padding(
@@ -595,6 +621,60 @@ class _BmiPageState extends ConsumerState<BmiPage> {
             style: ClayTokens.bodyMedium.copyWith(color: ClayTokens.clayError),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildHistoryPager(int page, int totalPages) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _pagerButton(
+          icon: CupertinoIcons.chevron_left,
+          enabled: page > 0,
+          onTap: () => setState(() => _historyPage = page - 1),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            'Page ${page + 1} of $totalPages',
+            style: ClayTokens.titleMedium.copyWith(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: ClayTokens.clayDarkTextSecondary,
+            ),
+          ),
+        ),
+        _pagerButton(
+          icon: CupertinoIcons.chevron_right,
+          enabled: page < totalPages - 1,
+          onTap: () => setState(() => _historyPage = page + 1),
+        ),
+      ],
+    );
+  }
+
+  Widget _pagerButton({
+    required IconData icon,
+    required bool enabled,
+    required VoidCallback onTap,
+  }) {
+    return CupertinoButton(
+      padding: const EdgeInsets.all(10),
+      minimumSize: Size.zero,
+      borderRadius: BorderRadius.circular(10),
+      color: enabled
+          ? (ClayColors.isLightMode
+                ? Colors.white
+                : const Color(0xFF2E2E5A))
+          : ClayTokens.clayDarkTextTertiary.withAlpha(30),
+      onPressed: enabled ? onTap : null,
+      child: Icon(
+        icon,
+        size: 18,
+        color: enabled
+            ? ClayTokens.clayDarkTextPrimary
+            : ClayTokens.clayDarkTextTertiary,
       ),
     );
   }
@@ -635,29 +715,6 @@ class _BmiPageState extends ConsumerState<BmiPage> {
                         letterSpacing: -0.41,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    if (info != null)
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF7C3AED),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: ClayTokens.hairline.withAlpha(20)),
-                        ),
-                        child: Text(
-                          info.label,
-                          style: TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w700,
-                            color: ClayColors.isLightMode
-                                ? Colors.white
-                                : ClayTokens.clayDarkTextPrimary,
-                          ),
-                        ),
-                      ),
                   ],
                 ),
                 const SizedBox(height: 2),
@@ -673,24 +730,28 @@ class _BmiPageState extends ConsumerState<BmiPage> {
             ),
           ),
         ),
-        CupertinoButton(
-          padding: const EdgeInsets.all(16),
-          onPressed: () async {
-            await SupabaseClientService().client
-                .from('body_measurements')
-                .delete()
-                .eq('id', m['id']);
-            ref.invalidate(bmiHistoryProvider);
-            ref.invalidate(bmiRawRowsProvider);
-            ref.invalidate(latestBmiProvider);
-            ref.invalidate(latestBodyMeasurementProvider);
-          },
-          child: Icon(
-            CupertinoIcons.trash,
-            color: ClayTokens.clayError,
-            size: 20,
+        if (info != null)
+          Padding(
+            padding: const EdgeInsets.only(right: 16, left: 8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFF7C3AED),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: ClayTokens.hairline.withAlpha(20)),
+              ),
+              child: Text(
+                info.label,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: ClayColors.isLightMode
+                      ? Colors.white
+                      : ClayTokens.clayDarkTextPrimary,
+                ),
+              ),
+            ),
           ),
-        ),
       ],
     );
   }

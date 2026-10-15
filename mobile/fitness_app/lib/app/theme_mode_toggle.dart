@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'design_tokens.dart';
 import 'theme_mode_provider.dart';
+import '../features/shared/widgets/glass_card.dart';
 
 /// Appearance control styled after the admin's compact animated day/night switch.
 class ThemeModeToggle extends ConsumerWidget {
@@ -12,6 +13,40 @@ class ThemeModeToggle extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isLight = ref.watch(themeModeProvider) == ThemeMode.light;
     final colors = Theme.of(context).colorScheme;
+    // Light mode: render the shared liquid-glass body ([GlassSurface]) so the
+    // Appearance card matches the Features cards (BMI/Feedback/…).
+    // Dark mode keeps the original dark surface untouched.
+    final useGlass = ClayColors.isLightMode;
+
+    final row = Row(
+      children: [
+        Icon(Icons.brightness_6_outlined, color: colors.primary),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'Appearance',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: colors.onSurface,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Text(
+                isLight ? 'Light mode' : 'Dark mode',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colors.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        _AdminStyleSwitch(isLight: isLight),
+      ],
+    );
 
     return Semantics(
       label: 'Light mode',
@@ -20,48 +55,36 @@ class ThemeModeToggle extends ConsumerWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(useGlass ? 12 : 16),
           onTap: () => ref.read(themeModeProvider.notifier).toggle(),
-          child: Container(
-            constraints: const BoxConstraints(minHeight: 68),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: Theme.of(context).brightness == Brightness.light
-                  ? Colors.white.withAlpha(210)
-                  : ClayTokens.clayDarkSurface.withAlpha(220),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: colors.outlineVariant),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.brightness_6_outlined, color: colors.primary),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Appearance',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          color: colors.onSurface,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      Text(
-                        isLight ? 'Light mode' : 'Dark mode',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colors.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
+          child: useGlass
+              // Same body (gradient + rim + glow) as the feature cards.
+              ? GlassSurface(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
                   ),
+                  borderRadius: BorderRadius.circular(12),
+                  // 44 + the 24px vertical padding keeps the original 68px
+                  // minimum card height.
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 44),
+                    child: row,
+                  ),
+                )
+              : Container(
+                  constraints: const BoxConstraints(minHeight: 68),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: ClayTokens.clayDarkSurface.withAlpha(220),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: colors.outlineVariant),
+                  ),
+                  child: row,
                 ),
-                const SizedBox(width: 12),
-                _AdminStyleSwitch(isLight: isLight),
-              ],
-            ),
-          ),
         ),
       ),
     );

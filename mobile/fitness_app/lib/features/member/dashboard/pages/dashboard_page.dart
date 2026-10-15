@@ -12,7 +12,8 @@ final dashboardStatsProvider = FutureProvider((ref) async {
       .from('goals')
       .select('id')
       .eq('member_id', userId)
-      .eq('status', 'active');
+      .eq('status', 'active')
+      .eq('goal_category', 'workout');
   final unreadNotifications = await SupabaseClientService().client
       .from('notifications')
       .select('id')

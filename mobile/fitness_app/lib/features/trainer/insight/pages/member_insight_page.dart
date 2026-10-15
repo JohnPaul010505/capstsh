@@ -40,6 +40,7 @@ final memberInsightProvider = FutureProvider.autoDispose
             )
             .eq('member_id', memberId)
             .inFilter('status', ['active', 'in_progress'])
+            .eq('goal_category', 'workout')
             .order('created_at', ascending: false),
         // Newest-first: first row = live weight, next rows feed the trend list.
         client

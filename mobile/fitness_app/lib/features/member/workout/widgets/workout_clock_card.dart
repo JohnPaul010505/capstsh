@@ -83,16 +83,29 @@ class WorkoutClockCard extends ConsumerWidget {
             Container(
               width: double.infinity,
               margin: const EdgeInsets.symmetric(horizontal: 14),
+              // Paused → purple Resume Workout pill; live → blue Take a Break.
+              // Same rounded shape/shadow as the Start Session pill so only the
+              // accent color differs.
               decoration: BoxDecoration(
-                color: const Color(0xFF8D50F5).withAlpha(60),
+                gradient: LinearGradient(
+                  colors: session.isPaused
+                      ? const [Color(0xFF5E3AEE), Color(0xFF9B5DE5)]
+                      : const [Color(0xFF5E3AEE), Color(0xFFC56BF0)],
+                ),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFB58AFF).withAlpha(100)),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFC56BF0).withAlpha(60),
+                    blurRadius: 14,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
               child: TextButton.icon(
                 onPressed: session.isPaused ? notifier.resumeSession : notifier.pauseSession,
                 style: TextButton.styleFrom(
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
                 icon: Icon(session.isPaused ? Icons.play_arrow : Icons.pause, size: 18),
                 label: Text(

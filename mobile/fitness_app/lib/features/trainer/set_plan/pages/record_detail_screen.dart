@@ -218,17 +218,38 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
               }
               final plan = snap.data;
               if (plan == null) {
+                // Members viewing their own Trainer Plan get the friendly
+                // "no active plan" placeholder; trainers opening a member's
+                // record keep the plain empty-state message.
+                final isSelfView =
+                    SupabaseClientService().client.auth.currentUser?.id ==
+                        widget.memberId;
                 return Column(
                   children: [
                     _buildHeader(days: 0, total: 7),
-                    const Expanded(
+                    Expanded(
                       child: Center(
-                        child: Text(
-                          'No plan assigned yet',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Color(0xFF8E8E93),
-                          ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              isSelfView
+                                  ? CupertinoIcons.calendar_badge_minus
+                                  : CupertinoIcons.doc_text,
+                              size: 40,
+                              color: const Color(0xFF8E8E93),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              isSelfView
+                                  ? 'No active plan'
+                                  : 'No plan assigned yet',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Color(0xFF8E8E93),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -647,6 +668,7 @@ class _PlanDaySection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final doneCount = items.where((i) => i.done).length;
+    final allDone = items.isNotEmpty && doneCount == items.length;
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: GlassPanel(
@@ -666,15 +688,16 @@ class _PlanDaySection extends StatelessWidget {
                     color: Color(0xFF7C3AED),
                   ),
                 ),
-                if (doneCount > 0)
-                  Text(
-                    '$doneCount/${items.length} done',
-                    style: const TextStyle(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF30D158),
-                    ),
+                Text(
+                  '$doneCount/${items.length} ${allDone ? "Complete" : "In Complete"}',
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    color: allDone
+                        ? const Color(0xFF30D158)
+                        : const Color(0xFFFF9F0A),
                   ),
+                ),
               ],
             ),
             if (notes.isNotEmpty) ...[

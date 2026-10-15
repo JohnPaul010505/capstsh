@@ -8,6 +8,11 @@ import '../../../../app/design_tokens.dart';
 import 'glass_card.dart';
 import 'trainer_notes_screen.dart';
 
+/// Lilac accent tuned for the dark sheets; on the light glass body it flips
+/// to the brand purple so meal headers and note accents stay readable.
+Color get _sheetAccent =>
+    ClayColors.isLightMode ? ClayTokens.clayPrimary : const Color(0xFFD6A5FF);
+
 /// Glass banner shown at the top of both plan sheets. Tapping it opens the
 /// dedicated full-screen notes page; it never renders the whole note inline,
 /// so a long one can't push the plan off-screen.
@@ -33,9 +38,9 @@ class _NotesBanner extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.sticky_note_2_outlined,
-                  color: Color(0xFFD6A5FF),
+                  color: _sheetAccent,
                   size: 20,
                 ),
                 const SizedBox(width: 10),
@@ -43,12 +48,12 @@ class _NotesBanner extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Trainer notes',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: Color(0xFFD6A5FF),
+                          color: _sheetAccent,
                           letterSpacing: 0.4,
                         ),
                       ),
@@ -67,18 +72,18 @@ class _NotesBanner extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Text(
+                Text(
                   'See all',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFFD6A5FF),
+                    color: _sheetAccent,
                   ),
                 ),
                 const SizedBox(width: 2),
-                const Icon(
+                Icon(
                   Icons.chevron_right,
-                  color: Color(0xFFD6A5FF),
+                  color: _sheetAccent,
                   size: 18,
                 ),
               ],
@@ -323,9 +328,9 @@ class _TrainerPlanWorkoutOverlayState
             ),
             Expanded(
               child: _loading
-                  ? const Center(
+                  ? Center(
                       child: CupertinoActivityIndicator(
-                        color: Color(0xFFD6A5FF),
+                        color: _sheetAccent,
                       ),
                     )
                   : exercises.isEmpty
@@ -671,9 +676,9 @@ class _TrainerPlanFoodOverlayState
             ),
             Expanded(
               child: _loading
-                  ? const Center(
+                  ? Center(
                       child: CupertinoActivityIndicator(
-                        color: Color(0xFFD6A5FF),
+                        color: _sheetAccent,
                       ),
                     )
                   : foods.isEmpty
@@ -704,10 +709,10 @@ class _TrainerPlanFoodOverlayState
                               Text(
                                 mealType[0].toUpperCase() +
                                     mealType.substring(1),
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w700,
-                                  color: Color(0xFFD6A5FF),
+                                  color: _sheetAccent,
                                   letterSpacing: 0.5,
                                 ),
                               ),

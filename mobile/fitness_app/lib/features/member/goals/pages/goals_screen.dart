@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,11 +13,19 @@ import '../../../shared/widgets/app_glow_background.dart';
 import '../../../shared/widgets/glass_confirm_dialog.dart';
 import '../../../shared/widgets/animations.dart' show StaggeredFadeIn, Shimmer;
 import 'create_goal_card.dart';
+import 'create_food_goal_card.dart';
 import 'goal_card.dart';
+import 'food_goal_card.dart';
 import 'empty_goals_state.dart';
 import '../services/goal_home_widget.dart';
 
 const bgDark = Color(0xFF0B0D1A);
+
+/// Which goal family the Goals screen is showing. The burger button switches
+/// between them; each has its own Create / Goals / History tabs, its own
+/// "one running goal at a time" guard, and its own card.
+enum _GoalMode { workout, food }
+
 
 final goalsProvider = FutureProvider.autoDispose
     .family<List<Map<String, dynamic>>, String>((ref, requestedUserId) async {
@@ -52,6 +62,12 @@ bool _isHistoryGoal(Map<String, dynamic> goal) {
   return end != null && end.isBefore(DateTime.now());
 }
 
+/// Category of a goal row. Rows predating migration 0049 (and any with a null
+/// value) are treated as workout goals, matching the column default.
+bool _isFoodGoal(Map<String, dynamic> goal) =>
+    (goal['goal_category'] as String? ?? 'workout') == 'food';
+
+
 class GoalsPage extends ConsumerStatefulWidget {
   const GoalsPage({super.key});
 
@@ -62,6 +78,11 @@ class GoalsPage extends ConsumerStatefulWidget {
 class _GoalsPageState extends ConsumerState<GoalsPage>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+
+  /// Which goal family is showing. Workout is the default so existing members
+  /// land on the exact screen they know. Local widget state only — never shared
+  /// across users.
+  _GoalMode _mode = _GoalMode.workout;
 
   @override
   void initState() {
@@ -81,10 +102,13 @@ class _GoalsPageState extends ConsumerState<GoalsPage>
     final goalsAsync = memberId == null
         ? const AsyncValue<List<Map<String, dynamic>>>.data([])
         : ref.watch(goalsProvider(memberId));
-    // Preserve the "one running goal at a time" rule: if any loaded goal is
-    // still ongoing, the Create tab's form refuses a second insert. Falls back
-    // to false while loading so the form stays usable on first paint.
-    final hasActiveGoal = goalsAsync.valueOrNull?.any(_ongoing) ?? false;
+    // "One running goal at a time", scoped to the ACTIVE category so a food
+    // goal and a workout goal can coexist without blocking each other. Falls
+    // back to false while loading so the form stays usable on first paint.
+    final isFood = _mode == _GoalMode.food;
+    final hasActiveGoal =
+        goalsAsync.valueOrNull?.any((g) => _ongoing(g) && _isFoodGoal(g) == isFood) ??
+        false;
 
     return CupertinoPageScaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -93,7 +117,7 @@ class _GoalsPageState extends ConsumerState<GoalsPage>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildHeader('Goals'),
+              _buildHeader(isFood ? 'Food Goals' : 'Goals'),
               _buildTabBar(),
               Expanded(
                 child: TabBarView(
@@ -101,17 +125,28 @@ class _GoalsPageState extends ConsumerState<GoalsPage>
                   children: [
                     // Tab 1 - Create a Goal: the form only.
                     _CreateTab(
+                      isFood: isFood,
                       hasActiveGoal: hasActiveGoal,
                       onGoalAdded: () {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: const Text('Goal created'),
+                            content: Text(
+                              isFood ? 'Food goal created' : 'Goal created',
+                            ),
                             backgroundColor: const Color(0xFF22C55E),
                             duration: const Duration(seconds: 2),
                           ),
                         );
                         if (memberId != null) {
                           ref.invalidate(goalsProvider(memberId));
+                        }
+                        // Keep the matching launcher widget in step: the food
+                        // widget mirrors the running food goal, the workout
+                        // widget the weight goal.
+                        if (isFood) {
+                          GoalHomeWidget.syncFoodForCurrentMember();
+                        } else {
+                          GoalHomeWidget.syncForCurrentMember();
                         }
                         // Jump to the Goals tab so the new goal is visible.
                         _tabController.animateTo(1);
@@ -120,7 +155,10 @@ class _GoalsPageState extends ConsumerState<GoalsPage>
                     // Tab 2 - Goals: the member's goals in glass-style cards.
                     goalsAsync.when(
                       data: (goals) => _GoalsTab(
-                        goals: goals.where((g) => !_isHistoryGoal(g)).toList(),
+                        isFood: isFood,
+                        goals: goals
+                            .where((g) => !_isHistoryGoal(g) && _isFoodGoal(g) == isFood)
+                            .toList(),
                         history: false,
                         onCreate: () => _tabController.animateTo(0),
                         onCancel: (g) async {
@@ -137,7 +175,11 @@ class _GoalsPageState extends ConsumerState<GoalsPage>
                                 .from('goals')
                                 .update({'status': 'cancelled'})
                                 .eq('id', g['id']);
-                            await GoalHomeWidget.syncForCurrentMember();
+                            if (isFood) {
+                              await GoalHomeWidget.syncFoodForCurrentMember();
+                            } else {
+                              await GoalHomeWidget.syncForCurrentMember();
+                            }
                             if (memberId != null) {
                               ref.invalidate(goalsProvider(memberId));
                             }
@@ -210,7 +252,10 @@ class _GoalsPageState extends ConsumerState<GoalsPage>
                     // Tab 3 - completed and cancelled goals.
                     goalsAsync.when(
                       data: (goals) => _GoalsTab(
-                        goals: goals.where(_isHistoryGoal).toList(),
+                        isFood: isFood,
+                        goals: goals
+                            .where((g) => _isHistoryGoal(g) && _isFoodGoal(g) == isFood)
+                            .toList(),
                         history: true,
                         onCreate: () => _tabController.animateTo(0),
                         onCancel: (_) {},
@@ -219,7 +264,11 @@ class _GoalsPageState extends ConsumerState<GoalsPage>
                               .from('goals')
                               .update({'status': 'active'})
                               .eq('id', g['id']);
-                          await GoalHomeWidget.syncForCurrentMember();
+                          if (isFood) {
+                            await GoalHomeWidget.syncFoodForCurrentMember();
+                          } else {
+                            await GoalHomeWidget.syncForCurrentMember();
+                          }
                           if (memberId != null) {
                             ref.invalidate(goalsProvider(memberId));
                           }
@@ -284,7 +333,49 @@ class _GoalsPageState extends ConsumerState<GoalsPage>
               ),
             ),
           ),
-          const SizedBox(width: 32),
+          // Burger button: switches between the Workout and Food goal families.
+          // PopupMenuButton anchors the dropdown directly beneath this button
+          // (top-right), matching the reference menu instead of floating it at
+          // a page-global offset.
+          PopupMenuButton<String>(
+            tooltip: 'Switch goal type',
+            color: ClayColors.isLightMode
+                ? Colors.white
+                : ClayTokens.clayDarkSurface,
+            // The menu hangs directly beneath the burger, flush with the
+            // button's end edge, and the shape's arrow pokes up into the
+            // button itself — mirroring the reference menu.
+            shape: _MenuArrowShape(arrowX: _modeMenuArrowX(context)),
+            offset: const Offset(0, 6),
+            icon: Icon(
+              CupertinoIcons.bars,
+              size: 20,
+              color: ClayTokens.clayDarkTextPrimary,
+            ),
+            onSelected: (value) {
+              final next =
+                  value == 'food' ? _GoalMode.food : _GoalMode.workout;
+              if (next != _mode) setState(() => _mode = next);
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem<String>(
+                value: 'workout',
+                child: _ModeMenuItem(
+                  label: 'Workout Goals',
+                  icon: CupertinoIcons.flame,
+                  selected: _mode == _GoalMode.workout,
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'food',
+                child: _ModeMenuItem(
+                  label: 'Food Goals',
+                  icon: CupertinoIcons.cube_box,
+                  selected: _mode == _GoalMode.food,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -341,10 +432,15 @@ class _GoalsPageState extends ConsumerState<GoalsPage>
 /// "Create a Goal" tab — shows the create-goal form only. Adding a goal
 /// refreshes the list and jumps to the Goals tab so the new goal is visible.
 class _CreateTab extends StatelessWidget {
+  final bool isFood;
   final bool hasActiveGoal;
   final VoidCallback onGoalAdded;
 
-  const _CreateTab({required this.hasActiveGoal, required this.onGoalAdded});
+  const _CreateTab({
+    required this.isFood,
+    required this.hasActiveGoal,
+    required this.onGoalAdded,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -353,10 +449,15 @@ class _CreateTab extends StatelessWidget {
       children: [
         StaggeredFadeIn(
           index: 0,
-          child: CreateGoalCard(
-            hasActiveGoal: hasActiveGoal,
-            onGoalAdded: onGoalAdded,
-          ),
+          child: isFood
+              ? CreateFoodGoalCard(
+                  hasActiveGoal: hasActiveGoal,
+                  onGoalAdded: onGoalAdded,
+                )
+              : CreateGoalCard(
+                  hasActiveGoal: hasActiveGoal,
+                  onGoalAdded: onGoalAdded,
+                ),
         ),
       ],
     );
@@ -366,6 +467,7 @@ class _CreateTab extends StatelessWidget {
 /// "Goals" tab — the member's goals, each in a liquid-glass card. No create
 /// form lives here: the Create a Goal tab owns that.
 class _GoalsTab extends StatelessWidget {
+  final bool isFood;
   final List<Map<String, dynamic>> goals;
   final bool history;
   final VoidCallback onCreate;
@@ -373,6 +475,7 @@ class _GoalsTab extends StatelessWidget {
   final void Function(Map<String, dynamic> goal) onCancel;
 
   const _GoalsTab({
+    required this.isFood,
     required this.goals,
     required this.history,
     required this.onCreate,
@@ -383,7 +486,12 @@ class _GoalsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (goals.isEmpty) {
-      if (!history) return EmptyGoalsState(onAction: onCreate);
+      if (!history) {
+        if (isFood) {
+          return _FoodEmptyState(onAction: onCreate);
+        }
+        return EmptyGoalsState(onAction: onCreate);
+      }
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -428,14 +536,22 @@ class _GoalsTab extends StatelessWidget {
                     padding: const EdgeInsets.only(bottom: 12),
                     child: GlassPanel(
                       padding: const EdgeInsets.all(12),
-                      child: GoalCard(
-                        goal: g,
-                        onToggleStatus: () => onToggleStatus(g),
-                        onCancel:
-                            (g['status'] as String? ?? 'active') == 'active'
-                            ? () => onCancel(g)
-                            : null,
-                      ),
+                      child: isFood
+                          ? FoodGoalCard(
+                              goal: g,
+                              onCancel:
+                                  (g['status'] as String? ?? 'active') == 'active'
+                                  ? () => onCancel(g)
+                                  : null,
+                            )
+                          : GoalCard(
+                              goal: g,
+                              onToggleStatus: () => onToggleStatus(g),
+                              onCancel:
+                                  (g['status'] as String? ?? 'active') == 'active'
+                                  ? () => onCancel(g)
+                                  : null,
+                            ),
                     ),
                   ),
                 )
@@ -527,4 +643,236 @@ class _GoalsSkeletonCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Empty state for the Food goals tab — mirrors EmptyGoalsState's glass panel
+/// but speaks to daily calorie targets instead of weight.
+class _FoodEmptyState extends StatelessWidget {
+  final VoidCallback? onAction;
+
+  const _FoodEmptyState({this.onAction});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 20),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: MemberGlassCard(
+            padding: const EdgeInsets.all(24),
+            borderRadius: BorderRadius.circular(22),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: ClayTokens.clayPrimary.withAlpha(20),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    CupertinoIcons.flame_fill,
+                    color: ClayTokens.clayPrimary,
+                    size: 40,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'No Food Goals Yet',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: ClayTokens.clayDarkTextPrimary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Set a daily calorie target and track it against your food intake!',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: ClayTokens.clayDarkTextSecondary,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: CupertinoButton.filled(
+                    borderRadius: BorderRadius.circular(14),
+                    onPressed: onAction,
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          CupertinoIcons.plus,
+                          color: Color(0xFFFFFFFF),
+                          size: 18,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Create your first food goal',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFFFFFFFF),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One row in the burger menu: icon + label, with a checkmark on the active
+/// family. Uses the same glass ink as the rest of the Goals screen.
+class _ModeMenuItem extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool selected;
+
+  const _ModeMenuItem({
+    required this.label,
+    required this.icon,
+    required this.selected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(
+          icon,
+          size: 16,
+          color: selected
+              ? ClayTokens.clayPrimaryLight
+              : ClayTokens.clayDarkTextSecondary,
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+              color: selected
+                  ? ClayTokens.clayDarkTextPrimary
+                  : ClayTokens.clayDarkTextSecondary,
+            ),
+          ),
+        ),
+        if (selected)
+          Icon(
+            CupertinoIcons.checkmark_circle_fill,
+            color: ClayTokens.clayPrimaryLight,
+            size: 16,
+          ),
+      ],
+    );
+  }
+}
+
+/// Horizontal position, measured from the menu's left edge, where the arrow
+/// must sit so it points up at the burger button.
+///
+/// In LTR the framework lines the menu's *end* edge up with the button
+/// (`PopupMenuPosition.byMenu`), so the arrow lands at
+/// `menuWidth - buttonWidth / 2` from the menu's left edge. The width is
+/// estimated from the same icon, gap, label, checkmark and padding the menu
+/// items use.
+double _modeMenuArrowX(BuildContext context) {
+  const labelStyle = TextStyle(fontSize: 14, fontWeight: FontWeight.w400);
+  double textWidth(String label) =>
+      (TextPainter(
+        text: TextSpan(text: label, style: labelStyle),
+        textDirection: TextDirection.ltr,
+      )..layout())
+          .width;
+  final scale = MediaQuery.textScalerOf(context).scale(1.0);
+  final workoutWidth = textWidth('Workout Goals') * scale;
+  final foodWidth = textWidth('Food Goals') * scale;
+  // A menu item is a 16px icon + 10px gap + label (and a 16px checkmark when
+  // selected), inside the PopupMenuItem's default 16px padding on each side.
+  final menuWidth = math.max(
+    workoutWidth + 16 + 10 + 32,
+    foodWidth + 16 + 10 + 16 + 32,
+  );
+  final button = context.findRenderObject();
+  final buttonWidth = button is RenderBox ? button.size.width : 48.0;
+  return (menuWidth - buttonWidth / 2).clamp(20.0, menuWidth - 20.0);
+}
+
+/// Popup menu shape with an arrow notch at the top, drawn at [arrowX]
+/// (measured from the menu's left edge) so it points up at the burger button
+/// — the menu hangs off the button like a little speech bubble, exactly like
+/// the reference menu.
+class _MenuArrowShape extends ShapeBorder {
+  const _MenuArrowShape({required this.arrowX});
+
+  /// Distance from the shape's left edge to the arrow's centre line.
+  final double arrowX;
+
+  /// How far the arrow pokes above the menu's rounded rectangle.
+  static const double _arrowHeight = 12.0;
+
+  /// Half-width of the arrow's base along the menu's top edge.
+  static const double _arrowHalfWidth = 9.0;
+
+  static const double _edgeRadius = 14.0;
+
+  @override
+  EdgeInsetsGeometry get dimensions => EdgeInsets.zero;
+
+  @override
+  Path getInnerPath(Rect rect, {TextDirection? textDirection}) =>
+      Path()..addRect(rect);
+
+  @override
+  Path getOuterPath(Rect rect, {TextDirection? textDirection}) {
+    final topY = rect.top + _arrowHeight;
+    final tipX = rect.left + arrowX;
+    return Path()
+      // Top edge: rounded top-left corner, up the arrow's left slope, down
+      // the right slope, then along to the top-right corner.
+      ..moveTo(rect.left + _edgeRadius, topY)
+      ..lineTo(tipX - _arrowHalfWidth, topY)
+      ..lineTo(tipX, topY - _arrowHeight)
+      ..lineTo(tipX + _arrowHalfWidth, topY)
+      ..lineTo(rect.right - _edgeRadius, topY)
+      ..quadraticBezierTo(rect.right, topY, rect.right, topY + _edgeRadius)
+      // Right edge + bottom-right corner.
+      ..lineTo(rect.right, rect.bottom - _edgeRadius)
+      ..quadraticBezierTo(
+        rect.right,
+        rect.bottom,
+        rect.right - _edgeRadius,
+        rect.bottom,
+      )
+      // Bottom edge + bottom-left corner.
+      ..lineTo(rect.left + _edgeRadius, rect.bottom)
+      ..quadraticBezierTo(
+        rect.left,
+        rect.bottom,
+        rect.left,
+        rect.bottom - _edgeRadius,
+      )
+      // Left edge back up to the rounded top-left corner.
+      ..lineTo(rect.left, topY + _edgeRadius)
+      ..quadraticBezierTo(rect.left, topY, rect.left + _edgeRadius, topY)
+      ..close();
+  }
+
+  @override
+  void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {}
+
+  @override
+  ShapeBorder scale(double t) => this;
 }

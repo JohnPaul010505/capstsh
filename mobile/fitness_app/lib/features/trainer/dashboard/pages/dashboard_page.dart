@@ -1476,7 +1476,11 @@ class _BurgerMenuOverlay extends StatelessWidget {
           left: arrowLeft,
           child: CustomPaint(
             size: const Size(arrowWidth, arrowHeight),
-            painter: _MenuArrowPainter(ClayTokens.hairline.withAlpha(36)),
+            painter: _MenuArrowPainter(
+              ClayColors.isLightMode
+                  ? ClayTokens.clayPrimary.withAlpha(70)
+                  : ClayTokens.hairline.withAlpha(36),
+            ),
           ),
         ),
         Positioned(
@@ -1492,7 +1496,9 @@ class _BurgerMenuOverlay extends StatelessWidget {
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withAlpha(105),
+                    color: ClayColors.isLightMode
+                        ? const Color(0x2E000000)
+                        : Colors.black.withAlpha(105),
                     blurRadius: 24,
                     offset: const Offset(0, 10),
                   ),
@@ -1513,15 +1519,28 @@ class _BurgerMenuOverlay extends StatelessWidget {
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [
-                          const Color(0xFF14142A).withAlpha(150),
-                          const Color(0xFF221A4A).withAlpha(120),
-                          const Color(0xFF14142A).withAlpha(160),
-                        ],
+                        // Dark keeps the navy→indigo recipe; light mode uses
+                        // the near-white → lilac glass so the menu is readable
+                        // on the light dashboard.
+                        colors: ClayColors.isLightMode
+                            ? const [
+                                Color(0xF7FFFFFF),
+                                Color(0xE9F0E6FF),
+                                Color(0xF2FFFFFF),
+                              ]
+                            : [
+                                const Color(0xFF14142A).withAlpha(150),
+                                const Color(0xFF221A4A).withAlpha(120),
+                                const Color(0xFF14142A).withAlpha(160),
+                              ],
                         stops: const [0.0, 0.55, 1.0],
                       ),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: ClayTokens.hairline.withAlpha(38)),
+                      border: Border.all(
+                        color: ClayColors.isLightMode
+                            ? ClayTokens.clayPrimary.withAlpha(70)
+                            : ClayTokens.hairline.withAlpha(38),
+                      ),
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -1567,7 +1586,11 @@ class _BurgerMenuOverlay extends StatelessWidget {
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                   color: isSelected
-                      ? ClayTokens.clayPrimaryLight
+                      // Light-purple chip fill in light mode → the darker
+                      // brand purple reads; dark keeps the pale lilac.
+                      ? (ClayColors.isLightMode
+                          ? ClayTokens.clayPrimary
+                          : ClayTokens.clayPrimaryLight)
                       : ClayTokens.clayDarkTextSecondary,
                 ),
               ),

@@ -266,7 +266,7 @@ class WorkoutSummary extends ConsumerWidget {
                 width: double.infinity,
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(colors: [Color(0xFF5E3AEE), Color(0xFFC56BF0)]),
-                  borderRadius: BorderRadius.circular(999),
+                  borderRadius: BorderRadius.circular(14),
                   boxShadow: [
                     BoxShadow(
                       color: const Color(0xFFC56BF0).withAlpha(60),
@@ -279,7 +279,7 @@ class WorkoutSummary extends ConsumerWidget {
                   onPressed: onShowPrevCards,
                   style: TextButton.styleFrom(
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                   child: Text(
                     session.completedSessions.length >= 3 ? 'View All Sessions' : 'View Workout S1',
@@ -294,7 +294,7 @@ class WorkoutSummary extends ConsumerWidget {
                 width: double.infinity,
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(colors: [Color(0xFF5E3AEE), Color(0xFFC56BF0)]),
-                  borderRadius: BorderRadius.circular(999),
+                  borderRadius: BorderRadius.circular(14),
                   boxShadow: [
                     BoxShadow(
                       color: const Color(0xFFC56BF0).withAlpha(60),
@@ -310,7 +310,7 @@ class WorkoutSummary extends ConsumerWidget {
                   },
                   style: TextButton.styleFrom(
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                   child: const Text(
                     'New Session',

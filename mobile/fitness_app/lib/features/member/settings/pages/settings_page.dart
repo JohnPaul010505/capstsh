@@ -278,8 +278,6 @@ class _SettingsContent extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 16),
-        const ThemeModeToggle(),
-        const SizedBox(height: 24),
         Text(
           'Features',
           style: Theme.of(context).textTheme.labelLarge?.copyWith(
@@ -289,6 +287,9 @@ class _SettingsContent extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 8),
+        // Appearance sits at the top of the Features list, right above BMI.
+        const ThemeModeToggle(),
+        const SizedBox(height: 10),
         _SettingItem(
           index: 1,
           icon: CupertinoIcons.gear,

@@ -8,6 +8,7 @@ import '../../../shared/widgets/skeleton.dart';
 import '../../../shared/widgets/app_glow_background.dart';
 import '../../../shared/widgets/clay/clay_avatar.dart';
 import '../../../shared/widgets/glass_card.dart';
+import '../../../shared/widgets/pressable.dart';
 
 /// One row per ACTIVELY assigned member, room attached when it exists.
 /// Members with no room yet (never messaged) still appear; tapping their
@@ -217,7 +218,7 @@ class _ChatListPageState extends ConsumerState<ChatListPage> {
                         final avatarUrl = r['avatar_url'] as String?;
                         return Semantics(
                           label: 'Chat with $name',
-                          child: GestureDetector(
+                          child: PressableCard(
                             onTap: () async {
                               // Room exists: open it. Otherwise create it on
                               // demand so every assigned member is reachable.
@@ -242,10 +243,16 @@ class _ChatListPageState extends ConsumerState<ChatListPage> {
                                 context.push('/trainer/chat/${inserted['id']}');
                               }
                             },
-                            child: GlassCardLight(
-                              padding: const EdgeInsets.all(12),
-                              margin: const EdgeInsets.only(bottom: 8),
-                              child: Row(
+                            // Same body recipe as the trainer's Member
+                            // Progress rows so both lists read as one.
+                            padding: const EdgeInsets.all(12),
+                            margin: const EdgeInsets.only(bottom: 8),
+                            color: ClayTokens.clayPrimaryLight.withAlpha(25),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: ClayTokens.hairline.withAlpha(18),
+                            ),
+                            child: Row(
                                 children: [
                                   ClayAvatar(
                                     imageUrl: avatarUrl,
@@ -285,8 +292,7 @@ class _ChatListPageState extends ConsumerState<ChatListPage> {
                                 ],
                               ),
                             ),
-                          ),
-                        );
+                          );
                       },
                     );
                   },

@@ -28,26 +28,27 @@ Future<bool> showGlassSignOutDialog(BuildContext context) async {
             decoration: BoxDecoration(
               // Liquid glass: translucent gradient tint instead of a flat
               // opaque surface so the live background ghosts through.
+              // Light mode: the same near-opaque liquid-glass body as the
+              // rest of the app's cards, so the dialog stays readable over
+              // the dimmed page. Dark mode keeps the original ghost tint.
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: ClayColors.isLightMode
-                    ? [
+                    ? const [Color(0xF2FFFFFF), Color(0xE6F0E6FF)]
+                    : [
                         ClayTokens.hairline.withAlpha(25),
                         ClayTokens.clayPrimary.withAlpha(30),
-                        ClayTokens.claySurfaceLight.withAlpha(180),
-                      ]
-                    : [
-                        ClayTokens.hairline.withAlpha(30),
-                        ClayTokens.clayPrimary.withAlpha(36),
                         const Color(0xFF14142A).withAlpha(150),
                       ],
-                stops: const [0.0, 0.45, 1.0],
+                stops: ClayColors.isLightMode
+                    ? null
+                    : const [0.0, 0.45, 1.0],
               ),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: ClayColors.isLightMode
-                    ? ClayTokens.clayPrimary.withAlpha(45)
+                    ? ClayTokens.clayPrimary.withAlpha(70)
                     : ClayTokens.hairline.withAlpha(45)),
               boxShadow: [
                 BoxShadow(

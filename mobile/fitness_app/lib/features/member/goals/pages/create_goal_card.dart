@@ -240,6 +240,7 @@ class _CreateGoalCardState extends ConsumerState<CreateGoalCard> {
         'title': title,
         'target_value': targetValue,
         'goal_type': goalType,
+        'goal_category': 'workout',
         'timeframe': timeframe,
         'start_date': _dateOnly(startDate),
         'end_date': _dateOnly(endDate),

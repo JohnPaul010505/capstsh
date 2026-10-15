@@ -274,11 +274,32 @@ class PlanRepository {
           }
         }
 
+        // Days count themselves: a plan day is "counted" once its calendar
+        // day has arrived (start date = day 1), even when the member never
+        // logged a sheet — so a 3-day plan shows 0/3 → 1/3 → 2/3 → 3/3 as
+        // the dates pass, for active AND history (cancelled/completed)
+        // plans alike. Real logged completions can only add on top, never
+        // subtract, and nothing can pass the plan's total length.
+        var countedDays = completedDays;
+        if (start != null) {
+          final startDay = DateTime(start.year, start.month, start.day);
+          final elapsed = today.difference(startDay).inDays + 1;
+          if (elapsed > countedDays) {
+            countedDays = elapsed;
+          }
+        }
+        if (countedDays > totalDays) countedDays = totalDays;
+        if (countedDays < 0) countedDays = 0;
+
         result.add({
           'plan': plan,
-          'completed_days': completedDays,
+          'completed_days': countedDays,
           'total_days': totalDays.clamp(1, 7),
-          'completion_pct': completedDays / totalDays.clamp(1, 7),
+          'completion_pct': countedDays / totalDays.clamp(1, 7),
+          // The flip: "Complete" only when EVERY planned day's workouts AND
+          // foods were really checked off — elapsed calendar days are not
+          // completion, so a window that simply ran out stays Incomplete.
+          'fully_completed': completedDays >= totalDays.clamp(1, 7),
         });
       }
 

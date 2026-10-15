@@ -142,6 +142,7 @@ final memberInsightOverviewProvider = FutureProvider.autoDispose
             )
             .inFilter('member_id', memberIds)
             .inFilter('status', ['active', 'in_progress'])
+            .eq('goal_category', 'workout')
             .order('created_at', ascending: false),
         // Latest weight per member feeds the journey math.
         client

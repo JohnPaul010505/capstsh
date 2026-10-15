@@ -33,6 +33,7 @@ abstract final class GoalHomeWidget {
           )
           .eq('member_id', userId)
           .eq('status', 'active')
+          .eq('goal_category', 'workout')
           .order('created_at', ascending: false)
           .limit(1);
       if (goals.isEmpty) {
@@ -118,6 +119,48 @@ abstract final class GoalHomeWidget {
     return true;
   }
 
+  // ── Food (daily calorie) goal widget ──────────────────────────────────────
+  // A second, independent launcher widget that mirrors the member's running
+  // FOOD goal. It is visually the twin of the workout widget but its ring
+  // shows TODAY's consumed calories against the DAILY target, so the numbers
+  // and the Android side never mix with the weight widget's `goal_*` keys.
+
+  static const foodProviderName =
+      'com.example.fitness_app.FoodGoalWidgetProvider';
+
+  /// Refreshes the food widget for the signed-in member: the newest running
+  /// food goal plus today's logged calories. Called when the Goals screen
+  /// creates/cancels a food goal so the launcher never shows stale numbers.
+  static Future<void> syncFoodForCurrentMember() async {
+    if (!Platform.isAndroid) return;
+    try {
+      final client = SupabaseClientService().client;
+      final userId = client.auth.currentUser?.id;
+      if (userId == null) {
+        await clearFood();
+        return;
+      }
+
+      final goals = await client
+          .from('goals')
+          .select('id,title,goal_type,target_value,start_date,end_date,status')
+          .eq('member_id', userId)
+          .eq('status', 'active')
+          .eq('goal_category', 'food')
+          .order('created_at', ascending: false)
+          .limit(1);
+      if (goals.isEmpty) {
+        await _writeFoodEmpty();
+        return;
+      }
+
+      final consumedToday = await _todayCalories(userId);
+      await syncFoodGoal(goals.first, consumedToday: consumedToday);
+    } catch (error) {
+      debugPrint('Food goal home widget refresh failed: $error');
+    }
+  }
+
   static Future<void> clear() async {
     if (!Platform.isAndroid) return;
     try {
@@ -125,6 +168,110 @@ abstract final class GoalHomeWidget {
     } catch (error) {
       debugPrint('Goal home widget clear failed: $error');
     }
+  }
+
+  /// Pushes one food goal (and the calories already logged today) to the food
+  /// widget. `consumedToday` is passed in by the card so the ring matches what
+  /// the member is looking at, without a second round-trip to the DB.
+  static Future<void> syncFoodGoal(
+    Map<String, dynamic> goal, {
+    required int consumedToday,
+  }) async {
+    if (!Platform.isAndroid) return;
+    final title = goal['title'] as String? ?? 'Daily calorie goal';
+    final target = (goal['target_value'] as num?)?.toDouble() ?? 0;
+    final endDate = DateTime.tryParse(goal['end_date']?.toString() ?? '');
+    final endDateOnly = endDate == null
+        ? ''
+        : '${endDate.year.toString().padLeft(4, '0')}-${endDate.month.toString().padLeft(2, '0')}-${endDate.day.toString().padLeft(2, '0')}';
+    final daysLeft = endDate == null
+        ? 0
+        : DateUtils.dateOnly(endDate)
+              .difference(DateUtils.dateOnly(DateTime.now()))
+              .inDays
+              .clamp(0, 3650);
+
+    final remaining = (target - consumedToday).round();
+    final pct = target > 0
+        ? ((consumedToday / target) * 100).clamp(0, 100).toDouble()
+        : 0.0;
+
+    await HomeWidget.saveWidgetData<bool>('food_goal_has_active', true);
+    await HomeWidget.saveWidgetData<String>('food_goal_title', title);
+    await HomeWidget.saveWidgetData<String>(
+      'food_goal_target',
+      '${target.toStringAsFixed(0)} kcal',
+    );
+    await HomeWidget.saveWidgetData<String>(
+      'food_goal_today',
+      '$consumedToday kcal',
+    );
+    await HomeWidget.saveWidgetData<String>(
+      'food_goal_left',
+      '${remaining < 0 ? -remaining : remaining} kcal',
+    );
+    await HomeWidget.saveWidgetData<bool>('food_goal_over', remaining < 0);
+    await HomeWidget.saveWidgetData<String>('food_goal_end_date', endDateOnly);
+    await HomeWidget.saveWidgetData<double>('food_goal_progress_pct', pct);
+    await HomeWidget.saveWidgetData<int>('food_goal_days_left', daysLeft);
+    await HomeWidget.renderFlutterWidget(
+      _GoalWidgetRing(progress: pct),
+      key: 'food_goal_progress_ring',
+      logicalSize: const Size(112, 112),
+      pixelRatio: 2,
+    );
+    await HomeWidget.updateWidget(qualifiedAndroidName: foodProviderName);
+  }
+
+  static Future<bool> requestFoodPin() async {
+    if (!Platform.isAndroid) return false;
+    final supported = await HomeWidget.isRequestPinWidgetSupported();
+    if (supported != true) return false;
+    await HomeWidget.requestPinWidget(qualifiedAndroidName: foodProviderName);
+    return true;
+  }
+
+  static Future<void> clearFood() async {
+    if (!Platform.isAndroid) return;
+    try {
+      await _writeFoodEmpty();
+    } catch (error) {
+      debugPrint('Food goal home widget clear failed: $error');
+    }
+  }
+
+  static Future<void> _writeFoodEmpty() async {
+    await HomeWidget.saveWidgetData<bool>('food_goal_has_active', false);
+    await HomeWidget.saveWidgetData<String>('food_goal_title', 'No food goal');
+    await HomeWidget.saveWidgetData<String>('food_goal_target', '—');
+    await HomeWidget.saveWidgetData<String>('food_goal_today', '—');
+    await HomeWidget.saveWidgetData<String>('food_goal_left', '—');
+    await HomeWidget.saveWidgetData<bool>('food_goal_over', false);
+    await HomeWidget.saveWidgetData<String>('food_goal_end_date', '');
+    await HomeWidget.saveWidgetData<double>('food_goal_progress_pct', 0);
+    await HomeWidget.saveWidgetData<int>('food_goal_days_left', 0);
+    await HomeWidget.saveWidgetData<String>('food_goal_progress_ring', '');
+    await HomeWidget.updateWidget(qualifiedAndroidName: foodProviderName);
+  }
+
+  /// Total calories logged today for [userId]. Mirrors todayCaloriesProvider's
+  /// window so the widget and the in-app card never disagree.
+  static Future<int> _todayCalories(String userId) async {
+    final client = SupabaseClientService().client;
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day);
+    final endOfDay = startOfDay.add(const Duration(days: 1));
+    final rows = await client
+        .from('meal_logs')
+        .select('calories')
+        .eq('member_id', userId)
+        .gte('meal_time', startOfDay.toUtc().toIso8601String())
+        .lt('meal_time', endOfDay.toUtc().toIso8601String());
+    var total = 0;
+    for (final r in (rows as List).cast<Map<String, dynamic>>()) {
+      total += (r['calories'] as int? ?? 0);
+    }
+    return total;
   }
 
   static Future<void> _writeEmpty() async {

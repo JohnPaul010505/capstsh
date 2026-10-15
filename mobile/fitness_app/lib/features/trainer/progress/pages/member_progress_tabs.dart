@@ -351,6 +351,11 @@ class _GoalSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final goalType = (goal['goal_type'] as String?) ?? '';
+    // Food goals (goal_category 'food') are a DAILY calorie target — see the
+    // member-side food_goal_provider.dart: target_value is kcal/day and there
+    // is no weight journey, so the kg/current/to-go maths give way to the
+    // kcal/day display pattern the member's FoodGoalCard uses.
+    final isFoodGoal = (goal['goal_category'] as String?) == 'food';
     final title = (goal['title'] as String?)?.trim();
     final displayTitle = (title == null || title.isEmpty)
         ? (goalType.isEmpty ? 'Goal' : goalType)
@@ -386,16 +391,23 @@ class _GoalSummaryCard extends StatelessWidget {
     final isCompleted =
         status == 'completed' || (isOverdue && status == 'active');
 
-    final unit =
-        goalType.toLowerCase() == 'lose weight' ||
-            goalType.toLowerCase() == 'gain muscle' ||
-            goalType.toLowerCase() == 'maintain weight'
-        ? 'kg'
-        : '';
-    final currentDisplay = goalType.isNotEmpty ? (live ?? baseline) : baseline;
-    final remainingDisplay = remaining == null
+    final unit = isFoodGoal
+        ? 'kcal'
+        : goalType.toLowerCase() == 'lose weight' ||
+                goalType.toLowerCase() == 'gain muscle' ||
+                goalType.toLowerCase() == 'maintain weight'
+            ? 'kg'
+            : '';
+    // The trainer view has no meal-log feed on this card, so a food goal's
+    // Current / To-go cells stay empty — the member's own FoodGoalCard shows
+    // consumed-vs-target through todayCaloriesProvider.
+    final currentDisplay = isFoodGoal
         ? null
-        : (remaining < 0 ? 0.0 : remaining);
+        : goalType.isNotEmpty
+        ? (live ?? baseline)
+        : baseline;
+    final remainingDisplay =
+        isFoodGoal || remaining == null ? null : (remaining < 0 ? 0.0 : remaining);
 
     final ringColor = isCompleted
         ? const Color(0xFF30D158)
@@ -461,7 +473,9 @@ class _GoalSummaryCard extends StatelessWidget {
                     if (target != null) ...[
                       const SizedBox(height: 1),
                       Text(
-                        'Target: ${target.toStringAsFixed(1)} $unit',
+                        isFoodGoal
+                            ? 'Target: ${target.toStringAsFixed(0)} kcal/day'
+                            : 'Target: ${target.toStringAsFixed(1)} $unit',
                         style: TextStyle(
                           fontSize: 12,
                           color: ClayTokens.clayDarkTextSecondary,
@@ -507,16 +521,24 @@ class _GoalSummaryCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          _GoalRing(pct: pct, ringColor: ringColor),
-          const SizedBox(height: 16),
+          // The journey ring measures weight progress; a food goal is a
+          // daily calorie target with no weight journey, so it is skipped
+          // here (the member's own FoodGoalCard owns the consumed-vs-target
+          // ring through todayCaloriesProvider).
+          if (!isFoodGoal) ...[
+            const SizedBox(height: 16),
+            _GoalRing(pct: pct, ringColor: ringColor),
+            const SizedBox(height: 16),
+          ],
           // Target / Current / To-go stat row.
           Row(
             children: [
               _GoalStatCell(
                 label: 'Target',
                 value: target != null
-                    ? '${target.toStringAsFixed(1)} $unit'
+                    ? (isFoodGoal
+                          ? '${target.toStringAsFixed(0)} kcal/day'
+                          : '${target.toStringAsFixed(1)} $unit')
                     : '—',
                 accent: false,
               ),
@@ -598,6 +620,8 @@ class _GoalSummaryCard extends StatelessWidget {
         return Icons.fitness_center_rounded;
       case 'maintain weight':
         return Icons.balance_rounded;
+      case 'calorie intake':
+        return Icons.restaurant_rounded;
       default:
         return Icons.flag_rounded;
     }

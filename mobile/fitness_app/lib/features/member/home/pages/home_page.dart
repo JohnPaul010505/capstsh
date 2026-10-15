@@ -76,6 +76,7 @@ final homeDataProvider = FutureProvider.autoDispose
             .select('title')
             .eq('member_id', userId)
             .eq('status', 'active')
+            .eq('goal_category', 'workout')
             .limit(1),
         client
             .from('trainer_assignments')
@@ -571,6 +572,7 @@ class _PredictionCardState extends State<_PredictionCard> {
           .select('title, goal_type, target_value, current_value, end_date')
           .eq('member_id', widget.memberId)
           .eq('status', 'active')
+          .eq('goal_category', 'workout')
           .order('created_at', ascending: false)
           .limit(1);
 

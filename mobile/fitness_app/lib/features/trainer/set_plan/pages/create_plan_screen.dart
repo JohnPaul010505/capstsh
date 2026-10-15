@@ -16,6 +16,11 @@ import '../../../shared/widgets/glass_card.dart';
 import '../../../shared/widgets/pressable.dart';
 import '../../../../features/member/workout/data/met_exercise_repository.dart';
 
+/// Lilac accent tuned for the dark glass panel; on the light body it flips
+/// to the brand purple so spinners and add-icons stay readable.
+Color get _accent =>
+    ClayColors.isLightMode ? ClayTokens.clayPrimary : const Color(0xFFD6A5FF);
+
 class CreatePlanScreen extends ConsumerStatefulWidget {
   const CreatePlanScreen({super.key});
 
@@ -446,9 +451,13 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
                                   Expanded(
                                     child: Text(
                                       'This member already has an active plan. Creating a new plan will replace it.',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 12,
-                                        color: Color(0xFFFFCC02),
+                                        // Yellow vanishes on the light glass;
+                                        // light mode uses a dark amber instead.
+                                        color: ClayColors.isLightMode
+                                            ? const Color(0xFF9A6700)
+                                            : const Color(0xFFFFCC02),
                                       ),
                                     ),
                                   ),
@@ -462,11 +471,11 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
                                 onPressed: () {
                                   setState(() => _confirmReplace = true);
                                 },
-                                child: const Text(
+                                child: Text(
                                   'I understand, continue',
                                   style: TextStyle(
                                     fontSize: 12,
-                                    color: Color(0xFFD6A5FF),
+                                    color: _accent,
                                   ),
                                 ),
                               ),
@@ -485,16 +494,18 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
                                 children: [
                                   Icon(
                                     Icons.info_outline,
-                                    color: ClayTokens.clayPrimaryLight,
+                                    color: ClayColors.isLightMode
+                                        ? ClayTokens.clayPrimary
+                                        : ClayTokens.clayPrimaryLight,
                                     size: 18,
                                   ),
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Text(
                                       'This member does not have an active plan yet.',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 12,
-                                        color: Color(0xFFFFFFFF),
+                                        color: glassInk(),
                                       ),
                                     ),
                                   ),
@@ -693,10 +704,12 @@ class _NotificationGlassPanel extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: _radius,
         boxShadow: [
-          const BoxShadow(
-            color: Color(0x69000000), // black@105
+          BoxShadow(
+            color: ClayColors.isLightMode
+                ? const Color(0x2E000000)
+                : const Color(0x69000000), // black@105
             blurRadius: 24,
-            offset: Offset(0, 10),
+            offset: const Offset(0, 10),
           ),
           BoxShadow(
             color: ClayTokens.clayPrimary.withAlpha(36),
@@ -715,15 +728,28 @@ class _NotificationGlassPanel extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [
-                  const Color(0xFF14142A).withAlpha(150),
-                  const Color(0xFF221A4A).withAlpha(120),
-                  const Color(0xFF14142A).withAlpha(160),
-                ],
+                // Dark keeps the navy→indigo recipe; light mode uses the
+                // near-white → lilac glass so every section on this card is
+                // readable.
+                colors: ClayColors.isLightMode
+                    ? const [
+                        Color(0xF7FFFFFF),
+                        Color(0xE9F0E6FF),
+                        Color(0xF2FFFFFF),
+                      ]
+                    : [
+                        const Color(0xFF14142A).withAlpha(150),
+                        const Color(0xFF221A4A).withAlpha(120),
+                        const Color(0xFF14142A).withAlpha(160),
+                      ],
                 stops: const [0.0, 0.55, 1.0],
               ),
               borderRadius: _radius,
-              border: Border.all(color: ClayTokens.hairline.withAlpha(38)),
+              border: Border.all(
+                color: ClayColors.isLightMode
+                    ? ClayTokens.clayPrimary.withAlpha(70)
+                    : ClayTokens.hairline.withAlpha(38),
+              ),
             ),
             child: child,
           ),
@@ -771,11 +797,11 @@ class _DaySelector extends StatelessWidget {
             if (complete && isSelected) {
               backgroundColor = const Color(0xFF7C3AED);
               borderColor = const Color(0xFF7C3AED);
-              textColor = ClayTokens.clayDarkTextPrimary;
+              textColor = purpleLabel;
             } else if (complete) {
               backgroundColor = const Color(0xFF7C3AED);
               borderColor = const Color(0xFF7C3AED);
-              textColor = ClayTokens.clayDarkTextPrimary;
+              textColor = purpleLabel;
             } else if (isSelected) {
               backgroundColor = ClayTokens.hairline.withAlpha(14);
               borderColor = ClayTokens.clayPrimary;
@@ -1035,7 +1061,7 @@ class _MemberPickerDialogState extends State<_MemberPickerDialog> {
                                       ? FontWeight.w700
                                       : FontWeight.w400,
                                   color: isSelected
-                                      ? Colors.white
+                                      ? glassInk()
                                       : ClayTokens.clayDarkTextSecondary,
                                 ),
                               ),
@@ -1263,7 +1289,11 @@ class _NutritionSectionState extends State<_NutritionSection> {
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
                               color: isSelected || isAdded
-                                  ? Colors.white
+                                  ? (ClayColors.isLightMode
+                                      ? (isSelected
+                                          ? const Color(0xFFFFFFFF)
+                                          : ClayTokens.clayPrimary)
+                                      : Colors.white)
                                   : ClayTokens.clayDarkTextSecondary,
                             ),
                           ),
@@ -1282,7 +1312,7 @@ class _NutritionSectionState extends State<_NutritionSection> {
                   fontSize: 14,
                   fontWeight: FontWeight.w400,
                   color: widget.selectedMealType != null
-                      ? const Color(0xFFFFFFFF)
+                      ? glassInk()
                       : const Color(0xFF8E8E93),
                 ),
               ),
@@ -1322,7 +1352,7 @@ class _NutritionSectionState extends State<_NutritionSection> {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w400,
-                  color: const Color(0xFFFFFFFF),
+                  color: glassInk(),
                 ),
               ),
               SizedBox(height: 8),
@@ -1382,13 +1412,13 @@ class _NutritionSectionState extends State<_NutritionSection> {
               ),
               if (_searchingFoods) ...[
                 const SizedBox(height: 10),
-                const Center(
+                Center(
                   child: SizedBox(
                     width: 16,
                     height: 16,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: Color(0xFFD6A5FF),
+                      color: _accent,
                     ),
                   ),
                 ),
@@ -1449,9 +1479,9 @@ class _NutritionSectionState extends State<_NutritionSection> {
                                         ),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
-                                      child: const Icon(
+                                      child: Icon(
                                         CupertinoIcons.add,
-                                        color: Color(0xFFD6A5FF),
+                                        color: _accent,
                                         size: 16,
                                       ),
                                     ),
@@ -1526,12 +1556,12 @@ class _NutritionSectionState extends State<_NutritionSection> {
                   ),
                 )
               else ...[
-                const Text(
+                Text(
                   'Added Foods',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w400,
-                    color: Color(0xFFFFFFFF),
+                    color: glassInk(),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -1853,12 +1883,12 @@ class _TrainingSectionState extends State<_TrainingSection> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Workout Type',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w400,
-                  color: Color(0xFFFFFFFF),
+                  color: glassInk(),
                 ),
               ),
               SizedBox(height: 8),
@@ -1901,17 +1931,17 @@ class _TrainingSectionState extends State<_TrainingSection> {
                     vertical: 12,
                   ),
                 ),
-                style: const TextStyle(fontSize: 13, color: Color(0xFFFFFFFF)),
+                style: TextStyle(fontSize: 13, color: glassInk()),
               ),
               if (_isSearching) ...[
                 const SizedBox(height: 8),
-                const Center(
+                Center(
                   child: SizedBox(
                     width: 16,
                     height: 16,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: Color(0xFFD6A5FF),
+                      color: _accent,
                     ),
                   ),
                 ),
@@ -1969,9 +1999,9 @@ class _TrainingSectionState extends State<_TrainingSection> {
                                     ).withAlpha(20),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
-                                  child: const Icon(
+                                  child: Icon(
                                     Icons.add,
-                                    color: Color(0xFFD6A5FF),
+                                    color: _accent,
                                     size: 16,
                                   ),
                                 ),
@@ -1983,10 +2013,10 @@ class _TrainingSectionState extends State<_TrainingSection> {
                                     children: [
                                       Text(
                                         e.name,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 12.5,
                                           fontWeight: FontWeight.w600,
-                                          color: Color(0xFFFFFFFF),
+                                          color: glassInk(),
                                         ),
                                       ),
                                       Text(
@@ -2032,7 +2062,7 @@ class _TrainingSectionState extends State<_TrainingSection> {
                     vertical: 12,
                   ),
                 ),
-                style: const TextStyle(fontSize: 13, color: Color(0xFFFFFFFF)),
+                style: TextStyle(fontSize: 13, color: glassInk()),
               ),
               SizedBox(height: 8),
               Row(
@@ -2065,9 +2095,9 @@ class _TrainingSectionState extends State<_TrainingSection> {
                           vertical: 12,
                         ),
                       ),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
-                        color: Color(0xFFFFFFFF),
+                        color: glassInk(),
                       ),
                       keyboardType: TextInputType.number,
                       // Numbers only, max 2 digits (up to 99).
@@ -2105,9 +2135,9 @@ class _TrainingSectionState extends State<_TrainingSection> {
                           vertical: 12,
                         ),
                       ),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
-                        color: Color(0xFFFFFFFF),
+                        color: glassInk(),
                       ),
                       keyboardType: TextInputType.number,
                       // Numbers only, max 2 digits (up to 99).
@@ -2145,9 +2175,9 @@ class _TrainingSectionState extends State<_TrainingSection> {
                           vertical: 12,
                         ),
                       ),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
-                        color: Color(0xFFFFFFFF),
+                        color: glassInk(),
                       ),
                       keyboardType: TextInputType.number,
                       // Numbers only, max 3 digits (up to 999).
@@ -2200,12 +2230,12 @@ class _TrainingSectionState extends State<_TrainingSection> {
                   ),
                 ),
               const SizedBox(height: 12),
-              const Text(
+              Text(
                 'Exercises',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w400,
-                  color: Color(0xFFFFFFFF),
+                  color: glassInk(),
                 ),
               ),
               const SizedBox(height: 8),
@@ -2248,12 +2278,12 @@ class _NotesSection extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 '(Optional)',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFFFFFFFF),
+                  color: glassInk(),
                 ),
               ),
               SizedBox(height: 8),

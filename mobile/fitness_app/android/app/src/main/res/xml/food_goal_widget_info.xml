@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Food goal widget metadata - identical sizing rules to goal_widget_info.xml
+  (250dp x 180dp -> 4x3 cells) so the launcher binds it the same way the
+  workout widget binds.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/food_goal_widget_description"
+    android:initialLayout="@layout/food_goal_widget"
+    android:label="@string/food_goal_widget_label"
+    android:minHeight="180dp"
+    android:minResizeHeight="140dp"
+    android:minResizeWidth="250dp"
+    android:minWidth="250dp"
+    android:previewLayout="@layout/food_goal_widget"
+    android:resizeMode="horizontal|vertical"
+    android:targetCellWidth="4"
+    android:targetCellHeight="3"
+    android:updatePeriodMillis="1800000"
+    android:widgetCategory="home_screen" />

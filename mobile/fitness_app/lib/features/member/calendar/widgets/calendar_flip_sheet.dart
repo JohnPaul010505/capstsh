@@ -6,8 +6,8 @@ import '../../../shared/widgets/proof_video_viewer.dart';
 import 'package:shared/services/supabase_client.dart';
 import '../providers/month_entries_provider.dart';
 import '../widgets/flip_card.dart';
-import '../widgets/glow_card.dart';
 import '../widgets/month_day_grid.dart';
+import 'light_aware_glow_card.dart';
 
 /// Opens the calendar as a modal bottom sheet. Returns the picked day, or
 /// [selected] if dismissed without a choice.
@@ -134,12 +134,17 @@ class _CalendarFlipSheetState extends ConsumerState<CalendarFlipSheet> {
                       padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
                       child: Row(
                         children: [
-                          const Text(
+                          Text(
                             'CALENDAR WORKOUT LOG',
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w800,
-                              color: Color(0xFFF2F2F7),
+                              // Light mode: dark ink so the title reads on the
+                              // light sheet. Dark mode keeps the original
+                              // near-white.
+                              color: ClayColors.isLightMode
+                                  ? ClayTokens.clayTextPrimary
+                                  : const Color(0xFFF2F2F7),
                             ),
                           ),
                           const Spacer(),
@@ -195,7 +200,7 @@ class _CalendarFlipSheetState extends ConsumerState<CalendarFlipSheet> {
                     Expanded(
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(6, 0, 6, 10),
-                        child: _LightAwareGlowCard(
+                        child: LightAwareGlowCard(
                           borderRadius: 16,
                           borderWidth: 1.6,
                           child: FlipCard(
@@ -798,52 +803,4 @@ class _GlassPillButton extends StatelessWidget {
   }
 }
 
-/// Light-mode-aware glow card: in light mode it renders a clay-surface-tinted
-/// glass panel instead of the dark GlowCard, so the calendar card reads like the
-/// rest of the light screens instead of carrying a dark-mode effect.
-class _LightAwareGlowCard extends StatelessWidget {
-  final Widget child;
-  final double borderRadius;
-  final double borderWidth;
 
-  const _LightAwareGlowCard({
-    required this.child,
-    this.borderRadius = 16,
-    this.borderWidth = 2,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (!ClayColors.isLightMode) {
-      return GlowCard(
-        borderRadius: borderRadius,
-        borderWidth: borderWidth,
-        child: child,
-      );
-    }
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(borderRadius),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-        child: Container(
-          decoration: BoxDecoration(
-            color: ClayTokens.claySurfaceLight.withAlpha(245),
-            borderRadius: BorderRadius.circular(borderRadius),
-            border: Border.all(
-              color: ClayTokens.clayPrimary.withAlpha(45),
-              width: borderWidth,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: ClayTokens.clayPrimary.withAlpha(30),
-                blurRadius: 24,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: child,
-        ),
-      ),
-    );
-  }
-}

@@ -219,14 +219,14 @@ class _GiveFeedbackPageState extends ConsumerState<GiveFeedbackPage> {
                         color: ClayTokens.clayDarkTextPrimary,
                       ),
                     ),
-                    const Expanded(
+                    Expanded(
                       child: Text(
                         'Give Feedback',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFFFFFFFF),
+                          color: ClayTokens.clayDarkTextPrimary,
                         ),
                       ),
                     ),

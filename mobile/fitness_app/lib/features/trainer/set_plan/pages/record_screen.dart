@@ -140,6 +140,18 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
                               record['completion_pct'] as double? ?? 0.0;
                           final status = plan['status'] as String? ?? 'active';
                           final isActive = !_showHistory && status == 'active';
+                          // Genuinely complete = every planned day's workout
+                          // AND foods were checked off (see the repository's
+                          // fully_completed flag).
+                          final fullyCompleted =
+                              record['fully_completed'] as bool? ?? false;
+                          // The flip: only a genuinely completed plan reads
+                          // "Complete"; a window that simply ran out (the
+                          // calendar counted the days up to 100%) reads
+                          // "Incomplete".
+                          final showComplete = fullyCompleted;
+                          final showIncomplete =
+                              !fullyCompleted && completionPct >= 1.0;
                           final cancellationRequest =
                               cancellationRequests[plan['id'] as String];
                           final hasCancellationRequest =
@@ -193,18 +205,20 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
                                               children: [
                                                 Text(
                                                   memberName,
-                                                  style: const TextStyle(
+                                                  style: TextStyle(
                                                     fontSize: 15,
                                                     fontWeight: FontWeight.w700,
-                                                    color: Color(0xFFFFFFFF),
+                                                    color: glassInk(),
                                                   ),
                                                 ),
                                                 const SizedBox(height: 2),
                                                 Text(
                                                   '$startDate — $endDate',
-                                                  style: const TextStyle(
+                                                  style: TextStyle(
                                                     fontSize: 12,
-                                                    color: Color(0xFF8E8E93),
+                                                    color: glassInkDim(
+                                                      const Color(0xFF8E8E93),
+                                                    ),
                                                   ),
                                                 ),
                                               ],
@@ -216,22 +230,37 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
                                               vertical: 4,
                                             ),
                                             decoration: BoxDecoration(
-                                              color: completionPct >= 1.0
+                                              color: showComplete
                                                   ? const Color(
                                                       0xFF30D158,
                                                     ).withAlpha(25)
+                                                  : showIncomplete
+                                                  ? ClayTokens.clayWarning
+                                                        .withAlpha(25)
                                                   : ClayTokens.clayPrimary
                                                         .withAlpha(25),
                                               borderRadius:
                                                   BorderRadius.circular(20),
                                             ),
                                             child: Text(
-                                              '$completedDays/$totalDays days',
+                                              showComplete
+                                                  ? 'Complete'
+                                                  : showIncomplete
+                                                  ? 'Incomplete'
+                                                  : '$completedDays/$totalDays days',
                                               style: TextStyle(
                                                 fontSize: 12,
                                                 fontWeight: FontWeight.w700,
-                                                color: completionPct >= 1.0
+                                                color: showComplete
                                                     ? const Color(0xFF30D158)
+                                                    : showIncomplete
+                                                    ? ClayTokens.clayWarning
+                                                    // Light tint chip → the
+                                                    // darker brand purple
+                                                    // reads; dark keeps the
+                                                    // pale lilac.
+                                                    : ClayColors.isLightMode
+                                                    ? ClayTokens.clayPrimary
                                                     : ClayTokens
                                                           .clayPrimaryLight,
                                               ),
@@ -245,12 +274,12 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
                                         child: LinearProgressIndicator(
                                           value: completionPct.clamp(0.0, 1.0),
                                           minHeight: 6,
-                                          backgroundColor: const Color(
-                                            0xFF2A2A45,
+                                          backgroundColor: glassLine(
+                                            const Color(0xFF2A2A45),
                                           ),
                                           valueColor:
                                               AlwaysStoppedAnimation<Color>(
-                                                completionPct >= 1.0
+                                                showComplete
                                                     ? const Color(0xFF30D158)
                                                     : ClayTokens.clayPrimary,
                                               ),
@@ -266,11 +295,15 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
                                             child: Text(
                                               status == 'cancelled'
                                                   ? 'CANCELLED'
-                                                  : 'COMPLETED',
+                                                  : showComplete
+                                                  ? 'COMPLETED'
+                                                  : 'INCOMPLETE',
                                               style: TextStyle(
                                                 color: status == 'cancelled'
                                                     ? const Color(0xFFFF453A)
-                                                    : const Color(0xFF30D158),
+                                                    : showComplete
+                                                    ? const Color(0xFF30D158)
+                                                    : ClayTokens.clayWarning,
                                                 fontWeight: FontWeight.w700,
                                                 fontSize: 12,
                                               ),

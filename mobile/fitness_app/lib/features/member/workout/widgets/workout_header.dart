@@ -30,15 +30,25 @@ class WorkoutHeader extends ConsumerWidget {
     // Ready = purple · Live = red · Done = green (all with readable text).
     final Color chipBg;
     final Color chipFg;
+    final Color chipBorder;
     if (isRunning) {
       chipBg = const Color(0xFFEF4444); // red — live workout
       chipFg = ClayTokens.clayDarkTextPrimary;
+      chipBorder = chipFg.withAlpha(70);
     } else if (isDone) {
       chipBg = const Color(0xFF30D158); // green — workout finished
       chipFg = const Color(0xFF052E16); // dark text stays readable on green
+      chipBorder = chipFg.withAlpha(70);
+    } else if (ClayColors.isLightMode) {
+      // Light mode only: same body as the Food Intake header chips
+      // ("0 meals"/date) so the Ready label stays white instead of black.
+      chipBg = const Color(0xFF7C3AED).withAlpha(140);
+      chipFg = Colors.white;
+      chipBorder = const Color(0xFF7C3AED).withAlpha(180);
     } else {
       chipBg = ClayTokens.clayPrimary; // purple — not started yet
       chipFg = ClayTokens.clayDarkTextPrimary;
+      chipBorder = chipFg.withAlpha(70);
     }
     return Row(
       children: [
@@ -69,7 +79,7 @@ class WorkoutHeader extends ConsumerWidget {
           decoration: BoxDecoration(
             color: chipBg,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: chipFg.withAlpha(70)),
+            border: Border.all(color: chipBorder),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -98,12 +108,22 @@ class WorkoutHeader extends ConsumerWidget {
                     horizontal: 8,
                     vertical: 5,
                   ),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF7C3AED), Color(0xFFC56BF0)],
-                    ),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
+                  decoration: ClayColors.isLightMode
+                      // Light mode: same body as the Food Intake header chips;
+                      // dark mode keeps the original gradient pill.
+                      ? BoxDecoration(
+                          color: const Color(0xFF7C3AED).withAlpha(140),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: const Color(0xFF7C3AED).withAlpha(180),
+                          ),
+                        )
+                      : const BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Color(0xFF7C3AED), Color(0xFFC56BF0)],
+                          ),
+                          borderRadius: BorderRadius.all(Radius.circular(999)),
+                        ),
                   child: Text(
                     '$totalWorkouts total',
                     style: TextStyle(
@@ -121,12 +141,24 @@ class WorkoutHeader extends ConsumerWidget {
                       horizontal: 10,
                       vertical: 5,
                     ),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF7C3AED), Color(0xFFC56BF0)],
-                      ),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
+                    decoration: ClayColors.isLightMode
+                        // Light mode: same body as the Food Intake header
+                        // chips; dark mode keeps the original gradient pill.
+                        ? BoxDecoration(
+                            color: const Color(0xFF7C3AED).withAlpha(140),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: const Color(0xFF7C3AED).withAlpha(180),
+                            ),
+                          )
+                        : const BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Color(0xFF7C3AED), Color(0xFFC56BF0)],
+                            ),
+                            borderRadius: BorderRadius.all(
+                              Radius.circular(999),
+                            ),
+                          ),
                     child: Text(
                       DateFormat('MMM d').format(DateTime.now()),
                       style: TextStyle(

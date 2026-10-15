@@ -68,16 +68,17 @@ class ProfilePage extends ConsumerWidget {
                     ],
                   ),
                   const SizedBox(height: 24),
-                  Container(
+                  // Same liquid-glass body as the Appearance card in light
+                  // mode; dark keeps the original clay fill + hairline.
+                  PressableCard(
+                    glass: true,
                     padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: ClayTokens.clayPrimaryLight.withAlpha(25),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: ClayColors.isLightMode
-                            ? ClayTokens.clayPrimary.withAlpha(45)
-                            : Colors.white.withAlpha(18),
-                      ),
+                    borderRadius: BorderRadius.circular(16),
+                    color: ClayTokens.clayPrimaryLight.withAlpha(25),
+                    border: Border.all(
+                      color: ClayColors.isLightMode
+                          ? ClayTokens.clayPrimary.withAlpha(45)
+                          : Colors.white.withAlpha(18),
                     ),
                     child: Row(
                       children: [
@@ -156,10 +157,6 @@ class ProfilePage extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const ThemeModeToggle(),
-                  const SizedBox(height: 24),
-                  const Divider(color: Color(0xFF38383A)),
-                  const SizedBox(height: 8),
                   Text(
                     'Features',
                     style: TextStyle(
@@ -169,6 +166,10 @@ class ProfilePage extends ConsumerWidget {
                       decoration: TextDecoration.none,
                     ),
                   ),
+                  const SizedBox(height: 8),
+                  // Appearance sits at the top of the features list, right
+                  // above Create Plan.
+                  const ThemeModeToggle(),
                   const SizedBox(height: 8),
                   _SettingItem(
                     index: 1,
@@ -194,7 +195,8 @@ class ProfilePage extends ConsumerWidget {
                     onTap: () => context.push('/trainer/feedback'),
                   ),
                   const SizedBox(height: 24),
-                  InkWell(
+                  PressableCard(
+                    glass: true,
                     onTap: () async {
                       final confirm = await showGlassSignOutDialog(context);
                       if (confirm) {
@@ -204,21 +206,17 @@ class ProfilePage extends ConsumerWidget {
                         }
                       }
                     },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      decoration: BoxDecoration(
-                        color: ClayTokens.clayPrimaryLight.withAlpha(25),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: ClayColors.isLightMode ? ClayTokens.clayPrimary.withAlpha(45) : Colors.white.withAlpha(18)),
-                      ),
-                      child: Center(
-                        child: Text(
-                          'Sign Out',
-                          style: TextStyle(
-                            color: ClayTokens.clayError,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
+                    color: ClayTokens.clayPrimaryLight.withAlpha(25),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: ClayColors.isLightMode ? ClayTokens.clayPrimary.withAlpha(45) : Colors.white.withAlpha(18)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    child: Center(
+                      child: Text(
+                        'Sign Out',
+                        style: TextStyle(
+                          color: ClayTokens.clayError,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
@@ -278,6 +276,9 @@ class _SettingItem extends StatelessWidget {
         label: label,
         child: PressableCard(
           onTap: onTap,
+          // Light mode: same glass body as the Appearance card; dark keeps
+          // the original clay pill.
+          glass: true,
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
           color: ClayTokens.clayPrimaryLight.withAlpha(25),
           borderRadius: BorderRadius.circular(12),

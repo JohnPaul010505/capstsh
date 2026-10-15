@@ -17,9 +17,10 @@ import '../../../shared/widgets/glass_card.dart';
 import '../../calendar/providers/month_entries_provider.dart';
 import '../../calendar/widgets/month_day_grid.dart';
 import '../../calendar/widgets/flip_card.dart';
-import '../../calendar/widgets/glow_card.dart';
+import '../../calendar/widgets/light_aware_glow_card.dart';
 
 import 'add_food_wizard.dart';
+import '../../goals/providers/food_goal_provider.dart';
 
 /// Member Food Intake screen: today's macro ring + logged meals. Adding a meal
 /// opens the photo -> meal type -> FNRI search -> grams -> review wizard
@@ -474,7 +475,9 @@ class _FoodHistoryCalendarState extends ConsumerState<_FoodHistoryCalendar> {
               ],
             ),
             Expanded(
-              child: GlowCard(
+              // LightAwareGlowCard: light mode gets the same light clay panel
+              // as the workout calendar; dark mode keeps the dark GlowCard.
+              child: LightAwareGlowCard(
                 borderRadius: 16,
                 borderWidth: 1.6,
                 child: FlipCard(
@@ -699,6 +702,24 @@ class _TodayMacroRing extends ConsumerWidget {
       (sum, m) => sum + (m['fat_g'] as double? ?? 0.0),
     );
 
+    // Running food goal (if any): drive a small "goal / left / over" hint under
+    // the ring so the daily calorie target is visible while logging. Only shown
+    // for today (the ring is a per-day read); other days keep the plain label.
+    final foodGoal = ref.watch(activeFoodGoalProvider).valueOrNull;
+    final isToday =
+        date.year == DateTime.now().year &&
+        date.month == DateTime.now().month &&
+        date.day == DateTime.now().day;
+    final dailyTarget = (foodGoal?['target_value'] as num?)?.toDouble();
+    final hasGoal = isToday && dailyTarget != null && dailyTarget > 0;
+    final goalLeft = hasGoal ? (dailyTarget - totalCal).round() : 0;
+    final goalHint = hasGoal
+        ? (goalLeft >= 0
+              ? '${dailyTarget.toStringAsFixed(0)} kcal goal · $goalLeft left'
+              : '${dailyTarget.toStringAsFixed(0)} kcal goal · ${-goalLeft} over')
+        : null;
+    final goalOver = hasGoal && goalLeft < 0;
+
     final protCal = totalProt * 4;
     final carbCal = totalCarb * 4;
     final fatCal = totalFat * 9;
@@ -837,6 +858,33 @@ class _TodayMacroRing extends ConsumerWidget {
                     color: ClayTokens.clayDarkTextSecondary,
                   ),
                 ),
+                if (goalHint != null) ...[
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      Icon(
+                        goalOver
+                            ? CupertinoIcons.exclamationmark_circle_fill
+                            : CupertinoIcons.flame_fill,
+                        size: 11,
+                        color: goalOver
+                            ? const Color(0xFFFBBF24)
+                            : ClayTokens.clayPrimary,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        goalHint,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: goalOver
+                              ? const Color(0xFFFBBF24)
+                              : ClayTokens.clayPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 10),
                 _MacroMiniCard(
                   label: 'Protein',
