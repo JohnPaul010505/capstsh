@@ -67,6 +67,12 @@ class _FitnessAppState extends ConsumerState<FitnessApp> {
     return MaterialApp.router(
       title: 'FitTrack',
       debugShowCheckedModeBanner: false,
+      // Re-key on theme change so the WHOLE tree (pages included) rebuilds:
+      // screens read the static ClayColors brightness, and without this key
+      // already-built pages keep their old light/dark rendering after a
+      // toggle. Navigation state is safe — GoRouter lives in routerProvider
+      // and re-syncs the current stack into the fresh Navigator.
+      key: ValueKey(themeMode),
       theme: clayLightThemeData,
       darkTheme: clayThemeData,
       themeMode: themeMode,

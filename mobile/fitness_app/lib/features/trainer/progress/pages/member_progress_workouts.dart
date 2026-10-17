@@ -78,9 +78,19 @@ class _WorkoutsTabState extends ConsumerState<WorkoutsTab> {
             ),
           ),
           child: isLight
-              ? Container(
-                  color: Colors.white,
-                  child: child ?? const SizedBox.shrink(),
+              // Minimized light-mode popup: the picker's own rounded white
+              // card centred over the dimmed backdrop. The old white Container
+              // filled the whole route, so the dialog read as a screen-sized
+              // white slab; pinning the text scale keeps the card at its
+              // compact portrait size for any system font. Dark mode's glass
+              // branch is untouched.
+              ? MediaQuery(
+                  data: MediaQuery.of(context).copyWith(
+                    textScaler: TextScaler.noScaling,
+                  ),
+                  child: Center(
+                    child: child ?? const SizedBox.shrink(),
+                  ),
                 )
               : ClipRRect(
                   borderRadius: BorderRadius.circular(20),

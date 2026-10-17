@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'design_tokens.dart';
 import 'theme_mode_provider.dart';
 import '../features/shared/widgets/glass_card.dart';
 
@@ -13,10 +12,9 @@ class ThemeModeToggle extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isLight = ref.watch(themeModeProvider) == ThemeMode.light;
     final colors = Theme.of(context).colorScheme;
-    // Light mode: render the shared liquid-glass body ([GlassSurface]) so the
-    // Appearance card matches the Features cards (BMI/Feedback/…).
-    // Dark mode keeps the original dark surface untouched.
-    final useGlass = ClayColors.isLightMode;
+    // The body is the shared liquid-glass surface in BOTH modes: light keeps
+    // the look that matches the Features cards, dark now paints its own dark
+    // glass variant instead of the old flat container.
 
     final row = Row(
       children: [
@@ -55,36 +53,21 @@ class ThemeModeToggle extends ConsumerWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(useGlass ? 12 : 16),
+          borderRadius: BorderRadius.circular(12),
           onTap: () => ref.read(themeModeProvider.notifier).toggle(),
-          child: useGlass
-              // Same body (gradient + rim + glow) as the feature cards.
-              ? GlassSurface(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                  // 44 + the 24px vertical padding keeps the original 68px
-                  // minimum card height.
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(minHeight: 44),
-                    child: row,
-                  ),
-                )
-              : Container(
-                  constraints: const BoxConstraints(minHeight: 68),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: ClayTokens.clayDarkSurface.withAlpha(220),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: colors.outlineVariant),
-                  ),
-                  child: row,
-                ),
+          child: GlassSurface(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
+            borderRadius: BorderRadius.circular(12),
+            // 44 + the 24px vertical padding keeps the original 68px
+            // minimum card height.
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 44),
+              child: row,
+            ),
+          ),
         ),
       ),
     );

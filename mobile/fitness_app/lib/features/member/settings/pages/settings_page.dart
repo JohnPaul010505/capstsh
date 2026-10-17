@@ -289,11 +289,16 @@ class _SettingsContent extends ConsumerWidget {
         ),
         const SizedBox(height: 8),
         // Appearance sits at the top of the Features list, right above BMI.
-        GlassPanel(
-          padding: const EdgeInsets.all(14),
-          borderRadius: BorderRadius.circular(16),
-          child: const ThemeModeToggle(),
-        ),
+        // Light mode keeps the surrounding GlassPanel; dark mode has NO panel —
+        // the toggle paints its own glass body, so the row is one glass surface
+        // instead of a flat dark card sitting inside a glass frame.
+        ClayColors.isLightMode
+            ? GlassPanel(
+                padding: const EdgeInsets.all(14),
+                borderRadius: BorderRadius.circular(16),
+                child: const ThemeModeToggle(),
+              )
+            : const ThemeModeToggle(),
         const SizedBox(height: 10),
         _SettingItem(
           index: 1,

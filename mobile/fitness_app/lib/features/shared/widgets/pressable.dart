@@ -14,8 +14,9 @@ class PressableCard extends StatefulWidget {
   final List<BoxShadow>? shadows;
   final Decoration? decoration;
 
-  /// Render the shared liquid-glass body ([GlassSurface]) in light mode. Dark
-  /// mode always keeps the original pill, so this is a light-mode-only switch.
+  /// Render the shared liquid-glass body ([GlassSurface]) — light mode gets
+  /// the near-white glass, dark mode the translucent navy glass the nav bars
+  /// use. Plain pressable cards (glass: false) keep the solid clay fill.
   final bool glass;
 
   const PressableCard({
@@ -81,10 +82,11 @@ class _PressableCardState extends State<PressableCard> with SingleTickerProvider
   }
 
   /// Card body. `glass: true` renders the shared [GlassSurface] (the nav bar
-  /// body) in light mode; the default fill and rim also flip for light mode so
-  /// plain pressable cards stay readable there. Dark mode is unchanged.
+  /// body) in BOTH modes — light glass in light mode, dark glass in dark — so
+  /// glass cards stay glassy after a theme toggle. The default fill and rim
+  /// also flip for light mode so plain pressable cards stay readable there.
   Widget _buildBody() {
-    if (widget.glass && ClayColors.isLightMode) {
+    if (widget.glass) {
       return GlassSurface(
         margin: widget.margin,
         padding: widget.padding,
@@ -239,3 +241,5 @@ class _GlowButtonState extends State<GlowButton> with SingleTickerProviderStateM
     );
   }
 }
+
+

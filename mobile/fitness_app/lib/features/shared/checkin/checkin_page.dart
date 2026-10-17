@@ -13,6 +13,7 @@ import 'package:shared/providers/activity_status_provider.dart';
 import 'package:shared/services/attendance_service.dart';
 import '../../../app/design_tokens.dart';
 import '../../../features/shared/widgets/app_glow_background.dart';
+import '../../../features/shared/widgets/glass_card.dart';
 
 class CheckinPage extends ConsumerStatefulWidget {
   final bool showBack;
@@ -216,57 +217,12 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
                         onTap: () {
                           setState(() => _showScanner = true);
                         },
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                            child: Container(
-                              height: 250,
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: ClayColors.isLightMode
-                                      ? [
-                                          ClayTokens.claySurfaceLight.withAlpha(180),
-                                          ClayTokens.clayPrimary.withAlpha(25),
-                                          ClayTokens.clayPrimaryLight.withAlpha(20),
-                                        ]
-                                      : [
-                                          ClayTokens.hairline.withAlpha(21),
-                                          ClayTokens.clayPrimaryLight.withAlpha(20),
-                                          ClayTokens.clayPrimary.withAlpha(24),
-                                        ],
-                                ),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: ClayColors.isLightMode
-                                      ? ClayTokens.clayPrimary.withAlpha(40)
-                                      : ClayTokens.hairline.withAlpha(38),
-                                ),
-                              ),
-                              child: Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      CupertinoIcons.qrcode_viewfinder,
-                                      size: 64,
-                                      color: ClayTokens.clayPrimary,
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      'Tap to open scanner',
-                                      style: ClayTokens.bodyMedium.copyWith(
-                                        color: ClayColors.isLightMode
-                                            ? ClayTokens.clayTextPrimary
-                                            : ClayTokens.clayDarkTextPrimary,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
+                        // Same glass body as Today's Attendance below so both
+                        // cards on this screen read as one material.
+                        child: _glassCardBody(
+                          child: SizedBox(
+                            height: 250,
+                            child: _scannerPrompt(),
                           ),
                         ),
                       ),
@@ -360,40 +316,51 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
     );
   }
 
-  /// Glass card showing today's check-in / check-out times so the trainer
-  /// (or member) can see at a glance whether they are checked in or out.
-  Widget _buildStatusCard() {
-    final isLight = ClayColors.isLightMode;
+  /// One glass body shared by both cards on this screen (the scanner prompt
+  /// and Today's Attendance): the liquid-glass [GlassSurface] in light mode,
+  /// the original dark tinted glass in dark mode.
+  Widget _glassCardBody({required Widget child}) {
+    if (ClayColors.isLightMode) {
+      return GlassSurface(
+        borderRadius: BorderRadius.circular(16),
+        padding: EdgeInsets.zero,
+        child: child,
+      );
+    }
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
         child: Container(
-          width: double.infinity,
-          padding: EdgeInsets.all(16),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: isLight
-                  ? [
-                      ClayTokens.claySurfaceLight.withAlpha(180),
-                      ClayTokens.clayPrimary.withAlpha(25),
-                      ClayTokens.clayPrimaryLight.withAlpha(20),
-                    ]
-                  : [
-                      ClayTokens.hairline.withAlpha(21),
-                      ClayTokens.clayPrimaryLight.withAlpha(20),
-                      ClayTokens.clayPrimary.withAlpha(24),
-                    ],
+              colors: [
+                ClayTokens.hairline.withAlpha(21),
+                ClayTokens.clayPrimaryLight.withAlpha(20),
+                ClayTokens.clayPrimary.withAlpha(24),
+              ],
             ),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isLight
-                  ? ClayTokens.clayPrimary.withAlpha(40)
-                  : ClayTokens.hairline.withAlpha(38)),
+            border: Border.all(color: ClayTokens.hairline.withAlpha(38)),
           ),
-          child: _sessionsLoading
+          child: child,
+        ),
+      ),
+    );
+  }
+
+  /// Glass card showing today's check-in / check-out times so the trainer
+  /// (or member) can see at a glance whether they are checked in or out.
+  Widget _buildStatusCard() {
+    final isLight = ClayColors.isLightMode;
+    // Same glass body as the scanner card above — one material for both.
+    return _glassCardBody(
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(16),
+        child: _sessionsLoading
               ? const Center(child: CupertinoActivityIndicator())
               : Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -465,7 +432,6 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
                   ],
               ),
         ),
-      ),
     );
   }
 
@@ -615,6 +581,32 @@ class _CheckinPageState extends ConsumerState<CheckinPage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  /// Icon + caption inside the "Tap to open scanner" card — shared by the
+  /// light nav-glass body and the original dark tinted-glass body.
+  Widget _scannerPrompt() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            CupertinoIcons.qrcode_viewfinder,
+            size: 64,
+            color: ClayTokens.clayPrimary,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Tap to open scanner',
+            style: ClayTokens.bodyMedium.copyWith(
+              color: ClayColors.isLightMode
+                  ? ClayTokens.clayTextPrimary
+                  : ClayTokens.clayDarkTextPrimary,
+            ),
+          ),
+        ],
       ),
     );
   }

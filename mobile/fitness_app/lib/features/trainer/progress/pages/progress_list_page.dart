@@ -394,6 +394,9 @@ class _MemberRow extends StatelessWidget {
 
     return PressableCard(
       onTap: () => context.push('/trainer/members/${data['id']}'),
+      // Light mode: the nav bar's liquid-glass body instead of the flat
+      // tinted pill (dark keeps the pill it always had).
+      glass: true,
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       color: ClayTokens.clayPrimaryLight.withAlpha(25),

@@ -244,7 +244,10 @@ class _ChatListPageState extends ConsumerState<ChatListPage> {
                               }
                             },
                             // Same body recipe as the trainer's Member
-                            // Progress rows so both lists read as one.
+                            // Progress rows so both lists read as one — in
+                            // light mode glass: true renders the nav bar's
+                            // liquid-glass body; dark keeps the flat pill.
+                            glass: true,
                             padding: const EdgeInsets.all(12),
                             margin: const EdgeInsets.only(bottom: 8),
                             color: ClayTokens.clayPrimaryLight.withAlpha(25),
