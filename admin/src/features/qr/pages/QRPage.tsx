@@ -169,6 +169,8 @@ export default function QRPage() {
       full_name: formData.fullName, email: formData.email,
       phone: formData.phone || null, date_of_birth: formData.dateOfBirth || null,
       gender: formData.gender || null, address: formData.address || null,
+      emergency_contact_name: formData.emergencyContactName || null,
+      emergency_contact_phone: formData.emergencyContactPhone || null,
     }).eq('id', selected.id)
     setSaving(false)
     if (!error) { setShowModal(false); setSelected(null); queryClient.invalidateQueries({ queryKey: ['enrollments'] }) }

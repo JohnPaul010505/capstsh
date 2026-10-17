@@ -47,38 +47,15 @@ export function useCreateEnrollment() {
   })
 }
 
-export function useConfirmEnrollment() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async (enrollment: Enrollment) => {
-      const confirmedAt = new Date().toISOString()
-      const { data: { user } } = await supabase.auth.getUser()
-      const confirmedBy = user?.id
-
-      const { error: updateError } = await supabase
-        .from('enrollments')
-        .update({ status: 'confirmed', confirmed_at: confirmedAt, confirmed_by: confirmedBy })
-        .eq('id', enrollment.id)
-      if (updateError) throw updateError
-
-      const profileData = {
-        id: enrollment.id,
-        role: 'member',
-        full_name: enrollment.full_name,
-        email: enrollment.email,
-        phone: enrollment.phone || null,
-        date_of_birth: enrollment.date_of_birth || null,
-        gender: enrollment.gender || null,
-      }
-      const { error: profileError } = await supabase.from('profiles').insert(profileData)
-      if (profileError) throw profileError
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['enrollments'] })
-      qc.invalidateQueries({ queryKey: ['members'] })
-    },
-  })
-}
+/**
+ * useConfirmEnrollment is intentionally NOT exported here.
+ *
+ * Confirming an enrollment requires creating a Supabase auth user + profile,
+ * which can only be done with the service-role key. That happens server-side
+ * in POST /api/confirm-enrollment (admin/server/index.js), called from
+ * QRPage.handleConfirm. The browser's anon-key client cannot create auth users,
+ * so a client-side confirm hook cannot work correctly and is omitted.
+ */
 
 export function useRejectEnrollment() {
   const qc = useQueryClient()
