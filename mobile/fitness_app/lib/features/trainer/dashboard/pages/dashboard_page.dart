@@ -968,61 +968,66 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           : (screen == 1 ? _activityEnd : _rangeEnd),
       firstDate: DateTime(2023, 1, 1),
       lastDate: DateTime.now(),
-      builder: (context, child) => Theme(
-        data: Theme.of(context).copyWith(
-          colorScheme: ColorScheme.dark(
-            primary: ClayTokens.clayPrimary,
-            onPrimary: Colors.white,
-            surface: ClayTokens.clayDarkSurfaceElevated,
-            onSurface: ClayTokens.clayDarkTextPrimary,
-          ),
-          // Glass calendar: transparent surface so the notification-glass
-          // gradient behind it shows through — same liquid-glass system as
-          // the popups. Slightly higher alphas than the popup card because a
-          // calendar needs the contrast to stay readable.
-          datePickerTheme: DatePickerThemeData(
-            backgroundColor: Colors.transparent,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-              side: BorderSide.none,
-            ),
-          ),
-        ),
-        // The dialog's internal Align expands to whatever bounded box it is
-        // given, which stretched our gradient wrapper edge-to-edge. Letting it
-        // shrink-wrap (UnconstrainedBox) restores the normal dialog size; the
-        // gradient card hugs it and Center re-centers the whole panel.
-        child: Center(
-          child: UnconstrainedBox(
-            // Clip rather than paint outside the screen on very narrow devices
-            // (the dialog's natural width is 360 + insets).
-            clipBehavior: Clip.hardEdge,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        const Color(0xFF14142A).withAlpha(175),
-                        const Color(0xFF221A4A).withAlpha(145),
-                        const Color(0xFF14142A).withAlpha(185),
-                      ],
-                      stops: const [0.0, 0.55, 1.0],
-                    ),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: ClayTokens.hairline.withAlpha(38)),
+      builder: (context, child) {
+        final isLight = ClayColors.isLightMode;
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: isLight
+                ? ColorScheme.light(
+                    primary: ClayTokens.clayPrimary,
+                    onPrimary: Colors.white,
+                    surface: Colors.white,
+                    onSurface: ClayTokens.clayDarkTextPrimary,
+                  )
+                : ColorScheme.dark(
+                    primary: ClayTokens.clayPrimary,
+                    onPrimary: Colors.white,
+                    surface: ClayTokens.clayDarkSurfaceElevated,
+                    onSurface: ClayTokens.clayDarkTextPrimary,
                   ),
-                  child: child ?? const SizedBox.shrink(),
-                ),
+            datePickerTheme: DatePickerThemeData(
+              backgroundColor: isLight ? Colors.white : Colors.transparent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: BorderSide.none,
               ),
             ),
           ),
-        ),
-      ),
+          child: isLight
+              ? Container(
+                  color: Colors.white,
+                  child: child ?? const SizedBox.shrink(),
+                )
+              : Center(
+                  child: UnconstrainedBox(
+                  clipBehavior: Clip.hardEdge,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              const Color(0xFF14142A).withAlpha(175),
+                              const Color(0xFF221A4A).withAlpha(145),
+                              const Color(0xFF14142A).withAlpha(185),
+                            ],
+                            stops: const [0.0, 0.55, 1.0],
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: ClayTokens.hairline.withAlpha(38)),
+                        ),
+                        child: child ?? const SizedBox.shrink(),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+        );
+      },
     );
     if (picked == null || !mounted) return;
     final day = DateTime(picked.year, picked.month, picked.day);
@@ -1478,7 +1483,7 @@ class _BurgerMenuOverlay extends StatelessWidget {
             size: const Size(arrowWidth, arrowHeight),
             painter: _MenuArrowPainter(
               ClayColors.isLightMode
-                  ? ClayTokens.clayPrimary.withAlpha(70)
+                  ? Colors.white
                   : ClayTokens.hairline.withAlpha(36),
             ),
           ),

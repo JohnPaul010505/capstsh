@@ -73,6 +73,7 @@ class _MemberInsightOverviewViewState
   }
 
   Future<void> _pickDate({required bool isStart}) async {
+    final isLight = ClayColors.isLightMode;
     final picked = await showDatePicker(
       context: context,
       initialDate: isStart ? _start : _end,
@@ -80,43 +81,55 @@ class _MemberInsightOverviewViewState
       lastDate: DateTime.now(),
       builder: (context, child) => Theme(
         data: Theme.of(context).copyWith(
-          colorScheme: ColorScheme.dark(
-            primary: ClayTokens.clayPrimary,
-            onPrimary: Colors.white,
-            surface: ClayTokens.clayDarkSurfaceElevated,
-            onSurface: ClayTokens.clayDarkTextPrimary,
-          ),
+          colorScheme: isLight
+              ? ColorScheme.light(
+                  primary: ClayTokens.clayPrimary,
+                  onPrimary: Colors.white,
+                  surface: Colors.white,
+                  onSurface: ClayTokens.clayDarkTextPrimary,
+                )
+              : ColorScheme.dark(
+                  primary: ClayTokens.clayPrimary,
+                  onPrimary: Colors.white,
+                  surface: ClayTokens.clayDarkSurfaceElevated,
+                  onSurface: ClayTokens.clayDarkTextPrimary,
+                ),
           datePickerTheme: DatePickerThemeData(
-            backgroundColor: Colors.transparent,
+            backgroundColor: isLight ? Colors.white : Colors.transparent,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
               side: BorderSide.none,
             ),
           ),
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    const Color(0xFF14142A).withAlpha(175),
-                    const Color(0xFF221A4A).withAlpha(145),
-                    const Color(0xFF14142A).withAlpha(185),
-                  ],
-                  stops: const [0.0, 0.55, 1.0],
-                ),
+        child: isLight
+            ? Container(
+                color: Colors.white,
+                child: child ?? const SizedBox.shrink(),
+              )
+            : ClipRRect(
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: ClayTokens.hairline.withAlpha(38)),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          const Color(0xFF14142A).withAlpha(175),
+                          const Color(0xFF221A4A).withAlpha(145),
+                          const Color(0xFF14142A).withAlpha(185),
+                        ],
+                        stops: const [0.0, 0.55, 1.0],
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: ClayTokens.hairline.withAlpha(38)),
+                    ),
+                    child: child ?? const SizedBox.shrink(),
+                  ),
+                ),
               ),
-              child: child ?? const SizedBox.shrink(),
-            ),
-          ),
-        ),
       ),
     );
     if (picked == null || !mounted) return;

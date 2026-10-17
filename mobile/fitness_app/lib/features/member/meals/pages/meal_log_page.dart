@@ -130,7 +130,12 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
         ),
       ),
     );
-    if (picked != null && mounted) setState(() => _selectedDate = picked);
+    // Do not let calendar picks change the main screen's date: the member's
+    // Food Intake screen always shows today unless they explicitly navigate
+    // elsewhere. The calendar modal is a read-only historical viewer.
+    if (picked != null && mounted) {
+      // Keep _selectedDate on today; calendar picks stay inside the modal.
+    }
   }
 
   @override
@@ -808,7 +813,9 @@ class _TodayMacroRing extends ConsumerWidget {
                       style: TextStyle(
                         fontSize: 19,
                         fontWeight: FontWeight.w800,
-                        color: Colors.white,
+                        color: ClayColors.isLightMode
+                            ? ClayTokens.clayDarkTextPrimary
+                            : Colors.white,
                         height: 1.05,
                       ),
                     ),

@@ -7,6 +7,7 @@ import 'package:shared/providers/auth_provider.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../../app/theme_mode_toggle.dart';
 import '../../bmi/providers/bmi_history_provider.dart';
+import '../../../shared/providers/plan_providers.dart';
 import '../../../shared/widgets/glass_sign_out_dialog.dart';
 import '../../../shared/widgets/pressable.dart';
 import '../../../shared/widgets/skeleton.dart';
@@ -288,7 +289,11 @@ class _SettingsContent extends ConsumerWidget {
         ),
         const SizedBox(height: 8),
         // Appearance sits at the top of the Features list, right above BMI.
-        const ThemeModeToggle(),
+        GlassPanel(
+          padding: const EdgeInsets.all(14),
+          borderRadius: BorderRadius.circular(16),
+          child: const ThemeModeToggle(),
+        ),
         const SizedBox(height: 10),
         _SettingItem(
           index: 1,
@@ -330,7 +335,7 @@ class _SettingsContent extends ConsumerWidget {
           icon: CupertinoIcons.doc_text,
           iconColor: const Color(0xFFBF5AF2),
           label: 'Trainer Plan',
-          onTap: () => context.push('/member/trainer-plan'),
+          onTap: () => _showTrainerPlanDialog(context, ref),
         ),
         const SizedBox(height: 24),
         Divider(color: glassLine(const Color(0xFF38383A))),
@@ -527,6 +532,211 @@ class _SettingsContent extends ConsumerWidget {
       ),
     );
   }
+
+  void _showTrainerPlanDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => Consumer(
+        builder: (_, ref, __) {
+          final planAsync = ref.watch(activePlanProvider);
+          return planAsync.when(
+            data: (plan) {
+              if (plan == null) return const _NoPlanDialog();
+              final status = plan['status'] as String? ?? 'active';
+              // The DB never flips `status` when the window simply runs out
+              // (getPlanByMember filters on status only), so also treat a plan
+              // whose end date has passed as ended - mirroring getActivePlan's
+              // `.gte('end_date', today)` window check.
+              final now = DateTime.now();
+              final today = DateTime(now.year, now.month, now.day);
+              final endDate =
+                  DateTime.tryParse(plan['end_date']?.toString() ?? '');
+              final expired = endDate != null && endDate.isBefore(today);
+              if (status != 'active' || expired) {
+                return const _NoPlanDialog(
+                  message:
+                      'The plan is ended. Chat your trainer to add another plan.',
+                );
+              }
+              return _ActivePlanDialog(plan: plan);
+            },
+            loading: () => const _LoadingDialog(),
+            error: (_, __) => _NoPlanDialog(
+              message: 'Unable to load plan. Ask your trainer.',
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _NoPlanDialog extends StatelessWidget {
+  final String message;
+
+  const _NoPlanDialog({this.message = 'Ask your trainer to make a plan.'});
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: GlassPanel(
+        borderRadius: BorderRadius.circular(24),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              CupertinoIcons.doc_text,
+              size: 48,
+              color: ClayTokens.clayDarkTextSecondary,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: ClayTokens.clayDarkTextPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () => Navigator.of(context).pop(),
+                style: FilledButton.styleFrom(
+                  backgroundColor: ClayTokens.clayPrimary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  'Got it',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ActivePlanDialog extends StatelessWidget {
+  final Map<String, dynamic> plan;
+
+  const _ActivePlanDialog({required this.plan});
+
+  @override
+  Widget build(BuildContext context) {
+    final startDate = plan['start_date'] as String? ?? '';
+    final endDate = plan['end_date'] as String? ?? '';
+    // `member_goal_plans` has no total_days column - derive the window from
+    // the dates (inclusive: assignPlan writes start=now, end=start+6 -> 7 days).
+    final start = DateTime.tryParse(startDate);
+    final end = DateTime.tryParse(endDate);
+    final totalDays = (start != null && end != null)
+        ? (end.difference(start).inDays + 1).clamp(1, 3650).toInt()
+        : (plan['total_days'] as int? ?? 7);
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: GlassPanel(
+        borderRadius: BorderRadius.circular(24),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              CupertinoIcons.doc_text,
+              size: 48,
+              color: ClayTokens.clayPrimaryLight,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Active Trainer Plan',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: ClayTokens.clayDarkTextPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Start: $startDate\nEnd: $endDate\nDuration: $totalDays days',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: ClayTokens.clayDarkTextSecondary,
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () => Navigator.of(context).pop(),
+                style: FilledButton.styleFrom(
+                  backgroundColor: ClayTokens.clayPrimary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  'Close',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LoadingDialog extends StatelessWidget {
+  const _LoadingDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: GlassPanel(
+        borderRadius: BorderRadius.circular(24),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              height: 32,
+              width: 32,
+              child: CircularProgressIndicator(
+                strokeWidth: 3,
+                color: ClayTokens.clayPrimary,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Loading plan...',
+              style: TextStyle(
+                color: ClayTokens.clayDarkTextPrimary,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _SettingItem extends StatelessWidget {
@@ -596,3 +806,5 @@ class _SettingItem extends StatelessWidget {
     );
   }
 }
+
+

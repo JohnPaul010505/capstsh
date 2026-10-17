@@ -53,12 +53,22 @@ final memberProgressDataProvider = FutureProvider.autoDispose
             .select('id, full_name, email, avatar_url')
             .eq('id', memberId)
             .single(),
+        // Member's active goals (workout + food) — shown in the overview so the
+        // trainer can see what the member is working towards.
+        client
+            .from('goals')
+            .select(
+              'id, goal_category, goal_type, unit, target_value, end_date, status, current_value',
+            )
+            .eq('member_id', memberId)
+            .eq('status', 'active'),
       ]);
 
       final yearAttendance = results[0] as List;
       final weekWorkoutLogs = results[1] as List;
       final measurements = results[2] as List;
       final profile = results[3] as Map<String, dynamic>;
+      final goals = results[4] as List;
 
       // This Week counts COMPLETED workout sessions from `workout_logs` — one
       // row per exercise, so a session is a distinct `workout_name` + local
@@ -114,6 +124,7 @@ final memberProgressDataProvider = FutureProvider.autoDispose
         'monthlyCounts': monthlyCounts,
         'monthlyWeights': monthlyBmis,
         'today': today,
+        'goals': goals,
       };
     });
 
@@ -243,6 +254,7 @@ class _MemberProgressPageState extends ConsumerState<MemberProgressPage> {
                     final monthlyCounts = data['monthlyCounts'] as List<int>;
                     final monthlyWeights =
                         data['monthlyWeights'] as List<double?>;
+                    final goals = (data['goals'] as List).cast<Map<String, dynamic>>();
 
                     return ListView(
                       padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -339,6 +351,10 @@ class _MemberProgressPageState extends ConsumerState<MemberProgressPage> {
                         ),
                         const SizedBox(height: 16),
 
+                        if (goals.isNotEmpty) ...[
+                          _GoalsOverview(goals: goals),
+                          const SizedBox(height: 12),
+                        ],
                         _WeekChart(weekCounts: weekCounts, maxCount: maxWeek),
                         const SizedBox(height: 8),
                         _MonthChart(monthlyCounts: monthlyCounts),
@@ -370,6 +386,189 @@ class _MemberProgressPageState extends ConsumerState<MemberProgressPage> {
         ),
       ),
     );
+  }
+}
+
+/// Displays the member's active workout and food goals on the trainer's
+/// member progress overview. Mirrors the member's own Goals screen so the
+/// trainer can see both goal families side by side.
+class _GoalsOverview extends StatelessWidget {
+  final List<Map<String, dynamic>> goals;
+
+  const _GoalsOverview({required this.goals});
+
+  static bool _isFoodGoal(Map<String, dynamic> g) =>
+      (g['goal_category'] as String? ?? 'workout') == 'food';
+
+  @override
+  Widget build(BuildContext context) {
+    final workoutGoals = goals.where((g) => !_isFoodGoal(g)).toList();
+    final foodGoals = goals.where((g) => _isFoodGoal(g)).toList();
+
+    return MemberGlassCard(
+      padding: const EdgeInsets.all(16),
+      borderRadius: BorderRadius.circular(ClayTokens.radiusCard),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Member Goals',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: ClayTokens.clayDarkTextPrimary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (workoutGoals.isNotEmpty) ...[
+            _GoalSummaryRow(
+              label: 'Workout Goal',
+              goal: workoutGoals.first,
+              icon: Icons.fitness_center,
+            ),
+            const SizedBox(height: 10),
+          ],
+          if (foodGoals.isNotEmpty) ...[
+            _GoalSummaryRow(
+              label: 'Food Goal',
+              goal: foodGoals.first,
+              icon: Icons.restaurant,
+            ),
+          ],
+          if (workoutGoals.isEmpty && foodGoals.isEmpty)
+            Text(
+              'No active goals',
+              style: TextStyle(
+                fontSize: 13,
+                color: ClayTokens.clayDarkTextSecondary,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One goal summary row: label, target value, and progress chip.
+class _GoalSummaryRow extends StatelessWidget {
+  final String label;
+  final Map<String, dynamic> goal;
+  final IconData icon;
+
+  const _GoalSummaryRow({
+    required this.label,
+    required this.goal,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final targetValue = goal['target_value'] as num?;
+    final isFood = (goal['goal_category'] as String? ?? 'workout') == 'food';
+    final goalType = (goal['goal_type'] as String? ?? '').toLowerCase();
+    final unit = isFood
+        ? (goal['unit'] as String? ?? 'kcal/day')
+        : (goalType == 'lose weight' ||
+                goalType == 'gain muscle' ||
+                goalType == 'maintain weight')
+            ? 'kg'
+            : (goal['unit'] as String? ?? '');
+    final target = targetValue == null
+        ? 'No target set'
+        : '${targetValue.toStringAsFixed(1)}${unit.isEmpty ? '' : ' $unit'}';
+    final endDate = goal['end_date'] as String?;
+    final status = goal['status'] as String? ?? 'active';
+
+    return Row(
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: ClayTokens.clayPrimary.withAlpha(15),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: ClayTokens.clayPrimary.withAlpha(40),
+            ),
+          ),
+          child: Icon(
+            icon,
+            size: 16,
+            color: ClayTokens.clayPrimary,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: ClayTokens.clayDarkTextPrimary,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: ClayTokens.clayPrimary.withAlpha(15),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: ClayTokens.clayPrimary.withAlpha(40),
+                      ),
+                    ),
+                    child: Text(
+                      status.toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 8,
+                        fontWeight: FontWeight.w700,
+                        color: ClayTokens.clayPrimary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 2),
+              Text(
+                target,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: ClayTokens.clayDarkTextSecondary,
+                ),
+              ),
+              if (endDate != null) ...[
+                const SizedBox(height: 2),
+                Text(
+                  'Ends ${_formatDate(endDate)}',
+                  style: TextStyle(
+                    fontSize: 9,
+                    color: ClayTokens.clayDarkTextTertiary,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _formatDate(String dateStr) {
+    try {
+      final d = DateTime.tryParse(dateStr);
+      if (d == null) return dateStr;
+      return '${d.month}/${d.day}/${d.year}';
+    } catch (_) {
+      return dateStr;
+    }
   }
 }
 

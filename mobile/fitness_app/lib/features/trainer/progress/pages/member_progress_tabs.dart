@@ -15,6 +15,9 @@ import '../../progress/pages/member_progress_workouts.dart';
 import '../../progress/pages/member_progress_nutrition.dart';
 import '../../progress/pages/member_progress_checkins.dart';
 import '../../progress/widgets/member_tab_widgets.dart';
+import '../../../member/goals/providers/food_goal_provider.dart'
+    show activeFoodGoalProvider;
+import '../../../member/goals/pages/food_goal_card.dart';
 
 /// The trainer's 4-tab Member Progress screen (Overview / Workouts /
 /// Nutrition / Check-ins), opened by tapping a member anywhere in the trainer
@@ -318,6 +321,7 @@ class _OverviewTab extends ConsumerWidget {
             (insightAsync.valueOrNull?['measurements'] as List?)
                 ?.cast<Map<String, dynamic>>() ??
             const <Map<String, dynamic>>[];
+        final foodGoalAsync = ref.watch(activeFoodGoalProvider);
 
         return ListView(
           padding: const EdgeInsets.fromLTRB(14, 12, 14, 28),
@@ -328,6 +332,25 @@ class _OverviewTab extends ConsumerWidget {
             else
               const _NoGoalCard(),
             const SizedBox(height: 10),
+            // Food goal card: shows only when the member has an active food
+            // goal, mirrored from the member's own Food Goals screen.
+            foodGoalAsync.when(
+              data: (foodGoal) {
+                if (foodGoal == null) return const SizedBox.shrink();
+                return Column(
+                  children: [
+                    const SizedBox(height: 10),
+                    GlassPanel(
+                      padding: const EdgeInsets.all(14),
+                      borderRadius: BorderRadius.circular(16),
+                      child: FoodGoalCard(goal: foodGoal),
+                    ),
+                  ],
+                );
+              },
+              loading: () => const SizedBox.shrink(),
+              error: (_, __) => const SizedBox.shrink(),
+            ),
             MemberWeekChart(weekCounts: weekCounts, maxCount: maxWeek),
             const SizedBox(height: 10),
             MemberMonthChart(monthlyCounts: monthlyCounts),

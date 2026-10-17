@@ -185,29 +185,61 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage> {
                     const SizedBox(width: 10),
                     if (_otherMemberName != null)
                       Expanded(
-                        child: Row(
-                          children: [
-                            ClayAvatar(
-                              imageUrl: _otherMemberAvatarUrl,
-                              initials: _otherMemberName!
-                                  .split(' ')
-                                  .map((n) => n[0])
-                                  .take(2)
-                                  .join(),
-                              size: ClayAvatarSize.md,
-                            ),
-                            const SizedBox(width: 10),
-                            Text(
-                              _otherMemberName!,
-                              style: ClayTokens.titleLarge.copyWith(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w500,
-                                color: ClayTokens.clayDarkTextPrimary,
-                                letterSpacing: -0.24,
+                        child: ClayColors.isLightMode
+                            ? GlassSurface(
+                                padding: const EdgeInsets.all(12),
+                                borderRadius: BorderRadius.circular(12),
+                                child: Row(
+                                  children: [
+                                    ClayAvatar(
+                                      imageUrl: _otherMemberAvatarUrl,
+                                      initials: _otherMemberName!
+                                          .split(' ')
+                                          .map((n) => n[0])
+                                          .take(2)
+                                          .join(),
+                                      size: ClayAvatarSize.md,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        _otherMemberName!,
+                                        style: ClayTokens.titleLarge.copyWith(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w500,
+                                          color: ClayTokens.clayDarkTextPrimary,
+                                          letterSpacing: -0.24,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : Row(
+                                children: [
+                                  ClayAvatar(
+                                    imageUrl: _otherMemberAvatarUrl,
+                                    initials: _otherMemberName!
+                                        .split(' ')
+                                        .map((n) => n[0])
+                                        .take(2)
+                                        .join(),
+                                    size: ClayAvatarSize.md,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      _otherMemberName!,
+                                      style: ClayTokens.titleLarge.copyWith(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w500,
+                                        color: ClayTokens.clayDarkTextPrimary,
+                                        letterSpacing: -0.24,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                          ],
-                        ),
                       ),
                   ],
                 ),

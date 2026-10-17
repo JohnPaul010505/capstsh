@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -339,13 +337,14 @@ class _GoalsPageState extends ConsumerState<GoalsPage>
           // a page-global offset.
           PopupMenuButton<String>(
             tooltip: 'Switch goal type',
+            position: PopupMenuPosition.under,
             color: ClayColors.isLightMode
                 ? Colors.white
                 : ClayTokens.clayDarkSurface,
             // The menu hangs directly beneath the burger, flush with the
             // button's end edge, and the shape's arrow pokes up into the
             // button itself — mirroring the reference menu.
-            shape: _MenuArrowShape(arrowX: _modeMenuArrowX(context)),
+            shape: const _MenuArrowShape(),
             offset: const Offset(0, 6),
             icon: Icon(
               CupertinoIcons.bars,
@@ -534,8 +533,20 @@ class _GoalsTab extends StatelessWidget {
                 .map(
                   (g) => Padding(
                     padding: const EdgeInsets.only(bottom: 12),
-                    child: GlassPanel(
+                    child: MemberGlassCard(
                       padding: const EdgeInsets.all(12),
+                      borderRadius: BorderRadius.circular(16),
+                      darkBuilder: (child) => Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: ClayTokens.clayDarkCard,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.white.withAlpha(30)),
+                          ),
+                          child: child,
+                        ),
+                      ),
                       child: isFood
                           ? FoodGoalCard(
                               goal: g,
@@ -780,45 +791,17 @@ class _ModeMenuItem extends StatelessWidget {
   }
 }
 
-/// Horizontal position, measured from the menu's left edge, where the arrow
-/// must sit so it points up at the burger button.
-///
-/// In LTR the framework lines the menu's *end* edge up with the button
-/// (`PopupMenuPosition.byMenu`), so the arrow lands at
-/// `menuWidth - buttonWidth / 2` from the menu's left edge. The width is
-/// estimated from the same icon, gap, label, checkmark and padding the menu
-/// items use.
-double _modeMenuArrowX(BuildContext context) {
-  const labelStyle = TextStyle(fontSize: 14, fontWeight: FontWeight.w400);
-  double textWidth(String label) =>
-      (TextPainter(
-        text: TextSpan(text: label, style: labelStyle),
-        textDirection: TextDirection.ltr,
-      )..layout())
-          .width;
-  final scale = MediaQuery.textScalerOf(context).scale(1.0);
-  final workoutWidth = textWidth('Workout Goals') * scale;
-  final foodWidth = textWidth('Food Goals') * scale;
-  // A menu item is a 16px icon + 10px gap + label (and a 16px checkmark when
-  // selected), inside the PopupMenuItem's default 16px padding on each side.
-  final menuWidth = math.max(
-    workoutWidth + 16 + 10 + 32,
-    foodWidth + 16 + 10 + 16 + 32,
-  );
-  final button = context.findRenderObject();
-  final buttonWidth = button is RenderBox ? button.size.width : 48.0;
-  return (menuWidth - buttonWidth / 2).clamp(20.0, menuWidth - 20.0);
-}
-
-/// Popup menu shape with an arrow notch at the top, drawn at [arrowX]
-/// (measured from the menu's left edge) so it points up at the burger button
+/// Popup menu shape with an arrow notch at the top that points up at the
+/// burger button. The menu's right edge always aligns with the button's
+/// right edge (the button is the last child of a header Row padded 8px, so
+/// Flutter right-aligns the menu; the route's horizontal padding is 0), and
+/// the button is a 48px IconButton - its centre is exactly 24px from the
+/// menu's right edge, so the tip is computed from the actual rect at paint
+/// time and stays exact for any menu width.
 /// — the menu hangs off the button like a little speech bubble, exactly like
 /// the reference menu.
 class _MenuArrowShape extends ShapeBorder {
-  const _MenuArrowShape({required this.arrowX});
-
-  /// Distance from the shape's left edge to the arrow's centre line.
-  final double arrowX;
+  const _MenuArrowShape();
 
   /// How far the arrow pokes above the menu's rounded rectangle.
   static const double _arrowHeight = 12.0;
@@ -827,6 +810,10 @@ class _MenuArrowShape extends ShapeBorder {
   static const double _arrowHalfWidth = 9.0;
 
   static const double _edgeRadius = 14.0;
+
+  /// Distance from the menu's right edge to the arrow's centre line
+  /// (half of the 48px burger button).
+  static const double _arrowFromRight = 24.0;
 
   @override
   EdgeInsetsGeometry get dimensions => EdgeInsets.zero;
@@ -838,7 +825,7 @@ class _MenuArrowShape extends ShapeBorder {
   @override
   Path getOuterPath(Rect rect, {TextDirection? textDirection}) {
     final topY = rect.top + _arrowHeight;
-    final tipX = rect.left + arrowX;
+    final tipX = rect.right - _arrowFromRight;
     return Path()
       // Top edge: rounded top-left corner, up the arrow's left slope, down
       // the right slope, then along to the top-right corner.
@@ -876,3 +863,4 @@ class _MenuArrowShape extends ShapeBorder {
   @override
   ShapeBorder scale(double t) => this;
 }
+
