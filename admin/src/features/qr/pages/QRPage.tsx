@@ -11,12 +11,9 @@ import { useFitSquare } from '@/hooks/useFitRows'
 import { Eye, Check, X, Plus } from 'lucide-react'
 import AppBackground from '@/components/AppBackground'
 
-// Enrollment URL. In dev, keep the configured public URL (VITE_PUBLIC_URL)
-// so the printed QR always matches the running dev server. In production the
-// build no longer carries that dev constant, so resolve the URL at runtime
-// from the origin that actually served the page: a build-time constant would
-// bake a dev-server address into the QR, and a phone scanning it anywhere
-// other than that dev machine would get a dead link.
+// In development the LAN URL lets a phone on the same Wi-Fi reach this Vite
+// server. In production, use the serving origin so no development IP is baked
+// into the QR.
 const PUBLIC_ORIGIN = import.meta.env.DEV
   ? (import.meta.env.VITE_PUBLIC_URL?.trim() || window.location.origin)
   : window.location.origin
@@ -398,7 +395,7 @@ export default function QRPage() {
               <a href={PAGE_URL} target="_blank" rel="noreferrer" className="max-w-full break-all text-xs text-[#A855F7] mt-2 text-center">
                 {PAGE_URL}
               </a>
-              {IS_LOCAL_QR && <p className="text-xs text-fg-muted mt-1 text-center">For this local QR, your phone must be on the same Wi-Fi as this computer.</p>}
+              {IS_LOCAL_QR && <p className="text-xs text-fg-muted mt-1 text-center">Local development link: keep this computer and phone on the same Wi-Fi, and start the app with <code>npm run dev</code> so applications can reach the pending queue. For access from anywhere, use the deployed admin URL.</p>}
             </div>
             <div
               data-qr="checkin"

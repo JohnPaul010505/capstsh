@@ -16,7 +16,7 @@ import '../../progress/pages/member_progress_nutrition.dart';
 import '../../progress/pages/member_progress_checkins.dart';
 import '../../progress/widgets/member_tab_widgets.dart';
 import '../../../member/goals/providers/food_goal_provider.dart'
-    show activeFoodGoalProvider;
+    show memberFoodGoalProvider;
 import '../../../member/goals/pages/food_goal_card.dart';
 
 /// The trainer's 4-tab Member Progress screen (Overview / Workouts /
@@ -54,10 +54,11 @@ class _MemberProgressTabsPageState extends ConsumerState<MemberProgressTabsPage>
     final insightAsync = ref.watch(memberInsightProvider(widget.id));
     final riskAsync = ref.watch(memberRiskProvider(widget.id));
 
-    return Scaffold(        backgroundColor: ClayColors.isLightMode
-            ? ClayTokens.claySurfaceLight.withAlpha(250)
-            : ClayTokens.clayDarkSurface,
-        body: AppGlowBackground(
+    return Scaffold(
+      backgroundColor: ClayColors.isLightMode
+          ? ClayTokens.claySurfaceLight.withAlpha(250)
+          : ClayTokens.clayDarkSurface,
+      body: AppGlowBackground(
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -321,7 +322,7 @@ class _OverviewTab extends ConsumerWidget {
             (insightAsync.valueOrNull?['measurements'] as List?)
                 ?.cast<Map<String, dynamic>>() ??
             const <Map<String, dynamic>>[];
-        final foodGoalAsync = ref.watch(activeFoodGoalProvider);
+        final foodGoalAsync = ref.watch(memberFoodGoalProvider(id));
 
         return ListView(
           padding: const EdgeInsets.fromLTRB(14, 12, 14, 28),
@@ -343,7 +344,11 @@ class _OverviewTab extends ConsumerWidget {
                     GlassPanel(
                       padding: const EdgeInsets.all(14),
                       borderRadius: BorderRadius.circular(16),
-                      child: FoodGoalCard(goal: foodGoal),
+                      child: FoodGoalCard(
+                        goal: foodGoal,
+                        memberId: id,
+                        showHomeScreenAction: false,
+                      ),
                     ),
                   ],
                 );
@@ -417,10 +422,10 @@ class _GoalSummaryCard extends StatelessWidget {
     final unit = isFoodGoal
         ? 'kcal'
         : goalType.toLowerCase() == 'lose weight' ||
-                goalType.toLowerCase() == 'gain muscle' ||
-                goalType.toLowerCase() == 'maintain weight'
-            ? 'kg'
-            : '';
+              goalType.toLowerCase() == 'gain muscle' ||
+              goalType.toLowerCase() == 'maintain weight'
+        ? 'kg'
+        : '';
     // The trainer view has no meal-log feed on this card, so a food goal's
     // Current / To-go cells stay empty — the member's own FoodGoalCard shows
     // consumed-vs-target through todayCaloriesProvider.
@@ -429,8 +434,9 @@ class _GoalSummaryCard extends StatelessWidget {
         : goalType.isNotEmpty
         ? (live ?? baseline)
         : baseline;
-    final remainingDisplay =
-        isFoodGoal || remaining == null ? null : (remaining < 0 ? 0.0 : remaining);
+    final remainingDisplay = isFoodGoal || remaining == null
+        ? null
+        : (remaining < 0 ? 0.0 : remaining);
 
     final ringColor = isCompleted
         ? const Color(0xFF30D158)
@@ -773,7 +779,9 @@ class _GoalStatCell extends StatelessWidget {
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w800,
-              color: accent ? ClayTokens.clayPrimaryLight : ClayTokens.clayDarkTextPrimary,
+              color: accent
+                  ? ClayTokens.clayPrimaryLight
+                  : ClayTokens.clayDarkTextPrimary,
             ),
           ),
         ],

@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:shared/models/membership.dart';
 
 import '../../../../app/design_tokens.dart';
+import '../../../shared/widgets/glass_card.dart';
 
 /// Hero card on the Membership screen: plan, status chip, dates, price.
 class MembershipStatusCard extends StatelessWidget {
@@ -28,7 +29,8 @@ class MembershipStatusCard extends StatelessWidget {
         statusLabel: 'NO MEMBERSHIP',
         statusActive: false,
         title: 'No membership yet',
-        subtitle: 'Ask the gym admin to activate a plan for you, or apply for '
+        subtitle:
+            'Ask the gym admin to activate a plan for you, or apply for '
             'a renewal below once you\u2019ve been enrolled.',
       );
     }
@@ -58,7 +60,9 @@ class MembershipStatusCard extends StatelessWidget {
     } else if (expired) {
       subtitle = 'Expired on ${_fmt(m.endDate)}';
     } else if (days != null && days <= 7) {
-      subtitle = days <= 0 ? 'Ends today' : 'Expires in $days day${days == 1 ? '' : 's'}';
+      subtitle = days <= 0
+          ? 'Ends today'
+          : 'Expires in $days day${days == 1 ? '' : 's'}';
     } else {
       subtitle = 'Valid until ${_fmt(m.endDate)}';
     }
@@ -66,19 +70,20 @@ class MembershipStatusCard extends StatelessWidget {
     final statusLabel = hasPendingRequest
         ? 'PENDING APPROVAL'
         : isDaily
-            ? (sessionActive ? 'ACTIVE' : 'INACTIVE')
-            : datesActive
-                ? 'ACTIVE'
-                : expired
-                    ? 'EXPIRED'
-                    : m.status.toUpperCase();
+        ? (sessionActive ? 'ACTIVE' : 'INACTIVE')
+        : datesActive
+        ? 'ACTIVE'
+        : expired
+        ? 'EXPIRED'
+        : m.status.toUpperCase();
 
     return _card(
       statusLabel: statusLabel,
       statusActive: active && !hasPendingRequest,
       title: m.planName,
       subtitle: subtitle,
-      details: '?${m.price.toStringAsFixed(m.price.truncateToDouble() == m.price ? 0 : 2)} · '
+      details:
+          '?${m.price.toStringAsFixed(m.price.truncateToDouble() == m.price ? 0 : 2)} · '
           'Started ${_fmt(m.startDate)}',
     );
   }
@@ -90,14 +95,9 @@ class MembershipStatusCard extends StatelessWidget {
     required String subtitle,
     String? details,
   }) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: ClayTokens.clayPrimaryLight.withAlpha(25),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: ClayTokens.hairline.withAlpha(24)),
-      ),
+    return GlassPanel(
+      padding: const EdgeInsets.all(16),
+      borderRadius: BorderRadius.circular(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -108,16 +108,29 @@ class MembershipStatusCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          Text(title, style: ClayTokens.titleLarge.copyWith(color: ClayTokens.clayDarkTextPrimary)),
+          Text(
+            title,
+            style: ClayTokens.titleLarge.copyWith(
+              color: ClayTokens.clayDarkTextPrimary,
+            ),
+          ),
           const SizedBox(height: 4),
-          Text(subtitle, style: ClayTokens.bodySmall.copyWith(
-            color: statusActive ? ClayTokens.clayAccent : ClayTokens.clayWarning,
-          )),
+          Text(
+            subtitle,
+            style: ClayTokens.bodySmall.copyWith(
+              color: statusActive
+                  ? ClayTokens.clayAccent
+                  : ClayTokens.clayWarning,
+            ),
+          ),
           if (details != null) ...[
             const SizedBox(height: 2),
-            Text(details, style: ClayTokens.bodySmall.copyWith(
-              color: ClayTokens.clayDarkTextTertiary,
-            )),
+            Text(
+              details,
+              style: ClayTokens.bodySmall.copyWith(
+                color: ClayTokens.clayDarkTextTertiary,
+              ),
+            ),
           ],
           const SizedBox(height: 12),
           Container(
@@ -151,7 +164,11 @@ class MembershipStatusCard extends StatelessWidget {
 
   String _fmt(String isoDate) {
     final d = DateTime.tryParse(isoDate);
-    if (d == null) return isoDate.isEmpty ? '—' : isoDate.substring(0, isoDate.length.clamp(0, 10));
+    if (d == null) {
+      return isoDate.isEmpty
+          ? '—'
+          : isoDate.substring(0, isoDate.length.clamp(0, 10));
+    }
     return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
   }
 }

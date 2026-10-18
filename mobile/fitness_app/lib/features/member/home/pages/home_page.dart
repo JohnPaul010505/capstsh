@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -589,10 +590,10 @@ class _PredictionCardState extends State<_PredictionCard> {
       final goal = Map<String, dynamic>.from(goals.first);
       final measurements = await client
           .from('body_measurements')
-          .select('weight_kg')
+          .select('weight_kg, measured_at')
           .eq('member_id', widget.memberId)
           .order('measured_at', ascending: false)
-          .limit(1);
+          .limit(20);
       final measuredWeight = measurements.isEmpty
           ? null
           : (measurements.first['weight_kg'] as num?)?.toDouble();
@@ -603,12 +604,24 @@ class _PredictionCardState extends State<_PredictionCard> {
       final daysAhead = deadline == null
           ? 30
           : DateUtils.dateOnly(deadline).difference(today).inDays;
-      final forecast = daysAhead > 0
-          ? await PredictionService().getForecast(
-              widget.memberId,
-              daysAhead: daysAhead,
-            )
-          : null;
+      MemberForecast? forecast;
+      if (daysAhead > 0) {
+        forecast = await PredictionService()
+            .getForecast(widget.memberId, daysAhead: daysAhead)
+            .timeout(
+              const Duration(seconds: 10),
+              onTimeout: () => const MemberForecast(
+                results: [],
+                error: 'Prediction service timed out',
+              ),
+            );
+        final serverWeight = forecast.byType('weight');
+        if (serverWeight == null ||
+            forecast.error != null ||
+            serverWeight.method == 'baseline-only') {
+          forecast = _localWeightForecast(measurements, daysAhead);
+        }
+      }
 
       if (!mounted) return;
       setState(() {
@@ -629,6 +642,86 @@ class _PredictionCardState extends State<_PredictionCard> {
         });
       }
     }
+  }
+
+  /// Keeps the Home forecast useful when the optional prediction API is down
+  /// or unreachable from a member's phone. Uses the member's own RLS-scoped
+  /// weigh-ins, the same minimum history and 5% horizon guard as the service.
+  MemberForecast _localWeightForecast(List<dynamic> rows, int daysAhead) {
+    final points =
+        rows
+            .map((row) => Map<String, dynamic>.from(row as Map))
+            .where((row) => row['weight_kg'] is num)
+            .map((row) {
+              final date = DateTime.tryParse(
+                row['measured_at']?.toString() ?? '',
+              );
+              return (weight: (row['weight_kg'] as num).toDouble(), date: date);
+            })
+            .where((point) => point.weight > 0)
+            .toList()
+          ..sort(
+            (a, b) => (a.date ?? DateTime.fromMillisecondsSinceEpoch(0))
+                .compareTo(b.date ?? DateTime.fromMillisecondsSinceEpoch(0)),
+          );
+
+    if (points.length < 3 || points.any((point) => point.date == null)) {
+      return const MemberForecast(results: [], notEnoughData: true);
+    }
+    final firstDate = points.first.date!;
+    final lastDate = points.last.date!;
+    final spanDays = lastDate.difference(firstDate).inHours / 24;
+    if (spanDays < 7) {
+      return const MemberForecast(results: [], notEnoughData: true);
+    }
+
+    final xs = points
+        .map((point) => point.date!.difference(firstDate).inHours / 24)
+        .toList();
+    final ys = points.map((point) => point.weight).toList();
+    final count = xs.length;
+    final meanX = xs.reduce((a, b) => a + b) / count;
+    final meanY = ys.reduce((a, b) => a + b) / count;
+    var numerator = 0.0;
+    var denominator = 0.0;
+    for (var i = 0; i < count; i++) {
+      final dx = xs[i] - meanX;
+      numerator += dx * (ys[i] - meanY);
+      denominator += dx * dx;
+    }
+    final slope = denominator == 0 ? 0.0 : numerator / denominator;
+    final intercept = meanY - slope * meanX;
+    var residuals = 0.0;
+    var total = 0.0;
+    for (var i = 0; i < count; i++) {
+      residuals += math.pow(ys[i] - (intercept + slope * xs[i]), 2);
+      total += math.pow(ys[i] - meanY, 2);
+    }
+    final r2 = total == 0 ? 0.0 : (1 - residuals / total).clamp(0.0, 1.0);
+    final current = ys.last;
+    final raw = intercept + slope * (xs.last + daysAhead);
+    final low = math.max(0.5, current * 0.95);
+    final high = current * 1.05;
+    final predicted = raw.clamp(low, high).toDouble();
+    final sampleFactor = math.min(1.0, (count - 1) / 4);
+    final spanFactor = math.min(1.0, spanDays / 28);
+    final confidence = (r2 * sampleFactor * spanFactor).clamp(0.0, 0.95);
+
+    return MemberForecast(
+      results: [
+        PredictionResult(
+          predictionType: 'weight',
+          currentValue: current,
+          predictedValue: predicted,
+          unit: 'kg',
+          daysAhead: daysAhead,
+          confidence: confidence,
+          method: 'on-device-linear-regression',
+          sufficient: true,
+          note: 'On-device estimate from recent weigh-ins.',
+        ),
+      ],
+    );
   }
 
   String _weightLabel(double? weight) =>
@@ -691,17 +784,26 @@ class _PredictionCardState extends State<_PredictionCard> {
         children: [
           Text(
             goalTitle,
-            style: TextStyle(fontSize: 12, color: ClayTokens.clayDarkTextSecondary),
+            style: TextStyle(
+              fontSize: 12,
+              color: ClayTokens.clayDarkTextSecondary,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             '$targetLabel${deadlineLabel == null ? '' : ' \u2022 due $deadlineLabel'}',
-            style: TextStyle(fontSize: 13, color: ClayTokens.clayDarkTextPrimary),
+            style: TextStyle(
+              fontSize: 13,
+              color: ClayTokens.clayDarkTextPrimary,
+            ),
           ),
           const SizedBox(height: 3),
           Text(
             'This goal has ended. Update it to forecast a new deadline.',
-            style: TextStyle(fontSize: 11, color: ClayTokens.clayDarkTextSecondary),
+            style: TextStyle(
+              fontSize: 11,
+              color: ClayTokens.clayDarkTextSecondary,
+            ),
           ),
         ],
       );
@@ -713,7 +815,10 @@ class _PredictionCardState extends State<_PredictionCard> {
         children: [
           Text(
             goalTitle,
-            style: TextStyle(fontSize: 12, color: ClayTokens.clayDarkTextSecondary),
+            style: TextStyle(
+              fontSize: 12,
+              color: ClayTokens.clayDarkTextSecondary,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
@@ -730,13 +835,19 @@ class _PredictionCardState extends State<_PredictionCard> {
             const SizedBox(height: 3),
             Text(
               '$targetLabel \u00b7 ${_goalOutcome(data, prediction.predictedValue)}',
-              style: TextStyle(fontSize: 11, color: ClayTokens.clayDarkTextSecondary),
+              style: TextStyle(
+                fontSize: 11,
+                color: ClayTokens.clayDarkTextSecondary,
+              ),
             ),
           ],
           const SizedBox(height: 2),
           Text(
             'Estimate based on your recent weigh-ins.',
-            style: TextStyle(fontSize: 10, color: ClayTokens.clayDarkTextTertiary),
+            style: TextStyle(
+              fontSize: 10,
+              color: ClayTokens.clayDarkTextTertiary,
+            ),
           ),
         ],
       );
@@ -748,7 +859,10 @@ class _PredictionCardState extends State<_PredictionCard> {
       children: [
         Text(
           goalTitle,
-          style: TextStyle(fontSize: 12, color: ClayTokens.clayDarkTextSecondary),
+          style: TextStyle(
+            fontSize: 12,
+            color: ClayTokens.clayDarkTextSecondary,
+          ),
         ),
         const SizedBox(height: 4),
         Text(
@@ -762,7 +876,10 @@ class _PredictionCardState extends State<_PredictionCard> {
           serviceFailed
               ? 'Your forecast is unavailable right now.'
               : 'Log at least 3 weigh-ins over 7 days to estimate progress toward this goal.',
-          style: TextStyle(fontSize: 11, color: ClayTokens.clayDarkTextSecondary),
+          style: TextStyle(
+            fontSize: 11,
+            color: ClayTokens.clayDarkTextSecondary,
+          ),
         ),
         if (!serviceFailed) _logWeightAction(context),
       ],
@@ -799,7 +916,10 @@ class _PredictionCardState extends State<_PredictionCard> {
           Flexible(
             child: Text(
               'Loading your goal forecast...',
-              style: TextStyle(fontSize: 12, color: ClayTokens.clayDarkTextSecondary),
+              style: TextStyle(
+                fontSize: 12,
+                color: ClayTokens.clayDarkTextSecondary,
+              ),
             ),
           ),
         ],
@@ -815,7 +935,10 @@ class _PredictionCardState extends State<_PredictionCard> {
         children: [
           Text(
             'Create a weight goal to see your forecast.',
-            style: TextStyle(fontSize: 13, color: ClayTokens.clayDarkTextSecondary),
+            style: TextStyle(
+              fontSize: 13,
+              color: ClayTokens.clayDarkTextSecondary,
+            ),
           ),
           TextButton.icon(
             onPressed: () => context.push('/member/goals'),

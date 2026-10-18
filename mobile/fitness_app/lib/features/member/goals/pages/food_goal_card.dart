@@ -23,17 +23,31 @@ Color get textSecondary => ClayTokens.clayDarkTextSecondary;
 class FoodGoalCard extends ConsumerWidget {
   final Map<String, dynamic> goal;
   final VoidCallback? onCancel;
+  final String? memberId;
+  final bool showHomeScreenAction;
 
   const FoodGoalCard({
     super.key,
     required this.goal,
     this.onCancel,
+    this.memberId,
+    this.showHomeScreenAction = true,
   });
 
   String _shortDate(DateTime date) {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${months[date.month - 1]} ${date.day}';
   }
@@ -49,7 +63,9 @@ class FoodGoalCard extends ConsumerWidget {
         DateTime.tryParse(goal['end_date']?.toString() ?? '') ??
         DateTime.now().add(const Duration(days: 30));
 
-    final consumedToday = ref.watch(todayCaloriesProvider).valueOrNull ?? 0;
+    final consumedToday = memberId == null
+        ? ref.watch(todayCaloriesProvider).valueOrNull ?? 0
+        : ref.watch(memberTodayCaloriesProvider(memberId!)).valueOrNull ?? 0;
     final dailyTarget = targetValue ?? 0;
 
     // Ring progress = today's intake vs the daily target (capped at 100%).
@@ -59,11 +75,12 @@ class FoodGoalCard extends ConsumerWidget {
     final remaining = (dailyTarget - consumedToday).round();
     final isOver = remaining < 0;
 
-    final daysRemaining =
-        ((endDate.difference(DateTime.now()).inHours) / 24).ceil();
+    final daysRemaining = ((endDate.difference(DateTime.now()).inHours) / 24)
+        .ceil();
     final isOverdue = endDate.isBefore(DateTime.now());
-    final effectiveStatus =
-        isOverdue && status == 'active' ? 'completed' : status;
+    final effectiveStatus = isOverdue && status == 'active'
+        ? 'completed'
+        : status;
     final isCompleted = effectiveStatus == 'completed';
     final isCancelled = status == 'cancelled';
 
@@ -251,9 +268,7 @@ class FoodGoalCard extends ConsumerWidget {
                             ? textSecondary
                             : (isOver ? goalWarningAmber : textSecondary),
                         fontSize: 13,
-                        fontWeight: isOver
-                            ? FontWeight.w600
-                            : FontWeight.w400,
+                        fontWeight: isOver ? FontWeight.w600 : FontWeight.w400,
                       ),
                     ),
                   ],
@@ -305,7 +320,10 @@ class FoodGoalCard extends ConsumerWidget {
                     : 'Day $elapsedDays of $totalDays',
                 style: TextStyle(fontSize: 12, color: textSecondary),
               ),
-              if (status == 'active' && !isOverdue && !isCancelled) ...[
+              if (showHomeScreenAction &&
+                  status == 'active' &&
+                  !isOverdue &&
+                  !isCancelled) ...[
                 const SizedBox(height: 14),
                 Align(
                   alignment: Alignment.centerLeft,

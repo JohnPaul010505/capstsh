@@ -9,6 +9,7 @@ import 'package:shared/services/supabase_client.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../app/design_tokens.dart';
 import '../../../shared/widgets/app_glow_background.dart';
+import '../../../shared/widgets/glass_card.dart';
 import '../providers/membership_provider.dart';
 import '../widgets/membership_status_card.dart';
 import '../widgets/renewal_request_sheet.dart';
@@ -172,7 +173,9 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
                           onPressed: () => Navigator.pop(context, false),
                           child: Text(
                             'No',
-                            style: TextStyle(color: ClayTokens.clayDarkTextPrimary),
+                            style: TextStyle(
+                              color: ClayTokens.clayDarkTextPrimary,
+                            ),
                           ),
                         ),
                       ),
@@ -183,7 +186,9 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
                           onPressed: () => Navigator.pop(context, true),
                           child: Text(
                             'Yes',
-                            style: TextStyle(color: ClayTokens.clayDarkTextPrimary),
+                            style: TextStyle(
+                              color: ClayTokens.clayDarkTextPrimary,
+                            ),
                           ),
                         ),
                       ),
@@ -383,14 +388,10 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
         ? '—'
         : '${endD.year}-${endD.month.toString().padLeft(2, '0')}-${endD.day.toString().padLeft(2, '0')}';
     final cancelled = membership.status == 'cancelled';
-    return Container(
-      margin: EdgeInsets.only(bottom: 8),
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: ClayTokens.hairline.withAlpha(10),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: ClayTokens.hairline.withAlpha(24)),
-      ),
+    return GlassPanel(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      borderRadius: BorderRadius.circular(16),
       child: Row(
         children: [
           const Icon(CupertinoIcons.clock, size: 16, color: Color(0xFF8E8E93)),
@@ -445,14 +446,10 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
         ? 'APPROVED'
         : 'DECLINED';
 
-    return Container(
-      margin: EdgeInsets.only(bottom: 8),
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: ClayTokens.hairline.withAlpha(10),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: ClayTokens.hairline.withAlpha(24)),
-      ),
+    return GlassPanel(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      borderRadius: BorderRadius.circular(16),
       child: Row(
         children: [
           Expanded(
@@ -516,14 +513,10 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
         ? const Color(0xFFFF453A)
         : const Color(0xFFFF9F0A);
     final refund = (request['refund_amount'] as num?)?.toDouble();
-    return Container(
-      margin: EdgeInsets.only(bottom: 8),
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: ClayTokens.hairline.withAlpha(10),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: ClayTokens.hairline.withAlpha(24)),
-      ),
+    return GlassPanel(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      borderRadius: BorderRadius.circular(16),
       child: Row(
         children: [
           Expanded(
