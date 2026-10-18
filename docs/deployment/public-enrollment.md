@@ -16,9 +16,9 @@ The page sends form submissions to its own `/api/enroll` Vercel Function. That f
 
 ## Point the admin QR at the public page
 
-1. Copy the deployed enrollment URL, for example `https://capstsh-enrollment.vercel.app/enroll`.
-2. In the existing admin Vercel project, add `VITE_ENROLLMENT_URL` with that full URL for Production (and Preview if wanted).
-3. Redeploy the admin project so its QR code is rebuilt with the public URL.
+1. The admin QR defaults to `https://capstsh.vercel.app/enroll`.
+2. If you use a different enrollment domain, set `VITE_ENROLLMENT_URL` to that full URL in the admin Vercel project for Production (and Preview if wanted).
+3. Push the admin change to trigger a Vercel redeploy. The QR is generated with the public URL at build time.
 4. Scan the QR from a phone on mobile data or another Wi-Fi network. It should open the public form; submissions should show in the admin Pending tab.
 
 No database migration is needed. Keep `SUPABASE_SERVICE_ROLE_KEY` off the admin frontend and out of source control.

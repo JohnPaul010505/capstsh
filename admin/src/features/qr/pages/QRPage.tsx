@@ -17,7 +17,7 @@ import AppBackground from '@/components/AppBackground'
 const PUBLIC_ORIGIN = import.meta.env.DEV
   ? (import.meta.env.VITE_PUBLIC_URL?.trim() || window.location.origin)
   : window.location.origin
-const ENROLLMENT_URL = import.meta.env.VITE_ENROLLMENT_URL?.trim()
+const ENROLLMENT_URL = import.meta.env.VITE_ENROLLMENT_URL?.trim() || 'https://capstsh.vercel.app/enroll'
 const PAGE_URL = ENROLLMENT_URL
   ? new URL(ENROLLMENT_URL).toString()
   : new URL('/enroll', PUBLIC_ORIGIN).toString()
