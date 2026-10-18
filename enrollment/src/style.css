@@ -1,0 +1,120 @@
+:root {
+  font-family: 'DM Sans', sans-serif;
+  color: #f0f1ff;
+  background: #080b1d;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  --muted: #a7abc8;
+  --border: rgba(255, 255, 255, .12);
+  --purple: #8b5cf6;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background:
+    radial-gradient(ellipse at 8% 15%, rgba(124, 58, 237, .22), transparent 36rem),
+    radial-gradient(ellipse at 90% 82%, rgba(34, 112, 213, .18), transparent 38rem),
+    #080b1d;
+}
+
+button, input, select, textarea { font: inherit; }
+
+.page-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 36px 18px 20px;
+}
+
+.enrollment-card {
+  width: min(100%, 680px);
+  padding: clamp(24px, 5vw, 48px);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: linear-gradient(145deg, rgba(30, 35, 78, .9), rgba(15, 20, 48, .92));
+  box-shadow: 0 28px 90px rgba(0, 0, 0, .38), inset 0 1px rgba(255, 255, 255, .06);
+  backdrop-filter: blur(18px);
+}
+
+.brand-mark {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #a855f7, #6d28d9);
+  box-shadow: 0 8px 24px rgba(124, 58, 237, .35);
+  font: 700 26px 'Outfit', sans-serif;
+}
+
+.eyebrow { margin: 24px 0 8px; color: #c4a8ff; font-size: 11px; font-weight: 700; letter-spacing: .16em; }
+h1, h2 { font-family: 'Outfit', sans-serif; }
+h1 { margin: 0; font-size: clamp(28px, 6vw, 38px); line-height: 1.12; letter-spacing: -.035em; }
+.intro { max-width: 490px; margin: 12px 0 28px; color: var(--muted); font-size: 15px; line-height: 1.6; }
+
+.field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 17px 14px; }
+.field { display: flex; min-width: 0; flex-direction: column; gap: 7px; color: #e6e8fa; font-size: 13px; font-weight: 600; }
+.field b { color: #c4a8ff; }
+.field small { color: var(--muted); font-size: 11px; font-weight: 400; }
+.field input, .field select, .field textarea {
+  width: 100%;
+  min-height: 46px;
+  padding: 11px 13px;
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: 10px;
+  outline: none;
+  background: rgba(5, 8, 26, .48);
+  color: #f4f4ff;
+  font-size: 14px;
+  font-weight: 400;
+  transition: border-color .16s, box-shadow .16s;
+}
+.field textarea { min-height: 76px; resize: vertical; }
+.field input::placeholder, .field textarea::placeholder { color: #777d9f; }
+.field input:focus, .field select:focus, .field textarea:focus { border-color: #a78bfa; box-shadow: 0 0 0 3px rgba(139, 92, 246, .2); }
+.field input[type='date'] { color-scheme: dark; }
+.field-wide { grid-column: 1 / -1; }
+
+fieldset { min-width: 0; margin: 25px 0 0; padding: 20px 0 0; border: 0; border-top: 1px solid var(--border); }
+legend { margin-bottom: 16px; padding: 0; color: #f0f1ff; font-size: 14px; font-weight: 700; }
+legend span { color: var(--muted); font-size: 12px; font-weight: 400; }
+
+.honey-field { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+.form-message { min-height: 20px; margin: 14px 0 0; color: var(--muted); font-size: 13px; }
+.form-message.is-error { color: #fca5a5; }
+button[type='submit'] {
+  width: 100%;
+  min-height: 50px;
+  border: 0;
+  border-radius: 11px;
+  background: linear-gradient(100deg, #8b5cf6, #7139df);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  box-shadow: 0 10px 24px rgba(109, 40, 217, .24);
+  cursor: pointer;
+}
+button[type='submit']:hover:not(:disabled) { filter: brightness(1.08); }
+button[type='submit']:disabled { opacity: .65; cursor: wait; }
+.privacy-note { margin: 13px 0 0; color: #8f94b4; font-size: 11px; line-height: 1.5; text-align: center; }
+.success-panel { padding: 28px 0 8px; text-align: center; }
+.success-icon { display: grid; width: 58px; height: 58px; margin: 0 auto 18px; place-items: center; border-radius: 50%; background: rgba(74, 222, 128, .16); color: #4ade80; font-size: 30px; }
+.success-panel h2 { margin: 0 0 8px; font-size: 25px; }
+.success-panel p { margin: 0 auto; max-width: 400px; color: var(--muted); line-height: 1.6; }
+footer { padding: 18px 0 0; color: #777d9f; font-size: 11px; }
+
+@media (max-width: 560px) {
+  .page-shell { justify-content: flex-start; padding: 16px 12px; }
+  .enrollment-card { padding: 23px 19px; border-radius: 19px; }
+  .eyebrow { margin-top: 19px; }
+  .intro { margin-bottom: 24px; font-size: 14px; }
+  .field-grid { grid-template-columns: 1fr; gap: 15px; }
+  .field-wide { grid-column: auto; }
+}

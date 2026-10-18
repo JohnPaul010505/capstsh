@@ -17,9 +17,10 @@ import AppBackground from '@/components/AppBackground'
 const PUBLIC_ORIGIN = import.meta.env.DEV
   ? (import.meta.env.VITE_PUBLIC_URL?.trim() || window.location.origin)
   : window.location.origin
-const PAGE_URL = new URL('/enroll', PUBLIC_ORIGIN).toString()
-const PAGE_HOST = new URL(PAGE_URL).hostname
-const IS_LOCAL_QR = PAGE_HOST === 'localhost' || PAGE_HOST === '127.0.0.1' || PAGE_HOST.startsWith('192.168.')
+const ENROLLMENT_URL = import.meta.env.VITE_ENROLLMENT_URL?.trim()
+const PAGE_URL = ENROLLMENT_URL
+  ? new URL(ENROLLMENT_URL).toString()
+  : new URL('/enroll', PUBLIC_ORIGIN).toString()
 
 /**
  * The page is three views, not one long page.
@@ -392,10 +393,6 @@ export default function QRPage() {
               <p className="text-base font-semibold text-fg-strong mb-4">Enrollment Form</p>
               <QRCodeSVG value={PAGE_URL} size={enrollSize} bgColor={qrBg} fgColor={qrFg} />
               <p className="text-sm text-fg-muted mt-5 text-center">Scan to open the sign-up form</p>
-              <a href={PAGE_URL} target="_blank" rel="noreferrer" className="max-w-full break-all text-xs text-[#A855F7] mt-2 text-center">
-                {PAGE_URL}
-              </a>
-              {IS_LOCAL_QR && <p className="text-xs text-fg-muted mt-1 text-center">Local development link: keep this computer and phone on the same Wi-Fi, and start the app with <code>npm run dev</code> so applications can reach the pending queue. For access from anywhere, use the deployed admin URL.</p>}
             </div>
             <div
               data-qr="checkin"

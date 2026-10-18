@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#080b1d" />
+    <meta name="description" content="Apply for a gym membership." />
+    <title>Gym Membership Enrollment</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <main class="page-shell">
+      <section class="enrollment-card" aria-labelledby="page-title">
+        <div class="brand-mark" aria-hidden="true">J</div>
+        <p class="eyebrow">FITNESS MEMBERSHIP</p>
+        <h1 id="page-title">Start your fitness journey</h1>
+        <p class="intro">Fill in the form below. Our team will review your application and get in touch.</p>
+
+        <form id="enrollment-form" novalidate>
+          <div class="field-grid">
+            <label class="field">
+              <span>Full name <b aria-hidden="true">*</b></span>
+              <input name="fullName" autocomplete="name" maxlength="120" placeholder="Your full name" required />
+            </label>
+            <label class="field">
+              <span>Email address <b aria-hidden="true">*</b></span>
+              <input name="email" type="email" autocomplete="email" maxlength="254" placeholder="you@example.com" required />
+            </label>
+            <label class="field">
+              <span>Phone number</span>
+              <input name="phone" type="tel" autocomplete="tel" inputmode="tel" maxlength="24" placeholder="09123456789" />
+              <small>Enter 11 digits if you provide a number.</small>
+            </label>
+            <label class="field">
+              <span>Date of birth</span>
+              <input name="dateOfBirth" type="date" autocomplete="bday" />
+            </label>
+            <label class="field">
+              <span>Gender</span>
+              <select name="gender">
+                <option value="">Select</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="prefer_not_to_say">Prefer not to say</option>
+              </select>
+            </label>
+            <label class="field field-wide">
+              <span>Address</span>
+              <textarea name="address" autocomplete="street-address" maxlength="500" rows="2" placeholder="Your address"></textarea>
+            </label>
+          </div>
+
+          <fieldset>
+            <legend>Emergency contact <span>(optional)</span></legend>
+            <div class="field-grid">
+              <label class="field">
+                <span>Contact name</span>
+                <input name="emergencyContactName" autocomplete="off" maxlength="120" placeholder="Contact name" />
+              </label>
+              <label class="field">
+                <span>Contact phone</span>
+                <input name="emergencyContactPhone" type="tel" autocomplete="off" inputmode="tel" maxlength="24" placeholder="09123456789" />
+                <small>Enter 11 digits if you provide a number.</small>
+              </label>
+            </div>
+          </fieldset>
+
+          <label class="honey-field" aria-hidden="true" tabindex="-1">
+            <span>Leave this field empty</span>
+            <input name="website" tabindex="-1" autocomplete="off" />
+          </label>
+
+          <p id="form-message" class="form-message" role="status" aria-live="polite"></p>
+          <button id="submit-button" type="submit">Submit application</button>
+          <p class="privacy-note">Your application will be sent securely for review by the gym team.</p>
+        </form>
+
+        <div id="success-panel" class="success-panel" hidden role="status" aria-live="polite">
+          <div class="success-icon" aria-hidden="true">✓</div>
+          <h2>Application received</h2>
+          <p>Thank you for applying. The gym team will review your information and contact you.</p>
+        </div>
+      </section>
+      <footer>Powered by Capstsh Fitness</footer>
+    </main>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
