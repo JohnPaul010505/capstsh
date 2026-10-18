@@ -25,6 +25,13 @@ function setStep(step) {
   healthStep.hidden = isDetails
   indicatorOne.classList.toggle('is-current', isDetails)
   indicatorTwo.classList.toggle('is-current', !isDetails)
+  if (isDetails) {
+    indicatorOne.setAttribute('aria-current', 'step')
+    indicatorTwo.removeAttribute('aria-current')
+  } else {
+    indicatorOne.removeAttribute('aria-current')
+    indicatorTwo.setAttribute('aria-current', 'step')
+  }
   clearError()
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
