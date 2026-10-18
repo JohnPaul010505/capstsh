@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useMember, useUpdateMember } from '../hooks/useMembers'
 import { usePagedTable, useResetPageOnChange } from '@/lib/pagedTable'
@@ -21,6 +21,7 @@ import {
   type MemberEditableFields,
 } from '@/features/shared/profileUpdates'
 import { useRealtimeProfiles } from '@/hooks/useRealtimeProfiles'
+import HealthBackgroundSection, { emptyHealthBackground, type HealthBackgroundAnswers } from '@/features/qr/components/HealthBackgroundSection'
 
 /**
  * TEN rows a page, the same contract as the trainer detail tabs: one member's
@@ -46,6 +47,17 @@ export default function MemberDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { data: member, isLoading } = useMember(id!)
+  const queryClient = useQueryClient()
+  const healthQuery = useQuery({
+    queryKey: ['member-health-background', id],
+    queryFn: async () => {
+      if (!id) return null
+      const { data, error } = await supabase.from('member_health_background').select('answers').eq('member_id', id).maybeSingle()
+      if (error) throw error
+      return (data?.answers ?? emptyHealthBackground) as HealthBackgroundAnswers
+    },
+    enabled: !!id,
+  })
   // Live off other tabs: an edit made here, in a second admin tab, or from
   // the mobile app re-renders this row without a reload.
   useRealtimeProfiles(id ? [id] : [])
@@ -59,6 +71,10 @@ export default function MemberDetailPage() {
    * Email stays read-only because it is also the member's login address.
    */
   const [editing, setEditing] = useState(false)
+  const [healthEditing, setHealthEditing] = useState(false)
+  const [healthSaving, setHealthSaving] = useState(false)
+  const [healthSaveError, setHealthSaveError] = useState<string | null>(null)
+  const [healthDraft, setHealthDraft] = useState<HealthBackgroundAnswers>(emptyHealthBackground)
   const [form, setForm] = useState<MemberEditableFields & Record<string, string>>({
     full_name: '',
     phone: '',
@@ -67,6 +83,9 @@ export default function MemberDetailPage() {
     address: '',
     emergency_contact_name: '',
     emergency_contact_phone: '',
+    civil_status: '',
+    religion: '',
+    religion_other: '',
   })
   /**
    * The save used to fail silently: `date_of_birth: ''` is illegal for a `date`
@@ -85,8 +104,38 @@ export default function MemberDetailPage() {
       address: member.address ?? '',
       emergency_contact_name: member.emergency_contact_name ?? '',
       emergency_contact_phone: member.emergency_contact_phone ?? '',
+      civil_status: member.civil_status ?? '',
+      religion: member.religion ?? '',
+      religion_other: member.religion_other ?? '',
     })
     setEditing(true)
+  }
+  const saveHealthBackground = async () => {
+    if (!id) return
+    setHealthSaving(true)
+    setHealthSaveError(null)
+    const { error } = await supabase.from('member_health_background').upsert({
+      member_id: id,
+      answers: healthDraft,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'member_id' })
+    setHealthSaving(false)
+    if (error) {
+      setHealthSaveError(error.message)
+      return
+    }
+    setHealthEditing(false)
+    queryClient.invalidateQueries({ queryKey: ['member-health-background', id] })
+  }
+
+  const ageFromDateOfBirth = (value: string | null | undefined) => {
+    if (!value) return '—'
+    const dob = new Date(`${value}T00:00:00`)
+    if (Number.isNaN(dob.getTime()) || dob > new Date()) return '—'
+    const now = new Date()
+    let age = now.getFullYear() - dob.getFullYear()
+    if (now.getMonth() < dob.getMonth() || (now.getMonth() === dob.getMonth() && now.getDate() < dob.getDate())) age -= 1
+    return age >= 0 ? `${age}` : '—'
   }
   const saveEdit = () => {
     if (!id) return
@@ -440,6 +489,7 @@ export default function MemberDetailPage() {
 
       {/* Personal Info */}
       {tab === 'info' && (
+      <div className="space-y-3 shrink-0">
       <div className="glass-card p-4 rounded-xl shrink-0">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-base font-semibold text-fg-strong">Personal Information</h2>
@@ -479,11 +529,29 @@ export default function MemberDetailPage() {
                 <input
                   type={type}
                   value={form[key] ?? ''}
-                  onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                  maxLength={key === 'phone' || key === 'emergency_contact_phone' ? 11 : undefined}
+                  inputMode={key === 'phone' || key === 'emergency_contact_phone' ? 'numeric' : undefined}
+                  onChange={e => setForm(f => ({ ...f, [key]: key === 'phone' || key === 'emergency_contact_phone' ? e.target.value.replace(/\D/g, '').slice(0, 11) : e.target.value }))}
                   className="w-full px-3 py-2 text-sm bg-page-deep border border-line rounded-lg text-fg-strong focus:outline-none focus:border-[#7C3AED]"
                 />
               </label>
             ))}
+            <label className="block">
+              <span className="block text-xs text-fg-muted mb-1">Civil Status</span>
+              <select value={form.civil_status ?? ''} onChange={e => setForm(f => ({ ...f, civil_status: e.target.value }))} className="w-full px-3 py-2 text-sm bg-page-deep border border-line rounded-lg text-fg-strong">
+                <option value="">Select</option><option value="single">Single</option><option value="married">Married</option>
+              </select>
+            </label>
+            <label className="block">
+              <span className="block text-xs text-fg-muted mb-1">Religion</span>
+              <select value={form.religion ?? ''} onChange={e => setForm(f => ({ ...f, religion: e.target.value, religion_other: e.target.value === 'other' ? (f.religion_other ?? '') : '' }))} className="w-full px-3 py-2 text-sm bg-page-deep border border-line rounded-lg text-fg-strong">
+                <option value="">Select</option><option value="roman_catholic">Roman Catholic</option><option value="christian">Christian</option><option value="iglesia_ni_cristo">Iglesia ni Cristo</option><option value="islam">Islam</option><option value="other">Other</option>
+              </select>
+            </label>
+            {form.religion === 'other' && <label className="block">
+              <span className="block text-xs text-fg-muted mb-1">Please specify religion</span>
+              <input maxLength={120} value={form.religion_other ?? ''} onChange={e => setForm(f => ({ ...f, religion_other: e.target.value }))} className="w-full px-3 py-2 text-sm bg-page-deep border border-line rounded-lg text-fg-strong" />
+            </label>}
           </div>
         ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -500,6 +568,18 @@ export default function MemberDetailPage() {
               <p className="text-xs text-fg-muted">Date of Birth</p>
               <p className="text-sm text-fg-strong">{member.date_of_birth || '—'}</p>
             </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <Calendar className="w-4 h-4 text-fg-muted" />
+            <div><p className="text-xs text-fg-muted">Age</p><p className="text-sm text-fg-strong">{ageFromDateOfBirth(member.date_of_birth)}</p></div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-4 h-4 flex items-center justify-center text-fg-muted"><span className="text-xs font-bold">C</span></div>
+            <div><p className="text-xs text-fg-muted">Civil Status</p><p className="text-sm text-fg-strong capitalize">{member.civil_status || '—'}</p></div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-4 h-4 flex items-center justify-center text-fg-muted"><span className="text-xs font-bold">R</span></div>
+            <div><p className="text-xs text-fg-muted">Religion</p><p className="text-sm text-fg-strong">{member.religion === 'other' ? member.religion_other || 'Other' : ({ roman_catholic: 'Roman Catholic', christian: 'Christian', iglesia_ni_cristo: 'Iglesia ni Cristo', islam: 'Islam' }[member.religion ?? ''] ?? member.religion ?? '—')}</p></div>
           </div>
           <div className="flex items-center gap-3">
             <div className="w-4 h-4 flex items-center justify-center text-fg-muted">
@@ -540,6 +620,24 @@ export default function MemberDetailPage() {
           </div>
         </div>
         )}
+      </div>
+      <section className="glass-card p-4 rounded-xl">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-base font-semibold text-fg-strong">Health Background Screening</h2>
+          {healthEditing ? <div className="flex gap-2">
+            <button onClick={() => setHealthEditing(false)} className="px-3 py-1.5 text-xs rounded-lg border border-line text-fg-muted">Cancel</button>
+            <button onClick={saveHealthBackground} disabled={healthSaving} className="px-3 py-1.5 text-xs rounded-lg bg-[#7C3AED] text-white disabled:opacity-50">{healthSaving ? 'Saving…' : 'Save'}</button>
+          </div> : <button onClick={() => { setHealthDraft(healthQuery.data ?? emptyHealthBackground); setHealthSaveError(null); setHealthEditing(true) }} className="px-3 py-1.5 text-xs rounded-lg border border-line text-fg-muted hover:border-[#7C3AED]/50">Edit responses</button>}
+        </div>
+        {healthSaveError && <p role="alert" className="mb-3 text-xs text-rose-400">{healthSaveError}</p>}
+        {healthQuery.isLoading ? <p className="text-sm text-fg-muted">Loading screening responses…</p> : (
+          <HealthBackgroundSection
+            value={healthEditing ? healthDraft : healthQuery.data ?? emptyHealthBackground}
+            onChange={setHealthDraft}
+            readOnly={!healthEditing}
+          />
+        )}
+      </section>
       </div>
       )}
 

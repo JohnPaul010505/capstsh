@@ -17,6 +17,9 @@ export interface Profile {
   available_days: string | null
   emergency_contact_name: string | null
   emergency_contact_phone: string | null
+  civil_status: string | null
+  religion: string | null
+  religion_other: string | null
   created_at: string
   updated_at: string
 }
@@ -195,6 +198,10 @@ export interface Enrollment {
   address: string | null
   emergency_contact_name: string | null
   emergency_contact_phone: string | null
+  civil_status: string | null
+  religion: string | null
+  religion_other: string | null
+  health_background: Record<string, { choice: string; details: string }> | null
   status: string
   confirmed_at: string | null
   confirmed_by: string | null

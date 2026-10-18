@@ -14,7 +14,24 @@ function text(value) {
 }
 
 function isValidPhone(value) {
-  return !value || value.replace(/\D/g, '').length === 11
+  return !value || /^\d{1,11}$/.test(value)
+}
+
+const HEALTH_QUESTIONS = [
+  'illnessOrHeartProblem',
+  'recentDoctorVisit',
+  'movementDifficulty',
+  'jointBackShoulderLegInjury',
+]
+const HEALTH_CHOICES = new Set(['yes', 'no', 'other'])
+
+function validateHealthBackground(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+  return HEALTH_QUESTIONS.every((key) => {
+    const answer = value[key]
+    if (!answer || typeof answer !== 'object' || !HEALTH_CHOICES.has(answer.choice)) return false
+    return answer.choice !== 'other' || (typeof answer.details === 'string' && answer.details.trim().length > 0 && answer.details.length <= 500)
+  })
 }
 
 function reply(res, status, body) {
@@ -50,9 +67,13 @@ export default async function handler(req, res) {
   const phone = text(body.phone)
   const dateOfBirth = text(body.dateOfBirth)
   const gender = text(body.gender)
+  const civilStatus = text(body.civilStatus)
+  const religion = text(body.religion)
+  const religionOther = text(body.religionOther)
   const address = text(body.address)
   const emergencyContactName = text(body.emergencyContactName)
   const emergencyContactPhone = text(body.emergencyContactPhone)
+  const healthBackground = body.healthBackground
 
   if (!fullName || !email) return reply(res, 400, { error: 'Full name and email are required.' })
   if (fullName.length > MAX_LENGTH.fullName || email.length > MAX_LENGTH.email ||
@@ -63,7 +84,18 @@ export default async function handler(req, res) {
   }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return reply(res, 400, { error: 'Enter a valid email address.' })
   if (!isValidPhone(phone) || !isValidPhone(emergencyContactPhone)) {
-    return reply(res, 400, { error: 'Phone numbers must contain exactly 11 digits.' })
+    return reply(res, 400, { error: 'Phone numbers can contain a maximum of 11 digits.' })
+  }
+  if (civilStatus && !['single', 'married'].includes(civilStatus)) {
+    return reply(res, 400, { error: 'Select a valid civil status.' })
+  }
+  if (religion && !['roman_catholic', 'christian', 'iglesia_ni_cristo', 'islam', 'other'].includes(religion)) {
+    return reply(res, 400, { error: 'Select a valid religion.' })
+  }
+  if (religion === 'other' && !religionOther) return reply(res, 400, { error: 'Enter your religion.' })
+  if (religionOther.length > 120) return reply(res, 400, { error: 'Religion is too long.' })
+  if (!validateHealthBackground(healthBackground)) {
+    return reply(res, 400, { error: 'Please answer all health screening questions.' })
   }
   if (dateOfBirth && !/^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth)) {
     return reply(res, 400, { error: 'Enter a valid date of birth.' })
@@ -89,9 +121,13 @@ export default async function handler(req, res) {
     phone: phone || null,
     date_of_birth: dateOfBirth || null,
     gender: gender || null,
+    civil_status: civilStatus || null,
+    religion: religion || null,
+    religion_other: religion === 'other' ? religionOther : null,
     address: address || null,
     emergency_contact_name: emergencyContactName || null,
     emergency_contact_phone: emergencyContactPhone || null,
+    health_background: healthBackground,
     status: 'pending',
   })
 

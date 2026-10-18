@@ -31,12 +31,14 @@ app.get('/api/health', (req, res) => {
 })
 
 app.post('/api/enroll', async (req, res) => {
-  const { fullName, email, phone, dateOfBirth, gender, address, emergencyContactName, emergencyContactPhone } = req.body
+  const { fullName, email, phone, dateOfBirth, gender, civilStatus, religion, religionOther, address, emergencyContactName, emergencyContactPhone } = req.body
   if (!fullName || !email) return res.status(400).json({ error: 'Name and email are required' })
   try {
     const { error } = await adminClient.from('enrollments').insert({
       full_name: fullName, email, phone: phone || null,
       date_of_birth: dateOfBirth || null, gender: gender || null,
+      civil_status: civilStatus || null, religion: religion || null,
+      religion_other: religion === 'other' ? religionOther || null : null,
       address: address || null, status: 'pending',
       emergency_contact_name: emergencyContactName || null,
       emergency_contact_phone: emergencyContactPhone || null,
@@ -49,7 +51,7 @@ app.post('/api/enroll', async (req, res) => {
 })
 
 app.post('/api/users', async (req, res) => {
-  const { email, password, fullName, role, phone, dateOfBirth, gender, address, emergencyContactName, emergencyContactPhone, specialty, availableDays } = req.body
+  const { email, password, fullName, role, phone, dateOfBirth, gender, civilStatus, religion, religionOther, address, emergencyContactName, emergencyContactPhone, specialty, availableDays } = req.body
 
   if (!email || !password || !fullName || !role) {
     return res.status(400).json({ error: 'Missing required fields: email, password, fullName, role' })
@@ -75,6 +77,9 @@ app.post('/api/users', async (req, res) => {
       available_days: availableDays || null,
       date_of_birth: dateOfBirth || null,
       gender: gender || null,
+      civil_status: civilStatus || null,
+      religion: religion || null,
+      religion_other: religion === 'other' ? religionOther || null : null,
       address: address || null,
       emergency_contact_name: emergencyContactName || null,
       emergency_contact_phone: emergencyContactPhone || null,
@@ -124,12 +129,24 @@ app.post('/api/confirm-enrollment', async (req, res) => {
         phone: enrollment.phone || null,
         date_of_birth: enrollment.date_of_birth || null,
         gender: enrollment.gender || null,
+        civil_status: enrollment.civil_status || null,
+        religion: enrollment.religion || null,
+        religion_other: enrollment.religion === 'other' ? enrollment.religion_other || null : null,
         emergency_contact_name: enrollment.emergency_contact_name || null,
         emergency_contact_phone: enrollment.emergency_contact_phone || null,
       })
       .select('code')
       .single()
     if (profileError) throw profileError
+
+    if (enrollment.health_background && Object.keys(enrollment.health_background).length > 0) {
+      const { error: healthError } = await adminClient.from('member_health_background').upsert({
+        member_id: authUser.user.id,
+        answers: enrollment.health_background,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'member_id' })
+      if (healthError) throw healthError
+    }
 
     res.json({ success: true, code: profile.code, tempPassword })
   } catch (err) {

@@ -5,6 +5,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import { supabase } from '@/lib/supabase'
 import RecordsTable, { type RecordsColumn } from '@/components/RecordsTable'
 import EnrollmentForm, { emptyForm, type EnrollmentFormData } from '../components/EnrollmentForm'
+import HealthBackgroundSection, { emptyHealthBackground, type HealthBackgroundAnswers } from '../components/HealthBackgroundSection'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useFitSquare } from '@/hooks/useFitRows'
@@ -84,6 +85,7 @@ export default function QRPage() {
   }, [showModal])
   const [isManual, setIsManual] = useState(false)
   const [formData, setFormData] = useState<EnrollmentFormData>(emptyForm)
+  const [healthBackground, setHealthBackground] = useState<HealthBackgroundAnswers>(emptyHealthBackground)
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [saving, setSaving] = useState(false)
@@ -127,7 +129,7 @@ export default function QRPage() {
   function phoneError(v: string) {
     if (!v) return null
     const digits = v.replace(/\D/g, '')
-    return digits.length !== 11 ? 'Phone number must be exactly 11 digits' : null
+    return digits.length > 11 ? 'Phone number must be no more than 11 digits' : null
   }
 
   const handleManualSave = async () => {
@@ -144,6 +146,8 @@ export default function QRPage() {
           email: formData.email, password, fullName: formData.fullName, role: 'member',
           phone: formData.phone || undefined, dateOfBirth: formData.dateOfBirth || undefined,
           gender: formData.gender || undefined, address: formData.address || undefined,
+          civilStatus: formData.civilStatus || undefined,
+          religion: formData.religion || undefined, religionOther: formData.religionOther || undefined,
           emergencyContactName: formData.emergencyContactName || undefined,
           emergencyContactPhone: formData.emergencyContactPhone || undefined,
         }),
@@ -167,8 +171,11 @@ export default function QRPage() {
       full_name: formData.fullName, email: formData.email,
       phone: formData.phone || null, date_of_birth: formData.dateOfBirth || null,
       gender: formData.gender || null, address: formData.address || null,
+      civil_status: formData.civilStatus || null, religion: formData.religion || null,
+      religion_other: formData.religion === 'other' ? formData.religionOther || null : null,
       emergency_contact_name: formData.emergencyContactName || null,
       emergency_contact_phone: formData.emergencyContactPhone || null,
+      health_background: healthBackground,
     }).eq('id', selected.id)
     setSaving(false)
     if (!error) { setShowModal(false); setSelected(null); queryClient.invalidateQueries({ queryKey: ['enrollments'] }) }
@@ -180,13 +187,16 @@ export default function QRPage() {
       fullName: enrollment.full_name ?? '', email: enrollment.email ?? '',
       phone: enrollment.phone ?? '', dateOfBirth: enrollment.date_of_birth ?? '',
       gender: enrollment.gender ?? '', address: enrollment.address ?? '',
+      civilStatus: enrollment.civil_status ?? '', religion: enrollment.religion ?? '',
+      religionOther: enrollment.religion_other ?? '',
       emergencyContactName: enrollment.emergency_contact_name ?? '',
       emergencyContactPhone: enrollment.emergency_contact_phone ?? '',
     })
+    setHealthBackground({ ...emptyHealthBackground, ...(enrollment.health_background ?? {}) })
     setShowModal(true)
   }
 
-  const openManual = () => { setSelected(null); setIsManual(true); setFormData(emptyForm); setPassword(''); setConfirmPassword(''); setShowModal(true) }
+  const openManual = () => { setSelected(null); setIsManual(true); setFormData(emptyForm); setHealthBackground(emptyHealthBackground); setPassword(''); setConfirmPassword(''); setShowModal(true) }
 
   const handleEnrollSubmit = async () => {
     if (!enrollFormData.fullName || !enrollFormData.email) { setEnrollError('Name and email are required'); return }
@@ -463,6 +473,9 @@ export default function QRPage() {
                 confirmPassword={confirmPassword} onConfirmPasswordChange={setConfirmPassword}
                 singleColumn
               />
+              {selected && !isManual && (
+                <HealthBackgroundSection value={healthBackground} onChange={setHealthBackground} />
+              )}
             </div>
             <div className="px-6 py-4 border-t border-line flex justify-end gap-3">
               <button onClick={() => setShowModal(false)}

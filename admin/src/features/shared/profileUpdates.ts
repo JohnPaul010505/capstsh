@@ -23,6 +23,9 @@ export type MemberEditableFields = {
   address?: string
   emergency_contact_name?: string
   emergency_contact_phone?: string
+  civil_status?: string
+  religion?: string
+  religion_other?: string
 }
 
 /** Columns an admin may edit on a trainer from the detail page. */

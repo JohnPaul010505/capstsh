@@ -43,16 +43,47 @@ button, input, select, textarea { font: inherit; }
   backdrop-filter: blur(18px);
 }
 
-.brand-mark {
+.brand-glass {
   display: grid;
-  width: 46px;
-  height: 46px;
+  width: 72px;
+  height: 72px;
   place-items: center;
-  border-radius: 14px;
-  background: linear-gradient(145deg, #a855f7, #6d28d9);
-  box-shadow: 0 8px 24px rgba(124, 58, 237, .35);
-  font: 700 26px 'Outfit', sans-serif;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .2);
+  border-radius: 22px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, .16), rgba(255, 255, 255, .035));
+  box-shadow: inset 0 1px rgba(255, 255, 255, .18), 0 12px 34px rgba(124, 58, 237, .24);
+  backdrop-filter: blur(18px);
 }
+.brand-glass img { width: 60px; height: 60px; object-fit: contain; }
+.step-indicator { display: flex; align-items: center; gap: 10px; margin: 0 0 25px; }
+.step-dot { display: inline-flex; align-items: center; gap: 8px; color: #777d9f; font-size: 12px; white-space: nowrap; }
+.step-dot::first-letter { color: #a7abc8; }
+.step-dot.is-current { color: #e7dcff; }
+.step-dot.is-current::first-letter { color: #c4a8ff; }
+.step-line { height: 1px; flex: 1; background: rgba(255, 255, 255, .15); }
+.step-title { margin: 0 0 16px; font-size: 19px; }
+.step-copy { margin: -6px 0 20px; color: var(--muted); font-size: 13px; line-height: 1.55; }
+.health-question { margin: 0 0 14px; padding: 16px; border: 1px solid var(--border); border-radius: 14px; background: rgba(255, 255, 255, .035); }
+.health-question legend { max-width: 100%; margin: 0 0 13px; padding: 0; color: #f0f1ff; font-size: 13px; line-height: 1.5; }
+.choice-list { display: grid; gap: 10px; }
+.choice-list label { display: flex; align-items: center; gap: 9px; color: #d4d7ee; font-size: 13px; }
+.choice-list input { width: 16px; height: 16px; accent-color: #a78bfa; }
+.other-answer { margin-top: 12px; }
+.step-actions { display: grid; grid-template-columns: minmax(100px, .7fr) minmax(0, 1.5fr); gap: 10px; }
+#to-health-button, .step-actions button {
+  min-height: 48px;
+  border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 11px;
+  background: linear-gradient(100deg, #8b5cf6, #7139df);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: 0 10px 24px rgba(109, 40, 217, .24);
+  cursor: pointer;
+}
+#to-health-button { width: 100%; margin-top: 23px; }
+.step-actions .secondary-button { background: rgba(255, 255, 255, .06); box-shadow: none; color: #e6e8fa; }
 
 .eyebrow { margin: 24px 0 8px; color: #c4a8ff; font-size: 11px; font-weight: 700; letter-spacing: .16em; }
 h1, h2 { font-family: 'Outfit', sans-serif; }
@@ -114,6 +145,9 @@ footer { padding: 18px 0 0; color: #777d9f; font-size: 11px; }
   .page-shell { justify-content: flex-start; padding: 16px 12px; }
   .enrollment-card { padding: 23px 19px; border-radius: 19px; }
   .eyebrow { margin-top: 19px; }
+  .brand-glass { width: 64px; height: 64px; }
+  .brand-glass img { width: 54px; height: 54px; }
+  .step-dot { gap: 5px; font-size: 11px; }
   .intro { margin-bottom: 24px; font-size: 14px; }
   .field-grid { grid-template-columns: 1fr; gap: 15px; }
   .field-wide { grid-column: auto; }

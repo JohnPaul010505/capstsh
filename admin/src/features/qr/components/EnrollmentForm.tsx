@@ -4,6 +4,9 @@
   phone: string
   dateOfBirth: string
   gender: string
+  civilStatus: string
+  religion: string
+  religionOther: string
   address: string
   emergencyContactName: string
   emergencyContactPhone: string
@@ -26,6 +29,9 @@ const emptyForm: EnrollmentFormData = {
   phone: '',
   dateOfBirth: '',
   gender: '',
+  civilStatus: '',
+  religion: '',
+  religionOther: '',
   address: '',
   emergencyContactName: '',
   emergencyContactPhone: '',
@@ -38,8 +44,18 @@ const labelCls = 'block text-sm font-medium text-fg mb-1'
 function getPhoneError(v: string): string | null {
   if (!v) return null
   const digits = v.replace(/\D/g, '')
-  if (digits.length !== 11) return 'Phone number must be exactly 11 digits'
+  if (digits.length > 11) return 'Phone number must be no more than 11 digits'
   return null
+}
+
+function getAge(value: string): string {
+  if (!value) return ''
+  const dob = new Date(`${value}T00:00:00`)
+  if (Number.isNaN(dob.getTime()) || dob > new Date()) return ''
+  const now = new Date()
+  let age = now.getFullYear() - dob.getFullYear()
+  if (now.getMonth() < dob.getMonth() || (now.getMonth() === dob.getMonth() && now.getDate() < dob.getDate())) age -= 1
+  return age >= 0 ? String(age) : ''
 }
 
 export { emptyForm }
@@ -66,12 +82,16 @@ export default function EnrollmentForm({ data, onChange, includePassword, passwo
         </div>
         <div>
           <label className={labelCls}>Phone</label>
-          <input value={data.phone} onChange={set('phone')} className={phoneError ? inputErrorCls : inputCls} placeholder="09123456789" />
+          <input value={data.phone} onChange={e => onChange({ ...data, phone: e.target.value.replace(/\D/g, '').slice(0, 11) })} className={phoneError ? inputErrorCls : inputCls} type="tel" inputMode="numeric" maxLength={11} placeholder="09123456789" />
           {phoneError && <p className="text-xs text-[#EF4444] mt-1">{phoneError}</p>}
         </div>
         <div>
           <label className={labelCls}>Date of Birth</label>
           <input value={data.dateOfBirth} onChange={set('dateOfBirth')} className={inputCls} type="date" />
+        </div>
+        <div>
+          <label className={labelCls}>Age</label>
+          <input value={getAge(data.dateOfBirth)} className={`${inputCls} opacity-75`} readOnly placeholder="Calculated from date of birth" />
         </div>
         <div>
           <label className={labelCls}>Gender</label>
@@ -82,6 +102,29 @@ export default function EnrollmentForm({ data, onChange, includePassword, passwo
             <option style={{ backgroundColor: '#11152F', color: '#FFFFFF' }} value="prefer_not_to_say">Prefer not to say</option>
           </select>
         </div>
+        <div>
+          <label className={labelCls}>Civil Status</label>
+          <select value={data.civilStatus} onChange={set('civilStatus')} className={inputCls}>
+            <option value="">Select</option>
+            <option value="single">Single</option>
+            <option value="married">Married</option>
+          </select>
+        </div>
+        <div>
+          <label className={labelCls}>Religion</label>
+          <select value={data.religion} onChange={set('religion')} className={inputCls}>
+            <option value="">Select</option>
+            <option value="roman_catholic">Roman Catholic</option>
+            <option value="christian">Christian</option>
+            <option value="iglesia_ni_cristo">Iglesia ni Cristo</option>
+            <option value="islam">Islam</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        {data.religion === 'other' && <div>
+          <label className={labelCls}>Please specify religion</label>
+          <input value={data.religionOther} onChange={set('religionOther')} className={inputCls} maxLength={120} />
+        </div>}
         <div className="md:col-span-2">
           <label className={labelCls}>Address</label>
           <textarea value={data.address} onChange={set('address')} className={inputCls} rows={2} placeholder="Enter address" />
@@ -97,7 +140,7 @@ export default function EnrollmentForm({ data, onChange, includePassword, passwo
           </div>
           <div>
             <label className={labelCls}>Contact Phone</label>
-            <input value={data.emergencyContactPhone} onChange={set('emergencyContactPhone')} className={emergencyPhoneError ? inputErrorCls : inputCls} placeholder="09123456789" />
+            <input value={data.emergencyContactPhone} onChange={e => onChange({ ...data, emergencyContactPhone: e.target.value.replace(/\D/g, '').slice(0, 11) })} className={emergencyPhoneError ? inputErrorCls : inputCls} type="tel" inputMode="numeric" maxLength={11} placeholder="09123456789" />
             {emergencyPhoneError && <p className="text-xs text-[#EF4444] mt-1">{emergencyPhoneError}</p>}
           </div>
         </div>

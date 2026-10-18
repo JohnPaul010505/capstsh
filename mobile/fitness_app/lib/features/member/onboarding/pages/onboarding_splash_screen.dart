@@ -30,6 +30,7 @@ class _OnboardingSplashScreenState
   String? _error;
   int _step = 0;
   String? _selectedProfile;
+  bool _rulesAccepted = false;
 
   double get _bmi => _weightKg / ((_heightCm / 100) * (_heightCm / 100));
 
@@ -98,8 +99,22 @@ class _OnboardingSplashScreenState
   Widget build(BuildContext context) {
     final (bmiCategory, bmiColor) = _bmiCategory;
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+    return Theme(
+      data: Theme.of(context).copyWith(
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: ClayColors.clayDarkBase,
+        textTheme: Theme.of(context).textTheme.apply(
+          bodyColor: ClayColors.clayDarkTextPrimary,
+          displayColor: ClayColors.clayDarkTextPrimary,
+        ),
+        colorScheme: ColorScheme.dark(
+          primary: ClayTokens.clayPrimary,
+          surface: ClayColors.clayDarkSurface,
+          onSurface: ClayColors.clayDarkTextPrimary,
+        ),
+      ),
+      child: Scaffold(
+      backgroundColor: ClayColors.clayDarkBase,
       body: Stack(
         children: [
           const Positioned(
@@ -137,24 +152,26 @@ class _OnboardingSplashScreenState
                     // The step rail leads, the logo follows: the member reads
                     // "where am I" before "whose app is this", and the card
                     // stays the visual anchor underneath both.
-                    _NamedStepHeader(currentStep: _step, totalSteps: 4),
+                    _NamedStepHeader(currentStep: _step, totalSteps: 5),
                     const SizedBox(height: 18),
                     _buildLogoHero(),
                     const SizedBox(height: 24),
                     ClayCard(
                       variant: ClayCardVariant.outlined,
                       padding: ClayCardPadding.large,
-                      backgroundColor: ClayTokens.clayDarkSurface,
+                      backgroundColor: ClayColors.clayDarkSurface,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           if (_step == 0) ...[
                             _buildWelcomeStep(),
                           ] else if (_step == 1) ...[
-                            _buildStatsStep(bmiCategory, bmiColor),
+                            _buildRulesStep(),
                           ] else if (_step == 2) ...[
-                            _buildGenderStep(),
+                            _buildStatsStep(bmiCategory, bmiColor),
                           ] else if (_step == 3) ...[
+                            _buildGenderStep(),
+                          ] else if (_step == 4) ...[
                             _buildProfileStep(),
                           ],
                         ],
@@ -167,6 +184,53 @@ class _OnboardingSplashScreenState
           ),
         ],
       ),
+      ),
+    );
+  }
+
+  Widget _buildRulesStep() {
+    const rules = [
+      'Neat and clean clothing must be worn.',
+      'A towel must be used on all benches.',
+      'No chewing gum.',
+      'Gym equipment must only be used for its intended purpose.',
+      'Return weights to their place of origin after use.',
+      'Do not drop weights; place them carefully.',
+      'Do not use equipment under the influence of drugs or alcohol.',
+      'No alcohol may be consumed in the gym.',
+      'Offensive behaviour and swearing will not be tolerated.',
+      'Log in before proceeding to your workout.',
+      'Be aware of your personal hygiene.',
+      'Always be nice; no bragging.',
+      'Take care of your personal belongings.',
+      'Ask for assistance and know your limits.',
+      'Immoral or indecent acts are prohibited within the premises.',
+      'Creating cliques or intrigues among members, customers, or staff is prohibited.',
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Rules & Regulations', style: _darkStyle(ClayTokens.darkTitleLarge), textAlign: TextAlign.center),
+        const SizedBox(height: 12),
+        ...List.generate(rules.length, (i) => Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Text('${i + 1}. ${rules[i]}', style: _darkStyle(ClayTokens.darkBodyMedium).copyWith(color: ClayColors.clayDarkTextSecondary)),
+        )),
+        CheckboxListTile(
+          value: _rulesAccepted,
+          onChanged: (value) => setState(() => _rulesAccepted = value ?? false),
+          title: const Text('I have read and agree to the gym rules.'),
+          controlAffinity: ListTileControlAffinity.leading,
+          contentPadding: EdgeInsets.zero,
+          activeColor: ClayTokens.clayPrimary,
+        ),
+        const SizedBox(height: 14),
+        Row(children: [
+          Expanded(child: ClayButton(label: 'Back', onPressed: () => setState(() => _step = 0), style: ClayButtonStyle.secondary, fullWidth: true)),
+          const SizedBox(width: 12),
+          Expanded(child: ClayButton(label: 'Continue', onPressed: _rulesAccepted ? () => setState(() => _step = 2) : null, style: ClayButtonStyle.primary, fullWidth: true)),
+        ]),
+      ],
     );
   }
 
@@ -189,14 +253,14 @@ class _OnboardingSplashScreenState
       children: [
         Text(
           'Triple j',
-          style: ClayTokens.darkDisplaySmall,
+          style: _darkStyle(ClayTokens.darkDisplaySmall),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 8),
         Text(
           "Your fitness journey starts here. Track your workouts, monitor your progress, and stay motivated as you work toward your fitness goals. Let's personalize your experience and build a healthier, stronger you one step at a time!",
-          style: ClayTokens.darkBodyMedium.copyWith(
-            color: ClayTokens.clayDarkTextTertiary,
+          style: _darkStyle(ClayTokens.darkBodyMedium).copyWith(
+            color: ClayColors.clayDarkTextTertiary,
             height: 1.4,
           ),
           textAlign: TextAlign.center,
@@ -224,7 +288,7 @@ class _OnboardingSplashScreenState
       children: [
         Text(
           'Your Stats',
-          style: ClayTokens.darkTitleLarge,
+          style: _darkStyle(ClayTokens.darkTitleLarge),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 12),
@@ -233,7 +297,7 @@ class _OnboardingSplashScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Height', style: ClayTokens.darkTitleMedium),
+              Text('Height', style: _darkStyle(ClayTokens.darkTitleMedium)),
               const SizedBox(height: 6),
               ClayInput(
                 controller: _heightController,
@@ -260,7 +324,7 @@ class _OnboardingSplashScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Weight', style: ClayTokens.darkTitleMedium),
+              Text('Weight', style: _darkStyle(ClayTokens.darkTitleMedium)),
               const SizedBox(height: 6),
               ClayInput(
                 controller: _weightController,
@@ -286,7 +350,7 @@ class _OnboardingSplashScreenState
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: ClayTokens.clayDarkSurfaceElevated,
+              color: ClayColors.clayDarkSurfaceElevated,
               borderRadius: BorderRadius.circular(16),
             ),
             child: Row(
@@ -311,7 +375,7 @@ class _OnboardingSplashScreenState
                     children: [
                       Row(
                         children: [
-                          Text('BMI', style: ClayTokens.darkTitleMedium),
+                          Text('BMI', style: _darkStyle(ClayTokens.darkTitleMedium)),
                           const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(
@@ -339,7 +403,7 @@ class _OnboardingSplashScreenState
                 ),
                 Text(
                   _bmi.toStringAsFixed(1),
-                  style: ClayTokens.darkDisplaySmall.copyWith(
+                  style: _darkStyle(ClayTokens.darkDisplaySmall).copyWith(
                     color: bmiColor,
                     fontSize: 24,
                   ),
@@ -352,7 +416,7 @@ class _OnboardingSplashScreenState
           const SizedBox(height: 12),
           Text(
             _error!,
-            style: ClayTokens.darkBodySmall.copyWith(
+            style: _darkStyle(ClayTokens.darkBodySmall).copyWith(
               color: ClayTokens.clayError,
             ),
             textAlign: TextAlign.center,
@@ -364,7 +428,7 @@ class _OnboardingSplashScreenState
             Expanded(
               child: ClayButton(
                 label: 'Back',
-                onPressed: () => setState(() => _step = 0),
+                onPressed: () => setState(() => _step = 1),
                 style: ClayButtonStyle.secondary,
                 fullWidth: true,
               ),
@@ -374,7 +438,7 @@ class _OnboardingSplashScreenState
               child: ClayButton(
                 label: 'Next',
                 onPressed: _heightValid && _weightValid
-                    ? () => setState(() => _step = 2)
+                    ? () => setState(() => _step = 3)
                     : null,
                 fullWidth: true,
                 style: ClayButtonStyle.primary,
@@ -392,7 +456,7 @@ class _OnboardingSplashScreenState
       children: [
         Text(
           'About You',
-          style: ClayTokens.darkTitleLarge,
+          style: _darkStyle(ClayTokens.darkTitleLarge),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 12),
@@ -425,7 +489,7 @@ class _OnboardingSplashScreenState
             Expanded(
               child: ClayButton(
                 label: 'Back',
-                onPressed: () => setState(() => _step = 1),
+                onPressed: () => setState(() => _step = 2),
                 style: ClayButtonStyle.secondary,
                 fullWidth: true,
               ),
@@ -435,7 +499,7 @@ class _OnboardingSplashScreenState
               child: ClayButton(
                 label: 'Next',
                 onPressed: _gender != null
-                    ? () => setState(() => _step = 3)
+                    ? () => setState(() => _step = 4)
                     : null,
                 fullWidth: true,
                 style: ClayButtonStyle.primary,
@@ -457,7 +521,7 @@ class _OnboardingSplashScreenState
       children: [
         Text(
           'Choose Your Profile',
-          style: ClayTokens.darkTitleLarge,
+          style: _darkStyle(ClayTokens.darkTitleLarge),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 12),
@@ -482,7 +546,7 @@ class _OnboardingSplashScreenState
                     border: Border.all(
                       color: isSelected
                           ? selectionColor
-                          : ClayTokens.clayDarkBorder,
+                          : ClayColors.clayDarkBorder,
                       width: isSelected ? 3 : 1,
                     ),
                   ),
@@ -495,10 +559,10 @@ class _OnboardingSplashScreenState
                       width: double.infinity,
                       errorBuilder: (_, __, ___) => Container(
                         height: 120,
-                        color: ClayTokens.clayDarkSurfaceElevated,
+                        color: ClayColors.clayDarkSurfaceElevated,
                         child: Icon(
                           Icons.person,
-                          color: ClayTokens.clayDarkTextSecondary,
+                          color: ClayColors.clayDarkTextSecondary,
                           size: 40,
                         ),
                       ),
@@ -527,7 +591,7 @@ class _OnboardingSplashScreenState
           const SizedBox(height: 12),
           Text(
             _error!,
-            style: ClayTokens.darkBodySmall.copyWith(
+            style: _darkStyle(ClayTokens.darkBodySmall).copyWith(
               color: ClayTokens.clayError,
             ),
             textAlign: TextAlign.center,
@@ -551,11 +615,11 @@ class _OnboardingSplashScreenState
         curve: ClayTokens.easeOut,
         height: 140,
         decoration: BoxDecoration(
-          color: ClayTokens.clayDarkSurface,
+          color: ClayColors.clayDarkSurface,
           borderRadius: BorderRadius.circular(ClayTokens.radiusXl),
           border: isSelected
               ? Border.all(color: accent, width: 3)
-              : Border.all(color: ClayTokens.clayDarkBorder, width: 1),
+              : Border.all(color: ClayColors.clayDarkBorder, width: 1),
           boxShadow: ClayTokens.darkLevel0,
         ),
         child: Column(
@@ -568,10 +632,10 @@ class _OnboardingSplashScreenState
               fit: BoxFit.contain,
               errorBuilder: (_, __, ___) => Container(
                 height: 100,
-                color: ClayTokens.clayDarkSurfaceElevated,
+                color: ClayColors.clayDarkSurfaceElevated,
                 child: Icon(
                   Icons.person,
-                  color: ClayTokens.clayDarkTextSecondary,
+                  color: ClayColors.clayDarkTextSecondary,
                   size: 32,
                 ),
               ),
@@ -579,8 +643,8 @@ class _OnboardingSplashScreenState
             const SizedBox(height: 4),
             Text(
               label,
-              style: ClayTokens.darkTitleMedium.copyWith(
-                color: ClayTokens.clayDarkTextPrimary,
+              style: _darkStyle(ClayTokens.darkTitleMedium).copyWith(
+                color: ClayColors.clayDarkTextPrimary,
               ),
             ),
           ],
@@ -589,13 +653,16 @@ class _OnboardingSplashScreenState
     );
   }
 
+  TextStyle _darkStyle(TextStyle style) =>
+      style.copyWith(color: ClayColors.clayDarkTextPrimary);
+
   Widget _unitLabel(String unit) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 6),
       child: Text(
         unit,
-        style: ClayTokens.darkLabelMedium.copyWith(
-          color: ClayTokens.clayDarkTextTertiary,
+        style: _darkStyle(ClayTokens.darkLabelMedium).copyWith(
+          color: ClayColors.clayDarkTextTertiary,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -645,7 +712,7 @@ class _NamedStepHeader extends StatelessWidget {
 
   static const _purple = Color(0xFF7C3AED);
   static const _pending = Color(0xFF353555);
-  static const _names = ['Profile', 'Stats', 'Gender', 'Avatar'];
+  static const _names = ['Welcome', 'Rules', 'Stats', 'Gender', 'Avatar'];
 
   @override
   Widget build(BuildContext context) {

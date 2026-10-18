@@ -13,59 +13,155 @@
   <body>
     <main class="page-shell">
       <section class="enrollment-card" aria-labelledby="page-title">
-        <div class="brand-mark" aria-hidden="true">J</div>
+        <div class="brand-glass"><img src="/logo.png" alt="Triple J Fitness logo" /></div>
         <p class="eyebrow">FITNESS MEMBERSHIP</p>
         <h1 id="page-title">Start your fitness journey</h1>
-        <p class="intro">Fill in the form below. Our team will review your application and get in touch.</p>
+        <p class="intro">Complete both steps below. Our team will review your application and get in touch.</p>
+
+        <div class="step-indicator" aria-label="Enrollment steps">
+          <span id="step-one-indicator" class="step-dot is-current">1 <span>Your details</span></span>
+          <span class="step-line"></span>
+          <span id="step-two-indicator" class="step-dot">2 <span>Health screening</span></span>
+        </div>
 
         <form id="enrollment-form" novalidate>
-          <div class="field-grid">
-            <label class="field">
-              <span>Full name <b aria-hidden="true">*</b></span>
-              <input name="fullName" autocomplete="name" maxlength="120" placeholder="Your full name" required />
-            </label>
-            <label class="field">
-              <span>Email address <b aria-hidden="true">*</b></span>
-              <input name="email" type="email" autocomplete="email" maxlength="254" placeholder="you@example.com" required />
-            </label>
-            <label class="field">
-              <span>Phone number</span>
-              <input name="phone" type="tel" autocomplete="tel" inputmode="tel" maxlength="24" placeholder="09123456789" />
-              <small>Enter 11 digits if you provide a number.</small>
-            </label>
-            <label class="field">
-              <span>Date of birth</span>
-              <input name="dateOfBirth" type="date" autocomplete="bday" />
-            </label>
-            <label class="field">
-              <span>Gender</span>
-              <select name="gender">
-                <option value="">Select</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="prefer_not_to_say">Prefer not to say</option>
-              </select>
-            </label>
-            <label class="field field-wide">
-              <span>Address</span>
-              <textarea name="address" autocomplete="street-address" maxlength="500" rows="2" placeholder="Your address"></textarea>
-            </label>
-          </div>
-
-          <fieldset>
-            <legend>Emergency contact <span>(optional)</span></legend>
+          <section id="details-step" class="form-step" aria-labelledby="details-title">
+            <h2 id="details-title" class="step-title">Your details</h2>
             <div class="field-grid">
               <label class="field">
-                <span>Contact name</span>
-                <input name="emergencyContactName" autocomplete="off" maxlength="120" placeholder="Contact name" />
+                <span>Full name <b aria-hidden="true">*</b></span>
+                <input name="fullName" autocomplete="name" maxlength="120" placeholder="Your full name" required />
               </label>
               <label class="field">
-                <span>Contact phone</span>
-                <input name="emergencyContactPhone" type="tel" autocomplete="off" inputmode="tel" maxlength="24" placeholder="09123456789" />
-                <small>Enter 11 digits if you provide a number.</small>
+                <span>Email address <b aria-hidden="true">*</b></span>
+                <input name="email" type="email" autocomplete="email" maxlength="254" placeholder="you@example.com" required />
+              </label>
+              <label class="field">
+                <span>Phone number</span>
+                <input name="phone" type="tel" autocomplete="tel" inputmode="numeric" maxlength="11" placeholder="09123456789" />
+                <small>Enter up to 11 digits.</small>
+              </label>
+              <label class="field">
+                <span>Date of birth</span>
+                <input name="dateOfBirth" type="date" autocomplete="bday" />
+              </label>
+              <label class="field">
+                <span>Age</span>
+                <input id="age" name="ageDisplay" type="text" readonly placeholder="Calculated from date of birth" />
+              </label>
+              <label class="field">
+                <span>Gender</span>
+                <select name="gender">
+                  <option value="">Select</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="prefer_not_to_say">Prefer not to say</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Civil status</span>
+                <select name="civilStatus">
+                  <option value="">Select</option>
+                  <option value="single">Single</option>
+                  <option value="married">Married</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Religion</span>
+                <select id="religion" name="religion">
+                  <option value="">Select</option>
+                  <option value="roman_catholic">Roman Catholic</option>
+                  <option value="christian">Christian</option>
+                  <option value="iglesia_ni_cristo">Iglesia ni Cristo</option>
+                  <option value="islam">Islam</option>
+                  <option value="other">Other</option>
+                </select>
+              </label>
+              <label id="religion-other-field" class="field field-wide" hidden>
+                <span>Please specify religion</span>
+                <input name="religionOther" maxlength="120" placeholder="Your religion" />
+              </label>
+              <label class="field field-wide">
+                <span>Address</span>
+                <textarea name="address" autocomplete="street-address" maxlength="500" rows="2" placeholder="Your address"></textarea>
               </label>
             </div>
-          </fieldset>
+
+            <fieldset>
+              <legend>Emergency contact <span>(optional)</span></legend>
+              <div class="field-grid">
+                <label class="field">
+                  <span>Contact name</span>
+                  <input name="emergencyContactName" autocomplete="off" maxlength="120" placeholder="Contact name" />
+                </label>
+                <label class="field">
+                  <span>Contact phone</span>
+                  <input name="emergencyContactPhone" type="tel" autocomplete="off" inputmode="numeric" maxlength="11" placeholder="09123456789" />
+                  <small>Enter up to 11 digits.</small>
+                </label>
+              </div>
+            </fieldset>
+
+            <button id="to-health-button" type="button">Continue to health screening</button>
+          </section>
+
+          <section id="health-step" class="form-step" aria-labelledby="health-title" hidden>
+            <h2 id="health-title" class="step-title">Health background screening</h2>
+            <p class="step-copy">Please answer every question. Your responses will be available to gym administrators reviewing your application.</p>
+
+            <fieldset class="health-question">
+              <legend>1. Have you had any illness or heart problem?</legend>
+              <div class="choice-list">
+                <label><input type="radio" name="illnessOrHeartProblem" value="yes" required /> Yes, I have.</label>
+                <label><input type="radio" name="illnessOrHeartProblem" value="no" /> No, I don't have.</label>
+                <label><input type="radio" name="illnessOrHeartProblem" value="other" /> Other</label>
+              </div>
+              <label class="field other-answer" data-other-for="illnessOrHeartProblem" hidden>
+                <span>Please explain</span><textarea name="illnessOrHeartProblemDetails" maxlength="500" rows="2"></textarea>
+              </label>
+            </fieldset>
+
+            <fieldset class="health-question">
+              <legend>2. Have you seen a doctor in the last two years for any health problem?</legend>
+              <div class="choice-list">
+                <label><input type="radio" name="recentDoctorVisit" value="yes" required /> Yes, I have.</label>
+                <label><input type="radio" name="recentDoctorVisit" value="no" /> No, I don't have.</label>
+                <label><input type="radio" name="recentDoctorVisit" value="other" /> Other</label>
+              </div>
+              <label class="field other-answer" data-other-for="recentDoctorVisit" hidden>
+                <span>Please explain</span><textarea name="recentDoctorVisitDetails" maxlength="500" rows="2"></textarea>
+              </label>
+            </fieldset>
+
+            <fieldset class="health-question">
+              <legend>3. Do you have difficulty standing, bending, lifting, or doing other movements?</legend>
+              <div class="choice-list">
+                <label><input type="radio" name="movementDifficulty" value="yes" required /> Yes, I have.</label>
+                <label><input type="radio" name="movementDifficulty" value="no" /> No, I don't have.</label>
+                <label><input type="radio" name="movementDifficulty" value="other" /> Other</label>
+              </div>
+              <label class="field other-answer" data-other-for="movementDifficulty" hidden>
+                <span>Please explain</span><textarea name="movementDifficultyDetails" maxlength="500" rows="2"></textarea>
+              </label>
+            </fieldset>
+
+            <fieldset class="health-question">
+              <legend>4. Have you had any problems with your joints, back, shoulders, legs, or an injury?</legend>
+              <div class="choice-list">
+                <label><input type="radio" name="jointBackShoulderLegInjury" value="yes" required /> Yes, I have.</label>
+                <label><input type="radio" name="jointBackShoulderLegInjury" value="no" /> No, I don't have.</label>
+                <label><input type="radio" name="jointBackShoulderLegInjury" value="other" /> Other</label>
+              </div>
+              <label class="field other-answer" data-other-for="jointBackShoulderLegInjury" hidden>
+                <span>Please explain</span><textarea name="jointBackShoulderLegInjuryDetails" maxlength="500" rows="2"></textarea>
+              </label>
+            </fieldset>
+
+            <div class="step-actions">
+              <button id="back-to-details-button" class="secondary-button" type="button">Back</button>
+              <button id="submit-button" type="submit">Submit application</button>
+            </div>
+          </section>
 
           <label class="honey-field" aria-hidden="true" tabindex="-1">
             <span>Leave this field empty</span>
@@ -73,8 +169,7 @@
           </label>
 
           <p id="form-message" class="form-message" role="status" aria-live="polite"></p>
-          <button id="submit-button" type="submit">Submit application</button>
-          <p class="privacy-note">Your application will be sent securely for review by the gym team.</p>
+          <p class="privacy-note">Your information will be sent securely for review by the gym team.</p>
         </form>
 
         <div id="success-panel" class="success-panel" hidden role="status" aria-live="polite">
