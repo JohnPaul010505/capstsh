@@ -61,37 +61,39 @@ button, input, select, textarea { font: inherit; }
   place-items: center;
 }
 .brand-mark img { display: block; width: 100%; height: 100%; object-fit: contain; }
-.step-indicator { display: flex; align-items: center; gap: 10px; margin: 0 0 25px; }
-.step-dot { display: inline-flex; align-items: center; gap: 8px; color: #777d9f; font-size: 12px; white-space: nowrap; }
+.step-indicator { display: grid; grid-template-columns: minmax(0, 1fr) 14px minmax(0, 1fr) 14px minmax(0, 1fr); align-items: center; gap: 8px; margin: 0 0 25px; }
+.step-dot { display: inline-flex; min-width: 0; align-items: center; gap: 6px; color: #777d9f; font-size: 12px; white-space: normal; }
 .step-dot::first-letter { color: #a7abc8; }
 .step-dot.is-current { color: #dcfffb; }
 .step-dot.is-current::first-letter { color: var(--aqua); }
-.step-line { height: 1px; flex: 1; background: linear-gradient(90deg, rgba(103,228,223,.36), rgba(255,255,255,.13)); }
+.step-line { width: 100%; height: 1px; background: linear-gradient(90deg, rgba(103,228,223,.36), rgba(255,255,255,.13)); }
 .step-title { margin: 0 0 16px; font-size: 19px; }
 .step-copy { margin: -6px 0 20px; color: var(--muted); font-size: 13px; line-height: 1.55; }
 .health-question {
-  margin: 0 0 16px;
-  padding: 18px 16px 16px;
-  border: 1px solid rgba(196,218,255,.2);
-  border-radius: 18px;
-  background: linear-gradient(135deg, rgba(255,255,255,.105), transparent 42%), linear-gradient(145deg, rgba(62,81,151,.28), rgba(23,37,82,.32));
-  box-shadow: inset 0 1px rgba(255,255,255,.13), 0 14px 32px rgba(0,0,0,.15);
-  -webkit-backdrop-filter: blur(20px) saturate(145%);
-  backdrop-filter: blur(20px) saturate(145%);
+  min-width: 0;
+  margin: 0 0 24px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 .health-question legend {
-  display: table;
+  display: block;
+  width: 100%;
   max-width: 100%;
-  margin: 0 0 13px -6px;
-  padding: 2px 8px;
-  border-radius: 7px;
-  background: linear-gradient(135deg, rgba(27, 39, 85, .98), rgba(36, 49, 101, .98));
+  margin: 0 0 12px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: #f0f1ff;
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: 15px;
+  line-height: 1.45;
   overflow-wrap: anywhere;
 }
-.choice-list { display: grid; gap: 10px; }
+.choice-list { display: grid; gap: 8px; padding: 0 2px; }
 .choice-list label { display: flex; align-items: center; gap: 9px; color: #d4d7ee; font-size: 13px; }
 .choice-list input { width: 18px; height: 18px; accent-color: var(--aqua); }
 .other-answer { margin-top: 12px; }
@@ -161,7 +163,8 @@ button[type='submit']:hover:not(:disabled) { filter: brightness(1.08); }
 button[type='submit']:disabled { opacity: .65; cursor: wait; }
 .privacy-note { margin: 13px 0 0; color: #b6c0e1; font-size: 11px; line-height: 1.5; text-align: center; }
 .success-panel { padding: 28px 0 8px; text-align: center; }
-.success-icon { display: grid; width: 58px; height: 58px; margin: 0 auto 18px; place-items: center; border-radius: 50%; background: rgba(74, 222, 128, .16); color: #4ade80; font-size: 30px; }
+.success-logo { display: block; width: 82px; height: 82px; margin: 0 auto 10px; object-fit: contain; }
+.success-panel .eyebrow { margin: 0 0 8px; }
 .success-panel h2 { margin: 0 0 8px; font-size: 25px; }
 .success-panel p { margin: 0 auto; max-width: 400px; color: var(--muted); line-height: 1.6; }
 footer { padding: 18px 0 0; color: #aeb9df; font-size: 11px; }
@@ -171,7 +174,7 @@ footer { padding: 18px 0 0; color: #aeb9df; font-size: 11px; }
   .enrollment-card { width: 100%; padding: 23px 19px; border-radius: 19px; }
   .eyebrow { margin-top: 19px; }
   .brand-mark { width: 88px; height: 88px; }
-  .step-dot { gap: 5px; font-size: 11px; }
+  .step-dot { gap: 4px; font-size: 10px; }
   .intro { margin-bottom: 24px; font-size: 14px; }
   .field-grid { grid-template-columns: 1fr; gap: 15px; }
   .field-wide { grid-column: auto; }
@@ -179,10 +182,8 @@ footer { padding: 18px 0 0; color: #aeb9df; font-size: 11px; }
 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .enrollment-card { background: rgba(20, 25, 59, .96); }
-  .health-question { background: rgba(27, 32, 70, .96); }
 }
 
 @media (prefers-reduced-transparency: reduce) {
   .enrollment-card { background: rgba(20, 25, 59, .97); }
-  .health-question { background: rgba(27, 32, 70, .97); }
 }

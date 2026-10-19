@@ -5,6 +5,7 @@ config({ path: resolve(dirname(fileURLToPath(import.meta.url)), '..', '.env') })
 import express from 'express'
 import cors from 'cors'
 import { createClient } from '@supabase/supabase-js'
+import { confirmEnrollment, rejectEnrollment } from './enrollmentActions.js'
 
 const app = express()
 app.use(cors({ origin: '*', credentials: true }))
@@ -98,62 +99,8 @@ app.post('/api/users', async (req, res) => {
   }
 })
 
-app.post('/api/confirm-enrollment', async (req, res) => {
-  const { enrollment, confirmedBy } = req.body
-  if (!enrollment?.id) return res.status(400).json({ error: 'Missing enrollment data' })
-
-  try {
-    const tempPassword = Math.random().toString(36).slice(-10) + 'A1!'
-
-    const { data: authUser, error: authError } = await adminClient.auth.admin.createUser({
-      email: enrollment.email,
-      password: tempPassword,
-      email_confirm: true,
-      user_metadata: { full_name: enrollment.full_name },
-    })
-    if (authError) throw authError
-
-    const { error: updateError } = await adminClient
-      .from('enrollments')
-      .update({ status: 'confirmed', confirmed_at: new Date().toISOString(), confirmed_by: confirmedBy })
-      .eq('id', enrollment.id)
-    if (updateError) throw updateError
-
-    const { data: profile, error: profileError } = await adminClient
-      .from('profiles')
-      .insert({
-        id: authUser.user.id,
-        role: 'member',
-        full_name: enrollment.full_name,
-        email: enrollment.email,
-        phone: enrollment.phone || null,
-        date_of_birth: enrollment.date_of_birth || null,
-        gender: enrollment.gender || null,
-        civil_status: enrollment.civil_status || null,
-        religion: enrollment.religion || null,
-        religion_other: enrollment.religion === 'other' ? enrollment.religion_other || null : null,
-        emergency_contact_name: enrollment.emergency_contact_name || null,
-        emergency_contact_phone: enrollment.emergency_contact_phone || null,
-      })
-      .select('code')
-      .single()
-    if (profileError) throw profileError
-
-    if (enrollment.health_background && Object.keys(enrollment.health_background).length > 0) {
-      const { error: healthError } = await adminClient.from('member_health_background').upsert({
-        member_id: authUser.user.id,
-        answers: enrollment.health_background,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'member_id' })
-      if (healthError) throw healthError
-    }
-
-    res.json({ success: true, code: profile.code, tempPassword })
-  } catch (err) {
-    console.error('Confirm enrollment error:', err)
-    res.status(500).json({ error: err?.message || 'Failed to confirm enrollment' })
-  }
-})
+app.post('/api/confirm-enrollment', confirmEnrollment)
+app.post('/api/reject-enrollment', rejectEnrollment)
 
 app.post('/api/delete-user', async (req, res) => {
   const { userId } = req.body

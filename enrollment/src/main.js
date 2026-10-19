@@ -6,8 +6,10 @@ const submitButton = document.querySelector('#submit-button')
 const successPanel = document.querySelector('#success-panel')
 const detailsStep = document.querySelector('#details-step')
 const healthStep = document.querySelector('#health-step')
+const accountStep = document.querySelector('#account-step')
 const indicatorOne = document.querySelector('#step-one-indicator')
 const indicatorTwo = document.querySelector('#step-two-indicator')
+const indicatorThree = document.querySelector('#step-three-indicator')
 
 function showError(text) {
   message.textContent = text
@@ -20,18 +22,15 @@ function clearError() {
 }
 
 function setStep(step) {
-  const isDetails = step === 1
-  detailsStep.hidden = !isDetails
-  healthStep.hidden = isDetails
-  indicatorOne.classList.toggle('is-current', isDetails)
-  indicatorTwo.classList.toggle('is-current', !isDetails)
-  if (isDetails) {
-    indicatorOne.setAttribute('aria-current', 'step')
-    indicatorTwo.removeAttribute('aria-current')
-  } else {
-    indicatorOne.removeAttribute('aria-current')
-    indicatorTwo.setAttribute('aria-current', 'step')
-  }
+  detailsStep.hidden = step !== 1
+  healthStep.hidden = step !== 2
+  accountStep.hidden = step !== 3
+  ;[indicatorOne, indicatorTwo, indicatorThree].forEach((indicator, index) => {
+    const current = index + 1 === step
+    indicator.classList.toggle('is-current', current)
+    if (current) indicator.setAttribute('aria-current', 'step')
+    else indicator.removeAttribute('aria-current')
+  })
   clearError()
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
@@ -108,6 +107,26 @@ document.querySelector('#to-health-button').addEventListener('click', () => {
 })
 
 document.querySelector('#back-to-details-button').addEventListener('click', () => setStep(1))
+document.querySelector('#back-to-health-button').addEventListener('click', () => setStep(2))
+
+document.querySelector('#to-account-button').addEventListener('click', () => {
+  clearError()
+  const fields = new FormData(form)
+  for (const key of ['illnessOrHeartProblem', 'recentDoctorVisit', 'movementDifficulty', 'jointBackShoulderLegInjury']) {
+    const choice = fields.get(key)
+    if (!choice) {
+      showError('Please answer all health screening questions.')
+      form.querySelector(`input[name="${key}"]`).focus()
+      return
+    }
+    if (choice === 'other' && !String(fields.get(`${key}Details`) || '').trim()) {
+      showError('Please explain each answer marked Other.')
+      form.querySelector(`[data-other-for="${key}"] textarea`).focus()
+      return
+    }
+  }
+  setStep(3)
+})
 
 function getHealthAnswer(fields, key) {
   const choice = String(fields.get(key) || '')
@@ -120,7 +139,7 @@ function getHealthAnswer(fields, key) {
 form.addEventListener('submit', async (event) => {
   event.preventDefault()
   clearError()
-  if (healthStep.hidden) return
+  if (accountStep.hidden) return
 
   const fields = new FormData(form)
   const healthKeys = [
@@ -142,6 +161,19 @@ form.addEventListener('submit', async (event) => {
     }
   }
 
+  const password = String(fields.get('password') || '')
+  const confirmPassword = String(fields.get('confirmPassword') || '')
+  if (password.length < 8 || password.length > 72) {
+    showError('Choose a password between 8 and 72 characters.')
+    form.elements.password.focus()
+    return
+  }
+  if (password !== confirmPassword) {
+    showError('The passwords do not match.')
+    form.elements.confirmPassword.focus()
+    return
+  }
+
   const payload = {
     fullName: String(fields.get('fullName') || '').trim(),
     email: String(fields.get('email') || '').trim(),
@@ -155,6 +187,8 @@ form.addEventListener('submit', async (event) => {
     emergencyContactName: String(fields.get('emergencyContactName') || '').trim(),
     emergencyContactPhone: String(fields.get('emergencyContactPhone') || '').trim(),
     healthBackground: Object.fromEntries(healthKeys.map((key) => [key, getHealthAnswer(fields, key)])),
+    password,
+    confirmPassword,
     website: String(fields.get('website') || ''),
   }
 

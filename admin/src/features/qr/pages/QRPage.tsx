@@ -98,23 +98,42 @@ export default function QRPage() {
   const { data: enrollments, isLoading } = useQuery({
     queryKey: ['enrollments'],
     queryFn: async () => {
-      const { data } = await supabase.from('enrollments').select('*').order('created_at', { ascending: false })
+      const { data, error } = await supabase.from('enrollments').select('*').order('created_at', { ascending: false })
+      if (error) throw error
       return data ?? []
     },
     enabled: isAdmin,
   })
 
-  const handleConfirm = async (enrollment: any) => {
-    const { data: { user } } = await supabase.auth.getUser()
-    try {
-      const res = await fetch('/api/confirm-enrollment', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enrollment, confirmedBy: user?.id }),
+  useEffect(() => {
+    if (!isAdmin) return
+    const channel = supabase
+      .channel('qr-enrollments-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'enrollments' }, () => {
+        void queryClient.invalidateQueries({ queryKey: ['enrollments'] })
       })
+      .subscribe()
+    return () => { void supabase.removeChannel(channel) }
+  }, [isAdmin, queryClient])
+
+  const authorizedRequest = async (url: string, body: Record<string, unknown>) => {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) throw new Error('Your admin session expired. Please sign in again.')
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify(body),
+    })
+  }
+
+  const handleConfirm = async (enrollment: any) => {
+    try {
+      const res = await authorizedRequest('/api/confirm-enrollment', { enrollmentId: enrollment.id })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to confirm')
-      alert(`Member confirmed!\nCode: ${data.code}\nTemporary password: ${data.tempPassword}`)
+      alert(data.legacyPassword
+        ? `Member confirmed!\nCode: ${data.code}\nTemporary password: ${data.legacyPassword}`
+        : `Member confirmed!\nCode: ${data.code}\nThey can now sign in using the password created during enrollment.`)
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to confirm enrollment')
     }
@@ -122,7 +141,13 @@ export default function QRPage() {
   }
 
   const handleReject = async (id: string) => {
-    await supabase.from('enrollments').update({ status: 'rejected' }).eq('id', id)
+    try {
+      const res = await authorizedRequest('/api/reject-enrollment', { enrollmentId: id })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to reject application')
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to reject application')
+    }
     queryClient.invalidateQueries({ queryKey: ['enrollments'] })
   }
 

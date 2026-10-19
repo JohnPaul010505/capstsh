@@ -16,12 +16,14 @@
         <div class="brand-mark"><img src="/logo.png" alt="Triple J Fitness logo" /></div>
         <p class="eyebrow">FITNESS MEMBERSHIP</p>
         <h1 id="page-title">Start your fitness journey</h1>
-        <p class="intro">Complete both steps below. Our team will review your application and get in touch.</p>
+        <p class="intro">Complete these steps to apply. Our team will review your application and get in touch.</p>
 
         <div class="step-indicator" aria-label="Enrollment steps">
           <span id="step-one-indicator" class="step-dot is-current" aria-current="step">1 <span>Your details</span></span>
           <span class="step-line"></span>
           <span id="step-two-indicator" class="step-dot">2 <span>Health screening</span></span>
+          <span class="step-line"></span>
+          <span id="step-three-indicator" class="step-dot">3 <span>Account setup</span></span>
         </div>
 
         <form id="enrollment-form" novalidate>
@@ -159,6 +161,25 @@
 
             <div class="step-actions">
               <button id="back-to-details-button" class="secondary-button" type="button">Back</button>
+              <button id="to-account-button" type="button">Continue to account setup</button>
+            </div>
+          </section>
+
+          <section id="account-step" class="form-step" aria-labelledby="account-title" hidden>
+            <h2 id="account-title" class="step-title">Account setup</h2>
+            <p class="step-copy">Choose the password you’ll use to sign in to the Capstsh Fitness mobile app after your membership is approved.</p>
+            <div class="field-grid account-fields">
+              <label class="field field-wide">
+                <span>Password <b aria-hidden="true">*</b></span>
+                <input name="password" type="password" autocomplete="new-password" minlength="8" maxlength="72" placeholder="At least 8 characters" required />
+              </label>
+              <label class="field field-wide">
+                <span>Confirm password <b aria-hidden="true">*</b></span>
+                <input name="confirmPassword" type="password" autocomplete="new-password" minlength="8" maxlength="72" placeholder="Enter the same password" required />
+              </label>
+            </div>
+            <div class="step-actions">
+              <button id="back-to-health-button" class="secondary-button" type="button">Back</button>
               <button id="submit-button" type="submit">Submit application</button>
             </div>
           </section>
@@ -173,9 +194,10 @@
         </form>
 
         <div id="success-panel" class="success-panel" hidden role="status" aria-live="polite">
-          <div class="success-icon" aria-hidden="true">✓</div>
-          <h2>Application received</h2>
-          <p>Thank you for applying. The gym team will review your information and contact you.</p>
+          <img class="success-logo" src="/logo.png" alt="Capstsh Fitness" />
+          <p class="eyebrow">APPLICATION SUBMITTED</p>
+          <h2>Your application is pending review</h2>
+          <p>After the gym approves your membership, sign in to the mobile app with the email and password you created.</p>
         </div>
       </section>
       <footer>Powered by Capstsh Fitness</footer>

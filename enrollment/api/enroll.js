@@ -74,6 +74,8 @@ export default async function handler(req, res) {
   const emergencyContactName = text(body.emergencyContactName)
   const emergencyContactPhone = text(body.emergencyContactPhone)
   const healthBackground = body.healthBackground
+  const password = typeof body.password === 'string' ? body.password : ''
+  const confirmPassword = typeof body.confirmPassword === 'string' ? body.confirmPassword : ''
 
   if (!fullName || !email) return reply(res, 400, { error: 'Full name and email are required.' })
   if (fullName.length > MAX_LENGTH.fullName || email.length > MAX_LENGTH.email ||
@@ -97,6 +99,9 @@ export default async function handler(req, res) {
   if (!validateHealthBackground(healthBackground)) {
     return reply(res, 400, { error: 'Please answer all health screening questions.' })
   }
+  if (password.length < 8 || password.length > 72 || password !== confirmPassword) {
+    return reply(res, 400, { error: password !== confirmPassword ? 'The passwords do not match.' : 'Choose a password between 8 and 72 characters.' })
+  }
   if (dateOfBirth && !/^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth)) {
     return reply(res, 400, { error: 'Enter a valid date of birth.' })
   }
@@ -116,7 +121,22 @@ export default async function handler(req, res) {
   })
 
   try {
+    const { data: created, error: authError } = await adminClient.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      ban_duration: '876000h',
+      user_metadata: { full_name: fullName },
+    })
+    if (authError) {
+      if (/already|registered|exists/i.test(authError.message || '')) {
+        return reply(res, 409, { error: 'An account already exists for this email. Sign in or contact the gym for help.' })
+      }
+      throw authError
+    }
+
     const { error } = await adminClient.from('enrollments').insert({
+      auth_user_id: created.user.id,
       full_name: fullName,
       email,
       phone: phone || null,
@@ -133,6 +153,7 @@ export default async function handler(req, res) {
     })
 
     if (error) {
+      await adminClient.auth.admin.deleteUser(created.user.id)
       console.error('Enrollment insert failed:', {
         code: error.code,
         message: error.message,
