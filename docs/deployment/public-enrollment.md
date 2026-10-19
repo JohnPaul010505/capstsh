@@ -13,6 +13,8 @@ The standalone enrollment site lives in `enrollment/`. Deploy it as its own Verc
 5. Apply `supabase/migrations/0050_enrollment_health_and_member_demographics.sql` to the same Supabase project using Supabase SQL Editor or the Supabase CLI.
 6. Deploy and open the Vercel URL ending in `/enroll`. Submit a test application and confirm it appears in the admin QR page’s Pending tab.
 
+If submission says enrollment is temporarily unavailable, check that `SUPABASE_SERVICE_ROLE_KEY` is present under **Production** for this enrollment Vercel project, then redeploy the latest production deployment. A Git push or database migration does not update Vercel environment variables.
+
 The page sends form submissions to its own `/api/enroll` Vercel Function. That function validates the fields and inserts a `pending` row into the existing Supabase `enrollments` table. It does not expose the service role key to the browser.
 
 ## Point the admin QR at the public page
