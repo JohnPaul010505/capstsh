@@ -115,24 +115,34 @@ export default async function handler(req, res) {
     auth: { autoRefreshToken: false, persistSession: false },
   })
 
-  const { error } = await adminClient.from('enrollments').insert({
-    full_name: fullName,
-    email,
-    phone: phone || null,
-    date_of_birth: dateOfBirth || null,
-    gender: gender || null,
-    civil_status: civilStatus || null,
-    religion: religion || null,
-    religion_other: religion === 'other' ? religionOther : null,
-    address: address || null,
-    emergency_contact_name: emergencyContactName || null,
-    emergency_contact_phone: emergencyContactPhone || null,
-    health_background: healthBackground,
-    status: 'pending',
-  })
+  try {
+    const { error } = await adminClient.from('enrollments').insert({
+      full_name: fullName,
+      email,
+      phone: phone || null,
+      date_of_birth: dateOfBirth || null,
+      gender: gender || null,
+      civil_status: civilStatus || null,
+      religion: religion || null,
+      religion_other: religion === 'other' ? religionOther : null,
+      address: address || null,
+      emergency_contact_name: emergencyContactName || null,
+      emergency_contact_phone: emergencyContactPhone || null,
+      health_background: healthBackground,
+      status: 'pending',
+    })
 
-  if (error) {
-    console.error('Enrollment insert failed:', error.message)
+    if (error) {
+      console.error('Enrollment insert failed:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+      })
+      return reply(res, 500, { error: 'We could not save your application. Please try again.' })
+    }
+  } catch (error) {
+    console.error('Enrollment request failed:', error instanceof Error ? error.message : 'Unknown Supabase request error')
     return reply(res, 500, { error: 'We could not save your application. Please try again.' })
   }
 
