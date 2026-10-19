@@ -31,6 +31,7 @@ body {
 button, input, select, textarea { font: inherit; }
 
 .page-shell {
+  width: 100%;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -41,6 +42,8 @@ button, input, select, textarea { font: inherit; }
 
 .enrollment-card {
   width: min(100%, 680px);
+  min-width: 0;
+  margin-inline: auto;
   padding: clamp(24px, 5vw, 48px);
   border: 1px solid rgba(207, 224, 255, .25);
   border-radius: 28px;
@@ -76,7 +79,18 @@ button, input, select, textarea { font: inherit; }
   -webkit-backdrop-filter: blur(20px) saturate(145%);
   backdrop-filter: blur(20px) saturate(145%);
 }
-.health-question legend { max-width: 100%; margin: 0 0 13px; padding: 0; color: #f0f1ff; font-size: 13px; line-height: 1.5; }
+.health-question legend {
+  display: table;
+  max-width: 100%;
+  margin: 0 0 13px -6px;
+  padding: 2px 8px;
+  border-radius: 7px;
+  background: linear-gradient(135deg, rgba(27, 39, 85, .98), rgba(36, 49, 101, .98));
+  color: #f0f1ff;
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
 .choice-list { display: grid; gap: 10px; }
 .choice-list label { display: flex; align-items: center; gap: 9px; color: #d4d7ee; font-size: 13px; }
 .choice-list input { width: 18px; height: 18px; accent-color: var(--aqua); }
@@ -153,8 +167,8 @@ button[type='submit']:disabled { opacity: .65; cursor: wait; }
 footer { padding: 18px 0 0; color: #aeb9df; font-size: 11px; }
 
 @media (max-width: 560px) {
-  .page-shell { justify-content: flex-start; padding: 16px 12px; }
-  .enrollment-card { padding: 23px 19px; border-radius: 19px; }
+  .page-shell { align-items: stretch; justify-content: flex-start; padding: 16px 12px; }
+  .enrollment-card { width: 100%; padding: 23px 19px; border-radius: 19px; }
   .eyebrow { margin-top: 19px; }
   .brand-mark { width: 88px; height: 88px; }
   .step-dot { gap: 5px; font-size: 11px; }
