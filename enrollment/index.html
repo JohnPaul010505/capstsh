@@ -90,15 +90,15 @@
             </div>
 
             <fieldset>
-              <legend>Emergency contact <span>(optional)</span></legend>
+              <legend>Emergency contact</legend>
               <div class="field-grid">
                 <label class="field">
-                  <span>Contact name</span>
-                  <input name="emergencyContactName" autocomplete="off" maxlength="120" placeholder="Contact name" />
+                  <span>Contact name <b aria-hidden="true">*</b></span>
+                  <input name="emergencyContactName" autocomplete="off" maxlength="120" placeholder="Contact name" required />
                 </label>
                 <label class="field">
-                  <span>Contact phone</span>
-                  <input name="emergencyContactPhone" type="tel" autocomplete="off" inputmode="numeric" maxlength="11" placeholder="09123456789" />
+                  <span>Contact phone <b aria-hidden="true">*</b></span>
+                  <input name="emergencyContactPhone" type="tel" autocomplete="off" inputmode="numeric" maxlength="11" placeholder="09123456789" required />
                   <small>Enter up to 11 digits.</small>
                 </label>
               </div>
@@ -171,11 +171,18 @@
             <div class="field-grid account-fields">
               <label class="field field-wide">
                 <span>Password <b aria-hidden="true">*</b></span>
-                <input name="password" type="password" autocomplete="new-password" minlength="8" maxlength="72" placeholder="At least 8 characters" required />
+                <span class="password-control">
+                  <input id="password-input" name="password" type="password" autocomplete="new-password" minlength="8" maxlength="72" placeholder="At least 8 characters" required />
+                  <button class="password-toggle" type="button" data-toggle-password="password-input" aria-label="Show password" aria-pressed="false">Show</button>
+                </span>
               </label>
               <label class="field field-wide">
                 <span>Confirm password <b aria-hidden="true">*</b></span>
-                <input name="confirmPassword" type="password" autocomplete="new-password" minlength="8" maxlength="72" placeholder="Enter the same password" required />
+                <span class="password-control">
+                  <input id="confirm-password-input" name="confirmPassword" type="password" autocomplete="new-password" minlength="8" maxlength="72" placeholder="Enter the same password" required />
+                  <button class="password-toggle" type="button" data-toggle-password="confirm-password-input" aria-label="Show confirmation password" aria-pressed="false">Show</button>
+                </span>
+                <small id="password-match-error" class="field-error" aria-live="polite" hidden>Passwords do not match.</small>
               </label>
             </div>
             <div class="step-actions">
@@ -194,7 +201,10 @@
         </form>
 
         <div id="success-panel" class="success-panel" hidden role="status" aria-live="polite">
-          <img class="success-logo" src="/logo.png" alt="Capstsh Fitness" />
+          <svg class="success-check" viewBox="0 0 64 64" role="img" aria-label="Application submitted successfully">
+            <defs><linearGradient id="success-check-gradient" x1="10" y1="50" x2="54" y2="14" gradientUnits="userSpaceOnUse"><stop stop-color="#67e4df" /><stop offset="1" stop-color="#b9fff4" /></linearGradient></defs>
+            <path d="M12 33.5 25.5 47 53 17" />
+          </svg>
           <p class="eyebrow">APPLICATION SUBMITTED</p>
           <h2>Your application is pending review</h2>
           <p>After the gym approves your membership, sign in to the mobile app with the email and password you created.</p>

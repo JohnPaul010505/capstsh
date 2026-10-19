@@ -103,6 +103,12 @@ export default function QRPage() {
       return data ?? []
     },
     enabled: isAdmin,
+    // Realtime events invalidate immediately when the Supabase publication is
+    // active. Polling is a safety net for deployments where the websocket is
+    // temporarily unavailable or Realtime has not been enabled for the table.
+    refetchInterval: isAdmin ? 5_000 : false,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
   })
 
   useEffect(() => {

@@ -10,6 +10,9 @@ const accountStep = document.querySelector('#account-step')
 const indicatorOne = document.querySelector('#step-one-indicator')
 const indicatorTwo = document.querySelector('#step-two-indicator')
 const indicatorThree = document.querySelector('#step-three-indicator')
+const passwordInput = document.querySelector('#password-input')
+const confirmPasswordInput = document.querySelector('#confirm-password-input')
+const passwordMatchError = document.querySelector('#password-match-error')
 
 function showError(text) {
   message.textContent = text
@@ -20,6 +23,28 @@ function clearError() {
   message.textContent = ''
   message.classList.remove('is-error')
 }
+
+function syncPasswordMatch(force = false) {
+  const mismatch = (confirmPasswordInput.value.length > 0 || force) &&
+    confirmPasswordInput.value !== passwordInput.value
+  passwordMatchError.hidden = !mismatch
+  confirmPasswordInput.setAttribute('aria-invalid', String(mismatch))
+  return mismatch
+}
+
+document.querySelectorAll('[data-toggle-password]').forEach((button) => {
+  button.addEventListener('click', () => {
+    const input = document.getElementById(button.dataset.togglePassword)
+    const show = input.type === 'password'
+    input.type = show ? 'text' : 'password'
+    button.textContent = show ? 'Hide' : 'Show'
+    button.setAttribute('aria-pressed', String(show))
+    button.setAttribute('aria-label', `${show ? 'Hide' : 'Show'} ${input.name === 'confirmPassword' ? 'confirmation password' : 'password'}`)
+  })
+})
+
+passwordInput.addEventListener('input', () => syncPasswordMatch())
+confirmPasswordInput.addEventListener('input', () => syncPasswordMatch())
 
 function setStep(step) {
   detailsStep.hidden = step !== 1
@@ -169,7 +194,7 @@ form.addEventListener('submit', async (event) => {
     return
   }
   if (password !== confirmPassword) {
-    showError('The passwords do not match.')
+    syncPasswordMatch(true)
     form.elements.confirmPassword.focus()
     return
   }

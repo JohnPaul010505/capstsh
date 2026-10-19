@@ -78,6 +78,9 @@ export default async function handler(req, res) {
   const confirmPassword = typeof body.confirmPassword === 'string' ? body.confirmPassword : ''
 
   if (!fullName || !email) return reply(res, 400, { error: 'Full name and email are required.' })
+  if (!emergencyContactName || !emergencyContactPhone) {
+    return reply(res, 400, { error: 'Emergency contact name and phone are required.' })
+  }
   if (fullName.length > MAX_LENGTH.fullName || email.length > MAX_LENGTH.email ||
       phone.length > MAX_LENGTH.phone || address.length > MAX_LENGTH.address ||
       emergencyContactName.length > MAX_LENGTH.emergencyContactName ||
