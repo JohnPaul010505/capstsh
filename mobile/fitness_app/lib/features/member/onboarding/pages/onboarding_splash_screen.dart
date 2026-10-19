@@ -1,9 +1,10 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:haptic_feedback/haptic_feedback.dart';
 import 'package:shared/providers/auth_provider.dart';
-import '../../../shared/widgets/clay/clay_card.dart';
 import '../../../shared/widgets/clay/clay_button.dart';
 import '../../../shared/widgets/clay/clay_input.dart';
 import '../../../shared/widgets/animations.dart';
@@ -156,10 +157,7 @@ class _OnboardingSplashScreenState
                     const SizedBox(height: 18),
                     _buildLogoHero(),
                     const SizedBox(height: 24),
-                    ClayCard(
-                      variant: ClayCardVariant.outlined,
-                      padding: ClayCardPadding.large,
-                      backgroundColor: ClayColors.clayDarkSurface,
+                    _GlassPanel(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
@@ -349,10 +347,7 @@ class _OnboardingSplashScreenState
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: ClayColors.clayDarkSurfaceElevated,
-              borderRadius: BorderRadius.circular(16),
-            ),
+            decoration: _glassDecoration(borderRadius: 16),
             child: Row(
               children: [
                 Container(
@@ -541,12 +536,12 @@ class _OnboardingSplashScreenState
                   margin: EdgeInsets.only(
                     right: index < profiles.length - 1 ? 8 : 0,
                   ),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
+              decoration: _glassDecoration(
+                borderRadius: 16,
                     border: Border.all(
                       color: isSelected
                           ? selectionColor
-                          : ClayColors.clayDarkBorder,
+                      : Colors.white.withAlpha(38),
                       width: isSelected ? 3 : 1,
                     ),
                   ),
@@ -610,44 +605,51 @@ class _OnboardingSplashScreenState
   ) {
     return GestureDetector(
       onTap: () => _selectGender(value),
-      child: AnimatedContainer(
-        duration: ClayTokens.fast,
-        curve: ClayTokens.easeOut,
-        height: 140,
-        decoration: BoxDecoration(
-          color: ClayColors.clayDarkSurface,
-          borderRadius: BorderRadius.circular(ClayTokens.radiusXl),
-          border: isSelected
-              ? Border.all(color: accent, width: 3)
-              : Border.all(color: ClayColors.clayDarkBorder, width: 1),
-          boxShadow: ClayTokens.darkLevel0,
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.asset(
-              'assets/profiles/$gifAsset',
-              height: 100,
-              width: double.infinity,
-              fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) => Container(
-                height: 100,
-                color: ClayColors.clayDarkSurfaceElevated,
-                child: Icon(
-                  Icons.person,
-                  color: ClayColors.clayDarkTextSecondary,
-                  size: 32,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(ClayTokens.radiusXl),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+          child: AnimatedContainer(
+            duration: ClayTokens.fast,
+            curve: ClayTokens.easeOut,
+            height: 140,
+            decoration: _glassDecoration(
+              borderRadius: ClayTokens.radiusXl,
+              border: Border.all(
+                color: isSelected ? accent : Colors.white.withAlpha(40),
+                width: isSelected ? 2.5 : 1,
+              ),
+              selected: isSelected,
+              accent: accent,
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Image.asset(
+                  'assets/profiles/$gifAsset',
+                  height: 100,
+                  width: double.infinity,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => Container(
+                    height: 100,
+                    color: Colors.white.withAlpha(12),
+                    child: Icon(
+                      Icons.person,
+                      color: ClayColors.clayDarkTextSecondary,
+                      size: 32,
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(height: 4),
+                Text(
+                  label,
+                  style: _darkStyle(ClayTokens.darkTitleMedium).copyWith(
+                    color: ClayColors.clayDarkTextPrimary,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: _darkStyle(ClayTokens.darkTitleMedium).copyWith(
-                color: ClayColors.clayDarkTextPrimary,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -668,6 +670,62 @@ class _OnboardingSplashScreenState
       ),
     );
   }
+}
+
+class _GlassPanel extends StatelessWidget {
+  final Widget child;
+
+  const _GlassPanel({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(ClayTokens.radiusCard),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(ClaySpacing.lg),
+          decoration: _glassDecoration(borderRadius: ClayTokens.radiusCard),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+BoxDecoration _glassDecoration({
+  required double borderRadius,
+  Border? border,
+  bool selected = false,
+  Color? accent,
+}) {
+  return BoxDecoration(
+    borderRadius: BorderRadius.circular(borderRadius),
+    gradient: LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [
+        Colors.white.withAlpha(selected ? 38 : 28),
+        (accent ?? ClayTokens.clayPrimary).withAlpha(selected ? 38 : 20),
+        ClayColors.clayDarkSurface.withAlpha(188),
+      ],
+    ),
+    border: border ?? Border.all(color: Colors.white.withAlpha(38)),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withAlpha(45),
+        blurRadius: 26,
+        offset: const Offset(0, 12),
+      ),
+      if (selected)
+        BoxShadow(
+          color: (accent ?? ClayTokens.clayPrimary).withAlpha(55),
+          blurRadius: 20,
+          spreadRadius: -5,
+        ),
+    ],
+  );
 }
 
 class _GlowBlob extends StatelessWidget {
