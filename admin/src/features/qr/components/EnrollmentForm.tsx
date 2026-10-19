@@ -1,4 +1,8 @@
-﻿interface EnrollmentFormData {
+import { useState } from 'react'
+import { Eye, EyeOff } from 'lucide-react'
+
+
+interface EnrollmentFormData {
   fullName: string
   email: string
   phone: string
@@ -62,6 +66,8 @@ export { emptyForm }
 export type { EnrollmentFormData }
 
 export default function EnrollmentForm({ data, onChange, includePassword, password, onPasswordChange, confirmPassword, onConfirmPasswordChange, singleColumn }: EnrollmentFormProps) {
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const phoneError = getPhoneError(data.phone)
   const emergencyPhoneError = getPhoneError(data.emergencyContactPhone)
   const set = (field: keyof EnrollmentFormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -152,18 +158,31 @@ export default function EnrollmentForm({ data, onChange, includePassword, passwo
           <div className={`${gridCls} max-w-md`}>
             <div>
               <label className={labelCls}>Password *</label>
-              <input value={password ?? ''} onChange={e => onPasswordChange?.(e.target.value)} className={inputCls} type="password" placeholder="Enter password" />
+              <div className="relative">
+                <input value={password ?? ''} onChange={e => onPasswordChange?.(e.target.value)} className={`${inputCls} min-h-[44px] pr-12`} type={showPassword ? 'text' : 'password'} placeholder="Enter password" autoComplete="new-password" />
+                <button type="button" onClick={() => setShowPassword(value => !value)} aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword}
+                  className="absolute right-1 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-lg text-fg-muted transition-colors hover:bg-overlay-8 hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]">
+                  {showPassword ? <EyeOff className="h-5 w-5" aria-hidden="true" /> : <Eye className="h-5 w-5" aria-hidden="true" />}
+                </button>
+              </div>
             </div>
             <div>
               <label className={labelCls}>Confirm Password *</label>
-              <input value={confirmPassword ?? ''} onChange={e => onConfirmPasswordChange?.(e.target.value)} className={`${inputCls} ${confirmPassword && password !== confirmPassword ? 'border-[#EF4444] focus:ring-[#EF4444]/50' : ''}`} type="password" placeholder="Confirm password" />
+              <div className="relative">
+                <input value={confirmPassword ?? ''} onChange={e => onConfirmPasswordChange?.(e.target.value)} className={`${inputCls} min-h-[44px] pr-12 ${confirmPassword && password !== confirmPassword ? 'border-[#EF4444] focus:ring-[#EF4444]/50' : ''}`} type={showConfirmPassword ? 'text' : 'password'} placeholder="Confirm password" autoComplete="new-password" aria-invalid={!!confirmPassword && password !== confirmPassword} aria-describedby={confirmPassword && password !== confirmPassword ? 'manual-password-match-error' : undefined} />
+                <button type="button" onClick={() => setShowConfirmPassword(value => !value)} aria-label={showConfirmPassword ? 'Hide confirmation password' : 'Show confirmation password'} aria-pressed={showConfirmPassword}
+                  className="absolute right-1 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-lg text-fg-muted transition-colors hover:bg-overlay-8 hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]">
+                  {showConfirmPassword ? <EyeOff className="h-5 w-5" aria-hidden="true" /> : <Eye className="h-5 w-5" aria-hidden="true" />}
+                </button>
+              </div>
+              {confirmPassword && password !== confirmPassword && (
+                <p id="manual-password-match-error" className="mt-1.5 text-xs text-[#FCA5A5]" role="alert">Passwords do not match.</p>
+              )}
             </div>
           </div>
-          {confirmPassword && password !== confirmPassword && (
-            <p className="text-xs text-[#EF4444] mt-2">Passwords do not match</p>
-          )}
         </div>
       )}
     </div>
   )
 }
+

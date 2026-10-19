@@ -29,6 +29,8 @@ function syncPasswordMatch(force = false) {
     confirmPasswordInput.value !== passwordInput.value
   passwordMatchError.hidden = !mismatch
   confirmPasswordInput.setAttribute('aria-invalid', String(mismatch))
+  if (mismatch) confirmPasswordInput.setAttribute('aria-describedby', 'password-match-error')
+  else confirmPasswordInput.removeAttribute('aria-describedby')
   return mismatch
 }
 
@@ -37,7 +39,7 @@ document.querySelectorAll('[data-toggle-password]').forEach((button) => {
     const input = document.getElementById(button.dataset.togglePassword)
     const show = input.type === 'password'
     input.type = show ? 'text' : 'password'
-    button.textContent = show ? 'Hide' : 'Show'
+    button.dataset.visible = String(show)
     button.setAttribute('aria-pressed', String(show))
     button.setAttribute('aria-label', `${show ? 'Hide' : 'Show'} ${input.name === 'confirmPassword' ? 'confirmation password' : 'password'}`)
   })
