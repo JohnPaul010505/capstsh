@@ -255,16 +255,24 @@ export default function MemberDetailPage() {
     },
   })
 
-  const { data: trainerAssignments = [] } = useQuery({
+  const {
+    data: trainerAssignments = [],
+    isLoading: trainersLoading,
+    isError: trainersError,
+    error: trainersErrorDetail,
+    isFetching: trainersFetching,
+    refetch: refetchTrainers,
+  } = useQuery({
     queryKey: ['member-trainers', id],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('trainer_assignments')
         .select('id, trainer_id, assigned_at, profiles!trainer_assignments_trainer_id_fkey(full_name, email)')
         .eq('member_id', id)
         .eq('status', 'active')
         .order('assigned_at', { ascending: true })
         .order('id', { ascending: true })
+      if (error) throw error
       return data ?? []
     },
     enabled: !!id,
@@ -439,7 +447,23 @@ export default function MemberDetailPage() {
       {tab === 'info' && (
         <section className="glass-card p-4 rounded-xl shrink-0">
           <h2 className="text-base font-semibold mb-3 text-fg-strong">Assigned Trainers</h2>
-          {trainerAssignments.length === 0 ? (
+          {trainersLoading ? (
+            <p className="text-sm text-fg-muted">Loading assigned trainers…</p>
+          ) : trainersError ? (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p role="alert" className="text-sm text-rose-400">
+                Couldn’t load assigned trainers{trainersErrorDetail instanceof Error && trainersErrorDetail.message ? `: ${trainersErrorDetail.message}` : '.'}
+              </p>
+              <button
+                type="button"
+                onClick={() => void refetchTrainers()}
+                disabled={trainersFetching}
+                className="px-3 py-1.5 text-xs rounded-lg border border-line text-fg-muted hover:text-fg-strong hover:border-[#7C3AED]/50 disabled:opacity-50 cursor-pointer transition-colors"
+              >
+                {trainersFetching ? 'Retrying…' : 'Retry'}
+              </button>
+            </div>
+          ) : trainerAssignments.length === 0 ? (
             <p className="text-sm text-fg-muted">No trainers are currently assigned.</p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
