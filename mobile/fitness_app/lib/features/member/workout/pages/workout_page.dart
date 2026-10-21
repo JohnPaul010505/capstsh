@@ -111,11 +111,24 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
       return;
     }
 
-    final plan = await ref.read(activePlanProvider.future);
-    if (plan == null || !context.mounted) return;
+    final userId = SupabaseClientService().client.auth.currentUser!.id;
+    // Displays plans are the only eligible set; `await .future` loads them on
+    // demand because this provider is autoDispose and nobody is watching it
+    // while the page is idle.
+    final plans = await ref.read(displayedPlansProvider.future);
+    if (plans.isEmpty || !context.mounted) return;
+
+    // Stored selection when still displayed, otherwise the deterministic
+    // fallback (newest displayed plan), otherwise nothing.
+    final plan = resolveSelectedDisplayedPlan(
+      plans,
+      ref.read(selectedPlanIdProvider),
+    );
+    final planId = plan?['id'] as String?;
+    if (plan == null || planId == null || !context.mounted) return;
 
     overlay.openForWorkout(
-      SupabaseClientService().client.auth.currentUser!.id,
+      userId,
       plan['start_date'] as String? ?? '',
       totalDays: planDayCount(plan['exercise_plan']),
     );
@@ -129,7 +142,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => TrainerPlanWorkoutOverlay(
-        planId: plan['id'] as String,
+        planId: planId,
         dayNumber: dayNumber,
         notes: plan['notes'] as String?,
       ),
@@ -315,7 +328,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                     // own pixels hit-test — drags start on the logo directly.
                     Consumer(
                       builder: (context, ref, _) {
-                        if (!(ref.watch(hasActivePlanProvider).value ??
+                        if (!(ref.watch(hasDisplayedPlanProvider).value ??
                             false)) {
                           return const SizedBox.shrink();
                         }

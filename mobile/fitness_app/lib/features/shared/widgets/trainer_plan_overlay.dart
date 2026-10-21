@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:shared/services/supabase_client.dart';
 import '../../trainer/set_plan/data/plan_repository.dart';
 import '../../../../app/design_tokens.dart';
+import '../providers/plan_providers.dart';
+import '../utils/plan_day.dart';
 import 'glass_card.dart';
 import 'trainer_notes_screen.dart';
 
@@ -95,6 +97,125 @@ class _NotesBanner extends StatelessWidget {
   }
 }
 
+/// Trainer identity strip at the top of both plan sheets. With one displayed
+/// plan it just names the trainer; with several it becomes the shared
+/// Workout/Food Intake plan switcher, so changing it here changes the plan on
+/// the other screen too.
+class _TrainerPlanHeader extends StatelessWidget {
+  final List<Map<String, dynamic>> plans;
+  final String selectedPlanId;
+  final Color accent;
+  final String actionLabel;
+  final ValueChanged<Map<String, dynamic>> onSelected;
+
+  const _TrainerPlanHeader({
+    required this.plans,
+    required this.selectedPlanId,
+    required this.accent,
+    required this.actionLabel,
+    required this.onSelected,
+  });
+
+  static String _trainerName(Map<String, dynamic> plan) {
+    final profile = plan['profiles'];
+    final name = profile is Map ? profile['full_name'] : null;
+    final trimmed = (name ?? '').toString().trim();
+    return trimmed.isEmpty ? 'Trainer' : trimmed;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (plans.isEmpty) return const SizedBox.shrink();
+    final current = plans.firstWhere(
+      (plan) => plan['id'] == selectedPlanId,
+      orElse: () => plans.first,
+    );
+    final multi = plans.length > 1;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 2),
+      child: GlassPanel(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          children: [
+            Icon(
+              Icons.assignment_ind_outlined,
+              size: 20,
+              color: accent,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Trainer plan',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                      color: accent,
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    _trainerName(current),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: glassInk(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (multi)
+              PopupMenuButton<String>(
+                tooltip: 'Switch trainer plan',
+                onSelected: (id) {
+                  final plan = plans.firstWhere(
+                    (candidate) => candidate['id'] == id,
+                    orElse: () => current,
+                  );
+                  onSelected(plan);
+                },
+                itemBuilder: (_) => plans
+                    .map(
+                      (plan) => PopupMenuItem<String>(
+                        value: plan['id'] as String,
+                        child: Text(_trainerName(plan)),
+                      ),
+                    )
+                    .toList(),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Switch',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: accent,
+                      ),
+                    ),
+                    Icon(Icons.keyboard_arrow_down, size: 18, color: accent),
+                  ],
+                ),
+              )
+            else
+              Text(
+                actionLabel,
+                style: TextStyle(fontSize: 11, color: glassInkDim()),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// Normalises a plan/log name for comparison: trimmed, lowercase, with
 /// whitespace collapsed (shared by the workout and food sheets).
 String _normPlanName(String s) =>
@@ -140,14 +261,44 @@ class _TrainerPlanWorkoutOverlayState
   bool _loading = true;
   bool _saving = false;
 
+  /// The plan this sheet currently shows. Starts from the caller's plan and
+  /// changes when the member switches trainer plan here, so the shared
+  /// selection (and the Food Intake sheet) follows along.
+  late String _planId;
+  late int _dayNumber;
+  String? _notes;
+
   @override
   void initState() {
     super.initState();
+    _planId = widget.planId;
+    _dayNumber = widget.dayNumber;
+    _notes = widget.notes;
     _loadExercises();
   }
 
+  /// Points the sheet at another displayed plan: that plan's active day is
+  /// computed from its own window, then its rows are reloaded.
+  Future<void> _switchTo(Map<String, dynamic> plan) async {
+    final planId = plan['id'] as String?;
+    if (planId == null || planId == _planId) return;
+    setState(() {
+      _planId = planId;
+      _dayNumber = activePlanDay(
+        startDate: plan['start_date'] as String?,
+        totalDays: planDayCount(plan['exercise_plan']),
+      );
+      _notes = plan['notes'] as String?;
+      exercises = [];
+      _completed.clear();
+      _loading = true;
+    });
+    await ref.read(selectedPlanIdProvider.notifier).select(planId);
+    await _loadExercises();
+  }
+
   Future<void> _loadExercises() async {
-    final days = await PlanRepository().getPlanDays(widget.planId);
+    final days = await PlanRepository().getPlanDays(_planId);
     if (!mounted) return;
     final dayData = days.isNotEmpty ? days.first : <String, dynamic>{};
     final exercisePlan = (dayData['exercise_plan'] as List<dynamic>? ?? [])
@@ -189,7 +340,7 @@ class _TrainerPlanWorkoutOverlayState
   ) {
     final rows = <Map<String, dynamic>>[];
     for (final group in planColumn) {
-      if (group['day'] != widget.dayNumber) continue;
+      if (group['day'] != _dayNumber) continue;
       final nested = group[nestedKey];
       if (nested is List) {
         rows.addAll(
@@ -245,8 +396,8 @@ class _TrainerPlanWorkoutOverlayState
   void _openNotes(BuildContext context) {
     openTrainerNotesScreen(
       context,
-      notes: widget.notes,
-      dayLabel: 'Day ${widget.dayNumber} — Workout',
+      notes: _notes,
+      dayLabel: 'Day $_dayNumber — Workout',
     );
   }
 
@@ -261,9 +412,9 @@ class _TrainerPlanWorkoutOverlayState
     setState(() => _saving = true);
     try {
       await PlanRepository().saveDayCompletion(
-        planId: widget.planId,
+        planId: _planId,
         memberId: SupabaseClientService().client.auth.currentUser!.id,
-        dayNumber: widget.dayNumber,
+        dayNumber: _dayNumber,
         completedExercises: _completed.toList(),
         completedFoods: const [],
         isComplete:
@@ -302,7 +453,7 @@ class _TrainerPlanWorkoutOverlayState
                 children: [
                   Center(
                     child: Text(
-                      'Day ${widget.dayNumber} — Trainer Plan',
+                      'Day $_dayNumber — Trainer Plan',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 17,
@@ -322,8 +473,16 @@ class _TrainerPlanWorkoutOverlayState
               ),
             ),
             Divider(color: glassLine(const Color(0xFF38383A)), height: 1),
+            _TrainerPlanHeader(
+              plans:
+                  ref.watch(displayedPlansProvider).valueOrNull ?? const [],
+              selectedPlanId: _planId,
+              accent: _sheetAccent,
+              actionLabel: 'Workout',
+              onSelected: _switchTo,
+            ),
             _NotesBanner(
-              notes: widget.notes,
+              notes: _notes,
               onSeeAll: () => _openNotes(context),
             ),
             Expanded(
@@ -483,14 +642,41 @@ class _TrainerPlanFoodOverlayState
   bool _loading = true;
   bool _saving = false;
 
+  /// Same shared plan choice as the workout sheet: switching here updates the
+  /// selected displayed plan for both screens.
+  late String _planId;
+  late int _dayNumber;
+  String? _notes;
+
   @override
   void initState() {
     super.initState();
+    _planId = widget.planId;
+    _dayNumber = widget.dayNumber;
+    _notes = widget.notes;
     _loadFoods();
   }
 
+  Future<void> _switchTo(Map<String, dynamic> plan) async {
+    final planId = plan['id'] as String?;
+    if (planId == null || planId == _planId) return;
+    setState(() {
+      _planId = planId;
+      _dayNumber = activePlanDay(
+        startDate: plan['start_date'] as String?,
+        totalDays: planDayCount(plan['food_plan']),
+      );
+      _notes = plan['notes'] as String?;
+      foods = [];
+      _completed.clear();
+      _loading = true;
+    });
+    await ref.read(selectedPlanIdProvider.notifier).select(planId);
+    await _loadFoods();
+  }
+
   Future<void> _loadFoods() async {
-    final days = await PlanRepository().getPlanDays(widget.planId);
+    final days = await PlanRepository().getPlanDays(_planId);
     if (!mounted) return;
     final dayData = days.isNotEmpty ? days.first : <String, dynamic>{};
     final foodPlan = (dayData['food_plan'] as List<dynamic>? ?? [])
@@ -525,7 +711,7 @@ class _TrainerPlanFoodOverlayState
   ) {
     final rows = <Map<String, dynamic>>[];
     for (final group in planColumn) {
-      if (group['day'] != widget.dayNumber) continue;
+      if (group['day'] != _dayNumber) continue;
       final nested = group[nestedKey];
       if (nested is List) {
         rows.addAll(
@@ -584,9 +770,9 @@ class _TrainerPlanFoodOverlayState
     setState(() => _saving = true);
     try {
       await PlanRepository().saveDayCompletion(
-        planId: widget.planId,
+        planId: _planId,
         memberId: SupabaseClientService().client.auth.currentUser!.id,
-        dayNumber: widget.dayNumber,
+        dayNumber: _dayNumber,
         completedExercises: const [],
         completedFoods: _completed.toList(),
         isComplete: foods.isNotEmpty && _completed.length == foods.length,
@@ -601,8 +787,8 @@ class _TrainerPlanFoodOverlayState
   void _openNotes(BuildContext context) {
     openTrainerNotesScreen(
       context,
-      notes: widget.notes,
-      dayLabel: 'Day ${widget.dayNumber} — Nutrition',
+      notes: _notes,
+      dayLabel: 'Day $_dayNumber — Nutrition',
     );
   }
 
@@ -650,7 +836,7 @@ class _TrainerPlanFoodOverlayState
                 children: [
                   Center(
                     child: Text(
-                      'Day ${widget.dayNumber} — Nutrition Plan',
+                      'Day $_dayNumber — Nutrition Plan',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 17,
@@ -670,8 +856,16 @@ class _TrainerPlanFoodOverlayState
               ),
             ),
             Divider(color: glassLine(const Color(0xFF38383A)), height: 1),
+            _TrainerPlanHeader(
+              plans:
+                  ref.watch(displayedPlansProvider).valueOrNull ?? const [],
+              selectedPlanId: _planId,
+              accent: _sheetAccent,
+              actionLabel: 'Nutrition',
+              onSelected: _switchTo,
+            ),
             _NotesBanner(
-              notes: widget.notes,
+              notes: _notes,
               onSeeAll: () => _openNotes(context),
             ),
             Expanded(

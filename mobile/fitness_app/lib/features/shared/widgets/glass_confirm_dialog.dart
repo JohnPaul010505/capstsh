@@ -8,6 +8,7 @@ Future<bool?> showGlassConfirmDialog(
   required String message,
   required String confirmLabel,
   String keepLabel = 'Keep',
+  Color? confirmColor,
 }) => showDialog<bool>(
   context: context,
   builder: (dialogContext) => Dialog(
@@ -51,8 +52,15 @@ Future<bool?> showGlassConfirmDialog(
                 child: FilledButton(
                   onPressed: () => Navigator.pop(dialogContext, true),
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFFDC2626),
-                    foregroundColor: Colors.white,
+                    backgroundColor:
+                        confirmColor ?? const Color(0xFFDC2626),
+                    // Destructive confirms keep white text; a caller-supplied
+                    // purple action flips to a dark label in light mode.
+                    foregroundColor: confirmColor == null
+                        ? Colors.white
+                        : (ClayColors.isLightMode
+                              ? ClayTokens.clayDarkSurface
+                              : Colors.white),
                   ),
                   child: Text(confirmLabel),
                 ),

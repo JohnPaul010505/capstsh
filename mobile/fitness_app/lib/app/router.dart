@@ -11,6 +11,7 @@ import '../features/member/meals/pages/meal_log_page.dart';
 import '../features/member/workout/pages/workout_page.dart';
 import '../features/member/chat/pages/chat_page.dart';
 import '../features/member/chat/pages/member_trainer_list_page.dart';
+import '../features/member/settings/pages/member_trainer_plan_list_page.dart';
 import '../features/member/settings/pages/settings_page.dart';
 import '../features/member/membership/pages/membership_page.dart';
 import '../features/member/membership/pages/membership_cancellation_page.dart';
@@ -214,19 +215,26 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/member/membership/cancel',
         pageBuilder: (_, __) => _iosPush(const MembershipCancellationPage()),
       ),
+      // Active-trainer list first; each trainer opens their own plan.
       GoRoute(
         path: '/member/trainer-plan',
-        pageBuilder: (_, __) {
-          final user = SupabaseClientService().client.auth.currentUser;
-          return _iosPush(
-            RecordDetailScreen(
-              memberId: user?.id ?? '',
-              memberName:
-                  user?.userMetadata?['full_name']?.toString() ??
-                  'My Trainer Plan',
-            ),
-          );
-        },
+        pageBuilder: (_, __) => _iosPush(const MemberTrainerPlanListPage()),
+        routes: [
+          GoRoute(
+            path: ':trainerId',
+            pageBuilder: (_, state) {
+              final user = SupabaseClientService().client.auth.currentUser;
+              return _iosPush(
+                RecordDetailScreen(
+                  memberId: user?.id ?? '',
+                  memberName:
+                      state.uri.queryParameters['name'] ?? 'Trainer Plan',
+                  viewTrainerId: state.pathParameters['trainerId'],
+                ),
+              );
+            },
+          ),
+        ],
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>

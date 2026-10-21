@@ -73,11 +73,21 @@ Future<void> _openActivePlanSheet(BuildContext context, WidgetRef ref) async {
     return;
   }
 
-  final plan = await ref.read(activePlanProvider.future);
-  if (plan == null || !context.mounted) return;
+  final userId = SupabaseClientService().client.auth.currentUser!.id;
+  // Same displayed-plan set and shared selection as Workout, so whichever
+  // trainer the member last chose opens here too.
+  final plans = await ref.read(displayedPlansProvider.future);
+  if (plans.isEmpty || !context.mounted) return;
+
+  final plan = resolveSelectedDisplayedPlan(
+    plans,
+    ref.read(selectedPlanIdProvider),
+  );
+  final planId = plan?['id'] as String?;
+  if (plan == null || planId == null || !context.mounted) return;
 
   overlay.openForFood(
-    SupabaseClientService().client.auth.currentUser!.id,
+    userId,
     plan['start_date'] as String? ?? '',
     totalDays: planDayCount(plan['food_plan']),
   );
@@ -91,7 +101,7 @@ Future<void> _openActivePlanSheet(BuildContext context, WidgetRef ref) async {
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     builder: (_) => TrainerPlanFoodOverlay(
-      planId: plan['id'] as String,
+      planId: planId,
       dayNumber: dayNumber,
       notes: plan['notes'] as String?,
     ),
@@ -335,7 +345,8 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
                   // own pixels hit-test — drags start on the logo directly.
                   Consumer(
                     builder: (context, ref, _) {
-                      if (!(ref.watch(hasActivePlanProvider).value ?? false)) {
+                      if (!(ref.watch(hasDisplayedPlanProvider).value ??
+                          false)) {
                         return const SizedBox.shrink();
                       }
                       final logoPos = ref.watch(floatingLogoPositionProvider);

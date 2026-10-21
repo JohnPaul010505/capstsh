@@ -7,6 +7,7 @@ import '../../../../app/design_tokens.dart';
 import '../../../../features/shared/widgets/app_glow_background.dart';
 import '../../../../features/shared/widgets/glass_card.dart';
 import '../../../../features/shared/widgets/glass_confirm_dialog.dart';
+import '../../../shared/providers/plan_providers.dart';
 import '../data/plan_repository.dart';
 
 String _normPlanName(String s) =>
@@ -87,11 +88,13 @@ enum _RecordTab { workout, food }
 class RecordDetailScreen extends ConsumerStatefulWidget {
   final String memberId;
   final String memberName;
+  final String? viewTrainerId;
 
   const RecordDetailScreen({
     super.key,
     required this.memberId,
     required this.memberName,
+    this.viewTrainerId,
   });
 
   @override
@@ -102,23 +105,56 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
   _RecordTab _tab = _RecordTab.workout;
   String? _pendingCancellationPlanId;
   bool _requestingCancellation = false;
+  bool _togglingDisplay = false;
+
+  /// Local echo of the display toggle so the button flips as soon as the RPC
+  /// succeeds. Reset whenever the loaded plan row changes.
+  bool? _displayOverride;
+  String? _displayOverridePlanId;
   late Future<Map<String, dynamic>?> _planFuture;
   Future<(Map<String, Set<String>>, Map<String, Set<String>>)>?
   _completionFuture;
   String? _completionKey;
 
+  /// Members open this screen for ONE trainer, so their plan is resolved by
+  /// the member/trainer pair. Trainer record routes (no [viewTrainerId]) keep
+  /// their previous behaviour of showing the member's current active plan.
+  Future<Map<String, dynamic>?> _loadPlan() async {
+    final repo = PlanRepository();
+    final currentUserId = SupabaseClientService().client.auth.currentUser?.id;
+    // Member view passes the selected trainer explicitly. Trainer record
+    // routes resolve their OWN plan for the member, so two trainers looking
+    // at the same member never see each other's plan.
+    final trainerId =
+        widget.viewTrainerId ??
+        (currentUserId != null && currentUserId != widget.memberId
+            ? currentUserId
+            : null);
+    if (trainerId != null && trainerId.isNotEmpty) {
+      final plan = await repo.getActivePlan(widget.memberId, trainerId);
+      if (plan != null || widget.viewTrainerId != null) return plan;
+    }
+    // Trainer route with no plan for this pair: fall back to the member's
+    // current plan so the older single-plan record view still resolves.
+    final plans = await repo.getActivePlans(widget.memberId);
+    return plans.isEmpty ? null : plans.first;
+  }
+
   @override
   void initState() {
     super.initState();
-    _planFuture = PlanRepository().getPlanByMember(widget.memberId);
+    _planFuture = _loadPlan();
     _loadCancellationRequest();
   }
 
   @override
   void didUpdateWidget(covariant RecordDetailScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.memberId != widget.memberId) {
-      _planFuture = PlanRepository().getPlanByMember(widget.memberId);
+    if (oldWidget.memberId != widget.memberId ||
+        oldWidget.viewTrainerId != widget.viewTrainerId) {
+      _planFuture = _loadPlan();
+      _displayOverride = null;
+      _displayOverridePlanId = null;
       _completionFuture = null;
       _completionKey = null;
       _pendingCancellationPlanId = null;
@@ -199,6 +235,142 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
     } finally {
       if (mounted) setState(() => _requestingCancellation = false);
     }
+  }
+
+  /// Member-only display toggle. Display asks for confirmation (Continue /
+  /// Cancel); Remove disables display immediately, exactly like the design.
+  Future<void> _togglePlanDisplay(
+    Map<String, dynamic> plan,
+    bool displayed,
+  ) async {
+    final planId = plan['id'] as String;
+    if (displayed) {
+      final confirmed = await showGlassConfirmDialog(
+        context,
+        title: 'Display this plan?',
+        message:
+            'It will appear on your Workout and Food Intake screens, where you '
+            'can switch between displayed trainer plans.',
+        keepLabel: 'Cancel',
+        confirmLabel: 'Continue',
+        confirmColor: ClayTokens.clayPrimary,
+      );
+      if (confirmed != true || !mounted) return;
+    }
+    setState(() => _togglingDisplay = true);
+    try {
+      await PlanRepository().setPlanDisplayed(planId, displayed);
+      if (!mounted) return;
+      setState(() {
+        _displayOverride = displayed;
+        _displayOverridePlanId = planId;
+      });
+      // Workout / Food Intake read the displayed set and the shared selection
+      // from these providers, so both surfaces refresh together.
+      ref.invalidate(displayedPlansProvider);
+      ref.invalidate(hasDisplayedPlanProvider);
+      ref.invalidate(selectedDisplayedPlanProvider);
+      ref.invalidate(activePlansProvider);
+      final selection = ref.read(selectedPlanIdProvider.notifier);
+      if (displayed) {
+        await selection.select(planId);
+      } else if (ref.read(selectedPlanIdProvider) == planId) {
+        await selection.select(null);
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            displayed
+                ? 'Plan displayed on Workout and Food Intake.'
+                : 'Plan removed from Workout and Food Intake.',
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not update this plan: $error'),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _togglingDisplay = false);
+    }
+  }
+
+  Widget _displayControl(Map<String, dynamic> plan) {
+    final planId = plan['id'] as String;
+    final displayed = _displayOverridePlanId == planId
+        ? (_displayOverride ?? plan['is_displayed'] == true)
+        : plan['is_displayed'] == true;
+    // Purple button: white label in dark mode, dark label in light mode.
+    final onPurple = ClayColors.isLightMode
+        ? ClayTokens.clayDarkSurface
+        : Colors.white;
+    return GlassPanel(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      child: Row(
+        children: [
+          Icon(
+            displayed ? Icons.visibility : Icons.visibility_off,
+            size: 18,
+            color: displayed
+                ? ClayTokens.clayPrimary
+                : ClayTokens.clayDarkTextTertiary,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Workout & Food Intake',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: ClayTokens.clayDarkTextPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  displayed
+                      ? 'This plan is displayed. Remove it to hide it there.'
+                      : 'Display this plan to use it on those screens.',
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    color: Color(0xFF8E8E93),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          CupertinoButton(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            color: displayed
+                ? ClayTokens.hairline.withAlpha(30)
+                : ClayTokens.clayPrimary,
+            disabledColor: ClayTokens.clayPrimary.withAlpha(80),
+            onPressed: _togglingDisplay
+                ? null
+                : () => _togglePlanDisplay(plan, !displayed),
+            child: _togglingDisplay
+                ? CupertinoActivityIndicator(color: onPurple, radius: 8)
+                : Text(
+                    displayed ? 'Remove' : 'Display',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: displayed
+                          ? ClayTokens.clayDarkTextPrimary
+                          : onPurple,
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -352,6 +524,8 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
                                         ?.id ==
                                     widget.memberId) ...[
                                   const SizedBox(height: 12),
+                                  _displayControl(plan),
+                                  const SizedBox(height: 10),
                                   GlassPanel(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 14,
@@ -493,6 +667,10 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
   }
 
   Widget _buildHeader({required int days, required int total}) {
+    // Members see this screen per trainer, so the subtitle names the screen
+    // rather than the trainer-facing "Records".
+    final isSelfView =
+        SupabaseClientService().client.auth.currentUser?.id == widget.memberId;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: Row(
@@ -518,10 +696,10 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
                     decoration: TextDecoration.none,
                   ),
                 ),
-                const Text(
-                  'Records',
+                Text(
+                  isSelfView ? 'Trainer Plan' : 'Records',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 11,
                     color: Color(0xFF8E8E93),
                     decoration: TextDecoration.none,
