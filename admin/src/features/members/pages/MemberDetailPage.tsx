@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useMember, useUpdateMember } from '../hooks/useMembers'
 import { usePagedTable, useResetPageOnChange } from '@/lib/pagedTable'
@@ -21,7 +21,6 @@ import {
   type MemberEditableFields,
 } from '@/features/shared/profileUpdates'
 import { useRealtimeProfiles } from '@/hooks/useRealtimeProfiles'
-import HealthBackgroundSection, { emptyHealthBackground, type HealthBackgroundAnswers } from '@/features/qr/components/HealthBackgroundSection'
 
 /**
  * TEN rows a page, the same contract as the trainer detail tabs: one member's
@@ -47,17 +46,6 @@ export default function MemberDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { data: member, isLoading } = useMember(id!)
-  const queryClient = useQueryClient()
-  const healthQuery = useQuery({
-    queryKey: ['member-health-background', id],
-    queryFn: async () => {
-      if (!id) return null
-      const { data, error } = await supabase.from('member_health_background').select('answers').eq('member_id', id).maybeSingle()
-      if (error) throw error
-      return (data?.answers ?? emptyHealthBackground) as HealthBackgroundAnswers
-    },
-    enabled: !!id,
-  })
   // Live off other tabs: an edit made here, in a second admin tab, or from
   // the mobile app re-renders this row without a reload.
   useRealtimeProfiles(id ? [id] : [])
@@ -71,10 +59,6 @@ export default function MemberDetailPage() {
    * Email stays read-only because it is also the member's login address.
    */
   const [editing, setEditing] = useState(false)
-  const [healthEditing, setHealthEditing] = useState(false)
-  const [healthSaving, setHealthSaving] = useState(false)
-  const [healthSaveError, setHealthSaveError] = useState<string | null>(null)
-  const [healthDraft, setHealthDraft] = useState<HealthBackgroundAnswers>(emptyHealthBackground)
   const [form, setForm] = useState<MemberEditableFields & Record<string, string>>({
     full_name: '',
     phone: '',
@@ -110,24 +94,6 @@ export default function MemberDetailPage() {
     })
     setEditing(true)
   }
-  const saveHealthBackground = async () => {
-    if (!id) return
-    setHealthSaving(true)
-    setHealthSaveError(null)
-    const { error } = await supabase.from('member_health_background').upsert({
-      member_id: id,
-      answers: healthDraft,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'member_id' })
-    setHealthSaving(false)
-    if (error) {
-      setHealthSaveError(error.message)
-      return
-    }
-    setHealthEditing(false)
-    queryClient.invalidateQueries({ queryKey: ['member-health-background', id] })
-  }
-
   const ageFromDateOfBirth = (value: string | null | undefined) => {
     if (!value) return '—'
     const dob = new Date(`${value}T00:00:00`)
@@ -289,17 +255,19 @@ export default function MemberDetailPage() {
     },
   })
 
-  const { data: trainerAssignment } = useQuery({
-    queryKey: ['member-trainer', id],
+  const { data: trainerAssignments = [] } = useQuery({
+    queryKey: ['member-trainers', id],
     queryFn: async () => {
       const { data } = await supabase
         .from('trainer_assignments')
-        .select('*, profiles!trainer_assignments_trainer_id_fkey(full_name, email)')
+        .select('id, trainer_id, assigned_at, profiles!trainer_assignments_trainer_id_fkey(full_name, email)')
         .eq('member_id', id)
         .eq('status', 'active')
-        .maybeSingle()
-      return data as any ?? null
+        .order('assigned_at', { ascending: true })
+        .order('id', { ascending: true })
+      return data ?? []
     },
+    enabled: !!id,
   })
 
   /**
@@ -467,24 +435,36 @@ export default function MemberDetailPage() {
         )}
       </div>
 
-      {/* Trainer assignment */}
-      {trainerAssignment && tab === 'info' && (
-        <div className="glass-card p-4 rounded-xl">
-          <h2 className="text-base font-semibold mb-3 text-fg-strong">Assigned Trainer</h2>
-          <div className="flex items-center gap-3 cursor-pointer"
-            onClick={() => navigate(`/trainers/${trainerAssignment.trainer_id}`)}
-          >
-            <div className="w-9 h-9 rounded-full bg-[#22C55E]/20 flex items-center justify-center">
-              <span className="text-sm font-bold text-accent-green">
-                {trainerAssignment.profiles?.full_name?.charAt(0)}
-              </span>
+      {/* Active trainer assignments */}
+      {tab === 'info' && (
+        <section className="glass-card p-4 rounded-xl shrink-0">
+          <h2 className="text-base font-semibold mb-3 text-fg-strong">Assigned Trainers</h2>
+          {trainerAssignments.length === 0 ? (
+            <p className="text-sm text-fg-muted">No trainers are currently assigned.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+              {trainerAssignments.map(assignment => {
+                const profile = assignment.profiles?.[0]
+                const name = profile?.full_name || 'Trainer'
+                return (
+                  <Link
+                    key={assignment.id}
+                    to={`/trainers/${assignment.trainer_id}`}
+                    className="flex min-w-0 items-center gap-3 rounded-xl border border-line bg-overlay-8 p-3 transition-colors hover:border-[#7C3AED]/50"
+                  >
+                    <div className="w-9 h-9 shrink-0 rounded-full bg-[#22C55E]/20 flex items-center justify-center">
+                      <span className="text-sm font-bold text-accent-green">{name.charAt(0)}</span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-fg-strong">{name}</p>
+                      <p className="truncate text-xs text-fg">{profile?.email || 'Email unavailable'}</p>
+                    </div>
+                  </Link>
+                )
+              })}
             </div>
-            <div>
-              <p className="font-medium text-fg-strong">{trainerAssignment.profiles?.full_name}</p>
-              <p className="text-xs text-fg">{trainerAssignment.profiles?.email}</p>
-            </div>
-          </div>
-        </div>
+          )}
+        </section>
       )}
 
       {/* Personal Info */}
@@ -621,23 +601,6 @@ export default function MemberDetailPage() {
         </div>
         )}
       </div>
-      <section className="glass-card p-4 rounded-xl">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-base font-semibold text-fg-strong">Health Background Screening</h2>
-          {healthEditing ? <div className="flex gap-2">
-            <button onClick={() => setHealthEditing(false)} className="px-3 py-1.5 text-xs rounded-lg border border-line text-fg-muted">Cancel</button>
-            <button onClick={saveHealthBackground} disabled={healthSaving} className="px-3 py-1.5 text-xs rounded-lg bg-[#7C3AED] text-white disabled:opacity-50">{healthSaving ? 'Saving…' : 'Save'}</button>
-          </div> : <button onClick={() => { setHealthDraft(healthQuery.data ?? emptyHealthBackground); setHealthSaveError(null); setHealthEditing(true) }} className="px-3 py-1.5 text-xs rounded-lg border border-line text-fg-muted hover:border-[#7C3AED]/50">Edit responses</button>}
-        </div>
-        {healthSaveError && <p role="alert" className="mb-3 text-xs text-rose-400">{healthSaveError}</p>}
-        {healthQuery.isLoading ? <p className="text-sm text-fg-muted">Loading screening responses…</p> : (
-          <HealthBackgroundSection
-            value={healthEditing ? healthDraft : healthQuery.data ?? emptyHealthBackground}
-            onChange={setHealthDraft}
-            readOnly={!healthEditing}
-          />
-        )}
-      </section>
       </div>
       )}
 
