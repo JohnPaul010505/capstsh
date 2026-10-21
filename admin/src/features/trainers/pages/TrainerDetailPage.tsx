@@ -221,27 +221,46 @@ export default function TrainerDetailPage() {
     ? ratedRatings.reduce((sum, r) => sum + r, 0) / ratedRatings.length
     : null
 
-  const { data: unassignedMembers } = useQuery({
-    queryKey: ['unassigned-members', id],
+  const { data: assignableMembers } = useQuery({
+    queryKey: ['assignable-members', id],
     queryFn: async () => {
-      // The FULL set of assigned member ids, fetched here rather than read off
-      // the paged table above: that table holds one page of 15, so filtering
-      // the drawer against it would offer every already-assigned member from
-      // page 2 onwards as if they were still free. Ids and profiles are read
-      // in one query so the two cannot disagree while the drawer is open.
-      const assignmentPages = await Promise.all(Array.from({ length: 5 }, (_, index) =>
-        supabase.from('trainer_assignments').select('member_id').eq('status', 'active').range(index * 1000, (index + 1) * 1000 - 1),
-      ))
-      const assignmentError = assignmentPages.find(page => page.error)?.error
-      if (assignmentError) throw assignmentError
-      const assignedIds = new Set(assignmentPages.flatMap(page => page.data ?? []).map(a => a.member_id))
+      const pageSize = 1000
+      const activeAssignments: { member_id: string; trainer_id: string }[] = []
+
+      for (let offset = 0; ; offset += pageSize) {
+        const { data, error } = await supabase
+          .from('trainer_assignments')
+          .select('member_id, trainer_id')
+          .eq('status', 'active')
+          .order('id')
+          .range(offset, offset + pageSize - 1)
+        if (error) throw error
+
+        activeAssignments.push(...(data ?? []))
+        if ((data ?? []).length < pageSize) break
+      }
+
+      const activeTrainerCounts = activeAssignments.reduce<Record<string, number>>((counts, assignment) => {
+        counts[assignment.member_id] = (counts[assignment.member_id] ?? 0) + 1
+        return counts
+      }, {})
+      const assignedToCurrentTrainer = new Set(
+        activeAssignments
+          .filter(assignment => assignment.trainer_id === id)
+          .map(assignment => assignment.member_id),
+      )
       const { data, error } = await supabase
         .from('profiles')
         .select('id, full_name, email, code')
         .eq('role', 'member')
         .order('full_name')
       if (error) throw error
-      return (data ?? []).filter(m => !assignedIds.has(m.id))
+      return (data ?? [])
+        .filter(member => !assignedToCurrentTrainer.has(member.id))
+        .map(member => ({
+          ...member,
+          activeTrainerCount: activeTrainerCounts[member.id] ?? 0,
+        }))
     },
     enabled: showAssignModal,
   })
@@ -265,7 +284,8 @@ export default function TrainerDetailPage() {
       // the key (matched by prefix) that has to be invalidated.
       queryClient.invalidateQueries({ queryKey: ['trainer_assignments', 'paged'] })
       queryClient.invalidateQueries({ queryKey: ['trainer-member-counts'] })
-      queryClient.invalidateQueries({ queryKey: ['unassigned-members', id] })
+      queryClient.invalidateQueries({ queryKey: ['assignable-members', id] })
+      queryClient.invalidateQueries({ queryKey: ['member-trainers'] })
       setShowAssignModal(false)
       setMemberSearch('')
       setMemberToAssign(null)
@@ -288,7 +308,8 @@ export default function TrainerDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['trainer_assignments', 'paged'] })
       queryClient.invalidateQueries({ queryKey: ['trainer-member-counts'] })
       queryClient.invalidateQueries({ queryKey: ['member-assignment-ids'] })
-      queryClient.invalidateQueries({ queryKey: ['unassigned-members', id] })
+      queryClient.invalidateQueries({ queryKey: ['assignable-members', id] })
+      queryClient.invalidateQueries({ queryKey: ['member-trainers'] })
     },
   })
 
@@ -522,7 +543,7 @@ export default function TrainerDetailPage() {
               </div>
             </div>
             <div className="flex-1 overflow-y-auto px-4 py-2">
-              {unassignedMembers
+              {assignableMembers
                 ?.filter(m =>
                   memberSearch === '' ||
                   m.full_name?.toLowerCase().includes(memberSearch.toLowerCase()) ||
@@ -533,21 +554,23 @@ export default function TrainerDetailPage() {
                   <button
                     key={m.id}
                     onClick={() => {
-                      if (assignedTotal >= 15) return
+                      if (assignedTotal >= 15 || m.activeTrainerCount >= 5) return
                       setAssignmentError(null)
                       setMemberToAssign({ id: m.id, full_name: m.full_name })
                     }}
-                    disabled={assignMutation.isPending || assignedTotal >= 15}
+                    disabled={assignMutation.isPending || assignedTotal >= 15 || m.activeTrainerCount >= 5}
                     className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-[#7C3AED]/10 transition-colors disabled:opacity-50 text-left"
                   >
                     <div>
                       <div className="text-sm font-medium text-fg-strong">{m.full_name}</div>
                       <div className="text-xs text-fg-muted">{m.email} {m.code ? `· ${m.code}` : ''}</div>
                     </div>
-                    <UserPlus className="w-4 h-4 text-[#7C3AED]" />
+                    {m.activeTrainerCount >= 5
+                      ? <span className="text-xs text-amber-400">5 of 5 trainers</span>
+                      : <UserPlus className="w-4 h-4 text-[#7C3AED]" />}
                   </button>
                 ))}
-              {unassignedMembers?.filter(m =>
+              {assignableMembers?.filter(m =>
                 memberSearch === '' ||
                 m.full_name?.toLowerCase().includes(memberSearch.toLowerCase()) ||
                 m.email?.toLowerCase().includes(memberSearch.toLowerCase()) ||

@@ -151,32 +151,36 @@ app.post('/api/update-email', async (req, res) => {
 
 app.post('/api/assign-trainer', async (req, res) => {
   const { trainer_id, member_id } = req.body
+  const memberTrainerLimitMessage = 'This member already has the maximum of 5 active trainers.'
 
   if (!trainer_id || !member_id) {
     return res.status(400).json({ error: 'trainer_id and member_id are required' })
   }
 
   try {
-    const [{ data: trainer, error: trainerError }, { data: member, error: memberError }, { data: activeAssignments, error: assignmentsError }] = await Promise.all([
+    const [
+      { data: trainer, error: trainerError },
+      { data: member, error: memberError },
+      { data: activeAssignments, error: assignmentsError },
+      { data: existing, error: existingError },
+      { data: memberActiveAssignments, error: memberAssignmentsError },
+    ] = await Promise.all([
       adminClient.from('profiles').select('id, role').eq('id', trainer_id).maybeSingle(),
       adminClient.from('profiles').select('id, role').eq('id', member_id).maybeSingle(),
       adminClient.from('trainer_assignments').select('id').eq('trainer_id', trainer_id).eq('status', 'active'),
+      adminClient.from('trainer_assignments').select('id').eq('trainer_id', trainer_id).eq('member_id', member_id).eq('status', 'active').limit(1),
+      adminClient.from('trainer_assignments').select('id').eq('member_id', member_id).eq('status', 'active'),
     ])
     if (trainerError) throw trainerError
     if (memberError) throw memberError
     if (assignmentsError) throw assignmentsError
+    if (existingError) throw existingError
+    if (memberAssignmentsError) throw memberAssignmentsError
     if (!trainer || trainer.role !== 'trainer') return res.status(404).json({ error: 'Trainer not found' })
     if (!member || member.role !== 'member') return res.status(404).json({ error: 'Member not found' })
     if ((activeAssignments ?? []).length >= 15) return res.status(409).json({ error: 'This trainer already has the maximum of 15 members.' })
-
-    const { data: existing, error: existingError } = await adminClient
-      .from('trainer_assignments')
-      .select('id')
-      .eq('member_id', member_id)
-      .eq('status', 'active')
-      .limit(1)
-    if (existingError) throw existingError
-    if (existing?.length) return res.status(409).json({ error: 'This member already has a trainer.' })
+    if (existing?.length) return res.status(409).json({ error: 'This member is already assigned to this trainer.' })
+    if ((memberActiveAssignments ?? []).length >= 5) return res.status(409).json({ error: memberTrainerLimitMessage })
 
     const { data, error } = await adminClient
       .from('trainer_assignments')
@@ -188,6 +192,9 @@ app.post('/api/assign-trainer', async (req, res) => {
     res.json({ success: true, assignment: data })
   } catch (err) {
     console.error('Assign trainer error:', err)
+    if ([err?.message, err?.details, err?.hint].some(value => typeof value === 'string' && value.includes('MEMBER_TRAINER_LIMIT_REACHED'))) {
+      return res.status(409).json({ error: memberTrainerLimitMessage })
+    }
     res.status(err?.status || 500).json({ error: err?.message || 'Failed to assign trainer' })
   }
 })
