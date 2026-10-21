@@ -9,29 +9,139 @@ final planRepositoryProvider = Provider<PlanRepository>((ref) {
   return PlanRepository();
 });
 
-final hasActivePlanProvider = FutureProvider.autoDispose<bool>((ref) async {
+/// All active plans for the signed-in member, joined with trainer profiles.
+final activePlansProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
   final userId = SupabaseClientService().client.auth.currentUser?.id;
-  if (userId == null) return false;
+  if (userId == null) return [];
 
-  final repo = PlanRepository();
-  return await repo.memberHasActivePlan(userId);
+  final repo = ref.watch(planRepositoryProvider);
+  return await repo.getActivePlans(userId);
 });
 
-final activePlanProvider = FutureProvider.autoDispose<Map<String, dynamic>?>((ref) async {
+/// Only the plans the member has chosen to display. Used by Workout and
+/// Food Intake to render the shared displayed-plan selector.
+final displayedPlansProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  final userId = SupabaseClientService().client.auth.currentUser?.id;
+  if (userId == null) return [];
+
+  final repo = ref.watch(planRepositoryProvider);
+  return await repo.getDisplayedPlans(userId);
+});
+
+/// Active plan for a specific member/trainer pair. Family keyed by trainerId
+/// so each trainer's plan resolves independently.
+final activePlanProvider = FutureProvider.autoDispose
+    .family<Map<String, dynamic>?, String>((ref, trainerId) async {
   final userId = SupabaseClientService().client.auth.currentUser?.id;
   if (userId == null) return null;
 
-  final repo = PlanRepository();
-  return await repo.getPlanByMember(userId);
+  final repo = ref.watch(planRepositoryProvider);
+  return await repo.getActivePlan(userId, trainerId);
 });
 
+/// True when at least one displayed plan is available, i.e. the member has a
+/// plan they can actually open from Workout or Food Intake. Drives floating
+/// logo visibility: no displayed plan means no logo at all.
+final hasDisplayedPlanProvider = FutureProvider.autoDispose<bool>((ref) async {
+  final plans = await ref.watch(displayedPlansProvider.future);
+  return plans.isNotEmpty;
+});
+
+/// Displays [plans] in a deterministic order (newest plan window first, then
+/// plan id) so the same displayed set always resolves the same fallback plan
+/// on both Workout and Food Intake.
+List<Map<String, dynamic>> orderedDisplayedPlans(
+  List<Map<String, dynamic>> plans,
+) {
+  final sorted = List<Map<String, dynamic>>.from(plans);
+  sorted.sort((a, b) {
+    final byStart = (b['start_date']?.toString() ?? '').compareTo(
+      a['start_date']?.toString() ?? '',
+    );
+    if (byStart != 0) return byStart;
+    return (a['id']?.toString() ?? '').compareTo(b['id']?.toString() ?? '');
+  });
+  return sorted;
+}
+
+/// The plan the member should see right now: their stored selection when it is
+/// still displayed, otherwise the first eligible displayed plan, otherwise
+/// null (removing/cancelling/expiring a plan falls back here).
+Map<String, dynamic>? resolveSelectedDisplayedPlan(
+  List<Map<String, dynamic>> plans,
+  String? selectedId,
+) {
+  if (plans.isEmpty) return null;
+  final ordered = orderedDisplayedPlans(plans);
+  if (selectedId != null) {
+    for (final plan in ordered) {
+      if (plan['id'] == selectedId) return plan;
+    }
+  }
+  return ordered.first;
+}
+
+/// Shared selected plan ID used by Workout and Food Intake so both screens
+/// show the same trainer's plan. Persisted in SharedPreferences and restored
+/// on launch; a stale id resolves through [selectedDisplayedPlanProvider].
+class SelectedPlanController extends StateNotifier<String?> {
+  SelectedPlanController() : super(null) {
+    _restore();
+  }
+
+  static const _prefsKey = 'selected_displayed_plan_id';
+
+  Future<void> _restore() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final stored = prefs.getString(_prefsKey);
+      if (stored != null && mounted && state == null) state = stored;
+    } catch (_) {
+      // A missing/again-unavailable prefs store just means "no selection".
+    }
+  }
+
+  Future<void> select(String? planId) async {
+    if (state == planId) return;
+    state = planId;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (planId == null) {
+        await prefs.remove(_prefsKey);
+      } else {
+        await prefs.setString(_prefsKey, planId);
+      }
+    } catch (_) {
+      // Persistence is best-effort; the in-memory selection still applies.
+    }
+  }
+}
+
+final selectedPlanIdProvider =
+    StateNotifierProvider<SelectedPlanController, String?>(
+      (ref) => SelectedPlanController(),
+    );
+
+/// The resolved plan for the current selection, shared by Workout and Food
+/// Intake (trainer identity, plan id, notes and day count all come from it).
+final selectedDisplayedPlanProvider =
+    FutureProvider.autoDispose<Map<String, dynamic>?>((ref) async {
+      final plans = await ref.watch(displayedPlansProvider.future);
+      return resolveSelectedDisplayedPlan(
+        plans,
+        ref.watch(selectedPlanIdProvider),
+      );
+    });
+
 final planDaysProvider = FutureProvider.autoDispose.family<List<Map<String, dynamic>>, String>((ref, planId) async {
-  final repo = PlanRepository();
+  final repo = ref.watch(planRepositoryProvider);
   return await repo.getPlanDays(planId);
 });
 
 final memberCompletionsProvider = FutureProvider.autoDispose.family<List<Map<String, dynamic>>, String>((ref, memberId) async {
-  final repo = PlanRepository();
+  final repo = ref.watch(planRepositoryProvider);
   return await repo.getMemberCompletions(memberId);
 });
 
@@ -39,7 +149,7 @@ final trainerPlanRecordsProvider = FutureProvider.autoDispose<List<Map<String, d
   final userId = SupabaseClientService().client.auth.currentUser?.id;
   if (userId == null) return [];
 
-  final repo = PlanRepository();
+  final repo = ref.watch(planRepositoryProvider);
   return await repo.getTrainerPlanRecords(userId);
 });
 
@@ -47,7 +157,7 @@ final planCompletionDaysProvider = FutureProvider.autoDispose.family<List<Map<St
   final userId = SupabaseClientService().client.auth.currentUser?.id;
   if (userId == null) return [];
 
-  final repo = PlanRepository();
+  final repo = ref.watch(planRepositoryProvider);
   return await repo.getPlanCompletionDays(planId, userId);
 });
 

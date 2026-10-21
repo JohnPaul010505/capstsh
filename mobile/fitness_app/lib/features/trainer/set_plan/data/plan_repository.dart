@@ -3,7 +3,13 @@ import 'package:shared/services/supabase_client.dart';
 class PlanRepository {
   final SupabaseClientService _supabase = SupabaseClientService();
 
-  Future<Map<String, dynamic>?> getActivePlan(String memberId) async {
+  /// Active plan for a specific member/trainer pair. Scoping by both IDs
+  /// prevents one trainer's plan from masking another's.
+  Future<Map<String, dynamic>?> getActivePlan(
+    String memberId,
+    String trainerId, {
+    bool includeTrainerProfile = false,
+  }) async {
     try {
       final client = _supabase.client;
       final now = DateTime.now();
@@ -13,16 +19,20 @@ class PlanRepository {
       // NOT just the start date. The old `start_date >= today` filter made
       // the plan "active" only on Day 1, which hid the floating logo for
       // days 2-7.
-      final response = await client
+      final query = client
           .from('member_goal_plans')
-          .select()
+          .select(includeTrainerProfile
+              ? '*, profiles!member_goal_plans_trainer_id_fkey(full_name, avatar_url)'
+              : '*')
           .eq('member_id', memberId)
+          .eq('trainer_id', trainerId)
           .eq('status', 'active')
           .lte('start_date', today.split('T').first)
           .gte('end_date', today.split('T').first)
           .order('start_date', ascending: false)
-          .limit(1)
-          .maybeSingle();
+          .limit(1);
+
+      final response = await query.maybeSingle();
 
       if (response == null || response.isEmpty) return null;
       return Map<String, dynamic>.from(response as Map);
@@ -31,8 +41,70 @@ class PlanRepository {
     }
   }
 
-  Future<bool> memberHasActivePlan(String memberId) async {
-    final plan = await getActivePlan(memberId);
+  /// All active plans for a member, joined with trainer profile details.
+  /// Used by the member trainer-plan list and the displayed-plan selector.
+  Future<List<Map<String, dynamic>>> getActivePlans(String memberId) async {
+    try {
+      final client = _supabase.client;
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day).toIso8601String();
+
+      final response = await client
+          .from('member_goal_plans')
+          .select(
+            '*, profiles!member_goal_plans_trainer_id_fkey(full_name, avatar_url)',
+          )
+          .eq('member_id', memberId)
+          .eq('status', 'active')
+          .lte('start_date', today.split('T').first)
+          .gte('end_date', today.split('T').first)
+          .order('start_date', ascending: false);
+
+      return (response as List<dynamic>)
+          .cast<Map<String, dynamic>>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Only the plans the member has chosen to display. Used by Workout and
+  /// Food Intake to render the shared displayed-plan selector.
+  Future<List<Map<String, dynamic>>> getDisplayedPlans(String memberId) async {
+    try {
+      final client = _supabase.client;
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day).toIso8601String();
+
+      final response = await client
+          .from('member_goal_plans')
+          .select(
+            '*, profiles!member_goal_plans_trainer_id_fkey(full_name, avatar_url)',
+          )
+          .eq('member_id', memberId)
+          .eq('status', 'active')
+          .eq('is_displayed', true)
+          .lte('start_date', today.split('T').first)
+          .gte('end_date', today.split('T').first)
+          .order('start_date', ascending: false);
+
+      return (response as List<dynamic>)
+          .cast<Map<String, dynamic>>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<bool> memberHasActivePlan(
+    String memberId,
+    String trainerId, {
+    bool includeTrainerProfile = false,
+  }) async {
+    final plan = await getActivePlan(memberId, trainerId,
+        includeTrainerProfile: includeTrainerProfile);
     return plan != null;
   }
 
@@ -64,10 +136,18 @@ class PlanRepository {
       planData['notes'] = notes.trim();
     }
 
+    // Scope by member/trainer pair: each trainer gets their own plan row for
+    // the member instead of overwriting another trainer's plan. Only the
+    // CURRENT (active) row is replaced — cancelled history rows stay intact so
+    // their completion records keep pointing at the plan they belong to.
     final existing = await client
         .from('member_goal_plans')
         .select('id')
         .eq('member_id', memberId)
+        .eq('trainer_id', trainerId)
+        .eq('status', 'active')
+        .order('start_date', ascending: false)
+        .limit(1)
         .maybeSingle();
 
     if (existing != null && existing['id'] != null) {
@@ -323,22 +403,23 @@ class PlanRepository {
     });
   }
 
-  Future<Map<String, dynamic>?> getPlanByMember(String memberId) async {
-    try {
-      final response = await _supabase.client
-          .from('member_goal_plans')
-          .select()
-          .eq('member_id', memberId)
-          .eq('status', 'active')
-          .order('start_date', ascending: false)
-          .limit(1)
-          .maybeSingle();
+  /// Active plan for a specific member/trainer pair.
+  Future<Map<String, dynamic>?> getPlanByMemberAndTrainer(
+    String memberId,
+    String trainerId,
+  ) async {
+    return await getActivePlan(memberId, trainerId);
+  }
 
-      if (response == null || response.isEmpty) return null;
-      return Map<String, dynamic>.from(response as Map);
-    } catch (_) {
-      return null;
-    }
+  /// Toggle the member-controlled display flag on one of their own plans via
+  /// the Supabase `set_member_plan_displayed` RPC. The RPC enforces member
+  /// ownership against `auth.uid()` and only touches `is_displayed`.
+  Future<void> setPlanDisplayed(String planId, bool isDisplayed) async {
+    final client = _supabase.client;
+    await client.rpc(
+      'set_member_plan_displayed',
+      params: {'p_plan_id': planId, 'p_is_displayed': isDisplayed},
+    );
   }
 
   Future<List<Map<String, dynamic>>> getPlanCompletionDays(

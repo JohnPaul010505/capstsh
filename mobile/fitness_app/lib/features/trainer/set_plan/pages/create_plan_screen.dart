@@ -140,7 +140,9 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
 
       membersList = (profilesResp as List).cast<Map<String, dynamic>>();
 
-      // 3. Batch fetch active plans for these members in one query
+      // 3. Batch fetch this trainer's active plans for these members in one
+      //    query. Scoped to the signed-in trainer so another trainer's active
+      //    plan for the same member is neither shown nor replaced.
       final now = DateTime.now();
       final todayStr = DateTime(
         now.year,
@@ -151,6 +153,7 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
           .from('member_goal_plans')
           .select('member_id')
           .inFilter('member_id', memberIds)
+          .eq('trainer_id', trainerId)
           .eq('status', 'active')
           .gte('end_date', todayStr);
 
@@ -226,12 +229,14 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
         'trainer_id': client.auth.currentUser!.id,
       };
       // Each assignment gets a new plan ID so previous day completions never
-      // carry over to a replacement plan.
+      // carry over to a replacement plan. Only THIS trainer's active row is
+      // cancelled: another trainer's plan for the same member stays intact.
       if (_confirmReplace) {
         await client
             .from('member_goal_plans')
             .update({'status': 'cancelled'})
             .eq('member_id', selectedClient!)
+            .eq('trainer_id', client.auth.currentUser!.id)
             .eq('status', 'active');
       }
       planJson['created_at'] = DateTime.now().toIso8601String();
