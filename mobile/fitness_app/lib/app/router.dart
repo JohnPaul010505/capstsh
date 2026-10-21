@@ -10,6 +10,7 @@ import '../features/member/home/pages/home_page.dart';
 import '../features/member/meals/pages/meal_log_page.dart';
 import '../features/member/workout/pages/workout_page.dart';
 import '../features/member/chat/pages/chat_page.dart';
+import '../features/member/chat/pages/member_trainer_list_page.dart';
 import '../features/member/settings/pages/settings_page.dart';
 import '../features/member/membership/pages/membership_page.dart';
 import '../features/member/membership/pages/membership_cancellation_page.dart';
@@ -185,11 +186,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/member/notifications',
         pageBuilder: (_, __) => _iosPush(const NotificationsPage()),
       ),
-      // Full-screen chat (pushed on the root navigator) so the member nav bar
-      // is hidden while chatting and "<" pops back to the previous screen.
+      // The member first chooses an active trainer. The detail route carries
+      // trainer context so rooms are separate for each trainer relationship.
       GoRoute(
         path: '/member/chat',
-        pageBuilder: (_, __) => _iosPush(const ChatPage()),
+        pageBuilder: (_, __) => _iosPush(const MemberTrainerListPage()),
+      ),
+      GoRoute(
+        path: '/member/chat/:trainerId',
+        pageBuilder: (_, state) =>
+            _iosPush(ChatPage(trainerId: state.pathParameters['trainerId']!)),
       ),
       // Full-screen QR check-in (pushed on the root navigator) so the member
       // nav bar is hidden on the scanner and "<" pops back to the previous

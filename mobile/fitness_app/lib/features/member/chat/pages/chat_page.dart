@@ -1,65 +1,60 @@
 import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared/services/supabase_client.dart';
+
+import '../../../../app/design_tokens.dart';
 import '../../../shared/widgets/animations.dart';
 import '../../../shared/widgets/app_glow_background.dart';
 import '../../../shared/widgets/glass_card.dart';
-import '../../../../app/design_tokens.dart';
 
-final trainerChatProvider = FutureProvider.autoDispose<Map<String, dynamic>?>((
-  ref,
-) async {
-  final userId = SupabaseClientService().client.auth.currentUser!.id;
-  final client = SupabaseClientService().client;
+/// Resolves chat state only for the trainer selected in the route.
+final trainerChatProvider = FutureProvider.autoDispose
+    .family<Map<String, dynamic>?, String>((ref, trainerId) async {
+      final client = SupabaseClientService().client;
+      final userId = client.auth.currentUser!.id;
+      final assignments = await client
+          .from('trainer_assignments')
+          .select('assigned_at')
+          .eq('member_id', userId)
+          .eq('trainer_id', trainerId)
+          .eq('status', 'active')
+          .order('assigned_at', ascending: false)
+          .limit(1);
+      if ((assignments as List).isEmpty) return null;
 
-  final assignment = await client
-      .from('trainer_assignments')
-      .select('trainer_id, assigned_at')
-      .eq('member_id', userId)
-      .eq('status', 'active')
-      .order('assigned_at', ascending: false)
-      .limit(1);
-
-  if ((assignment as List).isEmpty) return null;
-
-  final trainerId = assignment[0]['trainer_id'] as String;
-  final assignedAt = assignment[0]['assigned_at'] as String?;
-
-  final trainerResp = await client
-      .from('profiles')
-      .select('id, full_name')
-      .eq('id', trainerId)
-      .single()
-      .timeout(const Duration(seconds: 5));
-
-  final trainer = trainerResp;
-
-  final existingRoom = await client
-      .from('chat_rooms')
-      .select('id')
-      .or(
-        'and(participant_one.eq.$userId,participant_two.eq.$trainerId),and(participant_one.eq.$trainerId,participant_two.eq.$userId)',
-      )
-      .limit(1);
-
-  String? roomId;
-  if ((existingRoom as List).isNotEmpty) {
-    roomId = existingRoom[0]['id'] as String;
-  }
-
-  return {
-    'trainer': trainer,
-    'trainerId': trainerId,
-    'roomId': roomId,
-    'assignedAt': assignedAt,
-  };
-});
+      final results = await Future.wait<dynamic>([
+        client
+            .from('profiles')
+            .select('id, full_name, avatar_url')
+            .eq('id', trainerId)
+            .single()
+            .timeout(const Duration(seconds: 5)),
+        client
+            .from('chat_rooms')
+            .select('id')
+            .or(
+              'and(participant_one.eq.$userId,participant_two.eq.$trainerId),'
+              'and(participant_one.eq.$trainerId,participant_two.eq.$userId)',
+            )
+            .limit(1),
+      ]);
+      final rooms = results[1] as List;
+      return {
+        'trainer': results[0] as Map<String, dynamic>,
+        'trainerId': trainerId,
+        'roomId': rooms.isEmpty ? null : rooms.first['id'] as String?,
+        'assignedAt': assignments.first['assigned_at'] as String?,
+      };
+    });
 
 class ChatPage extends ConsumerStatefulWidget {
-  const ChatPage({super.key});
+  final String trainerId;
+
+  const ChatPage({super.key, required this.trainerId});
 
   @override
   ConsumerState<ChatPage> createState() => _ChatPageState();
@@ -71,9 +66,6 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   List<Map<String, dynamic>> _messages = [];
   bool _loadingMessages = true;
   String? _roomId;
-  String? _trainerId;
-  // Start of the current assignment: messages predating it belong to a
-  // previous trainer and are hidden (never deleted).
   DateTime? _assignedAt;
 
   @override
@@ -83,18 +75,15 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   }
 
   Future<void> _initChat() async {
-    final data = await ref.read(trainerChatProvider.future);
+    final data = await ref.read(trainerChatProvider(widget.trainerId).future);
     if (data == null || !mounted) return;
-
-    _trainerId = data['trainerId'] as String?;
     _roomId = data['roomId'] as String?;
     final assignedRaw = data['assignedAt'] as String?;
     _assignedAt = assignedRaw == null ? null : DateTime.tryParse(assignedRaw);
-
     if (_roomId != null) {
       await _loadMessages();
       _subscribe();
-    } else {
+    } else if (mounted) {
       setState(() => _loadingMessages = false);
     }
   }
@@ -108,23 +97,20 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           .select()
           .eq('room_id', roomId)
           .order('created_at', ascending: true);
-      if (mounted) {
-        setState(() {
-          final all = (response as List).cast<Map<String, dynamic>>();
-          // Hide anything predating the current assignment (>= keeps
-          // messages sent exactly at the assignment second).
-          final cutoff = _assignedAt;
-          _messages = cutoff == null
-              ? all
-              : all.where((m) {
-                  final t = DateTime.tryParse(
-                    m['created_at']?.toString() ?? '',
-                  );
-                  return t == null || !t.isBefore(cutoff);
-                }).toList();
-          _loadingMessages = false;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        final all = (response as List).cast<Map<String, dynamic>>();
+        final cutoff = _assignedAt;
+        _messages = cutoff == null
+            ? all
+            : all.where((message) {
+                final sentAt = DateTime.tryParse(
+                  message['created_at']?.toString() ?? '',
+                );
+                return sentAt == null || !sentAt.isBefore(cutoff);
+              }).toList();
+        _loadingMessages = false;
+      });
     } catch (_) {
       if (mounted) setState(() => _loadingMessages = false);
     }
@@ -132,7 +118,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
 
   void _subscribe() {
     final roomId = _roomId;
-    if (roomId == null) return;
+    if (roomId == null || _subscription != null) return;
     _subscription = SupabaseClientService().client
         .from('chat_messages')
         .stream(primaryKey: ['id'])
@@ -145,29 +131,24 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   Future<void> _sendMessage() async {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
-
     final userId = SupabaseClientService().client.auth.currentUser!.id;
     _messageController.clear();
-
     try {
       _roomId ??= await _createRoom();
-
       await SupabaseClientService().client.from('chat_messages').insert({
         'room_id': _roomId,
         'sender_id': userId,
         'content': text,
       });
-
       await _loadMessages();
-    } catch (e) {
-      if (mounted) {
-        _messageController.text = text;
-        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-          const SnackBar(
-            content: Text('Failed to send message. Please try again.'),
-          ),
-        );
-      }
+    } catch (_) {
+      if (!mounted) return;
+      _messageController.text = text;
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        const SnackBar(
+          content: Text('Failed to send message. Please try again.'),
+        ),
+      );
     }
   }
 
@@ -175,10 +156,12 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     final userId = SupabaseClientService().client.auth.currentUser!.id;
     final response = await SupabaseClientService().client
         .from('chat_rooms')
-        .insert({'participant_one': userId, 'participant_two': _trainerId})
+        .insert({
+          'participant_one': userId,
+          'participant_two': widget.trainerId,
+        })
         .select('id')
         .single();
-
     final roomId = response['id'] as String;
     _subscribe();
     return roomId;
@@ -193,369 +176,304 @@ class _ChatPageState extends ConsumerState<ChatPage> {
 
   @override
   Widget build(BuildContext context) {
-    final chatAsync = ref.watch(trainerChatProvider);
-
+    final chatAsync = ref.watch(trainerChatProvider(widget.trainerId));
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: ClayColors.isLightMode
+          ? ClayTokens.claySurfaceLight
+          : ClayTokens.clayDarkSurface,
       body: AppGlowBackground(
         child: SafeArea(
           child: chatAsync.when(
-            data: (data) {
-              if (data == null) {
-                return Column(
-                  children: [
-                    _chatHeader(name: 'Chat', initials: null, onBack: _goBack),
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.all(32),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 64,
-                              height: 64,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF636366).withAlpha(25),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: const Icon(
-                                CupertinoIcons.person,
-                                color: Color(0xFF8E8E93),
-                                size: 32,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            const Text(
-                              'No trainer assigned',
-                              style: TextStyle(
-                                color: Color(0xFF636366),
-                                fontSize: 14,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            const Text(
-                              'Contact the gym to get paired with a trainer',
-                              style: TextStyle(
-                                color: Color(0xFF8E8E93),
-                                fontSize: 11,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              }
-
-              final trainer = data['trainer'] as Map<String, dynamic>;
-              final name = trainer['full_name'] as String? ?? 'Your Trainer';
-              final initials = name.split(' ').map((n) => n[0]).take(2).join();
-
-              return Column(
-                children: [
-                  _chatHeader(name: name, initials: initials, onBack: _goBack),
-                  Expanded(
-                    child: _loadingMessages
-                        ? const Center(
-                            child: CircularProgressIndicator(
-                              color: Color(0xFFD6A5FF),
-                            ),
-                          )
-                        : _messages.isEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  CupertinoIcons.chat_bubble,
-                                  color: Color(0xFF8E8E93),
-                                  size: 40,
-                                ),
-                                const SizedBox(height: 12),
-                                const Text(
-                                  'Start chatting with your trainer!',
-                                  style: TextStyle(
-                                    color: Color(0xFF636366),
-                                    fontSize: 12,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                const Text(
-                                  'Send a message below',
-                                  style: TextStyle(
-                                    color: Color(0xFF8E8E93),
-                                    fontSize: 10,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                        : ListView.builder(
-                            padding: const EdgeInsets.all(12),
-                            itemCount: _messages.length,
-                            itemBuilder: (_, i) {
-                              final msg = _messages[i];
-                              final isMe =
-                                  msg['sender_id'] ==
-                                  SupabaseClientService()
-                                      .client
-                                      .auth
-                                      .currentUser!
-                                      .id;
-                              final content = msg['content'] as String? ?? '';
-                              final time = msg['created_at'] as String? ?? '';
-                              final timeStr = time.length >= 16
-                                  ? time.substring(11, 16)
-                                  : '';
-
-                              return StaggeredFadeIn(
-                                index: i,
-                                offset: const Offset(0, 8),
-                                delay: const Duration(milliseconds: 20),
-                                child: Column(
-                                  crossAxisAlignment: isMe
-                                      ? CrossAxisAlignment.end
-                                      : CrossAxisAlignment.start,
-                                  children: [
-                                    Container(
-                                      constraints: BoxConstraints(
-                                        maxWidth:
-                                            MediaQuery.of(context).size.width *
-                                            0.75,
-                                      ),
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 9,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: isMe
-                                            ? const Color(0xFF0A84FF)
-                                            : (ClayColors.isLightMode
-                                                  ? Colors.white
-                                                  : const Color(0xFF2C2C2E)),
-                                        borderRadius: BorderRadius.only(
-                                          topLeft: const Radius.circular(18),
-                                          topRight: const Radius.circular(18),
-                                          bottomLeft: isMe
-                                              ? const Radius.circular(18)
-                                              : Radius.circular(4),
-                                          bottomRight: isMe
-                                              ? Radius.circular(4)
-                                              : const Radius.circular(18),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        content,
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          height: 1.4,
-                                          color:
-                                              ClayColors.isLightMode && !isMe
-                                              ? ClayTokens.clayTextPrimary
-                                              : const Color(0xFFFFFFFF),
-                                        ),
-                                      ),
-                                    ),
-                                    if (timeStr.isNotEmpty)
-                                      Padding(
-                                        padding: EdgeInsets.only(
-                                          top: 2,
-                                          left: isMe ? 0 : 2,
-                                          right: isMe ? 2 : 0,
-                                        ),
-                                        child: Text(
-                                          timeStr,
-                                          style: const TextStyle(
-                                            fontSize: 9,
-                                            color: Color(0xFF8E8E93),
-                                          ),
-                                        ),
-                                      ),
-                                    const SizedBox(height: 6),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.fromLTRB(14, 10, 14, 16),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          // Light mode: the composer sits on the shared
-                          // liquid-glass body (same as the nav bar). Dark mode
-                          // keeps its own translucent pill.
-                          child: ClayColors.isLightMode
-                              ? GlassSurface(
-                                  padding: EdgeInsets.zero,
-                                  borderRadius: BorderRadius.circular(14),
-                                  child: _messageField(glass: true),
-                                )
-                              : _messageField(glass: false),
-                        ),
-                        const SizedBox(width: 8),
-                        GestureDetector(
-                          onTap: _sendMessage,
-                          child: Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: ClayTokens.clayPrimary,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.send,
-                              color: Colors.white,
-                              size: 16,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              );
-            },
+            data: (data) => data == null ? _unavailable() : _conversation(data),
             loading: () => const Center(
               child: CircularProgressIndicator(color: Color(0xFFD6A5FF)),
             ),
-            error: (e, _) => Center(
-              child: Text(
-                'Error: $e',
-                style: const TextStyle(color: Color(0xFF636366)),
-              ),
-            ),
+            error: (_, __) => _errorState(),
           ),
         ),
       ),
     );
   }
 
-  /// The composer field. [glass] drops the field's own fill and borders so
-  /// the surrounding [GlassSurface] shows through (light mode only).
-  Widget _messageField({required bool glass}) {
-    return TextField(
-      controller: _messageController,
-      maxLines: 3,
-      minLines: 1,
-      textInputAction: TextInputAction.send,
-      onSubmitted: (_) => _sendMessage(),
-      style: TextStyle(
-        color: glass ? const Color(0xFFFFFFFF) : glassInk(),
-        fontSize: 13,
-      ),
-      decoration: InputDecoration(
-        hintText: 'Message your trainer',
-        hintStyle: TextStyle(
-          color: glass ? Colors.white.withAlpha(200) : const Color(0xFF8E8E93),
-          fontSize: 13,
+  Widget _unavailable() => Column(
+    children: [
+      _chatHeader(name: 'Chat', initials: null),
+      Expanded(
+        child: _emptyState(
+          icon: CupertinoIcons.person,
+          title: 'Trainer unavailable',
+          detail: 'This trainer is no longer assigned to you.',
         ),
-        isDense: true,
-        filled: !glass,
-        fillColor: const Color(0x12FFFFFF),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 12,
-        ),
-        enabledBorder: glass
-            ? InputBorder.none
-            : OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: Color(0x2EFFFFFF)),
-              ),
-        focusedBorder: glass
-            ? InputBorder.none
-            : OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: Color(0xFFBF5AF2)),
-              ),
       ),
-    );
-  }
+    ],
+  );
 
-  void _goBack() {
-    // Chat is a pushed full-screen route; pop back to whatever screen the
-    // member came from (Home, Workout, ...). Cold-start fallback: Home.
-    if (context.canPop()) {
-      context.pop();
-    } else {
-      context.go('/member/home');
-    }
-  }
-
-  /// Full-width header: "<" back chevron + avatar + trainer name.
-  Widget _chatHeader({
-    required String name,
-    required String? initials,
-    required VoidCallback onBack,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: glassLine(const Color(0xFF38383A))),
+  Widget _errorState() => Column(
+    children: [
+      _chatHeader(name: 'Chat', initials: null),
+      Expanded(
+        child: _emptyState(
+          icon: CupertinoIcons.exclamationmark_triangle,
+          title: 'Could not load chat',
+          detail: 'Please try again in a moment.',
         ),
       ),
-      child: Row(
-        children: [
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: onBack,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              child: Icon(
-                CupertinoIcons.back,
-                color: ClayTokens.clayDarkTextPrimary,
-                size: 24,
-              ),
-            ),
-          ),
-          const SizedBox(width: 6),
-          Container(
-            width: 40,
-            height: 40,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                colors: [Color(0xFFBF5AF2), Color(0xFFD6A5FF)],
-              ),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              initials ?? '?',
-              style: TextStyle(
-                color: ClayTokens.clayDarkTextPrimary,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: glassInk(),
-                  ),
+    ],
+  );
+
+  Widget _conversation(Map<String, dynamic> data) {
+    final trainer = data['trainer'] as Map<String, dynamic>;
+    final name = trainer['full_name'] as String? ?? 'Your Trainer';
+    return Column(
+      children: [
+        _chatHeader(name: name, initials: _initials(name)),
+        Expanded(
+          child: _loadingMessages
+              ? const Center(
+                  child: CircularProgressIndicator(color: Color(0xFFD6A5FF)),
+                )
+              : _messages.isEmpty
+              ? _emptyState(
+                  icon: CupertinoIcons.chat_bubble,
+                  title: 'Start chatting with your trainer!',
+                  detail: 'Send a message below.',
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(12),
+                  itemCount: _messages.length,
+                  itemBuilder: (_, index) =>
+                      _messageBubble(_messages[index], index),
                 ),
-                if (initials != null)
-                  const Text(
-                    'Your Trainer',
-                    style: TextStyle(fontSize: 10, color: Color(0xFF8E8E93)),
-                  ),
-              ],
+        ),
+        _composer(),
+      ],
+    );
+  }
+
+  Widget _emptyState({
+    required IconData icon,
+    required String title,
+    required String detail,
+  }) => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: ClayTokens.clayDarkTextTertiary, size: 40),
+          const SizedBox(height: 12),
+          Text(
+            title,
+            style: ClayTokens.titleMedium.copyWith(
+              color: ClayTokens.clayDarkTextPrimary,
             ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            detail,
+            style: ClayTokens.bodySmall.copyWith(
+              color: ClayTokens.clayDarkTextTertiary,
+            ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),
+    ),
+  );
+
+  Widget _messageBubble(Map<String, dynamic> message, int index) {
+    final isMe =
+        message['sender_id'] ==
+        SupabaseClientService().client.auth.currentUser!.id;
+    final content = message['content'] as String? ?? '';
+    final time = message['created_at'] as String? ?? '';
+    final timeStr = time.length >= 16 ? time.substring(11, 16) : '';
+    return StaggeredFadeIn(
+      index: index,
+      offset: const Offset(0, 8),
+      delay: const Duration(milliseconds: 20),
+      child: Column(
+        crossAxisAlignment: isMe
+            ? CrossAxisAlignment.end
+            : CrossAxisAlignment.start,
+        children: [
+          Container(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.75,
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            decoration: BoxDecoration(
+              color: isMe
+                  ? const Color(0xFF0A84FF)
+                  : ClayTokens.clayDarkSurfaceElevated,
+              border: !isMe
+                  ? Border.all(color: ClayTokens.clayDarkBorder.withAlpha(110))
+                  : null,
+              borderRadius: BorderRadius.only(
+                topLeft: const Radius.circular(18),
+                topRight: const Radius.circular(18),
+                bottomLeft: isMe
+                    ? const Radius.circular(18)
+                    : const Radius.circular(4),
+                bottomRight: isMe
+                    ? const Radius.circular(4)
+                    : const Radius.circular(18),
+              ),
+            ),
+            child: Text(
+              content,
+              style: ClayTokens.bodySmall.copyWith(
+                color: isMe ? Colors.white : ClayTokens.clayDarkTextPrimary,
+              ),
+            ),
+          ),
+          if (timeStr.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.only(
+                top: 2,
+                left: isMe ? 0 : 2,
+                right: isMe ? 2 : 0,
+              ),
+              child: Text(
+                timeStr,
+                style: ClayTokens.labelSmall.copyWith(
+                  color: ClayTokens.clayDarkTextTertiary,
+                ),
+              ),
+            ),
+          const SizedBox(height: 6),
+        ],
+      ),
     );
+  }
+
+  Widget _composer() => Padding(
+    padding: const EdgeInsets.fromLTRB(14, 10, 14, 16),
+    child: Row(
+      children: [
+        Expanded(
+          child: GlassSurface(
+            padding: EdgeInsets.zero,
+            borderRadius: BorderRadius.circular(14),
+            child: TextField(
+              controller: _messageController,
+              maxLines: 3,
+              minLines: 1,
+              textInputAction: TextInputAction.send,
+              onSubmitted: (_) => _sendMessage(),
+              style: ClayTokens.bodyMedium.copyWith(
+                color: ClayTokens.clayDarkTextPrimary,
+              ),
+              cursorColor: ClayTokens.clayPrimary,
+              decoration: InputDecoration(
+                hintText: 'Message your trainer',
+                hintStyle: ClayTokens.bodyMedium.copyWith(
+                  color: ClayTokens.clayDarkTextTertiary,
+                ),
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                border: InputBorder.none,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        GestureDetector(
+          onTap: _sendMessage,
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: const BoxDecoration(
+              color: Color(0xFF0A84FF),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.send, color: Colors.white, size: 16),
+          ),
+        ),
+      ],
+    ),
+  );
+
+  Widget _chatHeader({required String name, required String? initials}) =>
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: ClayTokens.clayDarkBorder)),
+        ),
+        child: Row(
+          children: [
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _goBack,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                child: Icon(
+                  CupertinoIcons.back,
+                  color: ClayTokens.clayDarkTextPrimary,
+                  size: 24,
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Container(
+              width: 40,
+              height: 40,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [Color(0xFFBF5AF2), Color(0xFFD6A5FF)],
+                ),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                initials ?? '?',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: ClayTokens.titleMedium.copyWith(
+                      color: ClayTokens.clayDarkTextPrimary,
+                    ),
+                  ),
+                  if (initials != null)
+                    Text(
+                      'Your Trainer',
+                      style: ClayTokens.labelSmall.copyWith(
+                        color: ClayTokens.clayDarkTextTertiary,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+
+  String _initials(String name) => name
+      .split(' ')
+      .where((part) => part.isNotEmpty)
+      .map((part) => part[0])
+      .take(2)
+      .join();
+
+  void _goBack() {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/member/chat');
+    }
   }
 }
