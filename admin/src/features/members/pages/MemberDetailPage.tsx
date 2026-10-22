@@ -468,7 +468,7 @@ export default function MemberDetailPage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
               {trainerAssignments.map(assignment => {
-                const profile = assignment.profiles?.[0]
+                const profile = (Array.isArray(assignment.profiles) ? assignment.profiles[0] : assignment.profiles) as { full_name?: string | null; email?: string | null } | undefined
                 const name = profile?.full_name || 'Trainer'
                 return (
                   <Link

@@ -552,3 +552,69 @@ input[type='password']::-ms-reveal,
 input[type='password']::-ms-clear {
   display: none;
 }
+
+
+/* =================================
+   Print stylesheet for Report generation / PDF export
+   ================================= */
+
+/* =================================
+   Print stylesheet for Report generation / Printing
+   ================================= */
+@media print {
+  @page {
+    margin: 12mm;
+    size: A4 portrait;
+  }
+
+  aside,
+  header,
+  nav,
+  button,
+  select,
+  input,
+  [role="tablist"],
+  .glass-chrome,
+  .no-print {
+    display: none !important;
+  }
+
+  body, html, main, #main-content, .glass-panel, section {
+    background: white !important;
+    color: #111827 !important;
+    overflow: visible !important;
+    height: auto !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  div[style*="max-height"],
+  .overflow-auto {
+    max-height: none !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    color: #111827 !important;
+  }
+
+  th, td {
+    border: 1px solid #d1d5db !important;
+    padding: 8px 10px !important;
+    color: #111827 !important;
+    background: transparent !important;
+    font-size: 11px !important;
+  }
+
+  th {
+    background-color: #f3f4f6 !important;
+    font-weight: 600 !important;
+  }
+
+  tr {
+    page-break-inside: avoid !important;
+  }
+}

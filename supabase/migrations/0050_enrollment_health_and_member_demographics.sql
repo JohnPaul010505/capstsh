@@ -1,6 +1,3 @@
--- Store new member demographics with the profile and keep health screening in
--- a separate admin-only table so the member/trainer profile policies do not
--- expose medical screening answers.
 alter table public.enrollments
   add column if not exists civil_status text,
   add column if not exists religion text,

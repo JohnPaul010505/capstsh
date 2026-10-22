@@ -31,6 +31,15 @@ import { useRealtimeProfiles } from '@/hooks/useRealtimeProfiles'
  */
 const DETAIL_PAGE_SIZE = 10
 
+/** One row of the Assign Member chooser, as returned by /api/assignable-members. */
+type AssignableMember = {
+  id: string
+  full_name: string
+  email: string | null
+  code: string | null
+  activeTrainerCount: number
+}
+
 export default function TrainerDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -221,49 +230,37 @@ export default function TrainerDetailPage() {
     ? ratedRatings.reduce((sum, r) => sum + r, 0) / ratedRatings.length
     : null
 
-  const { data: assignableMembers } = useQuery({
+  /**
+   * The Assign Member chooser's roster comes from the server, which reads
+   * active assignments with the service role. That keeps the answer
+   * authoritative: a member paired with other trainers stays eligible (up to
+   * five), and is excluded only when already paired with THIS trainer or when
+   * they have reached the five-trainer cap.
+   */
+  const {
+    data: assignableMembers,
+    error: assignableError,
+    isLoading: assignableLoading,
+  } = useQuery<AssignableMember[]>({
     queryKey: ['assignable-members', id],
     queryFn: async () => {
-      const pageSize = 1000
-      const activeAssignments: { member_id: string; trainer_id: string }[] = []
-
-      for (let offset = 0; ; offset += pageSize) {
-        const { data, error } = await supabase
-          .from('trainer_assignments')
-          .select('member_id, trainer_id')
-          .eq('status', 'active')
-          .order('id')
-          .range(offset, offset + pageSize - 1)
-        if (error) throw error
-
-        activeAssignments.push(...(data ?? []))
-        if ((data ?? []).length < pageSize) break
-      }
-
-      const activeTrainerCounts = activeAssignments.reduce<Record<string, number>>((counts, assignment) => {
-        counts[assignment.member_id] = (counts[assignment.member_id] ?? 0) + 1
-        return counts
-      }, {})
-      const assignedToCurrentTrainer = new Set(
-        activeAssignments
-          .filter(assignment => assignment.trainer_id === id)
-          .map(assignment => assignment.member_id),
+      const res = await fetch(
+        `/api/assignable-members?trainer_id=${encodeURIComponent(id ?? '')}`,
       )
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, full_name, email, code')
-        .eq('role', 'member')
-        .order('full_name')
-      if (error) throw error
-      return (data ?? [])
-        .filter(member => !assignedToCurrentTrainer.has(member.id))
-        .map(member => ({
-          ...member,
-          activeTrainerCount: activeTrainerCounts[member.id] ?? 0,
-        }))
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.error || 'Failed to load members')
+      return (result.members ?? []) as AssignableMember[]
     },
-    enabled: showAssignModal,
+    enabled: showAssignModal && !!id,
   })
+
+  const searchedMembers = (assignableMembers ?? []).filter(
+    member =>
+      memberSearch === '' ||
+      member.full_name?.toLowerCase().includes(memberSearch.toLowerCase()) ||
+      member.email?.toLowerCase().includes(memberSearch.toLowerCase()) ||
+      member.code?.toLowerCase().includes(memberSearch.toLowerCase()),
+  )
 
   const assignMutation = useMutation({
     mutationFn: async (memberId: string) => {
@@ -528,7 +525,7 @@ export default function TrainerDetailPage() {
               </button>
             </div>
             <div className="px-6 py-4 border-b border-line">
-              <p className="text-xs text-fg-muted mb-3">{Math.max(0, 15 - assignedTotal)} of 15 member spots available</p>
+              <p className="text-xs text-fg-muted mb-3">{Math.max(0, 15 - assignedTotal)} of 15 member spots available · members already working with 5 trainers are hidden</p>
               {assignedTotal >= 15 && <p className="text-sm text-amber-400 mb-3">This trainer has reached the 15 member limit.</p>}
               {assignmentError && <p role="alert" className="text-sm text-rose-300 bg-rose-500/10 border border-rose-400/25 rounded-lg px-3 py-2 mb-3">{assignmentError}</p>}
               <div className="relative">
@@ -543,39 +540,35 @@ export default function TrainerDetailPage() {
               </div>
             </div>
             <div className="flex-1 overflow-y-auto px-4 py-2">
-              {assignableMembers
-                ?.filter(m =>
-                  memberSearch === '' ||
-                  m.full_name?.toLowerCase().includes(memberSearch.toLowerCase()) ||
-                  m.email?.toLowerCase().includes(memberSearch.toLowerCase()) ||
-                  m.code?.toLowerCase().includes(memberSearch.toLowerCase())
-                )
-                .map(m => (
-                  <button
-                    key={m.id}
-                    onClick={() => {
-                      if (assignedTotal >= 15 || m.activeTrainerCount >= 5) return
-                      setAssignmentError(null)
-                      setMemberToAssign({ id: m.id, full_name: m.full_name })
-                    }}
-                    disabled={assignMutation.isPending || assignedTotal >= 15 || m.activeTrainerCount >= 5}
-                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-[#7C3AED]/10 transition-colors disabled:opacity-50 text-left"
-                  >
-                    <div>
-                      <div className="text-sm font-medium text-fg-strong">{m.full_name}</div>
-                      <div className="text-xs text-fg-muted">{m.email} {m.code ? `· ${m.code}` : ''}</div>
-                    </div>
-                    {m.activeTrainerCount >= 5
-                      ? <span className="text-xs text-amber-400">5 of 5 trainers</span>
-                      : <UserPlus className="w-4 h-4 text-[#7C3AED]" />}
-                  </button>
-                ))}
-              {assignableMembers?.filter(m =>
-                memberSearch === '' ||
-                m.full_name?.toLowerCase().includes(memberSearch.toLowerCase()) ||
-                m.email?.toLowerCase().includes(memberSearch.toLowerCase()) ||
-                m.code?.toLowerCase().includes(memberSearch.toLowerCase())
-              ).length === 0 && (
+              {assignableLoading && (
+                <div className="text-center py-6 text-fg-muted text-sm">Loading members…</div>
+              )}
+              {assignableError && (
+                <div role="alert" className="text-sm text-rose-300 bg-rose-500/10 border border-rose-400/25 rounded-lg px-3 py-2 my-2">
+                  {(assignableError as Error).message}
+                </div>
+              )}
+              {searchedMembers.map(m => (
+                <button
+                  key={m.id}
+                  onClick={() => {
+                    if (assignedTotal >= 15 || m.activeTrainerCount >= 5) return
+                    setAssignmentError(null)
+                    setMemberToAssign({ id: m.id, full_name: m.full_name })
+                  }}
+                  disabled={assignMutation.isPending || assignedTotal >= 15 || m.activeTrainerCount >= 5}
+                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-[#7C3AED]/10 transition-colors disabled:opacity-50 text-left"
+                >
+                  <div>
+                    <div className="text-sm font-medium text-fg-strong">{m.full_name}</div>
+                    <div className="text-xs text-fg-muted">{m.email} {m.code ? `· ${m.code}` : ''}</div>
+                  </div>
+                  {m.activeTrainerCount > 0
+                    ? <span className="text-xs text-fg-muted">{m.activeTrainerCount} of 5 trainers</span>
+                    : <UserPlus className="w-4 h-4 text-[#7C3AED]" />}
+                </button>
+              ))}
+              {!assignableLoading && !assignableError && searchedMembers.length === 0 && (
                 <div className="text-center py-6 text-fg-muted text-sm">No members found</div>
               )}
             </div>

@@ -13,14 +13,21 @@ import {
 // its own, which it is not - it is one card.
 //
 // The `/settings` route is still registered in App.tsx, so the URL keeps working.
-const navItems = [
+interface NavItem {
+  to: string
+  label: string
+  icon: any
+  end?: boolean
+}
+
+const navItems: NavItem[] = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/members', label: 'Members', icon: Users },
   { to: '/trainers', label: 'Trainers', icon: Dumbbell },
   { to: '/memberships', label: 'Memberships', icon: CreditCard },
   { to: '/qr', label: 'QR', icon: QrCode },
   { to: '/attendance', label: 'Attendance', icon: CalendarCheck },
-  { to: '/reports/inactive', label: 'Reports', icon: BarChart3, end: true },
+  { to: '/reports', label: 'Reports', icon: BarChart3 },
   { to: '/reports/feedback', label: 'Feedback', icon: MessageSquare },
   { to: '/predictions', label: 'Predictions', icon: TrendingUp },
   { to: '/notifications', label: 'Notifications', icon: Bell },

@@ -1,10 +1,10 @@
-﻿import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { ChevronLeft, ChevronRight, Inbox, Search } from 'lucide-react'
 import { useFitRows } from '@/hooks/useFitRows'
 
 export interface RecordsColumn<T> {
   key: string
-  header: string
+  header: ReactNode
   className?: string
   /**
    * Horizontal alignment of the header and its cells. Row cells wrap their
@@ -49,6 +49,7 @@ interface RecordsTableProps<T> {
    * open something, and the pointer and hover treatment follow automatically.
    */
   onRowClick?: (row: T) => void
+  headerExtra?: ReactNode
 }
 
 /**
@@ -82,7 +83,7 @@ const HEADER_HEIGHT = 40
 export default function RecordsTable<T>({
   title, columns, rows, rowKey, searchFields, searchPlaceholder,
   searchValue, onSearchChange, isLoading, emptyMessage, subtitle, pageSize: pageSizeProp,
-  onRowClick,
+  onRowClick, headerExtra,
 }: RecordsTableProps<T>) {
 
   const [page, setPage] = useState(0)
@@ -160,7 +161,9 @@ export default function RecordsTable<T>({
           <h3 className="text-[15px] font-semibold text-fg-strong">{title}</h3>
           {subtitle && <p className="mt-0.5 text-[12px] text-fg-muted leading-4">{subtitle}</p>}
         </div>
-        <div className="relative w-full sm:w-80">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          {headerExtra}
+          <div className="relative w-full sm:w-80">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-fg-faint pointer-events-none" />
           <input
             type="search"
@@ -170,6 +173,7 @@ export default function RecordsTable<T>({
             aria-label={`Search ${title}`}
             className="w-full pl-9 pr-3 py-2 glass-input rounded-xl text-sm text-fg-strong placeholder:text-fg-faint focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50"
           />
+        </div>
         </div>
       </div>
       <div className="px-4 pb-3 flex-1 min-h-0 flex flex-col gap-2.5">

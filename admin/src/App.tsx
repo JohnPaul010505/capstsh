@@ -13,7 +13,6 @@ import AttendancePage from '@/features/attendance/pages/AttendancePage'
 import WorkoutsPage from '@/features/workouts/pages/WorkoutsPage'
 import MembershipsPage from '@/features/memberships/pages/MembershipsPage'
 import ReportsPage from '@/features/reports/pages/ReportsPage'
-import InactiveReportPage from '@/features/reports/pages/InactiveReportPage'
 import CoachFeedbackPage from '@/features/reports/pages/CoachFeedbackPage'
 import QRPage from '@/features/qr/pages/QRPage'
 import NotificationsPage from '@/features/notifications/pages/NotificationsPage'
@@ -40,12 +39,13 @@ function DashboardShell() {
         <Route path="/workouts" element={<WorkoutsPage />} />
         <Route path="/memberships" element={<MembershipsPage />} />
         <Route path="/reports" element={<ReportsPage />} />
-        <Route path="/reports/inactive" element={<InactiveReportPage />} />
+        <Route path="/reports/inactive" element={<ReportsPage />} />
         <Route path="/reports/feedback" element={<CoachFeedbackPage />} />
         <Route path="/predictions" element={<PredictionsPage />} />
         <Route path="/qr" element={<QRPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/reports/generate" element={<ReportsPage />} />
       </Routes>
     </AdminLayout>
   )

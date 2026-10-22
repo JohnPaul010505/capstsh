@@ -1,4 +1,4 @@
-import { config } from 'dotenv'
+﻿import { config } from 'dotenv'
 import { resolve, dirname } from 'path'
 import { fileURLToPath } from 'url'
 config({ path: resolve(dirname(fileURLToPath(import.meta.url)), '..', '.env') })
@@ -28,7 +28,7 @@ const adminClient = createClient(supabaseUrl, serviceRoleKey, {
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8001'
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', routes: ['enroll', 'users', 'update-email', 'delete-user', 'assign-trainer', 'unassign-trainer', 'backfill-auth', 'backfill-codes', 'ai/predictions', 'plans/check-daily-completions', 'plans/check-weekly-completions'] })
+  res.json({ status: 'ok', routes: ['enroll', 'users', 'update-email', 'delete-user', 'assignable-members', 'assign-trainer', 'unassign-trainer', 'backfill-auth', 'backfill-codes', 'ai/predictions', 'plans/check-daily-completions', 'plans/check-weekly-completions'] })
 })
 
 app.post('/api/enroll', async (req, res) => {
@@ -149,9 +149,105 @@ app.post('/api/update-email', async (req, res) => {
   }
 })
 
+// A member may work with up to five active trainers; inactive history does not
+// count. Shared by the chooser and the assign endpoint so both agree.
+const MEMBER_TRAINER_LIMIT = 5
+
+/**
+ * Reads every row of a paged PostgREST query - the JS client returns at most
+ * 1000 rows per select, which a whole-gym roster can exceed.
+ */
+async function fetchAllRows(buildQuery) {
+  const pageSize = 1000
+  const rows = []
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await buildQuery().range(offset, offset + pageSize - 1)
+    if (error) throw error
+    rows.push(...(data ?? []))
+    if ((data ?? []).length < pageSize) break
+  }
+  return rows
+}
+
+/**
+ * Members the admin can still add to this trainer:
+ *  - not actively assigned to them already (no duplicate pair), and
+ *  - fewer than five active trainers (members at the cap are hidden).
+ * Members who work with other trainers stay eligible and carry their active
+ * count, so the chooser can show "2 of 5 trainers" instead of blocking them.
+ * Served from the service-role client so the answer never depends on row-level
+ * security or on a stale client cache.
+ */
+app.get('/api/assignable-members', async (req, res) => {
+  const trainerId = req.query.trainer_id
+  if (!trainerId || typeof trainerId !== 'string') {
+    return res.status(400).json({ error: 'trainer_id is required' })
+  }
+
+  try {
+    const { data: trainer, error: trainerError } = await adminClient
+      .from('profiles')
+      .select('id, role')
+      .eq('id', trainerId)
+      .maybeSingle()
+    if (trainerError) throw trainerError
+    if (!trainer || trainer.role !== 'trainer') {
+      return res.status(404).json({ error: 'Trainer not found' })
+    }
+
+    const [assignments, members] = await Promise.all([
+      fetchAllRows(() =>
+        adminClient
+          .from('trainer_assignments')
+          .select('member_id, trainer_id')
+          .eq('status', 'active')
+          .order('id'),
+      ),
+      fetchAllRows(() =>
+        adminClient
+          .from('profiles')
+          .select('id, full_name, email, code')
+          .eq('role', 'member')
+          .order('full_name')
+          .order('id'),
+      ),
+    ])
+
+    const activeTrainerCounts = new Map()
+    const assignedToTrainer = new Set()
+    for (const assignment of assignments) {
+      activeTrainerCounts.set(
+        assignment.member_id,
+        (activeTrainerCounts.get(assignment.member_id) ?? 0) + 1,
+      )
+      if (assignment.trainer_id === trainerId) {
+        assignedToTrainer.add(assignment.member_id)
+      }
+    }
+
+    const eligible = members
+      .filter(member => !assignedToTrainer.has(member.id))
+      .map(member => ({
+        ...member,
+        activeTrainerCount: activeTrainerCounts.get(member.id) ?? 0,
+      }))
+      .filter(member => member.activeTrainerCount < MEMBER_TRAINER_LIMIT)
+
+    res.json({
+      members: eligible,
+      memberTrainerLimit: MEMBER_TRAINER_LIMIT,
+    })
+  } catch (err) {
+    console.error('Assignable members error:', err)
+    res.status(500).json({
+      error: err?.message || 'Failed to load assignable members',
+    })
+  }
+})
+
 app.post('/api/assign-trainer', async (req, res) => {
   const { trainer_id, member_id } = req.body
-  const memberTrainerLimitMessage = 'This member already has the maximum of 5 active trainers.'
+  const memberTrainerLimitMessage = `This member already has the maximum of ${MEMBER_TRAINER_LIMIT} active trainers.`
 
   if (!trainer_id || !member_id) {
     return res.status(400).json({ error: 'trainer_id and member_id are required' })
@@ -180,7 +276,7 @@ app.post('/api/assign-trainer', async (req, res) => {
     if (!member || member.role !== 'member') return res.status(404).json({ error: 'Member not found' })
     if ((activeAssignments ?? []).length >= 15) return res.status(409).json({ error: 'This trainer already has the maximum of 15 members.' })
     if (existing?.length) return res.status(409).json({ error: 'This member is already assigned to this trainer.' })
-    if ((memberActiveAssignments ?? []).length >= 5) return res.status(409).json({ error: memberTrainerLimitMessage })
+    if ((memberActiveAssignments ?? []).length >= MEMBER_TRAINER_LIMIT) return res.status(409).json({ error: memberTrainerLimitMessage })
 
     const { data, error } = await adminClient
       .from('trainer_assignments')
@@ -189,6 +285,27 @@ app.post('/api/assign-trainer', async (req, res) => {
       .single()
 
     if (error) throw error
+
+    // Notify the member that a new trainer has been assigned to them.
+    // Fetch the trainer's display name so the message is personal.
+    try {
+      const { data: trainerProfile } = await adminClient
+        .from('profiles')
+        .select('full_name')
+        .eq('id', trainer_id)
+        .maybeSingle()
+      const trainerName = trainerProfile?.full_name || 'A trainer'
+      await adminClient.from('notifications').insert({
+        user_id: member_id,
+        title: 'New Trainer Assigned',
+        body: `${trainerName} has been assigned as your trainer. You can view your trainer details in the app.`,
+        sender_name: trainerName,
+      })
+    } catch (notifErr) {
+      // Notification failure must never roll back a successful assignment.
+      console.error('Assign trainer -- notification insert failed:', notifErr?.message)
+    }
+
     res.json({ success: true, assignment: data })
   } catch (err) {
     console.error('Assign trainer error:', err)
