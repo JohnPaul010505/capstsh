@@ -1,4 +1,5 @@
 import '../../../../shared/utils/chat_time.dart';
+import '../../../../shared/utils/trainer_availability_time.dart';
 import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
@@ -578,7 +579,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                day.trim(),
+                                formatTrainerAvailability(day.trim()),
                                 style: TextStyle(
                                   color: ClayTokens.clayDarkTextPrimary,
                                 ),

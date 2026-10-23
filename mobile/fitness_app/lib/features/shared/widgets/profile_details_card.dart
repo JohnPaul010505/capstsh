@@ -16,6 +16,7 @@ import 'package:shared/providers/auth_provider.dart';
 import 'package:shared/models/profile.dart';
 
 import '../../../../app/design_tokens.dart';
+import '../../../shared/utils/trainer_availability_time.dart';
 
 String _clockLabel(String value) {
   final parts = value.split(':');
@@ -24,13 +25,7 @@ String _clockLabel(String value) {
 }
 
 String _scheduleLabel(String? value) {
-  if (value == null || value.isEmpty) return 'Schedule not provided';
-  return value
-      .replaceAllMapped(
-        RegExp(r'\b([01]\d|2[0-3]):[0-5]\d\b'),
-        (match) => _clockLabel(match[0]!),
-      )
-      .replaceAll(',', '\n');
+  return formatTrainerAvailability(value).replaceAll(',', '\n');
 }
 
 const personalFields = <String, String>{

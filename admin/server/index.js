@@ -288,7 +288,7 @@ app.post('/api/assign-trainer', async (req, res) => {
       { data: memberActiveAssignments, error: memberAssignmentsError },
     ] = await Promise.all([
       adminClient.from('profiles').select('id, role').eq('id', trainer_id).maybeSingle(),
-      adminClient.from('profiles').select('id, role').eq('id', member_id).maybeSingle(),
+      adminClient.from('profiles').select('id, role, full_name').eq('id', member_id).maybeSingle(),
       adminClient.from('trainer_assignments').select('id').eq('trainer_id', trainer_id).eq('status', 'active'),
       adminClient.from('trainer_assignments').select('id').eq('trainer_id', trainer_id).eq('member_id', member_id).eq('status', 'active').limit(1),
       adminClient.from('trainer_assignments').select('id').eq('member_id', member_id).eq('status', 'active'),
@@ -312,8 +312,7 @@ app.post('/api/assign-trainer', async (req, res) => {
 
     if (error) throw error
 
-    // Notify the member that a new trainer has been assigned to them.
-    // Fetch the trainer's display name so the message is personal.
+    // Tell both people about the new assignment.
     try {
       const { data: trainerProfile } = await adminClient
         .from('profiles')
@@ -321,12 +320,22 @@ app.post('/api/assign-trainer', async (req, res) => {
         .eq('id', trainer_id)
         .maybeSingle()
       const trainerName = trainerProfile?.full_name || 'A trainer'
-      await adminClient.from('notifications').insert({
-        user_id: member_id,
-        title: 'New Trainer Assigned',
-        body: `${trainerName} has been assigned as your trainer. Specialty: ${trainerProfile?.specialty || 'Not specified'}. Availability: ${trainerProfile?.available_days || 'Ask your trainer for their schedule'}. You can view your trainer details in the app.`,
-        sender_name: trainerName,
-      })
+      const memberName = member.full_name || 'A new member'
+      const { error: notificationError } = await adminClient.from('notifications').insert([
+        {
+          user_id: member_id,
+          title: 'New Trainer Assigned',
+          body: `${trainerName} has been assigned as your trainer. Specialty: ${trainerProfile?.specialty || 'Not specified'}. Availability: ${trainerProfile?.available_days || 'Ask your trainer for their schedule'}. You can view your trainer details in the app.`,
+          sender_name: trainerName,
+        },
+        {
+          user_id: trainer_id,
+          title: 'New Member Assigned',
+          body: `${memberName} has been assigned to you. You can view their details in your members list.`,
+          sender_name: 'Gym Admin',
+        },
+      ])
+      if (notificationError) throw notificationError
     } catch (notifErr) {
       // Notification failure must never roll back a successful assignment.
       console.error('Assign trainer -- notification insert failed:', notifErr?.message)
