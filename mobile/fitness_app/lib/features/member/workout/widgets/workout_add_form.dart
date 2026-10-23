@@ -122,8 +122,15 @@ class _WorkoutAddFormState extends ConsumerState<WorkoutAddForm> {
             onChanged: _onQueryChanged,
             decoration: InputDecoration(
               hintText: 'Search exercises…',
-              hintStyle: TextStyle(fontSize: 13, color: ClayTokens.clayDarkTextTertiary),
-              prefixIcon: Icon(Icons.search, color: ClayTokens.clayDarkTextTertiary, size: 18),
+              hintStyle: TextStyle(
+                fontSize: 13,
+                color: ClayTokens.clayDarkTextTertiary,
+              ),
+              prefixIcon: Icon(
+                Icons.search,
+                color: ClayTokens.clayDarkTextTertiary,
+                size: 18,
+              ),
               filled: true,
               fillColor: ClayColors.isLightMode
                   ? Colors.white
@@ -140,9 +147,15 @@ class _WorkoutAddFormState extends ConsumerState<WorkoutAddForm> {
                 borderRadius: BorderRadius.circular(12),
                 borderSide: const BorderSide(color: Color(0xFFA78BFA)),
               ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 12,
+              ),
             ),
-            style: TextStyle(fontSize: 13, color: ClayTokens.clayDarkTextPrimary),
+            style: TextStyle(
+              fontSize: 13,
+              color: ClayTokens.clayDarkTextPrimary,
+            ),
           ),
           if (_isSearching) ...[
             const SizedBox(height: 8),
@@ -150,7 +163,10 @@ class _WorkoutAddFormState extends ConsumerState<WorkoutAddForm> {
               child: SizedBox(
                 width: 16,
                 height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFD6A5FF)),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Color(0xFFD6A5FF),
+                ),
               ),
             ),
           ],
@@ -168,7 +184,10 @@ class _WorkoutAddFormState extends ConsumerState<WorkoutAddForm> {
                 return PressableCard(
                   glass: true,
                   onTap: () => _addExercise(e),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                   margin: const EdgeInsets.only(bottom: 6),
                   borderRadius: BorderRadius.circular(12),
                   child: Row(
@@ -195,13 +214,20 @@ class _WorkoutAddFormState extends ConsumerState<WorkoutAddForm> {
                               children: [
                                 Text(
                                   e.name,
-                                  style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: ClayTokens.clayDarkTextPrimary),
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: ClayTokens.clayDarkTextPrimary,
+                                  ),
                                 ),
                               ],
                             ),
                             Text(
                               '${e.category} · MET ${e.metValue.toStringAsFixed(1)}',
-                              style: const TextStyle(fontSize: 10, color: Color(0xFF8E8E93)),
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: Color(0xFF8E8E93),
+                              ),
                             ),
                           ],
                         ),

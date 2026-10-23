@@ -33,21 +33,21 @@ class WorkoutHeader extends ConsumerWidget {
     final Color chipBorder;
     if (isRunning) {
       chipBg = const Color(0xFFEF4444); // red — live workout
-      chipFg = ClayTokens.clayDarkTextPrimary;
+      chipFg = Colors.white;
       chipBorder = chipFg.withAlpha(70);
     } else if (isDone) {
       chipBg = const Color(0xFF30D158); // green — workout finished
-      chipFg = const Color(0xFF052E16); // dark text stays readable on green
+      chipFg = Colors.white; // dark text stays readable on green
       chipBorder = chipFg.withAlpha(70);
     } else if (ClayColors.isLightMode) {
       // Light mode only: same body as the Food Intake header chips
       // ("0 meals"/date) so the Ready label stays white instead of black.
-      chipBg = const Color(0xFF7C3AED).withAlpha(140);
+      chipBg = const Color(0xFF7C3AED);
       chipFg = Colors.white;
       chipBorder = const Color(0xFF7C3AED).withAlpha(180);
     } else {
       chipBg = ClayTokens.clayPrimary; // purple — not started yet
-      chipFg = ClayTokens.clayDarkTextPrimary;
+      chipFg = Colors.white;
       chipBorder = chipFg.withAlpha(70);
     }
     return Row(
@@ -112,7 +112,7 @@ class WorkoutHeader extends ConsumerWidget {
                       // Light mode: same body as the Food Intake header chips;
                       // dark mode keeps the original gradient pill.
                       ? BoxDecoration(
-                          color: const Color(0xFF7C3AED).withAlpha(140),
+                          color: const Color(0xFF7C3AED),
                           borderRadius: BorderRadius.circular(999),
                           border: Border.all(
                             color: const Color(0xFF7C3AED).withAlpha(180),
@@ -145,7 +145,7 @@ class WorkoutHeader extends ConsumerWidget {
                         // Light mode: same body as the Food Intake header
                         // chips; dark mode keeps the original gradient pill.
                         ? BoxDecoration(
-                            color: const Color(0xFF7C3AED).withAlpha(140),
+                            color: const Color(0xFF7C3AED),
                             borderRadius: BorderRadius.circular(999),
                             border: Border.all(
                               color: const Color(0xFF7C3AED).withAlpha(180),

@@ -49,25 +49,25 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
     final cancellationRequests =
         ref.watch(trainerPlanCancellationRequestsProvider).valueOrNull ?? {};
 
-    return Scaffold(        backgroundColor: ClayColors.isLightMode
-            ? ClayTokens.claySurfaceLight.withAlpha(250)
-            : ClayTokens.clayDarkSurface,
-        body: AppGlowBackground(
+    return Scaffold(
+      backgroundColor: ClayColors.isLightMode
+          ? ClayTokens.claySurfaceLight.withAlpha(250)
+          : ClayTokens.clayDarkSurface,
+      body: AppGlowBackground(
         child: SafeArea(
           child: Column(
             children: [
               _buildHeader(context),
               Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Container(
                   padding: EdgeInsets.all(4),
                   decoration: BoxDecoration(
                     color: ClayTokens.hairline.withAlpha(12),
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: ClayTokens.hairline.withAlpha(20)),
+                    border: Border.all(
+                      color: ClayTokens.hairline.withAlpha(20),
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -168,7 +168,7 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
                                     ? null
                                     : () => context.push(
                                         '/trainer/records/$memberId'
-                                        '?name=${Uri.encodeComponent(memberName)}',
+                                        '?name=${Uri.encodeComponent(memberName)}&planId=${plan['id']}',
                                       ),
                                 child: Padding(
                                   padding: const EdgeInsets.all(16),
@@ -411,13 +411,15 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
                                                 },
                                                 icon: Icon(
                                                   CupertinoIcons.xmark_circle,
-                                                  color: ClayTokens.clayDarkTextPrimary,
+                                                  color: ClayTokens
+                                                      .clayDarkTextPrimary,
                                                   size: 17,
                                                 ),
                                                 label: Text(
                                                   'Cancel plan',
                                                   style: TextStyle(
-                                                    color: ClayTokens.clayDarkTextPrimary,
+                                                    color: ClayTokens
+                                                        .clayDarkTextPrimary,
                                                   ),
                                                 ),
                                                 style: TextButton.styleFrom(

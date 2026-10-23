@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -10,6 +11,7 @@ import '../../../shared/widgets/animations.dart';
 import '../../../shared/widgets/app_glow_background.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../data/bmi_info.dart';
+import '../../home/pages/home_page.dart' show homeDataProvider;
 import '../providers/bmi_history_provider.dart';
 import 'package:shared/providers/body_measurement_provider.dart';
 import '../../goals/services/goal_home_widget.dart';
@@ -93,9 +95,10 @@ class _BmiPageState extends ConsumerState<BmiPage> {
         'member_id': userId,
         'height_cm': heightCm,
         'weight_kg': weightKg,
-        'measured_at': DateTime.now().toIso8601String(),
+        'measured_at': DateTime.now().toUtc().toIso8601String(),
       });
-      await GoalHomeWidget.syncForCurrentMember();
+      unawaited(GoalHomeWidget.syncForCurrentMember().catchError((_) {}));
+      ref.invalidate(homeDataProvider(userId));
       ref.invalidate(bmiHistoryProvider);
       ref.invalidate(bmiRawRowsProvider);
       ref.invalidate(latestBmiProvider);

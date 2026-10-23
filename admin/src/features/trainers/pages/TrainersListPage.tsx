@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import PeopleTable, { peopleCells, type PeopleColumn } from '@/components/PeopleTable'
@@ -79,6 +79,7 @@ export default function TrainersListPage() {
   const [fullName, setFullName] = useState('')
   const [phone, setPhone] = useState('')
   const [specialty, setSpecialty] = useState('')
+  const [dayTimes, setDayTimes] = useState<Record<string, { start: string; end: string }>>({})
   const [availableDays, setAvailableDays] = useState<string[]>([])
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
@@ -92,6 +93,7 @@ export default function TrainersListPage() {
     if (!password) newErrors.password = 'Password is required'
     if (password !== passwordConfirm) newErrors.passwordConfirm = 'Passwords do not match'
     if (phone && !/^\d{11}$/.test(phone)) newErrors.phone = 'Phone must be exactly 11 digits'
+    for (const day of availableDays) { const t = dayTimes[day]; if (!t?.start || !t?.end || t.start >= t.end) newErrors.availability = 'Choose a start and end time for each selected day.' }
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
       return
@@ -106,7 +108,7 @@ export default function TrainersListPage() {
           email, password, fullName, role: 'trainer',
           phone: phone || undefined,
           specialty: specialty || undefined,
-          availableDays: availableDays.length > 0 ? availableDays.join(',') : undefined,
+          availableDays: availableDays.length > 0 ? availableDays.map(day => `${day} ${dayTimes[day].start}-${dayTimes[day].end}`).join(',') : undefined,
         }),
       })
       if (!res.ok) {
@@ -270,7 +272,8 @@ export default function TrainersListPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-fg mb-1">Phone</label>
+                {availableDays.map(day => <div key={day} className="flex gap-2 items-center mb-2"><span className="text-fg w-10">{day}</span><input type="time" aria-label={day + ' start'} value={dayTimes[day]?.start ?? ''} onChange={e => setDayTimes(prev => ({...prev, [day]: {...(prev[day] ?? {start: '', end: ''}), start: e.target.value}}))} className="glass-input p-2 rounded-lg min-w-0 text-fg-strong" /><input type="time" aria-label={day + ' end'} value={dayTimes[day]?.end ?? ''} onChange={e => setDayTimes(prev => ({...prev, [day]: {...(prev[day] ?? {start: '', end: ''}), end: e.target.value}}))} className="glass-input p-2 rounded-lg min-w-0 text-fg-strong" /></div>)}
+{errors.availability && <p role="alert" className="text-red-500">{errors.availability}</p>}<label className="block text-sm font-medium text-fg mb-1">Phone</label>
                 <input value={phone} onChange={e => { setPhone(e.target.value); setErrors(prev => ({...prev, phone: ''})) }} placeholder="09171234567"
                   className="w-full px-3 py-2 bg-overlay-8 border border-line rounded-lg text-sm text-fg-strong focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50 placeholder-fg-muted" />
                 {errors.phone && <p className="text-xs text-[#EF4444] mt-1">{errors.phone}</p>}

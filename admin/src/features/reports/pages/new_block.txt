@@ -1,0 +1,97 @@
+) : reportType === 'feedback' ? (
+          <RecordsTable
+            key={`feedback:${feedbackRange.start}:${feedbackRange.end}`}
+            title="Coach Feedback"
+            subtitle="All feedback entries for the selected date range."
+            pageSize={12}
+            columns={feedbackExportColumns}
+            rows={feedbackRows}
+            rowKey={r => r.id}
+            searchFields={r => [r.memberName, r.trainerName || '', r.feedback, r.memberCode || '']}
+            searchPlaceholder={searchPlaceholder}
+            searchValue={search}
+            onSearchChange={setSearch}
+            isLoading={isLoading}
+            emptyMessage={feedbackRows.length === 0 ? 'No feedback entries found' : 'No feedback matches this search'}
+          />
+        ) : reportType === 'dailyCheckins' ? (
+          <RecordsTable
+            key={`dailycheckin:${dailyCheckinRange.start}:${dailyCheckinRange.end}:${dailyCheckinSearch}`}
+            title="Daily Check-ins"
+            subtitle="Check-in trends and volume over time."
+            pageSize={12}
+            columns={dailyCheckinColumns}
+            rows={dailyCheckinRows}
+            rowKey={r => r.id}
+            searchFields={r => [r.profiles?.full_name, r.profiles?.code, r.planName, r.check_in_date]}
+            searchPlaceholder={searchPlaceholder}
+            searchValue={dailyCheckinSearch}
+            onSearchChange={setDailyCheckinSearch}
+            isLoading={isLoading}
+            emptyMessage={dailyCheckinRows.length === 0 ? 'No daily check-ins found' : 'No daily check-ins match this search'}
+          />
+        ) : reportType === 'revenue' ? (
+          <RecordsTable
+            key={`revenue:${revenueRange.start}:${revenueRange.end}:${revenueSearch}`}
+            title="Revenue Overview"
+            subtitle="Monthly/custom-range revenue and plan breakdowns."
+            pageSize={12}
+            columns={revenueColumns}
+            rows={revenueRows}
+            rowKey={r => r.id}
+            searchFields={r => [r.memberName, r.memberCode || '', r.planName, r.startDate]}
+            searchPlaceholder={searchPlaceholder}
+            searchValue={revenueSearch}
+            onSearchChange={setRevenueSearch}
+            isLoading={isLoading}
+            emptyMessage={revenueRows.length === 0 ? 'No revenue entries found' : 'No revenue entries match this search'}
+          />
+        ) : reportType === 'memberGrowth' ? (
+          <RecordsTable
+            key={`growth:${memberGrowthRange.start}:${memberGrowthRange.end}:${memberGrowthSearch}`}
+            title="Member Growth"
+            subtitle="New registration trends."
+            pageSize={12}
+            columns={memberGrowthColumns}
+            rows={memberGrowthRows}
+            rowKey={r => r.id}
+            searchFields={r => [r.memberName, r.memberCode || '', r.planName, r.day]}
+            searchPlaceholder={searchPlaceholder}
+            searchValue={memberGrowthSearch}
+            onSearchChange={setMemberGrowthSearch}
+            isLoading={isLoading}
+            emptyMessage={memberGrowthRows.length === 0 ? 'No member growth entries found' : 'No member growth entries match this search'}
+          />
+        ) : reportType === 'memberOverview' ? (
+          <RecordsTable
+            key={`overview:${memberOverviewRange.start}:${memberOverviewRange.end}:${memberOverviewSearch}`}
+            title="Member Overview"
+            subtitle="Active vs. inactive distributions."
+            pageSize={12}
+            columns={memberOverviewColumns}
+            rows={memberOverviewRows}
+            rowKey={r => r.id}
+            searchFields={r => [r.memberName, r.memberCode || '', r.planName, r.status]}
+            searchPlaceholder={searchPlaceholder}
+            searchValue={memberOverviewSearch}
+            onSearchChange={setMemberOverviewSearch}
+            isLoading={isLoading}
+            emptyMessage={memberOverviewRows.length === 0 ? 'No member overview entries found' : 'No member overview entries match this search'}
+          />
+        ) : reportType === 'recentActivity' ? (
+          <RecordsTable
+            key={`activity:${recentActivityRange.start}:${recentActivityRange.end}:${recentActivitySearch}`}
+            title="Recent Activity"
+            subtitle="Audit log of recent events and visits."
+            pageSize={12}
+            columns={recentActivityColumns}
+            rows={recentActivityRows}
+            rowKey={r => r.id}
+            searchFields={r => [r.memberName, r.memberCode || '', r.message, r.day]}
+            searchPlaceholder={searchPlaceholder}
+            searchValue={recentActivitySearch}
+            onSearchChange={setRecentActivitySearch}
+            isLoading={isLoading}
+            emptyMessage={recentActivityRows.length === 0 ? 'No recent activity found' : 'No recent activity matches this search'}
+          />
+        ) : (

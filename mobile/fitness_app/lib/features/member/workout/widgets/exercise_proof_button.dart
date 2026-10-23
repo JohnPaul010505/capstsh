@@ -77,18 +77,25 @@ class _ExerciseProofTileState extends State<ExerciseProofTile> {
 
       final client = SupabaseClientService().client;
       final userId = client.auth.currentUser!.id;
-      uploadedPath = 'workouts/$userId/${DateTime.now().millisecondsSinceEpoch}.mp4';
+      uploadedPath =
+          'workouts/$userId/${DateTime.now().millisecondsSinceEpoch}.mp4';
       final bytes = await video.readAsBytes();
-      await client.storage.from('proofs').uploadBinary(
-        uploadedPath,
-        bytes,
-        fileOptions: const FileOptions(contentType: 'video/mp4'),
-      );
-      final pickerUrl = client.storage.from('proofs').getPublicUrl(uploadedPath);
+      await client.storage
+          .from('proofs')
+          .uploadBinary(
+            uploadedPath,
+            bytes,
+            fileOptions: const FileOptions(contentType: 'video/mp4'),
+          );
+      final pickerUrl = client.storage
+          .from('proofs')
+          .getPublicUrl(uploadedPath);
 
       var tooShort = false;
       try {
-        final controller = VideoPlayerController.networkUrl(Uri.parse(pickerUrl));
+        final controller = VideoPlayerController.networkUrl(
+          Uri.parse(pickerUrl),
+        );
         await controller.initialize();
         tooShort = controller.value.duration.inSeconds < 30;
         await controller.dispose();
@@ -112,9 +119,9 @@ class _ExerciseProofTileState extends State<ExerciseProofTile> {
       widget.onRecorded(pickerUrl);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save proof: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to save proof: $e')));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -162,7 +169,10 @@ class _ExerciseProofTileState extends State<ExerciseProofTile> {
           border: Border.all(color: const Color(0xFF2A2A45)),
         ),
         child: const Center(
-          child: CircularProgressIndicator(strokeWidth: 2, color: ClayColors.clayPrimaryLight),
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: ClayColors.clayPrimaryLight,
+          ),
         ),
       );
     }
@@ -190,28 +200,40 @@ class _ExerciseProofTileState extends State<ExerciseProofTile> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.videocam_outlined, size: 18, color: Color(0xFF636366)),
+          const Icon(
+            Icons.videocam_outlined,
+            size: 18,
+            color: Color(0xFF636366),
+          ),
           const SizedBox(width: 10),
           const Expanded(
-            child: Text('No video proof yet', style: TextStyle(fontSize: 11, color: Color(0xFF8E8E93))),
+            child: Text(
+              'No video proof yet',
+              style: TextStyle(fontSize: 11, color: Color(0xFF8E8E93)),
+            ),
           ),
           PressableCard(
             onTap: _record,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             borderRadius: BorderRadius.circular(999),
             decoration: BoxDecoration(
-              color: ClayTokens.clayPrimary.withAlpha(30),
+              color: const Color(0xFF7C3AED),
               borderRadius: BorderRadius.circular(999),
               border: Border.all(color: ClayTokens.clayPrimary.withAlpha(100)),
             ),
             child: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.fiber_manual_record, color: Color(0xFFD6A5FF), size: 12),
+                Icon(Icons.fiber_manual_record, color: Colors.white, size: 12),
                 SizedBox(width: 6),
-                Text('Record Proof', style: TextStyle(
-                  fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFFD6A5FF),
-                )),
+                Text(
+                  'Record Proof',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
               ],
             ),
           ),
@@ -230,38 +252,30 @@ class _ExerciseProofTileState extends State<ExerciseProofTile> {
         height: 64,
         padding: EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
-          gradient: RadialGradient(
-            center: const Alignment(0.9, -0.9),
-            radius: 1.3,
-            colors: [
-              const Color(0xFF7C3AED).withAlpha(60),
-              const Color(0xFF1C1C2E).withAlpha(215),
-            ],
-          ),
+          color: ClayColors.isLightMode
+              ? Colors.white.withAlpha(180)
+              : const Color(0xFF1C1C2E).withAlpha(140),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: ClayTokens.hairline.withAlpha(30)),
         ),
         child: Row(
           children: [
-            Icon(Icons.play_circle_outline, size: 26, color: ClayTokens.clayDarkTextSecondary),
+            Icon(
+              Icons.play_circle_outline,
+              size: 26,
+              color: ClayTokens.clayDarkTextSecondary,
+            ),
             const SizedBox(width: 10),
             Expanded(
-              child: Text('Video saved · tap to view', style: TextStyle(
-                fontSize: 11, fontWeight: FontWeight.w700, color: ClayTokens.clayDarkTextSecondary,
-              )),
-            ),
-            Container(
-              width: 5, height: 5,
-              decoration: BoxDecoration(
-                color: ClayTokens.clayAccent,
-                shape: BoxShape.circle,
+              child: Text(
+                'Video saved · tap to view',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: ClayTokens.clayDarkTextSecondary,
+                ),
               ),
             ),
-            const SizedBox(width: 4),
-            const Text('DONE', style: TextStyle(
-              fontSize: 8, fontWeight: FontWeight.w700, color: Color(0xFF6EE7B7),
-            )),
-            const SizedBox(width: 6),
             GestureDetector(
               onTap: _confirmRemoveProof,
               child: const Padding(

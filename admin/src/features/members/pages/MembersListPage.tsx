@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useNavigate } from 'react-router-dom'
@@ -102,10 +102,10 @@ export default function MembersListPage() {
           moved into the card header, beside the title, which is where the QR
           queue and every dashboard tab keep theirs. */}
       <ListToolbar range={range} onRangeChange={setRange} left={
-        <div className="flex items-center gap-2" role="group" aria-label="Member views">
+        <div className="glass-card page-tabs" role="group" aria-label="Member views">
           {([['all', 'All members'], ['unassigned', 'No trainer'], ['recent', 'Recent join']] as const).map(([id, label]) => (
             <button key={id} type="button" onClick={() => setView(id)} aria-pressed={view === id}
-              className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${view === id ? 'bg-[#7C3AED] border-[#7C3AED] text-white' : 'border-line text-fg-muted hover:text-fg-strong'}`}>
+              className="page-tab">
               {label}
             </button>
           ))}

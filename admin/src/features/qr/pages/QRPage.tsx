@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { QRCodeSVG } from 'qrcode.react'
@@ -386,7 +386,7 @@ export default function QRPage() {
           labels, which is also what verify-admin-ui.mjs reads to confirm the
           pending queue is intact. */}
       <div className="flex flex-wrap items-center justify-between gap-2 shrink-0">
-        <div role="tablist" aria-label="QR sections" className="flex flex-wrap items-center gap-1.5">
+        <div role="tablist" aria-label="QR sections" className="glass-card page-tabs">
           {QR_VIEWS.map(v => {
             const count = v.id === 'pending' ? pending.length : v.id === 'confirmed' ? confirmed.length : null
             return (
@@ -396,11 +396,7 @@ export default function QRPage() {
                 role="tab"
                 aria-selected={view === v.id}
                 onClick={() => setView(v.id)}
-                className={`px-3.5 py-2 rounded-xl text-sm transition-colors ${
-                  view === v.id
-                    ? 'bg-[#7C3AED] text-white'
-                    : 'bg-overlay-8 border border-line text-fg-muted hover:text-fg-strong hover:border-[#7C3AED]/40'
-                }`}
+                className="page-tab"
               >
                 {v.label}{count === null ? '' : ` (${count})`}
               </button>

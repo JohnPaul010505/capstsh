@@ -4,23 +4,23 @@ import { useQuery } from '@tanstack/react-query'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { supabase } from '@/lib/supabase'
+import { fetchLastCheckins, fetchMemberships } from '@/features/dashboard/lib/attendance'
+import { fetchAllRows } from '@/features/dashboard/lib/fetchAll'
+import { toDay, daysBetween } from '@/features/dashboard/lib/dateRange'
 import StatusBadge from '@/components/StatusBadge'
 import RecordsTable, { type RecordsColumn } from '@/components/RecordsTable'
+import PurpleSelect from '@/components/PurpleSelect'
 import DateRangePicker from '@/components/DateRangePicker'
-import { allTime, isAllTime, LIST_PRESETS, type Range } from '@/features/dashboard/lib/dateRange'
-import { ChevronDown } from 'lucide-react'
-
-const DAY = 24 * 60 * 60 * 1000
-
-/**
- * Stable pseudo-random day count for a "never checked in" row, seeded from the
- * user id so it is varied per member/trainer but identical across re-renders.
- */
-function neverSeenDays(userId: string): number {
-  let h = 0
-  for (const c of userId) h = (h * 31 + c.charCodeAt(0)) | 0
-  return 30 + (Math.abs(h) % 240)
-}
+import { allTime, isAllTime, LIST_PRESETS, localEndIso, localStartIso, type Range } from '@/features/dashboard/lib/dateRange'
+import { ChevronDown, MessageSquare } from 'lucide-react'
+import { useCheckinsTab, type CheckinRecord } from '@/features/dashboard/hooks/useCheckinsTab'
+import { useGrowthTab, type GrowthRecord } from '@/features/dashboard/hooks/useGrowthTab'
+import { useRevenueTab, type RevenueRecord } from '@/features/dashboard/hooks/useRevenueTab'
+import { useMemberOverviewTab, type MemberOverviewRecord } from '@/features/dashboard/hooks/useMemberOverviewTab'
+import { useActivityTab } from '@/features/dashboard/hooks/useActivityTab'
+import type { ActivityItem } from '@/features/dashboard/lib/activityFeed'
+import type { PlanFilter } from '@/features/dashboard/lib/planFilter'
+import { fmtDay, formatRangeLabel } from '@/features/dashboard/lib/dateRange'
 
 export interface InactiveRow {
   userId: string
@@ -28,13 +28,28 @@ export interface InactiveRow {
   type: 'member' | 'trainer'
   code?: string | null
   lastCheckIn: string | null
+  joinedAt: string | null
   daysInactive: number
+}
+
+export interface FeedbackExportRow {
+  id: string
+  memberName: string
+  memberCode?: string | null
+  memberEmail?: string | null
+  trainerName?: string | null
+  feedback: string
+  rating: number | null
+  date: string
+  memberComment?: string | null
+  memberCommentedAt?: string | null
 }
 
 export type ExportRow = InactiveRow
 
 type TabKey = 'inactive' | 'generate'
 type RoleFilter = 'all' | 'member' | 'trainer'
+type ReportType = 'inactive' | 'feedback' | 'dailyCheckins' | 'revenue' | 'memberGrowth' | 'memberOverview' | 'recentActivity'
 
 export default function ReportsPage() {
   const location = useLocation()
@@ -62,124 +77,139 @@ export default function ReportsPage() {
   }
 
   // Filter & Search states
-  const [roleFilter, setRoleFilter] = useState<RoleFilter>('all')
-  const [search, setSearch] = useState('')
-  const [range, setRange] = useState<Range>(() => allTime())
+  const [roles, setRoles] = useState<Record<string, RoleFilter>>({})
+  const [searches, setSearches] = useState<Record<string, string>>({})
+  const [inactiveRange, setInactiveRange] = useState<Range>(() => allTime())
+  const [feedbackRange, setFeedbackRange] = useState<Range>(() => allTime())
+  const [generateInactiveRange, setGenerateInactiveRange] = useState<Range>(() => allTime())
+
+  // Independent date ranges and search for each report section (Generation Reports tab)
+  const [dailyCheckinRange, setDailyCheckinRange] = useState<Range>(() => allTime())
+  const [dailyCheckinSearch, setDailyCheckinSearch] = useState('')
+  const [revenueRange, setRevenueRange] = useState<Range>(() => allTime())
+  const [revenueSearch, setRevenueSearch] = useState('')
+  const [memberGrowthRange, setMemberGrowthRange] = useState<Range>(() => allTime())
+  const [memberGrowthSearch, setMemberGrowthSearch] = useState('')
+  const [memberOverviewRange, setMemberOverviewRange] = useState<Range>(() => allTime())
+  const [memberOverviewSearch, setMemberOverviewSearch] = useState('')
+  const [recentActivityRange, setRecentActivityRange] = useState<Range>(() => allTime())
+  const [recentActivitySearch, setRecentActivitySearch] = useState('')
 
   // Export controls (Generation Reports tab)
   const [format, setFormat] = useState<'PDF' | 'Excel' | 'CSV' | 'Print'>('PDF')
   const [notificationEnabled, setNotificationEnabled] = useState(false)
   const [notifiedUserIds, setNotifiedUserIds] = useState<Set<string>>(new Set())
+  const [reportType, setReportType] = useState<ReportType>('inactive')
+  const viewKey = activeTab === 'inactive' ? 'inactive-tab' : reportType
+  const roleFilter = roles[viewKey] ?? 'all'
+  const setRoleFilter = (value: RoleFilter) => setRoles(prev => ({ ...prev, [viewKey]: value }))
+  const search = searches[viewKey] ?? ''
+  const setSearch = (value: string) => setSearches(prev => ({ ...prev, [viewKey]: value }))
+  const reportRanges = {
+    inactive: [generateInactiveRange, setGenerateInactiveRange], feedback: [feedbackRange, setFeedbackRange],
+    dailyCheckins: [dailyCheckinRange, setDailyCheckinRange], revenue: [revenueRange, setRevenueRange],
+    memberGrowth: [memberGrowthRange, setMemberGrowthRange], memberOverview: [memberOverviewRange, setMemberOverviewRange],
+    recentActivity: [recentActivityRange, setRecentActivityRange],
+  } as const
+  const [currentRange, setCurrentRange] = activeTab === 'inactive' ? [inactiveRange, setInactiveRange] as const : reportRanges[reportType]
+  const selectedInactiveRange = activeTab === 'inactive' ? inactiveRange : generateInactiveRange
 
-  // Queries for inactive members and trainers
-  const { data: inactiveMembers, isLoading: membersLoading } = useQuery({
-    queryKey: ['report-inactive-members'],
+
+  // Read actual last visits across history, not only the last seven days.
+  const { data: inactiveData, isLoading: membersLoading, error: inactiveError } = useQuery({
+    queryKey: ['report-inactive-roster'],
     queryFn: async () => {
-      const sevenDaysAgo = new Date(Date.now() - 7 * DAY).toISOString().split('T')[0]
-      const [membershipsRes, attendanceRes] = await Promise.all([
-        supabase
-          .from('memberships')
-          .select('member_id, plan_name')
-          .eq('plan_name', 'Daily')
-          .eq('status', 'active'),
-        supabase
-          .from('attendance')
-          .select('member_id, check_in_date')
-          .gte('check_in_date', sevenDaysAgo)
-          .order('check_in_date', { ascending: false }),
+      type Profile = { id: string; full_name: string; code: string | null; role: 'member' | 'trainer'; created_at: string | null }
+      const [profiles, memberships, lastVisits] = await Promise.all([
+        fetchAllRows<Profile>(async (from, to) => {
+          const { data, error } = await supabase.from('profiles')
+            .select('id, full_name, code, role, created_at').in('role', ['member', 'trainer'])
+            .order('id').range(from, to)
+          return { data: data as Profile[] | null, error }
+        }),
+        fetchMemberships(), fetchLastCheckins(),
       ])
-
-      const lastCheckIn: Record<string, string> = {}
-      attendanceRes.data?.forEach(a => {
-        if (!lastCheckIn[a.member_id] || a.check_in_date > lastCheckIn[a.member_id]) {
-          lastCheckIn[a.member_id] = a.check_in_date
-        }
-      })
-
-      const memberIds = membershipsRes.data?.map(m => m.member_id) ?? []
-      let profileMap: Record<string, { full_name: string; code: string }> = {}
-      if (memberIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, full_name, code')
-          .in('id', memberIds)
-        profiles?.forEach(p => { profileMap[p.id] = p })
-      }
-
-      const now = new Date()
-      now.setHours(0, 0, 0, 0)
-      return (membershipsRes.data ?? [])
-        .map(m => {
-          const last = lastCheckIn[m.member_id]
-          const daysInactive = last
-            ? Math.floor((now.getTime() - new Date(last).getTime()) / DAY)
-            : neverSeenDays(m.member_id)
-          return {
-            userId: m.member_id,
-            name: profileMap[m.member_id]?.full_name ?? 'Unknown',
-            type: 'member' as const,
-            code: profileMap[m.member_id]?.code,
-            lastCheckIn: last ?? null,
-            daysInactive,
-          }
-        })
-        .filter(r => r.daysInactive >= 7)
-        .sort((a, b) => b.daysInactive - a.daysInactive)
+      const dailyMembers = new Set(memberships.filter(m => m.plan_name === 'Daily' && m.status === 'active').map(m => m.member_id))
+      const today = toDay(new Date())
+      return profiles.filter(p => p.role === 'trainer' || dailyMembers.has(p.id)).map((p): InactiveRow => {
+        const last = lastVisits[p.id] ?? null
+        const joinedAt = p.created_at ? toDay(new Date(p.created_at)) : null
+        return { userId: p.id, name: p.full_name, type: p.role, code: p.code,
+          lastCheckIn: last, joinedAt, daysInactive: Math.max(0, daysBetween(last ?? joinedAt ?? today, today) - 1) }
+      }).filter(r => r.daysInactive >= 7)
     },
   })
+  const trainersLoading = membersLoading
 
-  const { data: inactiveTrainers, isLoading: trainersLoading } = useQuery({
-    queryKey: ['report-inactive-trainers'],
+  const { data: feedbackData, isLoading: feedbackLoading, error: feedbackError } = useQuery({
+    queryKey: ['report-feedback', feedbackRange],
     queryFn: async () => {
-      const sevenDaysAgo = new Date(Date.now() - 7 * DAY).toISOString().split('T')[0]
-      const { data: trainers } = await supabase
-        .from('profiles')
-        .select('id, full_name, code')
-        .eq('role', 'trainer')
+      const narrow = !isAllTime(feedbackRange)
+      const from = narrow ? localStartIso(feedbackRange.start) : undefined
+      const to = narrow ? localEndIso(feedbackRange.end) : undefined
 
-      const trainerIds = (trainers ?? []).map(t => t.id)
-      let attendanceData: { member_id: string; check_in_date: string }[] = []
-      if (trainerIds.length > 0) {
-        const { data } = await supabase
-          .from('attendance')
-          .select('member_id, check_in_date')
-          .in('member_id', trainerIds)
-          .gte('check_in_date', sevenDaysAgo)
-          .order('check_in_date', { ascending: false })
-        attendanceData = data ?? []
-      }
-
-      const lastCheckIn: Record<string, string> = {}
-      attendanceData.forEach(a => {
-        if (!lastCheckIn[a.member_id] || a.check_in_date > lastCheckIn[a.member_id]) {
-          lastCheckIn[a.member_id] = a.check_in_date
-        }
+      const data = await fetchAllRows<any>(async (start, end) => {
+      let q = supabase
+        .from('trainer_feedback')
+        .select('*, member:profiles!trainer_feedback_member_id_fkey(full_name, code, email), trainer:profiles!trainer_feedback_trainer_id_fkey(full_name)')
+      if (from) q = q.gte('created_at', from)
+      if (to) q = q.lte('created_at', to)
+      return await q
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
+        .range(start, end)
       })
 
-      const profileMap: Record<string, { full_name: string; code: string }> = {}
-      trainers?.forEach(t => { profileMap[t.id] = t })
-
-      const now = new Date()
-      now.setHours(0, 0, 0, 0)
-      return (trainers ?? [])
-        .map(t => {
-          const last = lastCheckIn[t.id]
-          const daysInactive = last
-            ? Math.floor((now.getTime() - new Date(last).getTime()) / DAY)
-            : neverSeenDays(t.id)
-          return {
-            userId: t.id,
-            name: profileMap[t.id]?.full_name ?? 'Unknown',
-            type: 'trainer' as const,
-            code: profileMap[t.id]?.code,
-            lastCheckIn: last ?? null,
-            daysInactive,
-          }
-        })
-        .filter(r => r.daysInactive >= 7)
-        .sort((a, b) => b.daysInactive - a.daysInactive)
+      return (data ?? []).map((f: any): FeedbackExportRow => ({
+        id: f.id,
+        memberName: f.member?.full_name ?? 'Unknown',
+        memberCode: f.member?.code ?? null,
+        memberEmail: f.member?.email ?? null,
+        trainerName: f.trainer?.full_name ?? null,
+        feedback: f.content ?? '',
+        rating: f.rating ?? null,
+        date: f.created_at,
+        memberComment: f.member_comment ?? null,
+        memberCommentedAt: f.member_commented_at ?? null,
+      }))
     },
+    enabled: activeTab === 'generate' && reportType === 'feedback',
   })
+
+  // Daily Check-ins query (Generation Reports tab)
+  const dailyCheckinData = useCheckinsTab(
+    dailyCheckinRange,
+    'all' as PlanFilter,
+    'daily'
+  )
+
+  // Revenue Overview query (Generation Reports tab)
+  const revenueData = useRevenueTab(
+    revenueRange,
+    'all' as PlanFilter,
+    'monthly'
+  )
+
+  // Member Growth query (Generation Reports tab)
+  const memberGrowthData = useGrowthTab(
+    memberGrowthRange,
+    'all' as PlanFilter,
+    'daily'
+  )
+
+  // Member Overview query (Generation Reports tab)
+  const memberOverviewData = useMemberOverviewTab(
+    memberOverviewRange,
+    'all' as PlanFilter
+  )
+
+  // Recent Activity query (Generation Reports tab)
+  const recentActivityData = useActivityTab(
+    recentActivityRange,
+    'all' as PlanFilter,
+    'all',
+    'daily'
+  )
 
   const handleNotify = async (userId: string, daysInactive: number) => {
     if (notifiedUserIds.has(userId)) return
@@ -203,40 +233,41 @@ export default function ReportsPage() {
     }
   }
 
-  const isLoading = membersLoading || trainersLoading
+  const isLoading = activeTab === 'inactive' || reportType === 'inactive'
+    ? (membersLoading || trainersLoading)
+    : reportType === 'feedback'
+      ? feedbackLoading
+      : reportType === 'dailyCheckins'
+        ? dailyCheckinData.isLoading
+        : reportType === 'revenue'
+          ? revenueData.isLoading
+          : reportType === 'memberGrowth'
+            ? memberGrowthData.isLoading
+            : reportType === 'memberOverview'
+              ? memberOverviewData.isLoading
+              : recentActivityData.isLoading
 
-  // Combined dataset
-  const allData = useMemo(() => {
-    return [
-      ...(inactiveMembers ?? []).map(r => ({ ...r })),
-      ...(inactiveTrainers ?? []).map(r => ({ ...r })),
-    ]
-  }, [inactiveMembers, inactiveTrainers])
-
-  // Filter by date range (client-side)
+  const allData = inactiveData ?? []
+  // Range applies to last visit, or registration date for people who never visited.
   const rangeFilteredRows = useMemo(() => {
-    const base = allData
-    if (isAllTime(range)) return base
-    return base.filter(r =>
-      r.lastCheckIn != null
-      && r.lastCheckIn.slice(0, 10) >= range.start
-      && r.lastCheckIn.slice(0, 10) <= range.end,
-    )
-  }, [allData, range])
+    if (isAllTime(selectedInactiveRange)) return inactiveData ?? []
+    return (inactiveData ?? []).filter(r => {
+      const day = r.lastCheckIn ?? r.joinedAt
+      return day != null && day >= selectedInactiveRange.start && day <= selectedInactiveRange.end
+    })
+  }, [inactiveData, selectedInactiveRange])
 
-  // Filter by Member / Trainer dropdown
+  // Filter by Member / Trainer dropdown for inactive
   const roleFilteredRows = useMemo(() => {
     if (roleFilter === 'member') return rangeFilteredRows.filter(r => r.type === 'member')
     if (roleFilter === 'trainer') return rangeFilteredRows.filter(r => r.type === 'trainer')
     return rangeFilteredRows
   }, [rangeFilteredRows, roleFilter])
 
-  // Standard clean sorting:
-  // - If showing all roles: groups all Members together first (by most days inactive), then all Trainers
-  // - If showing only members: sorted by most days inactive first
-  // - If showing only trainers: sorted by most days inactive first
+  // Standard clean sorting for inactive:
   const sortedRows = useMemo(() => {
-    return [...roleFilteredRows].sort((a, b) => {
+    const q = search.trim().toLowerCase()
+    return roleFilteredRows.filter(r => !q || [r.name, r.code, r.type].some(value => value?.toLowerCase().includes(q))).sort((a, b) => {
       if (a.type !== b.type) {
         return a.type === 'member' ? -1 : 1
       }
@@ -245,16 +276,109 @@ export default function ReportsPage() {
       }
       return a.name.localeCompare(b.name)
     })
-  }, [roleFilteredRows])
+  }, [roleFilteredRows, search])
+
+  const feedbackRows = useMemo(() => {
+    if (reportType !== 'feedback') return []
+    const rows = feedbackData ?? []
+    const q = search.trim().toLowerCase()
+    if (!q) return rows
+    return rows.filter(r =>
+      r.memberName.toLowerCase().includes(q) ||
+      (r.trainerName?.toLowerCase().includes(q)) ||
+      r.feedback.toLowerCase().includes(q) ||
+      (r.memberCode?.toLowerCase().includes(q))
+    )
+  }, [feedbackData, reportType, search])
+
+  const dailyCheckinRows = useMemo(() => {
+    if (reportType !== 'dailyCheckins') return []
+    const rows = dailyCheckinData?.records ?? []
+    const q = dailyCheckinSearch.trim().toLowerCase()
+    if (!q) return rows
+    return rows.filter(r =>
+      (r.profiles?.full_name ?? '').toLowerCase().includes(q) ||
+      (r.profiles?.code ?? '').toLowerCase().includes(q) ||
+      (r.planName ?? '').toLowerCase().includes(q) ||
+      r.check_in_date.toLowerCase().includes(q)
+    )
+  }, [dailyCheckinData, reportType, dailyCheckinSearch])
+
+  const revenueRows = useMemo(() => {
+    if (reportType !== 'revenue') return []
+    const rows = revenueData?.records ?? []
+    const q = revenueSearch.trim().toLowerCase()
+    if (!q) return rows
+    return rows.filter(r =>
+      r.memberName.toLowerCase().includes(q) ||
+      (r.memberCode ?? '').toLowerCase().includes(q) ||
+      r.planName.toLowerCase().includes(q) ||
+      r.startDate.toLowerCase().includes(q)
+    )
+  }, [revenueData, reportType, revenueSearch])
+
+  const memberGrowthRows = useMemo(() => {
+    if (reportType !== 'memberGrowth') return []
+    const rows = memberGrowthData?.records ?? []
+    const q = memberGrowthSearch.trim().toLowerCase()
+    if (!q) return rows
+    return rows.filter(r =>
+      r.memberName.toLowerCase().includes(q) ||
+      (r.memberCode ?? '').toLowerCase().includes(q) ||
+      r.planName.toLowerCase().includes(q) ||
+      r.day.toLowerCase().includes(q)
+    )
+  }, [memberGrowthData, reportType, memberGrowthSearch])
+
+  const memberOverviewRows = useMemo(() => {
+    if (reportType !== 'memberOverview') return []
+    const rows = memberOverviewData?.records ?? []
+    const q = memberOverviewSearch.trim().toLowerCase()
+    if (!q) return rows
+    return rows.filter(r =>
+      r.memberName.toLowerCase().includes(q) ||
+      (r.memberCode ?? '').toLowerCase().includes(q) ||
+      r.planName.toLowerCase().includes(q) ||
+      r.status.toLowerCase().includes(q)
+    )
+  }, [memberOverviewData, reportType, memberOverviewSearch])
+
+  const recentActivityRows = useMemo(() => {
+    if (reportType !== 'recentActivity') return []
+    const rows = recentActivityData?.records ?? []
+    const q = recentActivitySearch.trim().toLowerCase()
+    if (!q) return rows
+    return rows.filter(r =>
+      r.memberName.toLowerCase().includes(q) ||
+      (r.memberCode ?? '').toLowerCase().includes(q) ||
+      r.message.toLowerCase().includes(q) ||
+      r.type.toLowerCase().includes(q) ||
+      r.day.toLowerCase().includes(q)
+    )
+  }, [recentActivityData, reportType, recentActivitySearch])
 
   // Counts for header subtitle
-  const memberCount = allData.filter(r => r.type === 'member').length
-  const trainerCount = allData.filter(r => r.type === 'trainer').length
+  const memberCount = sortedRows.filter(r => r.type === 'member').length
+  const trainerCount = sortedRows.filter(r => r.type === 'trainer').length
+  const feedbackCount = reportType === 'feedback' ? (feedbackData ?? []).length : 0
+  const feedbackAvg = useMemo(() => {
+    if (reportType !== 'feedback') return null
+    const rated = (feedbackData ?? []).filter(f => f.rating != null)
+    if (rated.length === 0) return null
+    const sum = rated.reduce((acc, f) => acc + (f.rating ?? 0), 0)
+    return sum / rated.length
+  }, [feedbackData, reportType])
+
+  const dailyCheckinCount = reportType === 'dailyCheckins' ? dailyCheckinRows.length : 0
+  const revenueCount = reportType === 'revenue' ? revenueRows.length : 0
+  const memberGrowthCount = reportType === 'memberGrowth' ? memberGrowthRows.length : 0
+  const memberOverviewCount = reportType === 'memberOverview' ? memberOverviewRows.length : 0
+  const recentActivityCount = reportType === 'recentActivity' ? recentActivityRows.length : 0
 
   // Export action for Generation Reports
   const handleExport = async () => {
     // If notification is enabled, notify inactive users in the exported set
-    if (notificationEnabled) {
+    if (reportType === 'inactive' && notificationEnabled) {
       const toNotify = sortedRows.filter(r => !notifiedUserIds.has(r.userId))
       if (toNotify.length > 0) {
         for (const r of toNotify) {
@@ -264,6 +388,103 @@ export default function ReportsPage() {
     }
 
     const timestamp = new Date().toISOString().slice(0, 10)
+
+
+    if (reportType !== 'inactive' && reportType !== 'feedback') {
+      const reports = {
+        dailyCheckins: { title: 'Daily Check-ins', headers: ['Date', 'Member', 'Code', 'Plan'], rows: dailyCheckinRows.map(r => [r.check_in_date, r.profiles?.full_name ?? '', r.profiles?.code ?? '', r.planName ?? '']) },
+        revenue: { title: 'Revenue Overview', headers: ['Date', 'Member', 'Code', 'Plan', 'Amount'], rows: revenueRows.map(r => [r.startDate, r.memberName, r.memberCode ?? '', r.planName, r.price]) },
+        memberGrowth: { title: 'Member Growth', headers: ['Date', 'Member', 'Code', 'Plan', 'Status'], rows: memberGrowthRows.map(r => [r.day, r.memberName, r.memberCode ?? '', r.planName, r.status]) },
+        memberOverview: { title: 'Member Overview', headers: ['Member', 'Code', 'Plan', 'Status', 'Last Check-in'], rows: memberOverviewRows.map(r => [r.memberName, r.memberCode ?? '', r.planName, r.status, r.lastCheckIn ?? 'Never']) },
+        recentActivity: { title: 'Recent Activity', headers: ['Date', 'Member', 'Code', 'Type', 'Details'], rows: recentActivityRows.map(r => [r.ts, r.memberName, r.memberCode ?? '', r.type, r.message]) },
+      }
+      const report = reports[reportType]
+      if (format === 'PDF' || format === 'Print') {
+        const doc = new jsPDF({ orientation: 'landscape' })
+        doc.text(report.title, 14, 15)
+        doc.setFontSize(10)
+        doc.text(formatRangeLabel(currentRange), 14, 22)
+        autoTable(doc, { head: [report.headers], body: report.rows, startY: 28 })
+        if (format === 'Print') { doc.autoPrint(); window.open(doc.output('bloburl'), '_blank') }
+        else doc.save(`${reportType}-${timestamp}.pdf`)
+      } else {
+        const csv = [report.headers, ...report.rows].map(row => row.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\r\n')
+        const url = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' }))
+        const link = document.createElement('a')
+        link.href = url; link.download = `${reportType}-${timestamp}.csv`; link.click()
+        URL.revokeObjectURL(url)
+      }
+      return
+    }
+
+    if (reportType === 'feedback') {
+      const filterLabel = isAllTime(feedbackRange) ? 'All Time' : `${feedbackRange.start} to ${feedbackRange.end}`
+      const avgLabel = feedbackAvg != null ? ` | Avg Rating: ${feedbackAvg.toFixed(1)}/5` : ''
+
+      if (format === 'PDF') {
+        const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+        doc.setFontSize(16)
+        doc.setTextColor(17, 24, 39)
+        doc.text('Coach Feedback Report', 14, 15)
+        doc.setFontSize(9)
+        doc.setTextColor(107, 114, 128)
+        doc.text(`Generated on ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} · Range: ${filterLabel} · Total: ${feedbackRows.length}${avgLabel}`, 14, 22)
+
+        const tableData = feedbackRows.map((r, i) => [
+          i + 1,
+          r.memberName + (r.memberCode ? ` (${r.memberCode})` : ''),
+          r.trainerName || '—',
+          r.feedback.length > 80 ? r.feedback.substring(0, 77) + '...' : r.feedback,
+          r.rating != null ? `${r.rating}/5` : '—',
+          new Date(r.date).toLocaleDateString(),
+        ])
+
+        autoTable(doc, {
+          head: [['#', 'Member', 'Trainer', 'Feedback', 'Rating', 'Date']],
+          body: tableData,
+          startY: 27,
+          theme: 'striped',
+          headStyles: { fillColor: [124, 58, 237], textColor: 255, fontStyle: 'bold', fontSize: 8 },
+          styles: { fontSize: 7.5, cellPadding: 2 },
+          alternateRowStyles: { fillColor: [248, 250, 252] },
+        })
+        doc.save(`coach-feedback-report-${timestamp}.pdf`)
+        return
+      }
+
+      if (format === 'Print') {
+        window.print()
+        return
+      }
+
+      const headers = ['#', 'Member', 'Member Code', 'Member Email', 'Trainer', 'Feedback', 'Rating', 'Date', 'Member Comment']
+      const escapeCsv = (val: unknown) => {
+        if (val == null) return '""'
+        return `"${String(val).replace(/"/g, '""')}"`
+      }
+      const rowsData = feedbackRows.map((r, i) => [
+        i + 1,
+        r.memberName,
+        r.memberCode || '',
+        r.memberEmail || '',
+        r.trainerName || '',
+        r.feedback,
+        r.rating != null ? r.rating : '',
+        new Date(r.date).toLocaleDateString(),
+        r.memberComment || '',
+      ])
+      const csvContent = [headers.map(escapeCsv).join(','), ...rowsData.map(row => row.map(escapeCsv).join(','))].join('\r\n')
+      const blob = new Blob(['\uFEFF' + csvContent], { type: format === 'Excel' ? 'application/vnd.ms-excel;charset=utf-8;' : 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `coach-feedback-report-${timestamp}.csv`
+      link.click()
+      URL.revokeObjectURL(url)
+      return
+    }
+
+    // Inactive report export (existing logic)
     const filterLabel = roleFilter === 'member' ? 'Members' : roleFilter === 'trainer' ? 'Trainers' : 'Members & Trainers'
 
     // Format 1: Direct PDF Download
@@ -378,7 +599,7 @@ export default function ReportsPage() {
   }
 
   // Dropdown placed beside the search box
-  const roleDropdown = (
+  const roleDropdown = activeTab === 'inactive' || reportType === 'inactive' ? (
     <div className="relative shrink-0">
       <select
         value={roleFilter}
@@ -387,7 +608,7 @@ export default function ReportsPage() {
           setSearch('')
         }}
         aria-label="Filter by Member or Trainer"
-        className="h-[38px] pl-3 pr-8 rounded-xl bg-overlay-8 border border-line text-xs font-medium text-fg-strong hover:border-[#7C3AED]/50 focus:outline-none focus:border-[#7C3AED] focus:ring-1 focus:ring-[#7C3AED] cursor-pointer appearance-none transition-colors"
+        className="h-[38px] pl-3 pr-8 rounded-xl glass-input text-xs font-medium text-fg-strong hover:border-[#7C3AED]/50 focus:outline-none focus:border-[#7C3AED] focus:ring-1 focus:ring-[#7C3AED] cursor-pointer appearance-none transition-colors"
       >
         <option value="all" className="bg-[#0f172a] text-white">All Roles</option>
         <option value="member" className="bg-[#0f172a] text-white">Members</option>
@@ -395,9 +616,20 @@ export default function ReportsPage() {
       </select>
       <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-fg-muted pointer-events-none" />
     </div>
-  )
+  ) : null
 
-  // Clean, standard columns for Inactive tab (Image 1) - no clickable sort toggles / no ▲ ▼
+  const reportTypeDropdown = activeTab === 'generate' ? (
+    <PurpleSelect value={reportType} onChange={setReportType} label="Select report type" options={[
+      { value: 'inactive', label: 'Inactive Members & Trainers' },
+      { value: 'feedback', label: 'Coach Feedback' },
+      { value: 'dailyCheckins', label: 'Daily Check-ins' },
+      { value: 'revenue', label: 'Revenue Overview' },
+      { value: 'memberGrowth', label: 'Member Growth' },
+      { value: 'memberOverview', label: 'Member Overview' },
+      { value: 'recentActivity', label: 'Recent Activity' },
+    ]} />
+  ) : null
+  // Clean, standard columns for Inactive tab
   const inactiveColumns: RecordsColumn<InactiveRow>[] = [
     {
       key: 'type',
@@ -456,6 +688,55 @@ export default function ReportsPage() {
     },
   ]
 
+  const feedbackExportColumns: RecordsColumn<FeedbackExportRow>[] = [
+    {
+      key: 'member',
+      header: 'Member',
+      render: r => (
+        <div>
+          <span className="font-medium text-fg-strong">{r.memberName}</span>
+          {r.memberCode && <div className="text-[11px] font-mono text-fg-muted">{r.memberCode}</div>}
+        </div>
+      ),
+    },
+    {
+      key: 'trainer',
+      header: 'Trainer',
+      render: r => <span className="text-fg">{r.trainerName ?? '—'}</span>,
+    },
+    {
+      key: 'feedback',
+      header: 'Feedback',
+      render: r => (
+        <span className="flex items-center gap-2 leading-5">
+          <MessageSquare className="w-3.5 h-3.5 text-fg-muted shrink-0" />
+          <span title={r.feedback}>{r.feedback}</span>
+        </span>
+      ),
+    },
+    {
+      key: 'rating',
+      header: 'Rating',
+      render: r => r.rating == null
+        ? <span className="text-fg-faint leading-5">Not rated</span>
+        : (
+          <span className="inline-flex items-center gap-1 whitespace-nowrap leading-5">
+            <span className="text-[#FFC107] leading-5">
+              {'★'.repeat(r.rating)}
+              <span className="text-fg-faint">{'★'.repeat(5 - r.rating)}</span>
+            </span>
+            <span className="text-fg-muted">{r.rating}/5</span>
+          </span>
+        ),
+    },
+    {
+      key: 'date',
+      header: 'Date',
+      align: 'right',
+      render: r => <span className="whitespace-nowrap">{new Date(r.date).toLocaleDateString()}</span>,
+    },
+  ]
+
   // Clean, standard columns for Generation Reports tab (Image 2) - no clickable sort toggles / no ▲ ▼
   const exportColumns: RecordsColumn<InactiveRow>[] = [
     {
@@ -496,12 +777,197 @@ export default function ReportsPage() {
     },
   ]
 
-  const searchPlaceholder =
-    roleFilter === 'member'
-      ? 'Search members by name or ID…'
-      : roleFilter === 'trainer'
-        ? 'Search trainers by name or ID…'
-        : 'Search by name or ID…'
+  // Columns for Daily Check-ins
+  const dailyCheckinColumns: RecordsColumn<CheckinRecord>[] = [
+    {
+      key: 'date',
+      header: 'Date',
+      render: r => <span className="text-fg-strong whitespace-nowrap">{fmtDay(r.check_in_date)}</span>,
+    },
+    {
+      key: 'time',
+      header: 'Time',
+      render: r => {
+        const d = new Date(r.check_in_time)
+        return <span className="text-fg-muted text-[12px] whitespace-nowrap">{d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+      },
+    },
+    {
+      key: 'name',
+      header: 'Member Name',
+      render: r => <span className="font-medium text-fg-strong">{r.profiles?.full_name ?? 'Unknown'}</span>,
+    },
+    {
+      key: 'code',
+      header: 'Member ID',
+      render: r => <span className="font-mono text-[12px] text-fg-muted">{r.profiles?.code ?? r.member_id.slice(0, 8)}</span>,
+    },
+    {
+      key: 'plan',
+      header: 'Membership Type',
+      render: r => <span className="text-xs font-medium text-fg-muted">{r.planName ?? '—'}</span>,
+    },
+  ]
+
+  // Columns for Revenue Overview
+  const revenueColumns: RecordsColumn<RevenueRecord>[] = [
+    {
+      key: 'date',
+      header: 'Date',
+      render: r => <span className="text-fg-strong whitespace-nowrap">{fmtDay(r.startDate)}</span>,
+    },
+    {
+      key: 'name',
+      header: 'Member Name',
+      render: r => <span className="font-medium text-fg-strong">{r.memberName}</span>,
+    },
+    {
+      key: 'code',
+      header: 'Member ID',
+      render: r => <span className="font-mono text-[12px] text-fg-muted">{r.memberCode ?? '—'}</span>,
+    },
+    {
+      key: 'plan',
+      header: 'Membership Type',
+      render: r => <span className="text-xs font-medium text-fg-muted">{r.planName}</span>,
+    },
+    {
+      key: 'amount',
+      header: 'Amount',
+      align: 'right',
+      render: r => r.price > 0
+        ? <span className="font-semibold text-fg-strong tabular-nums whitespace-nowrap">₱{r.price.toLocaleString()}</span>
+        : <span className="text-fg-faint whitespace-nowrap">Free Trial</span>,
+    },
+  ]
+
+  // Columns for Member Growth
+  const memberGrowthColumns: RecordsColumn<GrowthRecord>[] = [
+    {
+      key: 'date',
+      header: 'Date',
+      render: r => <span className="text-fg-strong whitespace-nowrap">{fmtDay(r.day)}</span>,
+    },
+    {
+      key: 'time',
+      header: 'Time',
+      render: r => <span className="text-fg-muted text-[12px] whitespace-nowrap">{new Date(r.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>,
+    },
+    {
+      key: 'name',
+      header: 'Member Name',
+      render: r => <span className="font-medium text-fg-strong">{r.memberName}</span>,
+    },
+    {
+      key: 'code',
+      header: 'Member ID',
+      render: r => <span className="font-mono text-[12px] text-fg-muted">{r.memberCode ?? '—'}</span>,
+    },
+    {
+      key: 'plan',
+      header: 'Membership Type',
+      render: r => <span className="text-xs font-medium text-fg-muted">{r.planName}</span>,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: r => <span className={`text-xs font-medium ${r.status === 'Active' ? 'text-fg-success' : 'text-fg-faint'}`}>{r.status}</span>,
+    },
+  ]
+
+  // Columns for Member Overview
+  const memberOverviewColumns: RecordsColumn<MemberOverviewRecord>[] = [
+    {
+      key: 'name',
+      header: 'Member Name',
+      render: r => <span className="font-medium text-fg-strong">{r.memberName}</span>,
+    },
+    {
+      key: 'code',
+      header: 'Member ID',
+      render: r => <span className="font-mono text-[12px] text-fg-muted">{r.memberCode ?? '—'}</span>,
+    },
+    {
+      key: 'plan',
+      header: 'Membership Type',
+      render: r => <span className="text-xs font-medium text-fg-muted">{r.planName}</span>,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: r => <span className={`text-xs font-medium ${r.status === 'Active' ? 'text-fg-success' : 'text-fg-faint'}`}>{r.status}</span>,
+    },
+    {
+      key: 'last',
+      header: 'Last Check-in',
+      render: r => r.lastCheckIn
+        ? <span className="text-fg-strong whitespace-nowrap">{new Date(r.lastCheckIn).toLocaleDateString()}</span>
+        : <span className="text-fg-faint">Never</span>,
+    },
+  ]
+
+  // Columns for Recent Activity
+  const recentActivityColumns: RecordsColumn<ActivityItem>[] = [
+    {
+      key: 'date',
+      header: 'Date',
+      render: r => <span className="text-fg-strong whitespace-nowrap">{fmtDay(r.day)}</span>,
+    },
+    {
+      key: 'time',
+      header: 'Time',
+      render: r => {
+        const d = new Date(r.ts)
+        return <span className="text-fg-muted text-[12px] whitespace-nowrap">{d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+      },
+    },
+    {
+      key: 'name',
+      header: 'Member Name',
+      render: r => <span className="font-medium text-fg-strong">{r.memberName}</span>,
+    },
+    {
+      key: 'code',
+      header: 'Member ID',
+      render: r => <span className="font-mono text-[12px] text-fg-muted">{r.memberCode ?? '—'}</span>,
+    },
+    {
+      key: 'type',
+      header: 'Activity Type',
+      render: r => <span className="text-xs font-medium text-fg-muted capitalize">{r.type}</span>,
+    },
+    {
+      key: 'msg',
+      header: 'Details',
+      render: r => <span className="text-fg-muted whitespace-nowrap">{r.message}</span>,
+    },
+  ]
+
+  const reportError = activeTab === 'inactive' || reportType === 'inactive' ? inactiveError
+    : reportType === 'feedback' ? feedbackError
+    : reportType === 'dailyCheckins' ? dailyCheckinData.error
+    : reportType === 'revenue' ? revenueData.error
+    : reportType === 'memberGrowth' ? memberGrowthData.error
+    : reportType === 'memberOverview' ? memberOverviewData.error : recentActivityData.error
+
+  const searchPlaceholder = activeTab === 'inactive' ? 'Search by name or ID…' :
+    reportType === 'feedback'
+      ? 'Search by member, trainer or feedback…'
+      : reportType === 'dailyCheckins'
+        ? 'Search by member name, ID or date…'
+      : reportType === 'revenue'
+        ? 'Search by member, plan or date…'
+      : reportType === 'memberGrowth'
+        ? 'Search by member name, ID or date…'
+      : reportType === 'memberOverview'
+        ? 'Search by member name, ID or plan…'
+      : reportType === 'recentActivity'
+        ? 'Search by member, type or date…'
+      : roleFilter === 'member'
+        ? 'Search members by name or ID…'
+        : roleFilter === 'trainer'
+          ? 'Search trainers by name or ID…'
+          : 'Search by name or ID…'
 
   return (
     <div className="h-full min-h-0 flex flex-col gap-3">
@@ -509,17 +975,13 @@ export default function ReportsPage() {
       <div className="flex flex-wrap items-center justify-between gap-3 shrink-0">
         <div className="flex flex-wrap items-center gap-3">
           {/* Two Tabs: Inactive and Generation Reports */}
-          <div role="tablist" aria-label="Reports sections" className="flex items-center gap-1.5">
+          <div role="tablist" aria-label="Reports sections" className="glass-card page-tabs">
             <button
               type="button"
               role="tab"
               aria-selected={activeTab === 'inactive'}
               onClick={() => handleTabChange('inactive')}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors cursor-pointer ${
-                activeTab === 'inactive'
-                  ? 'bg-[#7C3AED] text-white shadow-sm'
-                  : 'bg-overlay-8 border border-line text-fg-muted hover:text-fg-strong hover:border-[#7C3AED]/40'
-              }`}
+              className="page-tab"
             >
               Inactive
             </button>
@@ -528,11 +990,7 @@ export default function ReportsPage() {
               role="tab"
               aria-selected={activeTab === 'generate'}
               onClick={() => handleTabChange('generate')}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors cursor-pointer ${
-                activeTab === 'generate'
-                  ? 'bg-[#7C3AED] text-white shadow-sm'
-                  : 'bg-overlay-8 border border-line text-fg-muted hover:text-fg-strong hover:border-[#7C3AED]/40'
-              }`}
+              className="page-tab"
             >
               Generation Reports
             </button>
@@ -540,46 +998,64 @@ export default function ReportsPage() {
 
           <div className="flex items-center gap-2 text-[11px] text-fg-muted uppercase tracking-wider">
             <span>
-              {activeTab === 'inactive' ? 'Inactive Report' : 'Export'} ·{' '}
-              {roleFilter === 'member'
-                ? `${memberCount} members`
-                : roleFilter === 'trainer'
-                  ? `${trainerCount} trainers`
-                  : `${memberCount} members, ${trainerCount} trainers`}
+              {activeTab === 'inactive'
+                ? 'Inactive Report'
+                : reportType === 'feedback'
+                  ? 'Coach Feedback Report'
+                  : 'Export'} ·{' '}
+              {activeTab === 'inactive'
+                ? (roleFilter === 'member'
+                  ? `${memberCount} members`
+                  : roleFilter === 'trainer'
+                    ? `${trainerCount} trainers`
+                    : `${memberCount} members, ${trainerCount} trainers`)
+                : reportType === 'feedback'
+                  ? `${feedbackCount} entries${feedbackAvg != null ? ` · Avg ${feedbackAvg.toFixed(1)}/5` : ''}`
+                  : reportType === 'dailyCheckins' ? `${dailyCheckinCount} check-ins`
+                  : reportType === 'revenue' ? `${revenueCount} transactions`
+                  : reportType === 'memberGrowth' ? `${memberGrowthCount} registrations`
+                  : reportType === 'memberOverview' ? `${memberOverviewData.active} active, ${memberOverviewData.inactive} inactive / ${memberOverviewCount} members`
+                  : reportType === 'recentActivity' ? `${recentActivityCount} events`
+                  : (roleFilter === 'member'
+                    ? `${memberCount} members`
+                    : roleFilter === 'trainer'
+                      ? `${trainerCount} trainers`
+                      : `${memberCount} members, ${trainerCount} trainers`)}
             </span>
           </div>
         </div>
 
-        {/* Right side controls: Date Range for Inactive, Export bar for Generation Reports */}
+        {/* Right side controls */}
         {activeTab === 'inactive' ? (
-          <DateRangePicker value={range} onChange={setRange} presets={LIST_PRESETS} className="shrink-0" />
+          <DateRangePicker value={inactiveRange} onChange={setInactiveRange} presets={LIST_PRESETS} className="shrink-0" />
         ) : (
           <div className="flex flex-wrap items-center gap-2 shrink-0">
+            {reportTypeDropdown}
+            {activeTab === 'generate' && (
+              <DateRangePicker key={viewKey} value={currentRange} onChange={setCurrentRange} presets={LIST_PRESETS} className="shrink-0" />
+            )}
             <label className="flex items-center gap-1.5 text-[11px] font-medium text-fg-muted uppercase tracking-wider">
               Format
-              <select
-                value={format}
-                onChange={e => setFormat(e.target.value as typeof format)}
-                className="bg-overlay-8 border border-line rounded-lg px-2.5 py-1.5 text-xs text-fg-strong focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/40 cursor-pointer"
-              >
-                <option value="PDF" className="bg-[#0f172a] text-white">PDF</option>
-                <option value="Excel" className="bg-[#0f172a] text-white">Excel</option>
-                <option value="CSV" className="bg-[#0f172a] text-white">CSV</option>
-                <option value="Print" className="bg-[#0f172a] text-white">Print</option>
-              </select>
+              <PurpleSelect value={format} onChange={setFormat} label="Export format" options={[
+                { value: 'PDF', label: 'PDF' }, { value: 'Excel', label: 'Excel' },
+                { value: 'CSV', label: 'CSV' }, { value: 'Print', label: 'Print' },
+              ]} />
             </label>
-            <label className="flex items-center gap-1.5 text-[11px] font-medium text-fg-muted uppercase tracking-wider cursor-pointer">
-              <input
-                type="checkbox"
-                checked={notificationEnabled}
-                onChange={e => setNotificationEnabled(e.target.checked)}
-                className="rounded border-line bg-overlay-8 text-[#7C3AED] focus:ring-[#7C3AED]/30 cursor-pointer"
-              />
-              Notify
-            </label>
+            {reportType === 'inactive' && (
+              <label className="flex items-center gap-1.5 text-[11px] font-medium text-fg-muted uppercase tracking-wider cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={notificationEnabled}
+                  onChange={e => setNotificationEnabled(e.target.checked)}
+                  className="rounded border-line bg-overlay-8 text-[#7C3AED] focus:ring-[#7C3AED]/30 cursor-pointer"
+                />
+                Notify
+              </label>
+            )}
             <button
               type="button"
               onClick={handleExport}
+              disabled={isLoading || Boolean(reportError)}
               className="bg-[#7C3AED] text-white px-4 py-1.5 rounded-lg text-xs font-medium hover:bg-[#6D28D9] transition-colors cursor-pointer"
             >
               Export
@@ -590,12 +1066,13 @@ export default function ReportsPage() {
 
       {/* Main View Area */}
       <div className="flex-1 min-h-0 min-w-0 flex">
-        {activeTab === 'inactive' ? (
+        {reportError ? <p role="alert">Could not load report: {reportError.message}</p> : activeTab === 'inactive' ? (
           <RecordsTable
-            key={`inactive:${range.start}:${range.end}:${roleFilter}`}
+            key={`inactive:${inactiveRange.start}:${inactiveRange.end}:${roleFilter}`}
             title="Inactive Members & Trainers"
-            subtitle="Members and trainers with no check-in in the last 7 days."
+            subtitle="Daily-plan members and trainers with no check-in in 7 days. Dates filter last visit, or registration if never visited."
             pageSize={12}
+            fillPage
             columns={inactiveColumns}
             rows={sortedRows}
             rowKey={r => r.userId}
@@ -613,12 +1090,65 @@ export default function ReportsPage() {
                 : 'No inactive records match this search'
             }
           />
+        ) : reportType === 'feedback' ? (
+          <RecordsTable
+            key={`feedback:${feedbackRange.start}:${feedbackRange.end}`}
+            title="Coach Feedback"
+            subtitle="All feedback entries for the selected date range."
+            pageSize={12}
+            fillPage
+            columns={feedbackExportColumns}
+            rows={feedbackRows}
+            rowKey={r => r.id}
+            searchFields={r => [r.memberName, r.trainerName || '', r.feedback, r.memberCode || '']}
+            searchPlaceholder={searchPlaceholder}
+            searchValue={search}
+            onSearchChange={setSearch}
+            isLoading={isLoading}
+            emptyMessage={feedbackRows.length === 0 ? 'No feedback entries found' : 'No feedback matches this search'}
+          />
+        ) : reportType === 'dailyCheckins' ? (
+          <RecordsTable key={`dailyCheckins:${dailyCheckinRange.start}:${dailyCheckinRange.end}`}
+            title="Daily Check-ins" subtitle="Check-in trends and volume over time." pageSize={12} fillPage
+            columns={dailyCheckinColumns} rows={dailyCheckinRows} rowKey={r => r.id}
+            searchFields={r => [r.profiles?.full_name, r.profiles?.code, r.check_in_date, r.planName]} searchPlaceholder={searchPlaceholder}
+            searchValue={dailyCheckinSearch} onSearchChange={setDailyCheckinSearch}
+            isLoading={isLoading} emptyMessage="No records for the selected dates" />
+        ) : reportType === 'revenue' ? (
+          <RecordsTable key={`revenue:${revenueRange.start}:${revenueRange.end}`}
+            title="Revenue Overview" subtitle="Monthly or custom-range revenue and membership plan breakdowns." pageSize={12} fillPage
+            columns={revenueColumns} rows={revenueRows} rowKey={r => r.id}
+            searchFields={r => [r.memberName, r.memberCode, r.planName, r.startDate]} searchPlaceholder={searchPlaceholder}
+            searchValue={revenueSearch} onSearchChange={setRevenueSearch}
+            isLoading={isLoading} emptyMessage="No records for the selected dates" />
+        ) : reportType === 'memberGrowth' ? (
+          <RecordsTable key={`memberGrowth:${memberGrowthRange.start}:${memberGrowthRange.end}`}
+            title="Member Growth" subtitle="New registration trends for the selected dates." pageSize={12} fillPage
+            columns={memberGrowthColumns} rows={memberGrowthRows} rowKey={r => r.id}
+            searchFields={r => [r.memberName, r.memberCode, r.day, r.planName]} searchPlaceholder={searchPlaceholder}
+            searchValue={memberGrowthSearch} onSearchChange={setMemberGrowthSearch}
+            isLoading={isLoading} emptyMessage="No records for the selected dates" />
+        ) : reportType === 'memberOverview' ? (
+          <RecordsTable key={`memberOverview:${memberOverviewRange.start}:${memberOverviewRange.end}`}
+            title="Member Overview" subtitle="Active and inactive members for the selected dates." pageSize={12} fillPage
+            columns={memberOverviewColumns} rows={memberOverviewRows} rowKey={r => r.id}
+            searchFields={r => [r.memberName, r.memberCode, r.status, r.planName]} searchPlaceholder={searchPlaceholder}
+            searchValue={memberOverviewSearch} onSearchChange={setMemberOverviewSearch}
+            isLoading={isLoading} emptyMessage="No records for the selected dates" />
+        ) : reportType === 'recentActivity' ? (
+          <RecordsTable key={`recentActivity:${recentActivityRange.start}:${recentActivityRange.end}`}
+            title="Recent Activity" subtitle="Recent events and visits for the selected dates." pageSize={12} fillPage
+            columns={recentActivityColumns} rows={recentActivityRows} rowKey={r => r.id}
+            searchFields={r => [r.memberName, r.memberCode, r.message, r.type, r.day]} searchPlaceholder={searchPlaceholder}
+            searchValue={recentActivitySearch} onSearchChange={setRecentActivitySearch}
+            isLoading={isLoading} emptyMessage="No records for the selected dates" />
         ) : (
           <RecordsTable
-            key={`generate:${range.start}:${range.end}:${roleFilter}`}
+            key={`generate-inactive:${generateInactiveRange.start}:${generateInactiveRange.end}:${roleFilter}`}
             title="Inactive Members & Trainers – Export Preview"
             subtitle="All rows will be included in the selected export format."
             pageSize={12}
+            fillPage
             columns={exportColumns}
             rows={sortedRows}
             rowKey={r => r.userId}

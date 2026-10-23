@@ -18,7 +18,8 @@ class WorkoutClockCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isRunning = session.isRunning;
-    final canStart = !isRunning && !session.sessionEnded && session.exercises.isNotEmpty;
+    final canStart =
+        !isRunning && !session.sessionEnded && session.exercises.isNotEmpty;
 
     return MemberGlassCard(
       padding: const EdgeInsets.symmetric(vertical: 22),
@@ -29,15 +30,23 @@ class WorkoutClockCard extends ConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               AnimatedPulseDot(
-                color: isRunning ? const Color(0xFF64D2FF) : const Color(0xFF8E8E93),
+                color: isRunning
+                    ? const Color(0xFF7C3AED)
+                    : const Color(0xFF8E8E93),
                 size: 6,
               ),
               const SizedBox(width: 6),
               Text(
-                session.isPaused ? 'REST BREAK' : isRunning ? 'SESSION ACTIVE' : 'SESSION DURATION',
+                session.isPaused
+                    ? 'REST BREAK'
+                    : isRunning
+                    ? 'SESSION ACTIVE'
+                    : 'SESSION DURATION',
                 style: TextStyle(
                   fontSize: 10,
-                  color: isRunning && !session.isPaused ? const Color(0xFF64D2FF) : const Color(0xFF8E8E93),
+                  color: isRunning && !session.isPaused
+                      ? const Color(0xFF7C3AED)
+                      : const Color(0xFF8E8E93),
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -51,7 +60,7 @@ class WorkoutClockCard extends ConsumerWidget {
               fontWeight: FontWeight.w700,
               fontFamily: 'monospace',
               color: isRunning && !session.isPaused
-                  ? const Color(0xFF64D2FF)
+                  ? const Color(0xFF7C3AED)
                   : ClayTokens.clayDarkTextPrimary,
             ),
           ),
@@ -62,12 +71,14 @@ class WorkoutClockCard extends ConsumerWidget {
                 : isRunning
                 ? 'Record proof then tap Done for each exercise'
                 : session.exercises.isNotEmpty
-                    ? 'Ready to start — ${session.exercises.length} exercise${session.exercises.length == 1 ? '' : 's'}'
-                    : 'Add an exercise to begin',
+                ? 'Ready to start — ${session.exercises.length} exercise${session.exercises.length == 1 ? '' : 's'}'
+                : 'Add an exercise to begin',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 10,
-              color: isRunning && !session.isPaused ? const Color(0xFF64D2FF).withAlpha(150) : const Color(0xFF8E8E93),
+              color: isRunning && !session.isPaused
+                  ? const Color(0xFF7C3AED)
+                  : const Color(0xFF8E8E93),
             ),
           ),
           if (isRunning) ...[
@@ -89,28 +100,36 @@ class WorkoutClockCard extends ConsumerWidget {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: session.isPaused
-                      ? const [Color(0xFF5E3AEE), Color(0xFF9B5DE5)]
-                      : const [Color(0xFF5E3AEE), Color(0xFFC56BF0)],
+                      ? const [Color(0xFF7C3AED), Color(0xFF7C3AED)]
+                      : const [Color(0xFF7C3AED), Color(0xFF7C3AED)],
                 ),
                 borderRadius: BorderRadius.circular(14),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFFC56BF0).withAlpha(60),
+                    color: const Color(0xFF7C3AED).withAlpha(60),
                     blurRadius: 14,
                     offset: const Offset(0, 4),
                   ),
                 ],
               ),
               child: TextButton.icon(
-                onPressed: session.isPaused ? notifier.resumeSession : notifier.pauseSession,
+                onPressed: session.isPaused
+                    ? notifier.resumeSession
+                    : notifier.pauseSession,
                 style: TextButton.styleFrom(
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
-                icon: Icon(session.isPaused ? Icons.play_arrow : Icons.pause, size: 18),
+                icon: Icon(
+                  session.isPaused ? Icons.play_arrow : Icons.pause,
+                  size: 18,
+                ),
                 label: Text(
                   session.isPaused ? 'Resume Workout' : 'Take a Break',
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
@@ -121,11 +140,13 @@ class WorkoutClockCard extends ConsumerWidget {
               width: double.infinity,
               margin: const EdgeInsets.symmetric(horizontal: 14),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [Color(0xFF5E3AEE), Color(0xFFC56BF0)]),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF7C3AED), Color(0xFF7C3AED)],
+                ),
                 borderRadius: BorderRadius.circular(14),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFFC56BF0).withAlpha(60),
+                    color: const Color(0xFF7C3AED).withAlpha(60),
                     blurRadius: 14,
                     offset: const Offset(0, 4),
                   ),

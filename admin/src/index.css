@@ -4,6 +4,76 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Shared date and report controls follow the active admin theme. */
+:root {
+  --purple-control-bg: rgba(109, 40, 217, 0.78);
+  --purple-control-fg: #ffffff;
+  --purple-control-border: rgba(196, 181, 253, 0.45);
+  --purple-menu-bg: rgba(32, 21, 66, 0.58);
+  --purple-menu-fg: #ffffff;
+}
+html.theme-light {
+  --purple-control-bg: #7c3aed;
+  --purple-control-fg: #ffffff;
+  --purple-control-border: #8b5cf6;
+  --purple-menu-bg: rgba(250, 247, 255, 0.76);
+  --purple-menu-fg: #241237;
+}
+.purple-control {
+  background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent), var(--purple-control-bg);
+  color: var(--purple-control-fg);
+  border: 1px solid var(--purple-control-border);
+  backdrop-filter: blur(16px) saturate(150%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.14);
+  transition: border-color 150ms, box-shadow 150ms;
+}
+.purple-control:hover { border-color: #a78bfa; }
+.purple-control:focus-visible {
+  outline: 2px solid #a78bfa;
+  outline-offset: 2px;
+}
+.purple-control .purple-control-label,
+.purple-control .purple-control-icon { color: var(--purple-control-fg); }
+.purple-menu {
+  background: linear-gradient(135deg, rgba(255,255,255,0.12), transparent 65%), var(--purple-menu-bg);
+  color: var(--purple-menu-fg);
+  border: 1px solid var(--purple-control-border);
+  backdrop-filter: blur(24px) saturate(160%);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.12);
+}
+.page-tabs.glass-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  width: fit-content;
+  border-radius: 12px;
+}
+.page-tabs > .page-tab {
+  padding: 8px 20px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--fg);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  cursor: pointer;
+  transition: background 150ms, color 150ms;
+}
+.page-tabs > .page-tab:hover { color: var(--fg-strong); }
+.page-tabs > .page-tab[aria-selected="true"],
+.page-tabs > .page-tab[aria-pressed="true"] {
+  background: #7c3aed;
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+.page-tabs > .page-tab:focus-visible {
+  outline: 2px solid #a78bfa;
+  outline-offset: 2px;
+}
+
 /* =================================
    THEME TOKENS
    Dark values are the original hard-coded colours, so dark mode is unchanged.

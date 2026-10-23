@@ -1,3 +1,4 @@
+import '../../../shared/widgets/profile_details_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fitness_app/app/design_tokens.dart';
@@ -40,7 +41,7 @@ class _MemberProgressTabsPageState extends ConsumerState<MemberProgressTabsPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
   }
 
   @override
@@ -71,6 +72,9 @@ class _MemberProgressTabsPageState extends ConsumerState<MemberProgressTabsPage>
                   controller: _tabController,
                   children: [
                     _OverviewTab(id: widget.id, insightAsync: insightAsync),
+                    SingleChildScrollView(
+                      child: PersonalDetails(userId: widget.id),
+                    ),
                     WorkoutsTab(id: widget.id),
                     NutritionTab(id: widget.id),
                     CheckinsTab(id: widget.id),
@@ -190,7 +194,7 @@ class _MemberProgressTabsPageState extends ConsumerState<MemberProgressTabsPage>
   Widget _buildTabBar() {
     return TabBar(
       controller: _tabController,
-      isScrollable: false,
+      isScrollable: true,
       labelColor: ClayTokens.clayDarkTextPrimary,
       unselectedLabelColor: ClayTokens.clayDarkTextTertiary,
       indicatorColor: ClayTokens.clayPrimary,
@@ -202,6 +206,7 @@ class _MemberProgressTabsPageState extends ConsumerState<MemberProgressTabsPage>
       ),
       tabs: const [
         Tab(text: 'Overview'),
+        Tab(text: 'Details'),
         Tab(text: 'Workouts'),
         Tab(text: 'Nutrition'),
         Tab(text: 'Check-ins'),

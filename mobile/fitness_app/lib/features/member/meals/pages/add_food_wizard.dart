@@ -72,7 +72,6 @@ Color _panelRecess() => glassPanel(const Color(0xFF1C1C35));
 Color _panelRecessEnd() =>
     ClayColors.isLightMode ? const Color(0xFFEFE7FF) : const Color(0xFF2A1F4D);
 
-
 BoxDecoration _glassDecoration({
   BorderRadius? borderRadius,
   Color? fill,
@@ -325,7 +324,7 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
         'carbs_g': double.parse(_carbs.toStringAsFixed(1)),
         'fat_g': double.parse(_fat.toStringAsFixed(1)),
         'photo_url': photoUrl,
-        'meal_time': DateTime.now().toIso8601String(),
+        'meal_time': DateTime.now().toUtc().toIso8601String(),
       });
 
       if (!mounted) return;
@@ -351,10 +350,7 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(
-            CupertinoIcons.chevron_left,
-            color: glassInk(),
-          ),
+          icon: Icon(CupertinoIcons.chevron_left, color: glassInk()),
           onPressed: _back,
         ),
         title: Column(
@@ -378,11 +374,7 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
         centerTitle: true,
         actions: [
           IconButton(
-            icon: Icon(
-              CupertinoIcons.xmark,
-              color: _inkDim(),
-              size: 20,
-            ),
+            icon: Icon(CupertinoIcons.xmark, color: _inkDim(), size: 20),
             onPressed: () => Navigator.of(context).pop(),
           ),
         ],
@@ -646,10 +638,7 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
               filled: true,
               fillColor: _glassFill,
               hintText: 'e.g. rice, adobo, Mais, tilapia',
-              hintStyle: TextStyle(
-                color: _inkFaint(),
-                fontSize: 14,
-              ),
+              hintStyle: TextStyle(color: _inkFaint(), fontSize: 14),
               prefixIcon: Icon(
                 CupertinoIcons.search,
                 size: 18,
@@ -696,11 +685,7 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
           const SizedBox(height: 8),
           Text(
             'You will enter its kcal, protein, carbs and fat in the next step.',
-            style: TextStyle(
-              color: _inkDim(),
-              fontSize: 12,
-              height: 1.4,
-            ),
+            style: TextStyle(color: _inkDim(), fontSize: 12, height: 1.4),
           ),
         ],
         if (!_manual) ...[
@@ -728,11 +713,7 @@ class _AddFoodWizardState extends ConsumerState<AddFoodWizard> {
               child: Text(
                 'No FNRI food matches "${_searchController.text.trim()}". '
                 'Try a shorter word (e.g. "rice" instead of "fried rice with egg").',
-                style: TextStyle(
-                  color: _inkDim(),
-                  fontSize: 12,
-                  height: 1.4,
-                ),
+                style: TextStyle(color: _inkDim(), fontSize: 12, height: 1.4),
               ),
             ),
           if (!_manual) const SizedBox(height: 8),
@@ -1030,8 +1011,9 @@ class _StepIndicator extends StatelessWidget {
   const _StepIndicator({required this.current});
 
   static const _purple = Color(0xFF7C3AED);
-  static Color get _pending =>
-      ClayColors.isLightMode ? const Color(0xFFE2DCF2) : const Color(0xFF353555);
+  static Color get _pending => ClayColors.isLightMode
+      ? const Color(0xFFE2DCF2)
+      : const Color(0xFF353555);
 
   @override
   Widget build(BuildContext context) {
@@ -1115,9 +1097,7 @@ class _StepIndicator extends StatelessWidget {
                             _stepLabels[i],
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              color: active
-                                  ? _ink()
-                                  : _inkFaint(),
+                              color: active ? _ink() : _inkFaint(),
                               fontSize: 10,
                               fontWeight: active
                                   ? FontWeight.w700
@@ -1160,11 +1140,7 @@ class _StepHeading extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           subtitle,
-          style: TextStyle(
-            color: _inkDim(),
-            fontSize: 13.5,
-            height: 1.45,
-          ),
+          style: TextStyle(color: _inkDim(), fontSize: 13.5, height: 1.45),
         ),
       ],
     );
@@ -1225,11 +1201,7 @@ class _PhotoPlaceholder extends StatelessWidget {
           Text(
             'Take a photo of your meal or choose one from your gallery.',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: _inkDim(),
-              fontSize: 13,
-              height: 1.4,
-            ),
+            style: TextStyle(color: _inkDim(), fontSize: 13, height: 1.4),
           ),
           const SizedBox(height: 20),
           Row(
@@ -1354,19 +1326,13 @@ class _FoodResultTile extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       food.aliases.join(', '),
-                      style: TextStyle(
-                        color: _inkDim(),
-                        fontSize: 11,
-                      ),
+                      style: TextStyle(color: _inkDim(), fontSize: 11),
                     ),
                   ],
                   const SizedBox(height: 3),
                   Text(
                     '${food.category} · ${food.caloriesKcal.toStringAsFixed(0)} kcal / 100 g',
-                    style: TextStyle(
-                      color: _inkFaint(),
-                      fontSize: 11,
-                    ),
+                    style: TextStyle(color: _inkFaint(), fontSize: 11),
                   ),
                 ],
               ),
@@ -1459,10 +1425,7 @@ class _Per100 extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: TextStyle(color: _inkFaint(), fontSize: 10),
-          ),
+          Text(label, style: TextStyle(color: _inkFaint(), fontSize: 10)),
           const SizedBox(height: 2),
           Text(
             value,
@@ -1609,10 +1572,7 @@ class _MacroPill extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: TextStyle(color: _inkDim(), fontSize: 10.5),
-          ),
+          Text(label, style: TextStyle(color: _inkDim(), fontSize: 10.5)),
           const SizedBox(height: 2),
           Text(
             '${value.toStringAsFixed(1)} g',
@@ -1663,10 +1623,7 @@ class _ReviewRow extends StatelessWidget {
                 children: [
                   Text(
                     label,
-                    style: TextStyle(
-                      color: _inkFaint(),
-                      fontSize: 10,
-                    ),
+                    style: TextStyle(color: _inkFaint(), fontSize: 10),
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -1681,10 +1638,7 @@ class _ReviewRow extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       subtitle!,
-                      style: TextStyle(
-                        color: _inkDim(),
-                        fontSize: 11,
-                      ),
+                      style: TextStyle(color: _inkDim(), fontSize: 11),
                     ),
                   ],
                 ],
@@ -1699,11 +1653,7 @@ class _ReviewRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 4),
-            Icon(
-              CupertinoIcons.chevron_right,
-              color: _inkFaint(),
-              size: 14,
-            ),
+            Icon(CupertinoIcons.chevron_right, color: _inkFaint(), size: 14),
           ],
         ),
       ),
@@ -1831,9 +1781,7 @@ class _SourceChoice extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                color: selected
-                    ? _ink()
-                    : _inkDim(),
+                color: selected ? _ink() : _inkDim(),
                 fontSize: 13.5,
                 fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
               ),

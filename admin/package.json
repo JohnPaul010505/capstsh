@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"node server/index.js\" \"vite\"",
+    "dev": "concurrently \"node server/index.js\" \"node server/prediction-service.js\" \"vite\"",
     "dev:client": "vite",
     "dev:server": "node server/index.js",
     "seed:dev": "node scripts/seed-dev.mjs",
@@ -17,7 +17,8 @@
     "verify:spread": "node scripts/verify-dataset-spread.mjs",
     "build": "tsc && vite build",
     "start": "node server/index.js",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "dev:ai": "node server/prediction-service.js"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.0",

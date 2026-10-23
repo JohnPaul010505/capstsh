@@ -151,7 +151,7 @@ final homeDataProvider = FutureProvider.autoDispose
 
       final monthlyBmis = List<double?>.generate(12, (i) => null);
       for (final m in measurements.cast<Map<String, dynamic>>()) {
-        final t = DateTime.parse(m['measured_at'] as String);
+        final t = DateTime.parse(m['measured_at'] as String).toLocal();
         final heightCm = (m['height_cm'] as num?)?.toDouble();
         final weightKg = (m['weight_kg'] as num?)?.toDouble();
         if (heightCm != null &&

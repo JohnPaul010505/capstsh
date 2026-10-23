@@ -60,19 +60,21 @@ Page<dynamic> _iosPush(Widget child) => CustomTransitionPage(
 );
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authProvider);
-  final recoveryMode = ref.watch(passwordRecoveryModeProvider);
-  final onboardingState = ref.watch(needsOnboardingProvider);
-  final profile = authState.valueOrNull;
-  final needsOnboarding =
-      profile != null &&
-      profile.role == 'member' &&
-      (onboardingState.valueOrNull ??
-          (profile.gender == null || profile.gender!.trim().isEmpty));
-
-  return GoRouter(
+  final refresh = ValueNotifier<int>(0);
+  ref.listen(authProvider, (_, __) => refresh.value++);
+  ref.listen(passwordRecoveryModeProvider, (_, __) => refresh.value++);
+  ref.listen(needsOnboardingProvider, (_, __) => refresh.value++);
+  final router = GoRouter(
+    refreshListenable: refresh,
     initialLocation: '/login',
     redirect: (context, state) {
+      final authState = ref.read(authProvider);
+      final recoveryMode = ref.read(passwordRecoveryModeProvider);
+      final onboardingState = ref.read(needsOnboardingProvider);
+      final currentProfile = authState.valueOrNull;
+      final needsOnboarding =
+          currentProfile?.role == 'member' &&
+          (onboardingState.valueOrNull ?? false);
       if (authState.isLoading) return null;
       final isLoggedIn = authState.valueOrNull != null;
       final profile = authState.valueOrNull;
@@ -355,6 +357,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (_, state) => _iosPush(
           RecordDetailScreen(
             memberId: state.pathParameters['memberId']!,
+            planId: state.uri.queryParameters['planId'],
             memberName: state.uri.queryParameters['name'] ?? 'Member',
           ),
         ),
@@ -369,6 +372,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
+  ref.onDispose(() {
+    router.dispose();
+    refresh.dispose();
+  });
+  return router;
 });
 
 class MemberShell extends StatefulWidget {

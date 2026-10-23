@@ -61,8 +61,9 @@ export default function TabHeader({ title, subtitle, range, onRangeChange, filte
             value={filter.value}
             onChange={filter.onChange}
             placeholder={filter.placeholder}
+            purple
             className="w-52"
-            buttonClassName="px-3 py-2.5 rounded-xl bg-overlay-8 border-line"
+            buttonClassName="px-3 py-2.5 rounded-xl"
           />
         )}
       </div>

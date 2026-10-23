@@ -29,7 +29,7 @@ final trainerChatProvider = FutureProvider.autoDispose
       final results = await Future.wait<dynamic>([
         client
             .from('profiles')
-            .select('id, full_name, avatar_url')
+            .select('id, full_name, avatar_url, specialty, available_days')
             .eq('id', trainerId)
             .single()
             .timeout(const Duration(seconds: 5)),
@@ -50,6 +50,15 @@ final trainerChatProvider = FutureProvider.autoDispose
         'assignedAt': assignments.first['assigned_at'] as String?,
       };
     });
+
+final liveTrainerProfileProvider = StreamProvider.autoDispose
+    .family<Map<String, dynamic>?, String>(
+      (ref, id) => SupabaseClientService().client
+          .from('profiles')
+          .stream(primaryKey: ['id'])
+          .eq('id', id)
+          .map((rows) => rows.isEmpty ? null : rows.first),
+    );
 
 class ChatPage extends ConsumerStatefulWidget {
   final String trainerId;
@@ -222,11 +231,29 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   );
 
   Widget _conversation(Map<String, dynamic> data) {
-    final trainer = data['trainer'] as Map<String, dynamic>;
+    final trainer =
+        ref.watch(liveTrainerProfileProvider(widget.trainerId)).valueOrNull ??
+        data['trainer'] as Map<String, dynamic>;
     final name = trainer['full_name'] as String? ?? 'Your Trainer';
     return Column(
       children: [
-        _chatHeader(name: name, initials: _initials(name)),
+        Stack(
+          children: [
+            _chatHeader(name: name, initials: _initials(name)),
+            Positioned(
+              right: 8,
+              top: 8,
+              child: IconButton(
+                tooltip: 'Trainer information',
+                style: IconButton.styleFrom(
+                  foregroundColor: const Color(0xFF7C3AED),
+                ),
+                icon: const Icon(Icons.info_outline, color: Color(0xFF7C3AED)),
+                onPressed: () => _showTrainerInfo(trainer),
+              ),
+            ),
+          ],
+        ),
         Expanded(
           child: _loadingMessages
               ? const Center(
@@ -305,7 +332,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
             decoration: BoxDecoration(
               color: isMe
-                  ? const Color(0xFF0A84FF)
+                  ? const Color(0xFF7C3AED)
                   : ClayTokens.clayDarkSurfaceElevated,
               border: !isMe
                   ? Border.all(color: ClayTokens.clayDarkBorder.withAlpha(110))
@@ -388,7 +415,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
             width: 44,
             height: 44,
             decoration: const BoxDecoration(
-              color: Color(0xFF0A84FF),
+              color: Color(0xFF7C3AED),
               shape: BoxShape.circle,
             ),
             child: const Icon(Icons.send, color: Colors.white, size: 16),
@@ -425,7 +452,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
               decoration: const BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: LinearGradient(
-                  colors: [Color(0xFFBF5AF2), Color(0xFFD6A5FF)],
+                  colors: [Color(0xFF7C3AED), Color(0xFF7C3AED)],
                 ),
               ),
               alignment: Alignment.center,
@@ -461,6 +488,125 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           ],
         ),
       );
+
+  Future<void> _showTrainerInfo(Map<String, dynamic> trainer) async {
+    final client = SupabaseClientService().client;
+    final profiles = client
+        .from('profiles')
+        .stream(primaryKey: ['id'])
+        .eq('id', widget.trainerId);
+    final ratings = await client
+        .from('trainer_feedback')
+        .select('rating')
+        .eq('trainer_id', widget.trainerId);
+    if (!mounted) return;
+    final values = (ratings as List)
+        .map((row) => row['rating'])
+        .whereType<num>()
+        .toList();
+    final rating = values.isEmpty
+        ? 'No ratings yet'
+        : '${(values.reduce((a, b) => a + b) / values.length).toStringAsFixed(1)} / 5 · ${values.length} ratings';
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: StreamBuilder<List<Map<String, dynamic>>>(
+          stream: profiles,
+          builder: (context, snapshot) {
+            final profile = snapshot.data?.firstOrNull ?? trainer;
+            return MemberGlassCard(
+              padding: const EdgeInsets.all(20),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      profile['full_name']?.toString() ?? 'Trainer',
+                      style: TextStyle(
+                        fontSize: 21,
+                        fontWeight: FontWeight.w700,
+                        color: ClayTokens.clayDarkTextPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Icon(
+                      Icons.star_rounded,
+                      color: const Color(0xFF7C3AED),
+                      size: 32,
+                    ),
+                    Text(
+                      rating,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: ClayTokens.clayDarkTextPrimary),
+                    ),
+                    const Divider(height: 28),
+                    Text(
+                      'Specialty',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: ClayTokens.clayDarkTextSecondary,
+                      ),
+                    ),
+                    Text(
+                      profile['specialty']?.toString() ?? 'Not specified',
+                      style: TextStyle(color: ClayTokens.clayDarkTextPrimary),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Availability',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: ClayTokens.clayDarkTextSecondary,
+                      ),
+                    ),
+                    for (final day
+                        in (profile['available_days']?.toString() ??
+                                'Schedule not provided')
+                            .split(','))
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 5),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.schedule,
+                              size: 18,
+                              color: Color(0xFF7C3AED),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                day.trim(),
+                                style: TextStyle(
+                                  color: ClayTokens.clayDarkTextPrimary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    const SizedBox(height: 16),
+                    FilledButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF7C3AED),
+                        foregroundColor: Colors.white,
+                      ),
+                      child: const Text(
+                        'Close',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
 
   String _initials(String name) => name
       .split(' ')

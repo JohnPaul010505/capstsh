@@ -42,6 +42,8 @@ interface RecordsTableProps<T> {
    * the boundary rendered sliced in half with no scrollbar to explain it.
    */
   pageSize?: number
+  /** Fit a fixed page of rows to the available card height without inner scrolling. */
+  fillPage?: boolean
   /**
    * Makes rows clickable. OPTIONAL, and absent by default: most tables in the app
    * have no row-level destination, and making every row look clickable where it
@@ -83,7 +85,7 @@ const HEADER_HEIGHT = 40
 export default function RecordsTable<T>({
   title, columns, rows, rowKey, searchFields, searchPlaceholder,
   searchValue, onSearchChange, isLoading, emptyMessage, subtitle, pageSize: pageSizeProp,
-  onRowClick, headerExtra,
+  onRowClick, headerExtra, fillPage = false,
 }: RecordsTableProps<T>) {
 
   const [page, setPage] = useState(0)
@@ -96,6 +98,16 @@ export default function RecordsTable<T>({
     fallback: 8,
   })
   const pageSize = pageSizeProp ?? measuredPageSize
+  const [fittedRowHeight, setFittedRowHeight] = useState(ROW_HEIGHT)
+  useLayoutEffect(() => {
+    if (!fillPage || !scrollRef.current) return
+    const container = scrollRef.current
+    const measure = () => setFittedRowHeight(Math.max(1, (container.clientHeight - HEADER_HEIGHT) / pageSize))
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(container)
+    return () => observer.disconnect()
+  }, [fillPage, pageSize, scrollRef])
 
   // When the page size is PINNED, the body is capped at exactly that many rows
   // rather than stretching to fill the card. Without the cap a tall window left
@@ -186,13 +198,13 @@ export default function RecordsTable<T>({
         */}
         <div
           ref={scrollRef}
-          style={pinnedBodyHeight ? { maxHeight: pinnedBodyHeight } : undefined}
-          className="rounded-xl border border-line-soft overflow-auto flex-1 min-h-0 [scrollbar-width:thin] [scrollbar-color:var(--overlay-10)_transparent] [&::-webkit-scrollbar]:h-8 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--overlay-10)] [&::-webkit-scrollbar-thumb:hover]:bg-[#7C3AED]/60"
+          style={!fillPage && pinnedBodyHeight ? { maxHeight: pinnedBodyHeight } : undefined}
+          className={`rounded-xl border border-line-soft ${fillPage ? 'overflow-hidden' : 'overflow-auto'} flex-1 min-h-0 [scrollbar-width:thin] [scrollbar-color:var(--overlay-10)_transparent] [&::-webkit-scrollbar]:h-8 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--overlay-10)] [&::-webkit-scrollbar-thumb:hover]:bg-[#7C3AED]/60`}
         >
-          <table className="w-full min-w-max">
+          <table className={fillPage ? 'w-full table-fixed' : 'w-full min-w-max'}>
             <thead className="sticky top-0 z-10">
               <tr className="border-b border-line bg-[var(--table-head-bg)] shadow-[0_1px_0_var(--line),0_6px_12px_-8px_rgba(0,0,0,0.55)]">
-                <th scope="col" className="text-left px-4 py-2.5 text-[12px] font-semibold text-fg-muted">#</th>
+                <th scope="col" className={`text-left px-4 py-2.5 text-[12px] font-semibold text-fg-muted ${fillPage ? 'w-14' : ''}`}>#</th>
                 {columns.map(c => (
                   <th key={c.key} scope="col" className={`${c.align === 'right' ? 'text-right' : 'text-left'} px-4 py-2.5 text-[12px] font-semibold text-fg-muted ${c.className ?? ''}`}>{c.header}</th>
                 ))}
@@ -216,6 +228,7 @@ export default function RecordsTable<T>({
                 pageRows.map((row, i) => (
                   <tr
                     ref={i === 0 ? firstRowRef : undefined}
+                    style={fillPage ? { height: fittedRowHeight } : undefined}
                     key={rowKey(row)}
                     className={`border-b border-line-soft last:border-0 hover:bg-[#7C3AED]/5 transition-colors${rowInteractive ? ' cursor-pointer focus:outline-none focus-visible:bg-[#7C3AED]/10' : ''}`}
                     onClick={rowInteractive ? () => onRowClick?.(row) : undefined}
@@ -229,13 +242,13 @@ export default function RecordsTable<T>({
                         }
                       : undefined}
                   >
-                    <td className="px-4 py-3 text-sm text-fg-muted tabular-nums">{safePage * pageSize + i + 1}</td>
+                    <td className={`px-4 ${fillPage ? 'py-0' : 'py-3'} text-sm text-fg-muted tabular-nums`}>{safePage * pageSize + i + 1}</td>
                     {columns.map(c => (
                       <td
                         key={c.key}
-                        className={`px-4 py-3 text-sm text-fg align-middle ${c.align === 'right' ? 'text-right' : ''} ${c.className ?? ''}`}
+                        className={`px-4 ${fillPage ? 'py-0' : 'py-3'} text-sm text-fg align-middle ${c.align === 'right' ? 'text-right' : ''} ${c.className ?? ''}`}
                       >
-                        <div className="max-w-[22rem] truncate">{c.render(row, safePage * pageSize + i)}</div>
+                        <div className={fillPage ? 'truncate' : 'max-w-[22rem] truncate'} style={fillPage ? { maxHeight: Math.max(1, fittedRowHeight - 1), overflow: 'hidden' } : undefined}>{c.render(row, safePage * pageSize + i)}</div>
                       </td>
                     ))}
                   </tr>

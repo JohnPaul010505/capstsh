@@ -89,12 +89,14 @@ class RecordDetailScreen extends ConsumerStatefulWidget {
   final String memberId;
   final String memberName;
   final String? viewTrainerId;
+  final String? planId;
 
   const RecordDetailScreen({
     super.key,
     required this.memberId,
     required this.memberName,
     this.viewTrainerId,
+    this.planId,
   });
 
   @override
@@ -121,6 +123,15 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
   /// their previous behaviour of showing the member's current active plan.
   Future<Map<String, dynamic>?> _loadPlan() async {
     final repo = PlanRepository();
+    if (widget.planId != null && widget.viewTrainerId == null) {
+      return await SupabaseClientService().client
+          .from('member_goal_plans')
+          .select()
+          .eq('id', widget.planId!)
+          .eq('member_id', widget.memberId)
+          .eq('trainer_id', SupabaseClientService().client.auth.currentUser!.id)
+          .maybeSingle();
+    }
     final currentUserId = SupabaseClientService().client.auth.currentUser?.id;
     // Member view passes the selected trainer explicitly. Trainer record
     // routes resolve their OWN plan for the member, so two trainers looking
@@ -150,7 +161,8 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
   @override
   void didUpdateWidget(covariant RecordDetailScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.memberId != widget.memberId ||
+    if (oldWidget.planId != widget.planId ||
+        oldWidget.memberId != widget.memberId ||
         oldWidget.viewTrainerId != widget.viewTrainerId) {
       _planFuture = _loadPlan();
       _displayOverride = null;
@@ -290,9 +302,7 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Could not update this plan: $error'),
-        ),
+        SnackBar(content: Text('Could not update this plan: $error')),
       );
     } finally {
       if (mounted) setState(() => _togglingDisplay = false);
@@ -375,10 +385,11 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(        backgroundColor: ClayColors.isLightMode
-            ? ClayTokens.claySurfaceLight.withAlpha(250)
-            : ClayTokens.clayDarkSurface,
-        body: AppGlowBackground(
+    return Scaffold(
+      backgroundColor: ClayColors.isLightMode
+          ? ClayTokens.claySurfaceLight.withAlpha(250)
+          : ClayTokens.clayDarkSurface,
+      body: AppGlowBackground(
         child: SafeArea(
           child: FutureBuilder<Map<String, dynamic>?>(
             future: _planFuture,
@@ -395,7 +406,7 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
                 // record keep the plain empty-state message.
                 final isSelfView =
                     SupabaseClientService().client.auth.currentUser?.id ==
-                        widget.memberId;
+                    widget.memberId;
                 return Column(
                   children: [
                     _buildHeader(days: 0, total: 7),
@@ -540,7 +551,8 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
                                                 ? 'Cancellation request sent. Your plan stays active until reviewed.'
                                                 : 'Need to stop this plan? Request cancellation from your trainer.',
                                             style: TextStyle(
-                                              color: ClayTokens.clayDarkTextPrimary,
+                                              color: ClayTokens
+                                                  .clayDarkTextPrimary,
                                               fontSize: 12,
                                             ),
                                           ),
@@ -562,12 +574,14 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
                                                       ),
                                             child: _requestingCancellation
                                                 ? CupertinoActivityIndicator(
-                                                    color: ClayTokens.clayDarkTextPrimary,
+                                                    color: ClayTokens
+                                                        .clayDarkTextPrimary,
                                                   )
                                                 : Text(
                                                     'Request',
                                                     style: TextStyle(
-                                                      color: ClayTokens.clayDarkTextPrimary,
+                                                      color: ClayTokens
+                                                          .clayDarkTextPrimary,
                                                       fontSize: 12,
                                                       fontWeight:
                                                           FontWeight.w700,
@@ -882,7 +896,10 @@ class _PlanDaySection extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 'Notes: $notes',
-                style: TextStyle(fontSize: 12, color: ClayTokens.clayDarkTextPrimary),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: ClayTokens.clayDarkTextPrimary,
+                ),
               ),
             ],
             const SizedBox(height: 6),

@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { usePredictions, usePredictionCount, useGeneratePredictions, useMembersSimple, type MemberOption } from '../hooks/usePredictions'
 // No Info/ChevronDown/Cpu/ShieldCheck/Database: they were only ever used by the
 // "How these predictions are measured" block, which is gone. `noUnusedLocals`
@@ -288,7 +288,7 @@ export default function PredictionsPage() {
           window over here and switches back does not watch two headline counts
           change to numbers that tab can neither explain nor undo. */}
       <div className="flex flex-wrap items-center gap-1.5 shrink-0">
-        <div role="tablist" aria-label="Prediction sections" className="flex flex-wrap items-center gap-1.5">
+        <div role="tablist" aria-label="Prediction sections" className="glass-card page-tabs">
           {PREDICTION_VIEWS.map(v => (
             <button
               key={v.id}
@@ -296,11 +296,7 @@ export default function PredictionsPage() {
               role="tab"
               aria-selected={view === v.id}
               onClick={() => setView(v.id)}
-              className={`px-3.5 py-2 rounded-xl text-sm transition-colors ${
-                view === v.id
-                  ? 'bg-[#7C3AED] text-white'
-                  : 'bg-overlay-8 border border-line text-fg-muted hover:text-fg-strong hover:border-[#7C3AED]/40'
-              }`}
+              className="page-tab"
             >
               {v.label}
             </button>
@@ -403,7 +399,7 @@ export default function PredictionsPage() {
                  It lives here rather than over on `recent` because these are the
                  numbers the admin just asked for, and the button that produced them
                  is two cards above this panel. */
-              <div className="bg-gradient-to-r from-[#7C3AED]/10 to-[#3B82F6]/10 p-4 rounded-xl border border-[#7C3AED]/30 shadow-sm shrink-0 max-h-[42vh] flex flex-col min-h-0">
+              <div className="glass-card p-4 rounded-xl shadow-sm shrink-0 max-h-[42vh] flex flex-col min-h-0">
                 <div className="flex items-center justify-between mb-3 gap-2 flex-wrap shrink-0">
                   <h2 className="text-base font-semibold text-fg-strong">
                     Last Generated Results — {selectedMember?.full_name ?? 'Member'}

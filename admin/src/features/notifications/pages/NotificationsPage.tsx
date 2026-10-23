@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { Send, Users } from 'lucide-react'
@@ -158,7 +158,7 @@ export default function NotificationsPage() {
   return (
     <div className="h-full min-h-0 flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-1.5 shrink-0">
-        <div role="tablist" aria-label="Notification sections" className="flex flex-wrap items-center gap-1.5">
+        <div role="tablist" aria-label="Notification sections" className="glass-card page-tabs">
           {NOTIFICATION_VIEWS.map(v => (
             <button
               key={v.id}
@@ -166,11 +166,7 @@ export default function NotificationsPage() {
               role="tab"
               aria-selected={view === v.id}
               onClick={() => setView(v.id)}
-              className={`px-3.5 py-2 rounded-xl text-sm transition-colors ${
-                view === v.id
-                  ? 'bg-[#7C3AED] text-white'
-                  : 'bg-overlay-8 border border-line text-fg-muted hover:text-fg-strong hover:border-[#7C3AED]/40'
-              }`}
+              className="page-tab"
             >
               {v.label}
             </button>

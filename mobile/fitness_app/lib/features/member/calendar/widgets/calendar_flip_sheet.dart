@@ -19,6 +19,7 @@ Future<DateTime> showCalendarFlipSheet(
 }) {
   return showModalBottomSheet<DateTime>(
     context: context,
+    useRootNavigator: true,
     backgroundColor: Colors.transparent,
     isScrollControlled: true,
     isDismissible: false,

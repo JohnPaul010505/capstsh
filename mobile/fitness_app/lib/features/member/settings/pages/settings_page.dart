@@ -1,3 +1,5 @@
+import 'package:shared/services/supabase_client.dart';
+import 'package:fitness_app/features/shared/widgets/profile_details_card.dart';
 import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -137,144 +139,139 @@ class _SettingsContent extends ConsumerWidget {
               ),
             ),
             child: Row(
+              children: [
+                Stack(
+                  clipBehavior: Clip.none,
                   children: [
-                    Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Container(
-                          width: 52,
-                          height: 52,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: avatarUrl == null
-                                ? null
-                                : Colors.transparent,
-                            gradient: avatarUrl == null
-                                ? const LinearGradient(
-                                    colors: [
-                                      Color(0xFFBF5AF2),
-                                      Color(0xFFD6A5FF),
-                                    ],
-                                  )
-                                : null,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withAlpha(40),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          alignment: Alignment.center,
-                          child: avatarUrl == null
-                              ? Text(
-                                  initials,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                )
-                              : (avatarUrl!.startsWith('assets/')
-                                    ? Image.asset(
-                                        avatarUrl,
-                                        width: 52,
-                                        height: 52,
-                                        fit: BoxFit.cover,
-                                      )
-                                    : ClipOval(
-                                        child: Image.network(
-                                          avatarUrl,
-                                          width: 52,
-                                          height: 52,
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (_, __, ___) => Text(
-                                            initials,
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                        ),
-                                      )),
-                        ),
-                        if (gender == 'male' && avatarUrl == null)
-                          Positioned(
-                            bottom: -3,
-                            right: -3,
-                            child: Container(
-                              width: 22,
-                              height: 22,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: const Color(0xFF1C1C1E),
-                                border: Border.all(
-                                  color: ClayTokens.clayPrimary,
-                                  width: 1.5,
-                                ),
-                              ),
-                              alignment: Alignment.center,
-                              child: Icon(
-                                CupertinoIcons.person_fill,
-                                color: ClayTokens.clayPrimary,
-                                size: 12,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            name,
-                            style: TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w600,
-                              color: ClayTokens.clayDarkTextPrimary,
-                              decoration: TextDecoration.none,
-                            ),
-                          ),
-                          if (email.isNotEmpty)
-                            Text(
-                              email,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: ClayTokens.clayDarkTextSecondary,
-                                decoration: TextDecoration.none,
-                              ),
-                            ),
-                          const SizedBox(height: 2),
-                          TextButton(
-                            style: TextButton.styleFrom(
-                              padding: EdgeInsets.zero,
-                              minimumSize: const Size(0, 36),
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              alignment: Alignment.centerLeft,
-                            ),
-                            onPressed: () => _showAvatarPicker(context, ref),
-                            child: Text(
-                              'Change Profile',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                // Lilac reads on the dark panel but disappears
-                                // on the light glass body.
-                                color: ClayColors.isLightMode
-                                    ? ClayTokens.clayPrimary
-                                    : const Color(0xFFD8B4FE),
-                                decoration: TextDecoration.none,
-                              ),
-                            ),
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: avatarUrl == null ? null : Colors.transparent,
+                        gradient: avatarUrl == null
+                            ? const LinearGradient(
+                                colors: [Color(0xFFBF5AF2), Color(0xFFD6A5FF)],
+                              )
+                            : null,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withAlpha(40),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
                           ),
                         ],
                       ),
+                      alignment: Alignment.center,
+                      child: avatarUrl == null
+                          ? Text(
+                              initials,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            )
+                          : (avatarUrl!.startsWith('assets/')
+                                ? Image.asset(
+                                    avatarUrl,
+                                    width: 52,
+                                    height: 52,
+                                    fit: BoxFit.cover,
+                                  )
+                                : ClipOval(
+                                    child: Image.network(
+                                      avatarUrl,
+                                      width: 52,
+                                      height: 52,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => Text(
+                                        initials,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                  )),
                     ),
+                    if (gender == 'male' && avatarUrl == null)
+                      Positioned(
+                        bottom: -3,
+                        right: -3,
+                        child: Container(
+                          width: 22,
+                          height: 22,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: const Color(0xFF1C1C1E),
+                            border: Border.all(
+                              color: ClayTokens.clayPrimary,
+                              width: 1.5,
+                            ),
+                          ),
+                          alignment: Alignment.center,
+                          child: Icon(
+                            CupertinoIcons.person_fill,
+                            color: ClayTokens.clayPrimary,
+                            size: 12,
+                          ),
+                        ),
+                      ),
                   ],
                 ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          color: ClayTokens.clayDarkTextPrimary,
+                          decoration: TextDecoration.none,
+                        ),
+                      ),
+                      if (email.isNotEmpty)
+                        Text(
+                          email,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: ClayTokens.clayDarkTextSecondary,
+                            decoration: TextDecoration.none,
+                          ),
+                        ),
+                      const SizedBox(height: 2),
+                      TextButton(
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          minimumSize: const Size(0, 36),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          alignment: Alignment.centerLeft,
+                        ),
+                        onPressed: () => _showAvatarPicker(context, ref),
+                        child: Text(
+                          'Change Profile',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            // Lilac reads on the dark panel but disappears
+                            // on the light glass body.
+                            color: ClayColors.isLightMode
+                                ? ClayTokens.clayPrimary
+                                : const Color(0xFFD8B4FE),
+                            decoration: TextDecoration.none,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -289,6 +286,20 @@ class _SettingsContent extends ConsumerWidget {
         const SizedBox(height: 8),
         // The toggle paints its own glass body in both themes.
         const ThemeModeToggle(),
+        const SizedBox(height: 10),
+        _SettingItem(
+          index: 0,
+          icon: Icons.person_outline,
+          iconColor: const Color(0xFF7C3AED),
+          label: 'Details',
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => ProfileDetailsPage(
+                userId: SupabaseClientService().client.auth.currentUser!.id,
+              ),
+            ),
+          ),
+        ),
         const SizedBox(height: 10),
         _SettingItem(
           index: 1,
@@ -393,9 +404,7 @@ class _SettingsContent extends ConsumerWidget {
             color: ClayColors.isLightMode
                 ? const Color(0xFFF8F4FF)
                 : const Color(0xFF14142A),
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(20),
-            ),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -596,5 +605,3 @@ class _SettingItem extends StatelessWidget {
     );
   }
 }
-
-

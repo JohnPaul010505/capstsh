@@ -102,6 +102,7 @@ export default function TrendChartCard({
               disabled: grainOptions ? !grainOptions.includes(g.id as Grain) : false,
             }))}
             value={grain}
+            purple
             onChange={g => onGrainChange(g as Grain)}
             className="w-32"
             buttonClassName="px-3 py-2 rounded-lg text-xs"

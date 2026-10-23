@@ -42,18 +42,29 @@ class WorkoutIdleOverlay extends ConsumerWidget {
                       color: ClayTokens.clayWarning.withAlpha(25),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.schedule, color: Color(0xFFFF9F0A), size: 26),
+                    child: const Icon(
+                      Icons.schedule,
+                      color: Color(0xFFFF9F0A),
+                      size: 26,
+                    ),
                   ),
                   const SizedBox(height: 14),
                   const Text(
                     'Are you still there?',
-                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFFFFFFFF)),
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFFFFFFFF),
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Text(
                     'No activity for ${WorkoutConstants.idleTimeoutMinutes} minutes. The session will restart in ${session.idleWarningSeconds}s.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 11, color: ClayTokens.clayDarkTextSecondary),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: ClayTokens.clayDarkTextSecondary,
+                    ),
                   ),
                   const SizedBox(height: 18),
                   Row(
@@ -66,12 +77,18 @@ class WorkoutIdleOverlay extends ConsumerWidget {
                           decoration: BoxDecoration(
                             color: ClayTokens.clayError.withAlpha(25),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: ClayTokens.clayError.withAlpha(100)),
+                            border: Border.all(
+                              color: ClayTokens.clayError.withAlpha(100),
+                            ),
                           ),
                           child: const Text(
                             'Restart',
                             textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFFFF6B61)),
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFFFF6B61),
+                            ),
                           ),
                         ),
                       ),
@@ -84,12 +101,18 @@ class WorkoutIdleOverlay extends ConsumerWidget {
                           decoration: BoxDecoration(
                             color: ClayTokens.clayAccent.withAlpha(25),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: ClayTokens.clayAccent.withAlpha(100)),
+                            border: Border.all(
+                              color: ClayTokens.clayAccent.withAlpha(100),
+                            ),
                           ),
                           child: const Text(
                             'Continue',
                             textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF6EE7B7)),
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF6EE7B7),
+                            ),
                           ),
                         ),
                       ),

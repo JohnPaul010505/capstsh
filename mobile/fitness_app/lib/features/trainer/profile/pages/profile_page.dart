@@ -1,3 +1,4 @@
+import '../../../shared/widgets/profile_details_card.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,15 +15,13 @@ import '../../../shared/widgets/pressable.dart';
 import '../../../shared/widgets/animations.dart';
 
 final trainerProfileProvider =
-    FutureProvider.family<Map<String, dynamic>, String>((ref, id) async {
-      final client = SupabaseClientService().client;
-      final response = await client
+    StreamProvider.family<Map<String, dynamic>, String>(
+      (ref, id) => SupabaseClientService().client
           .from('profiles')
-          .select('id, full_name, email, created_at, specialty, available_days')
+          .stream(primaryKey: ['id'])
           .eq('id', id)
-          .single();
-      return response;
-    });
+          .map((rows) => rows.single),
+    );
 
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
@@ -32,10 +31,11 @@ class ProfilePage extends ConsumerWidget {
     final currentUserId = SupabaseClientService().client.auth.currentUser!.id;
     final profileAsync = ref.watch(trainerProfileProvider(currentUserId));
 
-    return Scaffold(        backgroundColor: ClayColors.isLightMode
-            ? ClayTokens.claySurfaceLight.withAlpha(250)
-            : ClayTokens.clayDarkSurface,
-        body: AppGlowBackground(
+    return Scaffold(
+      backgroundColor: ClayColors.isLightMode
+          ? ClayTokens.claySurfaceLight.withAlpha(250)
+          : ClayTokens.clayDarkSurface,
+      body: AppGlowBackground(
         child: SafeArea(
           child: profileAsync.when(
             data: (profile) {
@@ -194,6 +194,7 @@ class ProfilePage extends ConsumerWidget {
                     label: 'Feedback',
                     onTap: () => context.push('/trainer/feedback'),
                   ),
+                  TrainerProfileTabs(trainerId: currentUserId),
                   const SizedBox(height: 24),
                   PressableCard(
                     glass: true,
@@ -208,7 +209,11 @@ class ProfilePage extends ConsumerWidget {
                     },
                     color: ClayTokens.clayPrimaryLight.withAlpha(25),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: ClayColors.isLightMode ? ClayTokens.clayPrimary.withAlpha(45) : Colors.white.withAlpha(18)),
+                    border: Border.all(
+                      color: ClayColors.isLightMode
+                          ? ClayTokens.clayPrimary.withAlpha(45)
+                          : Colors.white.withAlpha(18),
+                    ),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     child: Center(
                       child: Text(

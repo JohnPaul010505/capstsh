@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { useMember, useUpdateMember } from '../hooks/useMembers'
+import { useMember } from '../hooks/useMembers'
 import { usePagedTable, useResetPageOnChange } from '@/lib/pagedTable'
 import PeopleTable, { type PeopleColumn } from '@/components/PeopleTable'
 import { useFitRowHeight } from '@/hooks/useFitRows'
@@ -15,11 +15,6 @@ import {
 } from '@/features/dashboard/lib/dateRange'
 import type { MealLog, WorkoutLog } from '@/types'
 import { ArrowLeft, Phone, Calendar, MapPin, PhoneCall, Play, X } from 'lucide-react'
-import {
-  describeError,
-  normalizeProfileUpdates,
-  type MemberEditableFields,
-} from '@/features/shared/profileUpdates'
 import { useRealtimeProfiles } from '@/hooks/useRealtimeProfiles'
 
 /**
@@ -49,51 +44,7 @@ export default function MemberDetailPage() {
   // Live off other tabs: an edit made here, in a second admin tab, or from
   // the mobile app re-renders this row without a reload.
   useRealtimeProfiles(id ? [id] : [])
-  const updateMember = useUpdateMember()
 
-  /**
-   * Personal Information is editable. `editing` toggles the inputs; `form`
-   * is seeded from the member on entry so a half-typed edit can be discarded
-   * by toggling off without touching the server.
-   *
-   * Email stays read-only because it is also the member's login address.
-   */
-  const [editing, setEditing] = useState(false)
-  const [form, setForm] = useState<MemberEditableFields & Record<string, string>>({
-    full_name: '',
-    phone: '',
-    date_of_birth: '',
-    gender: '',
-    address: '',
-    emergency_contact_name: '',
-    emergency_contact_phone: '',
-    civil_status: '',
-    religion: '',
-    religion_other: '',
-  })
-  /**
-   * The save used to fail silently: `date_of_birth: ''` is illegal for a `date`
-   * column, Postgres rejected the whole statement, and nothing told the admin.
-   * The error now has somewhere to land.
-   */
-  const [saveError, setSaveError] = useState<string | null>(null)
-  const startEdit = () => {
-    if (!member) return
-    setSaveError(null)
-    setForm({
-      full_name: member.full_name ?? '',
-      phone: member.phone ?? '',
-      date_of_birth: member.date_of_birth ?? '',
-      gender: member.gender ?? '',
-      address: member.address ?? '',
-      emergency_contact_name: member.emergency_contact_name ?? '',
-      emergency_contact_phone: member.emergency_contact_phone ?? '',
-      civil_status: member.civil_status ?? '',
-      religion: member.religion ?? '',
-      religion_other: member.religion_other ?? '',
-    })
-    setEditing(true)
-  }
   const ageFromDateOfBirth = (value: string | null | undefined) => {
     if (!value) return '—'
     const dob = new Date(`${value}T00:00:00`)
@@ -103,20 +54,6 @@ export default function MemberDetailPage() {
     if (now.getMonth() < dob.getMonth() || (now.getMonth() === dob.getMonth() && now.getDate() < dob.getDate())) age -= 1
     return age >= 0 ? `${age}` : '—'
   }
-  const saveEdit = () => {
-    if (!id) return
-    setSaveError(null)
-    // Trim + empty->null: '' would 400 the date column and write nothing.
-    const updates = normalizeProfileUpdates(form)
-    updateMember.mutate(
-      { id, ...updates },
-      {
-        onSuccess: () => setEditing(false),
-        onError: err => setSaveError(describeError(err)),
-      },
-    )
-  }
-
   /**
    * One flat strip: Info plus the three progress windows — no intermediate
    * "Progress" level. Every pane keys off this single state.
@@ -325,7 +262,7 @@ export default function MemberDetailPage() {
   if (!member) return <div className="text-center py-8 text-fg-muted">Member not found</div>
 
   const structuredAddress = address ? [address.line1, address.line2, address.city, address.state, address.postal_code, address.country].filter(Boolean).join(', ') : null
-  const fullAddress = structuredAddress || member.address || null
+  const fullAddress = member.address || structuredAddress || null
 
   const workoutExerciseName = (w: WorkoutLog) => {
     const raw = (w.exercise_name ?? '').trim()
@@ -497,67 +434,9 @@ export default function MemberDetailPage() {
       <div className="glass-card p-4 rounded-xl shrink-0">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-base font-semibold text-fg-strong">Personal Information</h2>
-          {editing ? (
-            <div className="flex gap-2">
-              <button onClick={() => setEditing(false)} className="px-3 py-1.5 text-xs rounded-lg border border-line text-fg-muted hover:text-fg-strong cursor-pointer transition-colors">Cancel</button>
-              <button onClick={saveEdit} disabled={updateMember.isPending} className="px-3 py-1.5 text-xs rounded-lg bg-[#7C3AED] text-white hover:bg-[#6D28D9] disabled:opacity-50 cursor-pointer transition-colors">
-                {updateMember.isPending ? 'Saving…' : 'Save'}
-              </button>
-            </div>
-          ) : (
-            <button onClick={startEdit} className="px-3 py-1.5 text-xs rounded-lg border border-line text-fg-muted hover:text-fg-strong hover:border-[#7C3AED]/50 cursor-pointer transition-colors">Edit</button>
-          )}
+
         </div>
-        {saveError && (
-          <p role="alert" className="mb-3 text-xs text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded-lg px-3 py-2">
-            {saveError}
-          </p>
-        )}
-        {editing ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="block">
-              <span className="block text-xs text-fg-muted mb-1">Email (login)</span>
-              <p className="px-3 py-2 text-sm text-fg-strong bg-overlay-8 border border-line rounded-lg break-all">{member.email}</p>
-            </div>
-            {([
-              ['full_name', 'Full Name', 'text'],
-              ['phone', 'Phone', 'tel'],
-              ['date_of_birth', 'Date of Birth', 'date'],
-              ['gender', 'Gender', 'text'],
-              ['address', 'Address', 'text'],
-              ['emergency_contact_name', 'Emergency Contact Name', 'text'],
-              ['emergency_contact_phone', 'Emergency Contact Phone', 'tel'],
-            ] as const).map(([key, label, type]) => (
-              <label key={key} className="block">
-                <span className="block text-xs text-fg-muted mb-1">{label}</span>
-                <input
-                  type={type}
-                  value={form[key] ?? ''}
-                  maxLength={key === 'phone' || key === 'emergency_contact_phone' ? 11 : undefined}
-                  inputMode={key === 'phone' || key === 'emergency_contact_phone' ? 'numeric' : undefined}
-                  onChange={e => setForm(f => ({ ...f, [key]: key === 'phone' || key === 'emergency_contact_phone' ? e.target.value.replace(/\D/g, '').slice(0, 11) : e.target.value }))}
-                  className="w-full px-3 py-2 text-sm bg-page-deep border border-line rounded-lg text-fg-strong focus:outline-none focus:border-[#7C3AED]"
-                />
-              </label>
-            ))}
-            <label className="block">
-              <span className="block text-xs text-fg-muted mb-1">Civil Status</span>
-              <select value={form.civil_status ?? ''} onChange={e => setForm(f => ({ ...f, civil_status: e.target.value }))} className="w-full px-3 py-2 text-sm bg-page-deep border border-line rounded-lg text-fg-strong">
-                <option value="">Select</option><option value="single">Single</option><option value="married">Married</option>
-              </select>
-            </label>
-            <label className="block">
-              <span className="block text-xs text-fg-muted mb-1">Religion</span>
-              <select value={form.religion ?? ''} onChange={e => setForm(f => ({ ...f, religion: e.target.value, religion_other: e.target.value === 'other' ? (f.religion_other ?? '') : '' }))} className="w-full px-3 py-2 text-sm bg-page-deep border border-line rounded-lg text-fg-strong">
-                <option value="">Select</option><option value="roman_catholic">Roman Catholic</option><option value="christian">Christian</option><option value="iglesia_ni_cristo">Iglesia ni Cristo</option><option value="islam">Islam</option><option value="other">Other</option>
-              </select>
-            </label>
-            {form.religion === 'other' && <label className="block">
-              <span className="block text-xs text-fg-muted mb-1">Please specify religion</span>
-              <input maxLength={120} value={form.religion_other ?? ''} onChange={e => setForm(f => ({ ...f, religion_other: e.target.value }))} className="w-full px-3 py-2 text-sm bg-page-deep border border-line rounded-lg text-fg-strong" />
-            </label>}
-          </div>
-        ) : (
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="flex items-center gap-3">
             <Phone className="w-4 h-4 text-fg-muted" />
@@ -602,8 +481,8 @@ export default function MemberDetailPage() {
             </div>
           </div>
         </div>
-        )}
-        {!editing && (
+
+        {(
         <div className="border-t border-line mt-3 pt-3">
           <h3 className="text-sm font-semibold text-fg-strong mb-2">Emergency Contact</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

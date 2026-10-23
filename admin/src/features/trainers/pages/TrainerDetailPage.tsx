@@ -6,13 +6,7 @@ import { usePagedTable, useResetPageOnChange } from '@/lib/pagedTable'
 import { useFitRowHeight } from '@/hooks/useFitRows'
 import PeopleTable, { type PeopleColumn } from '@/components/PeopleTable'
 import PaginationFooter from '@/components/PaginationFooter'
-import { ArrowLeft, Phone, Users, UserPlus, X, Search, Trash2, Pencil, Check } from 'lucide-react'
-import { useUpdateTrainer } from '../hooks/useTrainers'
-import {
-  describeError,
-  normalizeProfileUpdates,
-  type TrainerEditableFields,
-} from '@/features/shared/profileUpdates'
+import { ArrowLeft, Phone, Users, UserPlus, X, Search, Trash2 } from 'lucide-react'
 import { useRealtimeProfiles } from '@/hooks/useRealtimeProfiles'
 
 /**
@@ -44,7 +38,6 @@ export default function TrainerDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const updateTrainer = useUpdateTrainer()
   const [showAssignModal, setShowAssignModal] = useState(false)
   const [memberSearch, setMemberSearch] = useState('')
   const [memberToAssign, setMemberToAssign] = useState<{ id: string; full_name: string } | null>(null)
@@ -53,39 +46,6 @@ export default function TrainerDetailPage() {
   // another tab or on the app without a reload.
   useRealtimeProfiles(id ? [id] : [])
 
-  /**
-   * Editable contact + specialty. `editing` toggles inputs; `form` is seeded
-   * from the trainer on entry so a cancelled edit never touches the server.
-   *
-   * Same normaliser as the member page, so '' can never reach Postgres and a
-   * failed save gets an on-screen message instead of a silent no-op.
-   */
-  const [editingField, setEditingField] = useState<'phone' | 'specialty' | null>(null)
-  const [form, setForm] = useState<TrainerEditableFields & Record<string, string>>({
-    phone: '',
-    specialty: '',
-  })
-  const [saveError, setSaveError] = useState<string | null>(null)
-  const startEdit = () => {
-    if (!trainer) return
-    setSaveError(null)
-    setForm({ phone: trainer.phone ?? '', specialty: trainer.specialty ?? '' })
-    setEditingField('phone')
-  }
-  const saveEdit = () => {
-    if (!id || !editingField) return
-    setSaveError(null)
-    const updates = editingField === 'phone'
-      ? { phone: form.phone }
-      : { specialty: form.specialty }
-    updateTrainer.mutate(
-      { id, ...normalizeProfileUpdates(updates) },
-      {
-        onSuccess: () => setEditingField(null),
-        onError: err => setSaveError(describeError(err)),
-      },
-    )
-  }
   /**
    * "Assigned Members" and "Recent Feedback" used to be two cards stacked on one
    * page. Twelve assigned members is a dozen rows of table, and every one of
@@ -373,7 +333,7 @@ export default function TrainerDetailPage() {
         <ArrowLeft className="w-4 h-4" /> Back to Trainers
       </button>
 
-      <div className="glass-card p-4 rounded-xl shrink-0">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 shrink-0"><div className="glass-card p-4 rounded-xl">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-start gap-4">
           <div className="flex items-center gap-4 min-w-0">
           <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#22C55E]/30 to-[#4ADE80]/30 flex items-center justify-center">
@@ -383,14 +343,15 @@ export default function TrainerDetailPage() {
             <div className="text-lg font-bold text-fg-strong">{trainer.full_name}</div>
             <p className="text-sm text-fg">{trainer.email}</p>
             <p className="text-xs font-mono text-fg-strong mt-1">{trainer.code}</p>
-            {trainer.specialty && <p className="text-xs text-[#22C55E] mt-1">{trainer.specialty}</p>}
-            {trainer.available_days && <p className="text-xs text-fg mt-0.5">Available: {trainer.available_days}</p>}
+
+
           </div>
           </div>
 
         </div>
       </div>
 
+      <div className="glass-card p-4 rounded-xl"><h2 className="font-semibold text-fg-strong mb-2">Availability</h2>{trainer.available_days ? trainer.available_days.split(',').map((day: string) => <p key={day} className="text-sm text-fg py-1">{day.trim()}</p>) : <p className="text-sm text-fg-muted">Schedule not provided</p>}</div></div>
       <div className="shrink-0">
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
           <div className="glass-card p-4 rounded-xl">
@@ -399,17 +360,16 @@ export default function TrainerDetailPage() {
             <p className="text-base tracking-wide text-amber-300" aria-label={`${Math.round(avgRating ?? 0)} out of 5 stars`}>{String.fromCharCode(9733).repeat(Math.round(avgRating ?? 0))}<span className="text-fg-faint">{String.fromCharCode(9733).repeat(5 - Math.round(avgRating ?? 0))}</span></p>
           </div>
           <div className="glass-card p-4 rounded-xl">
-            <div className="flex items-center justify-between text-sm text-fg-muted mb-1"><span className="flex items-center gap-2"><Phone className="w-4 h-4" />Phone</span>{editingField !== 'phone' && <button onClick={() => { startEdit(); setEditingField('phone') }} aria-label="Edit phone" className="hover:text-[#A78BFA] cursor-pointer"><Pencil className="w-3.5 h-3.5" /></button>}</div>
-            {editingField === 'phone' ? <div className="flex gap-2"><input type="text" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} className="min-w-0 flex-1 px-2 py-1.5 text-sm bg-page-deep border border-line rounded-lg text-fg-strong focus:outline-none focus:border-[#7C3AED]" /><button onClick={saveEdit} disabled={updateTrainer.isPending} aria-label="Save phone" className="text-[#A78BFA] disabled:opacity-50 cursor-pointer"><Check className="w-4 h-4" /></button><button onClick={() => { setEditingField(null); setSaveError(null) }} aria-label="Cancel phone edit" className="text-fg-muted cursor-pointer"><X className="w-4 h-4" /></button></div> : <p className="text-sm text-fg-strong">{trainer.phone || '\u2014'}</p>}
+            <div className="flex items-center justify-between text-sm text-fg-muted mb-1"><span className="flex items-center gap-2"><Phone className="w-4 h-4" />Phone</span></div>
+            <p className="text-sm text-fg-strong">{trainer.phone || '\u2014'}</p>
           </div>
           <div className="glass-card p-4 rounded-xl">
-            <div className="flex items-center justify-between text-sm text-fg-muted mb-1"><span className="flex items-center gap-2"><span className="text-xs font-bold">S</span>Specialty</span>{editingField !== 'specialty' && <button onClick={() => { startEdit(); setEditingField('specialty') }} aria-label="Edit specialty" className="hover:text-[#A78BFA] cursor-pointer"><Pencil className="w-3.5 h-3.5" /></button>}</div>
-            {editingField === 'specialty' ? <div className="flex gap-2"><input type="text" value={form.specialty} onChange={e => setForm(f => ({ ...f, specialty: e.target.value }))} placeholder="e.g. Strength training" className="min-w-0 flex-1 px-2 py-1.5 text-sm bg-page-deep border border-line rounded-lg text-fg-strong placeholder-fg-muted focus:outline-none focus:border-[#7C3AED]" /><button onClick={saveEdit} disabled={updateTrainer.isPending} aria-label="Save specialty" className="text-[#A78BFA] disabled:opacity-50 cursor-pointer"><Check className="w-4 h-4" /></button><button onClick={() => { setEditingField(null); setSaveError(null) }} aria-label="Cancel specialty edit" className="text-fg-muted cursor-pointer"><X className="w-4 h-4" /></button></div> : <p className="text-sm text-fg-strong">{trainer.specialty || '\u2014'}</p>}
+            <div className="flex items-center justify-between text-sm text-fg-muted mb-1"><span className="flex items-center gap-2"><span className="text-xs font-bold">S</span>Specialty</span></div>
+            <p className="text-sm text-fg-strong">{trainer.specialty || '\u2014'}</p>
           </div>
           <div className="glass-card p-4 rounded-xl"><div className="flex items-center gap-2 text-sm text-fg-muted mb-1"><Users className="w-4 h-4" /><span>Assigned Members</span></div><p className="text-xl font-bold text-fg-strong">{assignedTotal}</p></div>
         </div>
-        {saveError && <p role="alert" className="mt-2 text-xs text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded-lg px-3 py-2">{saveError}</p>}
-      </div>
+              </div>
 
       {/* The tab strip is the same shape Memberships uses (glass pill, active tab
           solid purple), so it reads as the same control in two places. The counts

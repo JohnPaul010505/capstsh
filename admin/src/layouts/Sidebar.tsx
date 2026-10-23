@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Users, Dumbbell, CreditCard,
@@ -37,6 +37,7 @@ const navItems: NavItem[] = [
 const chromeBg = 'glass-chrome'
 
 export default function Sidebar() {
+  const { pathname } = useLocation()
   return (
     <aside
       className={cn(
@@ -53,20 +54,20 @@ export default function Sidebar() {
             key={item.to}
             to={item.to}
             end={item.end}
-            className={({ isActive }) => cn(
+            className={({ isActive: matched }) => { const isActive = item.to === '/reports' ? matched && !pathname.startsWith('/reports/feedback') : matched; return cn(
               "flex items-center gap-3 rounded-2xl transition-all duration-200 relative",
               isActive
                 ? "bg-purple-600/80 border border-purple-400/30 text-white shadow-[0_0_25px_rgba(139,92,246,0.30),inset_0_1px_0_rgba(255,255,255,0.25)]"
                 : "text-fg-faint hover:text-fg-strong hover:bg-overlay-5",
               "px-3 py-2"
-            )}
+            )}}
           >
-            {({ isActive }) => (
+            {({ isActive: matched }) => { const isActive = item.to === '/reports' ? matched && !pathname.startsWith('/reports/feedback') : matched; return (
               <>
                 <item.icon className={cn("w-[18px] h-[18px] shrink-0", isActive ? "text-white" : "text-[#7C3AED]")} strokeWidth={2} />
                 <span className="text-[13px] whitespace-nowrap">{item.label}</span>
               </>
-            )}
+            )}}
           </NavLink>
         ))}
       </nav>

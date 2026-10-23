@@ -10,7 +10,7 @@ export type SelectOption = { id: string; label: string; disabled?: boolean }
  * Reusable component extracted from MembershipsPage.tsx so both MembershipsPage
  * and PredictionsPage can render a themed dropdown without fighting native OS styling.
  */
-export function MemberSelect({ options, value, onChange, placeholder = 'Select...', className, buttonClassName, searchable = false }: {
+export function MemberSelect({ options, value, onChange, placeholder = 'Select...', className, buttonClassName, searchable = false, purple = false }: {
   options: SelectOption[] | undefined
   value: string
   onChange: (id: string) => void
@@ -30,6 +30,7 @@ export function MemberSelect({ options, value, onChange, placeholder = 'Select..
    * not a picker, so it opts in and the other callers are untouched.
    */
   searchable?: boolean
+  purple?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -81,18 +82,19 @@ export function MemberSelect({ options, value, onChange, placeholder = 'Select..
         className={cn(
           'w-full flex items-center justify-between gap-2 px-3 py-2 bg-overlay-8 border border-line rounded-lg text-sm text-left cursor-pointer hover:border-[#7C3AED]/50 focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50 transition-colors',
           buttonClassName,
+          purple && 'purple-control',
         )}
         title={selected ? selected.label : placeholder}
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        <span className={`truncate ${selected ? 'text-fg-strong' : 'text-fg-muted'}`}>
+        <span className={`purple-control-label truncate ${selected ? 'text-fg-strong' : 'text-fg-muted'}`}>
           {selected ? selected.label : placeholder}
         </span>
-        <ChevronDown className={`w-4 h-4 text-fg-muted shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`purple-control-icon w-4 h-4 text-fg-muted shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
-        <div className="glass-card absolute left-0 top-full mt-1 z-30 min-w-full w-max max-w-[min(90vw,32rem)] max-h-56 overflow-y-auto rounded-lg border border-line py-1 shadow-xl">
+        <div className={`${purple ? 'purple-menu' : 'glass-card'} absolute left-0 top-full mt-1 z-30 min-w-full w-max max-w-[min(90vw,32rem)] max-h-56 overflow-y-auto rounded-lg border border-line py-1 shadow-xl`}>
           {searchable && (
             /* Sticky, because the list scrolls UNDER it: 987 members is a long
                scroll, and a filter that scrolls out of sight is no use. */

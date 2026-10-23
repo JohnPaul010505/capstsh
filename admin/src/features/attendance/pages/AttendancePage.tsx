@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAttendance } from '../hooks/useAttendance'
@@ -228,7 +228,7 @@ export default function AttendancePage() {
        bottom of the viewport with no scrollbar to say so. The day's check-ins
        were therefore reachable only as far as the window happened to be. */
     <div className="h-full min-h-0 flex flex-col gap-3">
-      <div className="flex items-center justify-between gap-3 shrink-0">
+      <div className="flex items-center justify-end gap-3 shrink-0">
         {/* This slot was an empty <div />, which is why the page could not say
             how much it had actually found. */}
         <div className="min-w-0">
@@ -268,24 +268,16 @@ export default function AttendancePage() {
       */}
       <ListToolbar
         left={
-          <div className="flex gap-2">
+          <div className="glass-card page-tabs" role="group" aria-label="Attendance views">
             <button
-              onClick={() => setCategory('member')}
-              className={`px-4 py-1.5 text-sm rounded-lg font-medium transition-colors ${
-                category === 'member'
-                  ? 'bg-[#7C3AED] text-white'
-                  : 'bg-overlay-8 text-fg hover:bg-overlay-10'
-              }`}
+              aria-pressed={category === 'member'} onClick={() => setCategory('member')}
+              className="page-tab"
             >
               Members
             </button>
             <button
-              onClick={() => setCategory('trainer')}
-              className={`px-4 py-1.5 text-sm rounded-lg font-medium transition-colors ${
-                category === 'trainer'
-                  ? 'bg-[#7C3AED] text-white'
-                  : 'bg-overlay-8 text-fg hover:bg-overlay-10'
-              }`}
+              aria-pressed={category === 'trainer'} onClick={() => setCategory('trainer')}
+              className="page-tab"
             >
               Trainers
             </button>

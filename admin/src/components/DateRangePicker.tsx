@@ -85,17 +85,17 @@ export default function DateRangePicker({ value, onChange, className, presets = 
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-2 px-3.5 py-2.5 glass-input rounded-xl text-sm text-fg-strong cursor-pointer hover:border-[#7C3AED]/50 focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50 transition-colors whitespace-nowrap"
+        className="purple-control flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm cursor-pointer whitespace-nowrap"
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-label={`Date range: ${formatRangeLabel(value)}. Change date range`}
       >
-        <Calendar className="w-4 h-4 text-fg-muted shrink-0" />
+        <Calendar className="w-4 h-4 shrink-0" />
         <span>{formatRangeLabel(value)}</span>
-        <ChevronDown className={`w-4 h-4 text-fg-muted shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`w-4 h-4 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
-        <div className="glass-card absolute right-0 top-full mt-2 z-30 w-[19rem] rounded-xl border border-line p-3 shadow-xl" role="dialog" aria-label="Choose a date range">
+        <div className="purple-menu absolute right-0 top-full mt-2 z-30 w-[19rem] rounded-xl p-3" role="dialog" aria-label="Choose a date range">
           <div className="grid grid-cols-2 gap-2">
             <label className="block">
               <span className="text-[11px] font-medium text-fg-muted">Start date</span>

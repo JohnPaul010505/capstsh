@@ -12,5 +12,13 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 /// It used to be rewritten to the emulator-only alias `10.0.2.2` on Android,
 /// which silently broke that tunnel. `10.0.2.2` still lives in
 /// `PredictionService._fallbackHosts` so emulators keep working.
-String aiApiBaseUrl() =>
-    dotenv.env['API_BASE_URL'] ?? 'http://localhost:3001';
+String aiApiBaseUrl() => dotenv.env['API_BASE_URL'] ?? 'http://localhost:3001';
+
+/// Profile saves use the authenticated admin API, including when forecasting
+/// is configured to connect directly to the Python service on port 8001.
+String adminApiBaseUrl() {
+  final configured = dotenv.env['ADMIN_API_BASE_URL'];
+  if (configured != null && configured.isNotEmpty) return configured;
+  final base = Uri.parse(aiApiBaseUrl());
+  return (base.port == 8001 ? base.replace(port: 3001) : base).toString();
+}

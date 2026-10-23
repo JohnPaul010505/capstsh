@@ -33,29 +33,27 @@ class WorkoutExerciseList extends ConsumerWidget {
 
     return Column(
       children: [
-        ...session.exercises.asMap().entries.map(
-          (entry) {
-            final i = entry.key;
-            final e = entry.value;
-            final isCurrent = i == currentIndex;
-            final isDone = e.isDone;
-            return _ExerciseCard(
-              exercise: e,
-              index: i,
-              isCurrent: isCurrent,
-              isDone: isDone,
-              isRunning: session.isRunning,
-              durationSeconds: isDone ? session.totalSecondsFor(e) : null,
-              sessionStartedAt: session.startedAt,
-              weightKg: session.weightKg,
-              canStartProof: session.isRunning && !session.isPaused && isCurrent,
-              onProofRecorded: (url) => notifier.markProofRecorded(i, url),
-              onProofRemoved: () => notifier.removeProof(i),
-              onDone: () => notifier.markDone(i),
-              onRemove: () => notifier.removeExercise(i),
-            );
-          },
-        ),
+        ...session.exercises.asMap().entries.map((entry) {
+          final i = entry.key;
+          final e = entry.value;
+          final isCurrent = i == currentIndex;
+          final isDone = e.isDone;
+          return _ExerciseCard(
+            exercise: e,
+            index: i,
+            isCurrent: isCurrent,
+            isDone: isDone,
+            isRunning: session.isRunning,
+            durationSeconds: isDone ? session.totalSecondsFor(e) : null,
+            sessionStartedAt: session.startedAt,
+            weightKg: session.weightKg,
+            canStartProof: session.isRunning && !session.isPaused && isCurrent,
+            onProofRecorded: (url) => notifier.markProofRecorded(i, url),
+            onProofRemoved: () => notifier.removeProof(i),
+            onDone: () => notifier.markDone(i),
+            onRemove: () => notifier.removeExercise(i),
+          );
+        }),
       ],
     );
   }
@@ -98,8 +96,16 @@ class _ExerciseCard extends StatelessWidget {
     final hasVideo = exercise.hasProof;
     final duration = exercise.isDone
         ? (durationSeconds != null
-            ? _fmtClock(durationSeconds!)
-            : _fmt(exercise.doneAt!.difference(exercise.startedAt ?? sessionStartedAt ?? exercise.doneAt!).inSeconds))
+              ? _fmtClock(durationSeconds!)
+              : _fmt(
+                  exercise.doneAt!
+                      .difference(
+                        exercise.startedAt ??
+                            sessionStartedAt ??
+                            exercise.doneAt!,
+                      )
+                      .inSeconds,
+                ))
         : null;
 
     return Padding(
@@ -123,17 +129,21 @@ class _ExerciseCard extends StatelessWidget {
                     color: isDone
                         ? ClayTokens.clayAccent.withAlpha(25)
                         : isCurrent
-                            ? const Color(0xFFBF5AF2).withAlpha(25)
-                            : const Color(0xFF636366).withAlpha(20),
+                        ? const Color(0xFFBF5AF2).withAlpha(25)
+                        : const Color(0xFF636366).withAlpha(20),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
-                    isDone ? Icons.check : isCurrent ? Icons.play_arrow : Icons.schedule,
+                    isDone
+                        ? Icons.check
+                        : isCurrent
+                        ? Icons.play_arrow
+                        : Icons.schedule,
                     color: isDone
                         ? ClayTokens.clayAccent
                         : isCurrent
-                            ? const Color(0xFFD6A5FF)
-                            : const Color(0xFF8E8E93),
+                        ? const Color(0xFFD6A5FF)
+                        : const Color(0xFF8E8E93),
                     size: 14,
                   ),
                 ),
@@ -156,7 +166,10 @@ class _ExerciseCard extends StatelessWidget {
                       ),
                       Text(
                         '${exercise.category} · MET ${exercise.met}',
-                        style: const TextStyle(fontSize: 10, color: Color(0xFF8E8E93)),
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: Color(0xFF8E8E93),
+                        ),
                       ),
                     ],
                   ),
@@ -164,7 +177,11 @@ class _ExerciseCard extends StatelessWidget {
                 if (isDone) ...[
                   Text(
                     duration ?? '',
-                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFFD6A5FF)),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFFD6A5FF),
+                    ),
                   ),
                 ],
               ],
@@ -183,7 +200,8 @@ class _ExerciseCard extends StatelessWidget {
                   decoration: hasVideo
                       ? BoxDecoration(
                           gradient: const LinearGradient(
-                              colors: [Color(0xFF22C55E), Color(0xFF16A34A)]),
+                            colors: [Color(0xFF22C55E), Color(0xFF16A34A)],
+                          ),
                           borderRadius: BorderRadius.circular(999),
                           boxShadow: [
                             BoxShadow(
@@ -196,20 +214,27 @@ class _ExerciseCard extends StatelessWidget {
                       : BoxDecoration(
                           color: ClayTokens.hairline.withAlpha(12),
                           borderRadius: BorderRadius.circular(999),
-                          border: Border.all(color: ClayTokens.hairline.withAlpha(30)),
+                          border: Border.all(
+                            color: ClayTokens.hairline.withAlpha(30),
+                          ),
                         ),
                   child: TextButton(
                     onPressed: hasVideo ? onDone : null,
                     style: TextButton.styleFrom(
-                      foregroundColor: ClayTokens.clayDarkTextPrimary,
-                      disabledForegroundColor:
-                          ClayTokens.clayDarkTextTertiary,
-                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                      foregroundColor: Colors.white,
+                      disabledForegroundColor: ClayTokens.clayDarkTextTertiary,
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 10,
+                        horizontal: 8,
+                      ),
                     ),
                     child: Text(
-                      hasVideo ? 'Done — Timestamp Now' : 'Record proof to unlock Done',
+                      hasVideo ? 'Done' : 'Record proof to unlock Done',
                       style: TextStyle(
                         fontSize: 12,
+                        color: hasVideo
+                            ? Colors.white
+                            : ClayTokens.clayDarkTextTertiary,
                         fontWeight: FontWeight.w700,
                       ),
                       textAlign: TextAlign.center,
@@ -228,7 +253,10 @@ class _ExerciseCard extends StatelessWidget {
                       padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                       child: Text(
                         'Remove',
-                        style: TextStyle(fontSize: 11, color: Color(0xFFFF6B61)),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFFFF6B61),
+                        ),
                       ),
                     ),
                   ),

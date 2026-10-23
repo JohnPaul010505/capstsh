@@ -130,6 +130,7 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
   Future<void> _openCalendar(String memberId) async {
     final picked = await showModalBottomSheet<DateTime>(
       context: context,
+      useRootNavigator: true,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (_) => Align(
@@ -193,7 +194,7 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
                                   vertical: 3,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF7C3AED).withAlpha(140),
+                                  color: const Color(0xFF7C3AED),
                                   borderRadius: BorderRadius.circular(20),
                                   border: Border.all(
                                     color: const Color(
@@ -237,9 +238,7 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
                                     vertical: 5,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: const Color(
-                                      0xFF7C3AED,
-                                    ).withAlpha(140),
+                                    color: const Color(0xFF7C3AED),
                                     borderRadius: BorderRadius.circular(20),
                                     border: Border.all(
                                       color: const Color(
@@ -326,7 +325,7 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
                           child: Padding(
                             padding: EdgeInsets.all(24),
                             child: CircularProgressIndicator(
-                              color: Color(0xFFD6A5FF),
+                              color: Color(0xFF7C3AED),
                             ),
                           ),
                         ),
@@ -407,7 +406,7 @@ class _MealLogPageState extends ConsumerState<MealLogPage> {
             Text(
               'Add Food',
               style: TextStyle(
-                color: ClayTokens.clayDarkTextPrimary,
+                color: Colors.white,
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
               ),
@@ -464,7 +463,8 @@ class _FoodHistoryCalendarState extends ConsumerState<_FoodHistoryCalendar> {
           border: Border.all(
             color: ClayColors.isLightMode
                 ? ClayTokens.clayPrimary.withAlpha(45)
-                : ClayTokens.hairline.withAlpha(25)),
+                : ClayTokens.hairline.withAlpha(25),
+          ),
         ),
         child: Column(
           children: [
@@ -606,7 +606,9 @@ class _FoodHistoryBack extends ConsumerWidget {
                         decoration: BoxDecoration(
                           color: ClayTokens.hairline.withAlpha(10),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: ClayTokens.hairline.withAlpha(18)),
+                          border: Border.all(
+                            color: ClayTokens.hairline.withAlpha(18),
+                          ),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -626,7 +628,7 @@ class _FoodHistoryBack extends ConsumerWidget {
                                 Text(
                                   '$calories kcal',
                                   style: const TextStyle(
-                                    color: Color(0xFFD6A5FF),
+                                    color: Color(0xFF7C3AED),
                                     fontWeight: FontWeight.w700,
                                     fontSize: 12,
                                   ),
@@ -1031,6 +1033,7 @@ class _MealCard extends StatelessWidget {
     return Semantics(
       label: '$name, $type${calories != null ? ', $calories calories' : ''}',
       child: PressableCard(
+        glass: true,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
         margin: const EdgeInsets.only(bottom: 7),
         child: Row(
@@ -1077,7 +1080,7 @@ class _MealCard extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFFD6A5FF),
+                  color: Color(0xFF7C3AED),
                 ),
               ),
             const SizedBox(width: 8),
