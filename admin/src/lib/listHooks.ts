@@ -1,5 +1,6 @@
 import { usePagedTable } from '@/lib/pagedTable'
 import type { Profile } from '@/types'
+import { localStartIso, localEndIso } from '@/features/dashboard/lib/dateRange'
 
 /**
  * Rows per page for every admin list page: members, trainers, memberships and
@@ -49,7 +50,7 @@ export function useMembersList({ page, pageSize, search, from, to, unassignedIds
     orderBy: [{ column: 'code', ascending: true }, { column: 'id', ascending: true }],
     page, pageSize, search,
     searchColumns: ['full_name', 'code', 'email'],
-    dateColumn: 'created_at', from, to,
+    dateColumn: 'created_at', from: from ? localStartIso(from) : undefined, to: to ? localEndIso(to) : undefined,
     // Without this the query returns EVERY profile: 1,077 rows including the
     // 89 trainers and the admin, and the members page lists them. The role
     // predicate is part of what the list *is*, not an optional extra filter.
@@ -67,7 +68,7 @@ export function useTrainersList({ page, pageSize, search, from, to }: PeopleList
     orderBy: [{ column: 'code', ascending: true }, { column: 'id', ascending: true }],
     page, pageSize, search,
     searchColumns: ['full_name', 'code', 'email', 'specialty', 'available_days'],
-    dateColumn: 'created_at', from, to,
+    dateColumn: 'created_at', from: from ? localStartIso(from) : undefined, to: to ? localEndIso(to) : undefined,
     eq: { role: 'trainer' },
   })
 }
