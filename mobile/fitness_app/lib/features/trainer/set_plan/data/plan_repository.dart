@@ -1,3 +1,5 @@
+import 'plan_record_status.dart';
+import '../../../shared/utils/plan_meal_completion.dart';
 import 'package:shared/services/supabase_client.dart';
 
 class PlanRepository {
@@ -9,6 +11,7 @@ class PlanRepository {
     String memberId,
     String trainerId, {
     bool includeTrainerProfile = false,
+    bool includeUpcoming = false,
   }) async {
     try {
       final client = _supabase.client;
@@ -19,20 +22,24 @@ class PlanRepository {
       // NOT just the start date. The old `start_date >= today` filter made
       // the plan "active" only on Day 1, which hid the floating logo for
       // days 2-7.
-      final query = client
+      var query = client
           .from('member_goal_plans')
-          .select(includeTrainerProfile
-              ? '*, profiles!member_goal_plans_trainer_id_fkey(full_name, avatar_url)'
-              : '*')
+          .select(
+            includeTrainerProfile
+                ? '*, profiles!member_goal_plans_trainer_id_fkey(full_name, avatar_url)'
+                : '*',
+          )
           .eq('member_id', memberId)
           .eq('trainer_id', trainerId)
           .eq('status', 'active')
-          .lte('start_date', today.split('T').first)
-          .gte('end_date', today.split('T').first)
+          .gte('end_date', today.split('T').first);
+      if (!includeUpcoming) {
+        query = query.lte('start_date', today.split('T').first);
+      }
+      final response = await query
           .order('start_date', ascending: false)
-          .limit(1);
-
-      final response = await query.maybeSingle();
+          .limit(1)
+          .maybeSingle();
 
       if (response == null || response.isEmpty) return null;
       return Map<String, dynamic>.from(response as Map);
@@ -103,8 +110,11 @@ class PlanRepository {
     String trainerId, {
     bool includeTrainerProfile = false,
   }) async {
-    final plan = await getActivePlan(memberId, trainerId,
-        includeTrainerProfile: includeTrainerProfile);
+    final plan = await getActivePlan(
+      memberId,
+      trainerId,
+      includeTrainerProfile: includeTrainerProfile,
+    );
     return plan != null;
   }
 
@@ -348,7 +358,9 @@ class PlanRepository {
               ((completion['completed_exercises'] as List?) ?? const [])
                   .whereType<String>()
                   .toList();
-          if (_allPlannedItemsDone(plannedFoods, doneFoods) &&
+          if (plannedFoods.every(
+                (food) => planMealLogged(food, doneFoods.toSet()),
+              ) &&
               _allPlannedItemsDone(plannedExercises, doneExercises)) {
             completedDays++;
           }
@@ -385,8 +397,29 @@ class PlanRepository {
 
       return result;
     } catch (_) {
-      return [];
+      rethrow;
     }
+  }
+
+  Future<Set<String>> getMembersWithUnfinishedPlans(String trainerId) async {
+    final records = await getTrainerPlanRecords(trainerId);
+    final requests = await _supabase.client
+        .from('trainer_plan_cancellation_requests')
+        .select('plan_id')
+        .eq('trainer_id', trainerId)
+        .eq('status', 'pending');
+    final pendingIds = requests.map((row) => row['plan_id']).toSet();
+    return records
+        .where(
+          (record) => !trainerPlanIsHistory(
+            record,
+            hasPendingCancellation: pendingIds.contains(
+              (record['plan'] as Map)['id'],
+            ),
+          ),
+        )
+        .map((record) => (record['plan'] as Map)['member_id'] as String)
+        .toSet();
   }
 
   bool _allPlannedItemsDone(List<Map> planned, List<String> completed) {

@@ -39,15 +39,13 @@ final memberTrainerPlansProvider =
         now.day,
       ).toIso8601String().split('T').first;
 
-      // Current plans only: the plan detail and Workout/Food Intake use the
-      // same status + window rule, so this badge matches what can actually be
-      // displayed there.
+      // Assigned plans are visible before their start date. Workout/Food
+      // still use the current-date window for daily activity.
       final plansResponse = await client
           .from('member_goal_plans')
           .select('id, trainer_id, is_displayed, start_date, end_date')
           .eq('member_id', userId)
           .eq('status', 'active')
-          .lte('start_date', today)
           .gte('end_date', today)
           .order('start_date', ascending: false);
 
@@ -72,6 +70,11 @@ final memberTrainerPlansProvider =
           'hasPlan': plan != null,
           'isDisplayed': plan?['is_displayed'] as bool? ?? false,
           'planId': plan?['id'] as String?,
+          'scheduledStart':
+              plan != null &&
+                  (plan['start_date'] as String).compareTo(today) > 0
+              ? plan['start_date'] as String
+              : null,
         };
       }).toList();
     });
@@ -218,18 +221,23 @@ class _MemberTrainerPlanListPageState
         icon: _query.isEmpty
             ? CupertinoIcons.calendar_badge_minus
             : CupertinoIcons.search,
-        title: _query.isEmpty
-            ? 'No trainers assigned'
-            : 'No matching trainers',
+        title: _query.isEmpty ? 'No trainers assigned' : 'No matching trainers',
         detail: _query.isEmpty
             ? 'Contact the gym to get paired with a trainer.'
             : 'Try a different search.',
       );
     }
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(14, 8, 14, 16),
-      itemCount: filtered.length,
-      itemBuilder: (_, index) => _trainerCard(filtered[index]),
+    return RefreshIndicator(
+      onRefresh: () async {
+        ref.invalidate(memberTrainerPlansProvider);
+        await ref.read(memberTrainerPlansProvider.future);
+      },
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(14, 8, 14, 16),
+        itemCount: filtered.length,
+        itemBuilder: (_, index) => _trainerCard(filtered[index]),
+      ),
     );
   }
 
@@ -238,6 +246,7 @@ class _MemberTrainerPlanListPageState
     final trainerId = trainer['trainerId'] as String;
     final hasPlan = trainer['hasPlan'] as bool? ?? false;
     final isDisplayed = trainer['isDisplayed'] as bool? ?? false;
+    final scheduledStart = trainer['scheduledStart'] as String?;
     final initials = name
         .split(' ')
         .where((part) => part.isNotEmpty)
@@ -291,7 +300,9 @@ class _MemberTrainerPlanListPageState
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          hasPlan
+                          scheduledStart != null
+                              ? 'Starts $scheduledStart'
+                              : hasPlan
                               ? (isDisplayed
                                     ? 'Displayed on Workout & Food'
                                     : 'Plan not displayed')

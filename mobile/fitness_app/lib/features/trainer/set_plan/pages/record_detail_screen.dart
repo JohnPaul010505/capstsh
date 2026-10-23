@@ -1,3 +1,4 @@
+import '../../../shared/utils/plan_meal_completion.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -46,7 +47,7 @@ _fetchCompletedByDay(String memberId, String startDate, String endDate) async {
         .limit(2000);
     final meals = await client
         .from('meal_logs')
-        .select('food_name, meal_time')
+        .select('food_name, meal_time, meal_type')
         .eq('member_id', memberId)
         .gte('meal_time', start.toIso8601String())
         .lt('meal_time', end.toIso8601String())
@@ -72,7 +73,7 @@ _fetchCompletedByDay(String memberId, String startDate, String endDate) async {
       if (name.isEmpty) continue;
       foodByDay
           .putIfAbsent(dayOf(m['meal_time']), () => <String>{})
-          .add(_normPlanName(name));
+          .add(planMealKey(name, m['meal_type'] as String?));
     }
     return (workoutByDay, foodByDay);
   } catch (_) {
@@ -142,7 +143,11 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
             ? currentUserId
             : null);
     if (trainerId != null && trainerId.isNotEmpty) {
-      final plan = await repo.getActivePlan(widget.memberId, trainerId);
+      final plan = await repo.getActivePlan(
+        widget.memberId,
+        trainerId,
+        includeUpcoming: widget.viewTrainerId != null,
+      );
       if (plan != null || widget.viewTrainerId != null) return plan;
     }
     // Trainer route with no plan for this pair: fall back to the member's
@@ -199,6 +204,7 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
           .from('trainer_plan_cancellation_requests')
           .select('plan_id')
           .eq('member_id', memberId)
+          .eq('trainer_id', widget.viewTrainerId ?? '')
           .eq('status', 'pending')
           .limit(1)
           .maybeSingle();
@@ -471,10 +477,12 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
                   ) {
                     final name = (row['name'] ?? '').toString();
                     return (
-                      text: name,
+                      text: row['meal_type'] == null
+                          ? name
+                          : '${row['meal_type']}: $name',
                       done:
                           name.isNotEmpty &&
-                          _planNameLogged(name, foodByDay[dayKey] ?? const {}),
+                          planMealLogged(row, foodByDay[dayKey] ?? const {}),
                     );
                   });
 

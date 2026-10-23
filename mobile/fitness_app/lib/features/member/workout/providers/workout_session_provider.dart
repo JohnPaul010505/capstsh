@@ -77,6 +77,7 @@ class CompletedSession {
   final List<String?> exerciseProofUrls;
   final int totalCalories;
   final int elapsedSeconds;
+  final int restSeconds;
   final DateTime completedAt;
 
   const CompletedSession({
@@ -87,6 +88,7 @@ class CompletedSession {
     this.exerciseProofUrls = const <String?>[],
     required this.totalCalories,
     required this.elapsedSeconds,
+    this.restSeconds = 0,
     required this.completedAt,
   });
 
@@ -98,6 +100,7 @@ class CompletedSession {
     'exerciseProofUrls': exerciseProofUrls,
     'totalCalories': totalCalories,
     'elapsedSeconds': elapsedSeconds,
+    'restSeconds': restSeconds,
     'completedAt': completedAt.toIso8601String(),
   };
 
@@ -112,6 +115,7 @@ class CompletedSession {
       exerciseProofUrls: List<String?>.from(json['exerciseProofUrls'] as List),
       totalCalories: json['totalCalories'] as int,
       elapsedSeconds: json['elapsedSeconds'] as int,
+      restSeconds: json['restSeconds'] as int? ?? 0,
       completedAt: DateTime.parse(json['completedAt'] as String),
     );
   }
@@ -736,6 +740,7 @@ class WorkoutSessionNotifier extends StateNotifier<WorkoutSessionState> {
       exerciseProofUrls: state.exercises.map((e) => e.proofUrl).toList(),
       totalCalories: totalCalories,
       elapsedSeconds: state.elapsedSeconds,
+      restSeconds: state.restSeconds,
       completedAt: DateTime.now(),
     );
     state = WorkoutSessionState(

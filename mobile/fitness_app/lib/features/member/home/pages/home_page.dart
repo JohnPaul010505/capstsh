@@ -966,7 +966,7 @@ class _PredictionCardState extends State<_PredictionCard> {
                 height: 28,
                 decoration: BoxDecoration(
                   // Soft purple tile, white glyph.
-                  color: ClayTokens.clayPrimary.withAlpha(170),
+                  color: ClayTokens.clayPrimaryDark,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                     color: ClayTokens.clayPrimaryLight.withAlpha(120),
@@ -1039,8 +1039,8 @@ class _ActiveDaysCard extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              // Soft purple badge, white glyph.
-              color: ClayTokens.clayPrimary.withAlpha(170),
+              // Match the weekly bars and chart lines.
+              color: ClayTokens.clayPrimaryDark,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: ClayTokens.clayPrimaryLight.withAlpha(120),

@@ -10,27 +10,35 @@ import '../../../../app/design_tokens.dart';
 import '../../../shared/widgets/app_glow_background.dart';
 import '../../../shared/widgets/glass_card.dart';
 
-/// Feedback the trainer has written for this member (Figure 20), newest first.
-/// The trainer's name is embedded through the trainer_id foreign key.
-///
-/// Scoped to the CURRENT trainer only: the active assignment is resolved
-/// first, so after an admin reassignment the old trainer's rows stay in the
-/// DB but no longer show here. No active trainer means an empty list.
-final trainerFeedbackProvider = FutureProvider<List<Map<String, dynamic>>>((
-  ref,
-) async {
-  final userId = SupabaseClientService().client.auth.currentUser!.id;
-  final assignment = await SupabaseClientService().client
-      .from('trainer_assignments')
-      .select('trainer_id')
-      .eq('member_id', userId)
-      .eq('status', 'active')
-      .order('assigned_at', ascending: false)
-      .limit(1);
-  if ((assignment as List).isEmpty) return <Map<String, dynamic>>[];
-  final trainerId = (assignment as List)[0]['trainer_id'] as String;
-  return FeedbackService().getFeedbackWithTrainer(userId, trainerId: trainerId);
-});
+/// Every active trainer assigned to the signed-in member.
+final feedbackTrainersProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+      final client = SupabaseClientService().client;
+      final userId = client.auth.currentUser?.id;
+      if (userId == null) return [];
+      final rows = await client
+          .from('trainer_assignments')
+          .select(
+            'trainer_id, profiles!trainer_assignments_trainer_id_fkey(full_name)',
+          )
+          .eq('member_id', userId)
+          .eq('status', 'active')
+          .order('assigned_at', ascending: false);
+      return (rows as List).cast<Map<String, dynamic>>();
+    });
+
+/// Feedback from all active assigned trainers, newest first.
+final trainerFeedbackProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+      final trainers = await ref.watch(feedbackTrainersProvider.future);
+      final userId = SupabaseClientService().client.auth.currentUser?.id;
+      if (userId == null || trainers.isEmpty) return [];
+      final trainerIds = trainers.map((row) => row['trainer_id']).toSet();
+      final rows = await FeedbackService().getFeedbackWithTrainer(userId);
+      return rows
+          .where((row) => trainerIds.contains(row['trainer_id']))
+          .toList();
+    });
 
 class FeedbackPage extends ConsumerStatefulWidget {
   const FeedbackPage({super.key});
@@ -40,6 +48,19 @@ class FeedbackPage extends ConsumerStatefulWidget {
 }
 
 class _FeedbackPageState extends ConsumerState<FeedbackPage> {
+  String? _selectedTrainerId;
+  static const _pageSize = 5;
+  int _page = 0;
+  final _scrollController = ScrollController();
+
+  void _changePage(int page) {
+    setState(() {
+      _page = page;
+      _editingId = null;
+    });
+    if (_scrollController.hasClients) _scrollController.jumpTo(0);
+  }
+
   String? _ratingInProgress;
   // The feedback id whose comment box is open (one editor at a time).
   String? _editingId;
@@ -65,13 +86,14 @@ class _FeedbackPageState extends ConsumerState<FeedbackPage> {
         _router!.routerDelegate.currentConfiguration.uri.path ==
         '/member/feedback';
     if (isFeedback && !_wasFeedback && mounted) {
-      ref.invalidate(trainerFeedbackProvider);
+      ref.invalidate(feedbackTrainersProvider);
     }
     _wasFeedback = isFeedback;
   }
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _router?.routerDelegate.removeListener(_onRouteChanged);
     super.dispose();
   }
@@ -132,7 +154,28 @@ class _FeedbackPageState extends ConsumerState<FeedbackPage> {
 
   @override
   Widget build(BuildContext context) {
-    final feedbackAsync = ref.watch(trainerFeedbackProvider);
+    final trainersAsync = ref.watch(feedbackTrainersProvider);
+    final trainers = trainersAsync.valueOrNull ?? [];
+    final selectedTrainerId =
+        trainers.any((row) => row['trainer_id'] == _selectedTrainerId)
+        ? _selectedTrainerId
+        : null;
+    final feedbackAsync = ref
+        .watch(trainerFeedbackProvider)
+        .whenData(
+          (rows) => selectedTrainerId == null
+              ? rows
+              : rows
+                    .where((row) => row['trainer_id'] == selectedTrainerId)
+                    .toList(),
+        );
+
+    final total = feedbackAsync.valueOrNull?.length ?? 0;
+    final pageCount = (total / _pageSize).ceil().clamp(1, 1 << 30);
+    final currentPage = _page.clamp(0, pageCount - 1);
+    final pageFeedback = feedbackAsync.whenData(
+      (rows) => rows.skip(currentPage * _pageSize).take(_pageSize).toList(),
+    );
 
     return CupertinoPageScaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -143,106 +186,290 @@ class _FeedbackPageState extends ConsumerState<FeedbackPage> {
             children: [
               _buildHeader('Feedback'),
               Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 16,
-                  ),
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(left: 4, bottom: 8),
-                      child: Text(
-                        'Feedback from your trainer',
-                        style: ClayTokens.headlineMedium.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: ClayTokens.clayDarkTextPrimary,
-                          letterSpacing: -0.36,
-                        ),
-                      ),
+                child: RefreshIndicator(
+                  onRefresh: () async {
+                    ref.invalidate(feedbackTrainersProvider);
+                    await ref.read(trainerFeedbackProvider.future);
+                  },
+                  child: ListView(
+                    controller: _scrollController,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 16,
                     ),
-                    feedbackAsync.when(
-                      data: (feedback) => feedback.isEmpty
-                          ? MemberGlassCard(
-                              padding: const EdgeInsets.all(20),
-                              borderRadius: BorderRadius.circular(16),
-                              child: Column(
-                                children: [
-                                  Icon(
-                                    Icons.rate_review_outlined,
-                                    color: ClayTokens.clayDarkTextTertiary,
-                                    size: 28,
-                                  ),
-                                  SizedBox(height: 8),
-                                  Text(
-                                    'No feedback from your trainer yet.\nIt will appear here after your next session.',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: ClayTokens.clayDarkTextTertiary,
-                                      height: 1.5,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : MemberGlassCard(
-                              padding: const EdgeInsets.all(16),
-                              borderRadius: BorderRadius.circular(16),
-                              child: Column(
-                                children: feedback.asMap().entries.map((entry) {
-                                  final isLast =
-                                      entry.key == feedback.length - 1;
-                                  return Column(
-                                    children: [
-                                      _FeedbackEntry(
-                                        feedback: entry.value,
-                                        busy:
-                                            _ratingInProgress ==
-                                            entry.value['id'],
-                                        onRate: (stars) =>
-                                            _rate(entry.value, stars),
-                                        editing:
-                                            _editingId == entry.value['id'],
-                                        commentSaving:
-                                            _commentSaving == entry.value['id'],
-                                        onEditComment: () => setState(
-                                          () => _editingId =
-                                              entry.value['id'] as String,
-                                        ),
-                                        onCancelComment: () =>
-                                            setState(() => _editingId = null),
-                                        onSaveComment: (text) =>
-                                            _saveComment(entry.value, text),
-                                      ),
-                                      if (!isLast)
-                                        Divider(
-                                          color: glassLine(
-                                            const Color(0xFF38383A),
-                                          ),
-                                          height: 1,
-                                        ),
-                                    ],
-                                  );
-                                }).toList(),
-                              ),
-                            ),
-                      loading: () => const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(24),
-                          child: CupertinoActivityIndicator(),
-                        ),
-                      ),
-                      error: (e, _) => Padding(
-                        padding: const EdgeInsets.all(16),
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4, bottom: 8),
                         child: Text(
-                          'Error: $e',
-                          style: ClayTokens.bodyMedium.copyWith(
-                            color: ClayTokens.clayError,
+                          'Feedback from your trainer',
+                          style: ClayTokens.headlineMedium.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: ClayTokens.clayDarkTextPrimary,
+                            letterSpacing: -0.36,
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                      if (trainers.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: MemberGlassCard(
+                            padding: EdgeInsets.zero,
+                            child: Material(
+                              type: MaterialType.transparency,
+                              child: LayoutBuilder(
+                                builder: (context, bounds) => PopupMenuButton<String>(
+                                  key: const ValueKey(
+                                    'feedback-trainer-filter',
+                                  ),
+                                  tooltip: 'Filter by trainer',
+                                  position: PopupMenuPosition.under,
+                                  offset: const Offset(0, 8),
+                                  constraints: BoxConstraints(
+                                    minWidth: bounds.maxWidth,
+                                    maxWidth: bounds.maxWidth,
+                                    maxHeight: 320,
+                                  ),
+                                  color: Theme.of(context).colorScheme.surface,
+                                  surfaceTintColor: Colors.transparent,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  itemBuilder: (_) => [
+                                    for (final option in [
+                                      {'id': '', 'name': 'All trainers'},
+                                      ...trainers.map(
+                                        (row) => {
+                                          'id': row['trainer_id'] as String,
+                                          'name':
+                                              (row['profiles']
+                                                      as Map?)?['full_name']
+                                                  as String? ??
+                                              'Trainer',
+                                        },
+                                      ),
+                                    ])
+                                      PopupMenuItem<String>(
+                                        value: option['id'],
+                                        child: Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                option['name']!,
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                            if (option['id'] ==
+                                                (selectedTrainerId ?? ''))
+                                              Icon(
+                                                Icons.check_rounded,
+                                                size: 20,
+                                                color: ClayTokens.clayPrimary,
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                  ],
+                                  onSelected: (value) {
+                                    setState(() {
+                                      _selectedTrainerId = value.isEmpty
+                                          ? null
+                                          : value;
+                                    });
+                                    _changePage(0);
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 16,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.people_outline,
+                                          size: 20,
+                                          color: ClayTokens.clayPrimary,
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Text(
+                                            selectedTrainerId == null
+                                                ? 'All trainers'
+                                                : (trainers.firstWhere(
+                                                                (row) =>
+                                                                    row['trainer_id'] ==
+                                                                    selectedTrainerId,
+                                                              )['profiles']
+                                                              as Map?)?['full_name']
+                                                          as String? ??
+                                                      'Trainer',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: ClayTokens
+                                                  .clayDarkTextPrimary,
+                                            ),
+                                          ),
+                                        ),
+                                        Icon(
+                                          Icons.keyboard_arrow_down_rounded,
+                                          color:
+                                              ClayTokens.clayDarkTextSecondary,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      pageFeedback.when(
+                        data: (feedback) => feedback.isEmpty
+                            ? MemberGlassCard(
+                                padding: const EdgeInsets.all(20),
+                                borderRadius: BorderRadius.circular(16),
+                                child: Column(
+                                  children: [
+                                    Icon(
+                                      Icons.rate_review_outlined,
+                                      color: ClayTokens.clayDarkTextTertiary,
+                                      size: 28,
+                                    ),
+                                    SizedBox(height: 8),
+                                    Text(
+                                      trainers.isEmpty
+                                          ? 'No trainers assigned yet.'
+                                          : selectedTrainerId == null
+                                          ? 'No feedback from your trainers yet.'
+                                          : 'No feedback from this trainer yet.',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: ClayTokens.clayDarkTextTertiary,
+                                        height: 1.5,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : MemberGlassCard(
+                                padding: const EdgeInsets.all(16),
+                                borderRadius: BorderRadius.circular(16),
+                                child: Column(
+                                  children: feedback.asMap().entries.map((
+                                    entry,
+                                  ) {
+                                    final isLast =
+                                        entry.key == feedback.length - 1;
+                                    return Column(
+                                      children: [
+                                        _FeedbackEntry(
+                                          feedback: entry.value,
+                                          busy:
+                                              _ratingInProgress ==
+                                              entry.value['id'],
+                                          onRate: (stars) =>
+                                              _rate(entry.value, stars),
+                                          editing:
+                                              _editingId == entry.value['id'],
+                                          commentSaving:
+                                              _commentSaving ==
+                                              entry.value['id'],
+                                          onEditComment: () => setState(
+                                            () => _editingId =
+                                                entry.value['id'] as String,
+                                          ),
+                                          onCancelComment: () =>
+                                              setState(() => _editingId = null),
+                                          onSaveComment: (text) =>
+                                              _saveComment(entry.value, text),
+                                        ),
+                                        if (!isLast)
+                                          Divider(
+                                            color: glassLine(
+                                              const Color(0xFF38383A),
+                                            ),
+                                            height: 1,
+                                          ),
+                                      ],
+                                    );
+                                  }).toList(),
+                                ),
+                              ),
+                        loading: () => const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(24),
+                            child: CupertinoActivityIndicator(),
+                          ),
+                        ),
+                        error: (e, _) => Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Text(
+                            'Error: $e',
+                            style: ClayTokens.bodyMedium.copyWith(
+                              color: ClayTokens.clayError,
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (total > _pageSize)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 12, bottom: 12),
+                          child: MemberGlassCard(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    '${currentPage * _pageSize + 1}\u2013${((currentPage + 1) * _pageSize).clamp(0, total)} of $total',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: ClayTokens.clayDarkTextSecondary,
+                                    ),
+                                  ),
+                                ),
+                                CupertinoButton(
+                                  padding: const EdgeInsets.all(10),
+                                  onPressed: currentPage > 0
+                                      ? () => _changePage(currentPage - 1)
+                                      : null,
+                                  child: const Icon(
+                                    CupertinoIcons.chevron_left,
+                                    semanticLabel: 'Previous feedback page',
+                                    size: 18,
+                                  ),
+                                ),
+                                Text(
+                                  '${currentPage + 1} / $pageCount',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: ClayTokens.clayDarkTextPrimary,
+                                  ),
+                                ),
+                                CupertinoButton(
+                                  padding: const EdgeInsets.all(10),
+                                  onPressed: currentPage + 1 < pageCount
+                                      ? () => _changePage(currentPage + 1)
+                                      : null,
+                                  child: const Icon(
+                                    CupertinoIcons.chevron_right,
+                                    semanticLabel: 'Next feedback page',
+                                    size: 18,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ],

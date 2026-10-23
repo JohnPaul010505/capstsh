@@ -1,3 +1,4 @@
+import 'session_metrics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/workout_session_provider.dart';
@@ -25,7 +26,7 @@ class WorkoutSummary extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return MemberGlassCard(
-      margin: const EdgeInsets.symmetric(vertical: 10),
+      margin: EdgeInsets.zero,
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -115,51 +116,7 @@ class WorkoutSummary extends ConsumerWidget {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: ClayTokens.hairline.withAlpha(12)),
             ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.timer_outlined,
-                  size: 16,
-                  color: Color(0xFF7C3AED),
-                ),
-                const SizedBox(width: 8),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Session Duration',
-                      style: TextStyle(fontSize: 10, color: Color(0xFF8E8E93)),
-                    ),
-                    Text(
-                      _format(session.elapsedSeconds),
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: glassInk(),
-                      ),
-                    ),
-                  ],
-                ),
-                const Spacer(),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    const Text(
-                      'Total Calories',
-                      style: TextStyle(fontSize: 10, color: Color(0xFF8E8E93)),
-                    ),
-                    Text(
-                      '${session.latestCalories} kcal',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFFFF9F0A),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+            child: SessionMetrics(elapsedSeconds: session.elapsedSeconds, restSeconds: session.restSeconds, calories: session.latestCalories),
           ),
           const SizedBox(height: 12),
           ...session.exercises.map((e) {

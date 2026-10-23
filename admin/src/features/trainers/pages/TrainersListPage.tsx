@@ -61,7 +61,7 @@ export default function TrainersListPage() {
     { key: 'code', header: 'Code', render: t => peopleCells.code(t.code) },
     { key: 'email', header: 'Email', render: t => t.email },
     { key: 'specialty', header: 'Specialty', render: t => t.specialty || '—' },
-    { key: 'availability', header: 'Availability', render: t => t.available_days?.split(',').join(', ') || '-' },
+    { key: 'availability', header: 'Availability', render: t => t.available_days?.split(',').map(day => day.trim().split(/\s+/)[0]).join(', ') || '-' },
     { key: 'members', header: 'Members', render: t => <span className="tabular-nums">{memberCounts[t.id] ?? 0}</span> },
     { key: 'joined', header: 'Hired', render: t => peopleCells.date(t.created_at) },
     {

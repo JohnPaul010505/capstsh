@@ -1,3 +1,4 @@
+import '../../../shared/widgets/glass_card.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -127,7 +128,8 @@ class _CalendarFlipSheetState extends ConsumerState<CalendarFlipSheet> {
                   border: Border.all(
                     color: ClayColors.isLightMode
                         ? ClayTokens.clayPrimary.withAlpha(45)
-                        : ClayTokens.hairline.withAlpha(18)),
+                        : ClayTokens.hairline.withAlpha(18),
+                  ),
                 ),
                 child: Column(
                   children: [
@@ -320,7 +322,9 @@ class _BackFace extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: ClayTokens.hairline.withAlpha(8),
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: ClayTokens.hairline.withAlpha(12)),
+                          border: Border.all(
+                            color: ClayTokens.hairline.withAlpha(12),
+                          ),
                         ),
                         child: const Icon(
                           Icons.fitness_center,
@@ -412,7 +416,10 @@ class _BackFace extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [Color(0xFF7C3AED).withAlpha(30), Color(0xFF1C1C2E)],
+              colors: [
+                Color(0xFF7C3AED).withAlpha(30),
+                glassBody(const Color(0xFF1C1C2E)),
+              ],
             ),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: Color(0xFF7C3AED).withAlpha(50)),
@@ -433,20 +440,24 @@ class _BackFace extends StatelessWidget {
               Expanded(
                 child: Text(
                   sessionName,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFFD6A5FF),
+                    color: ClayColors.isLightMode
+                        ? ClayTokens.clayPrimary
+                        : const Color(0xFFD6A5FF),
                   ),
                 ),
               ),
               if (totalDurationSeconds > 0)
                 Text(
                   totalDurationStr,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFFD6A5FF),
+                    color: ClayColors.isLightMode
+                        ? ClayTokens.clayPrimary
+                        : const Color(0xFFD6A5FF),
                   ),
                 ),
               if (totalDurationSeconds > 0 && totalKcal > 0)
@@ -538,7 +549,7 @@ class _WorkoutCard extends StatelessWidget {
                           colors: [Color(0xFF7C3AED), Color(0xFFC56BF0)],
                         )
                       : null,
-                  color: hasVideo ? null : const Color(0xFF3A3A4A),
+                  color: hasVideo ? null : glassRim(const Color(0xFF3A3A4A)),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -551,10 +562,10 @@ class _WorkoutCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFFF2F5F7),
+                    color: glassInk(const Color(0xFFF2F5F7)),
                   ),
                 ),
               ),
@@ -654,13 +665,15 @@ class _WorkoutCard extends StatelessWidget {
                     color: const Color(0xFF7C3AED).withAlpha(100),
                   ),
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
                       Icons.play_circle_outline,
                       size: 14,
-                      color: Color(0xFFD6A5FF),
+                      color: ClayColors.isLightMode
+                          ? ClayTokens.clayPrimary
+                          : const Color(0xFFD6A5FF),
                     ),
                     SizedBox(width: 4),
                     Text(
@@ -668,7 +681,9 @@ class _WorkoutCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFFD6A5FF),
+                        color: ClayColors.isLightMode
+                            ? ClayTokens.clayPrimary
+                            : const Color(0xFFD6A5FF),
                       ),
                     ),
                   ],
@@ -703,16 +718,16 @@ class _StatChip extends StatelessWidget {
         children: [
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
-              color: Color(0xFFF2F5F7),
+              color: glassInk(const Color(0xFFF2F5F7)),
             ),
           ),
           const SizedBox(width: 3),
           Text(
             unit,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w500,
               color: Color(0xFF8E8E93),
@@ -749,10 +764,10 @@ class _DurationChip extends StatelessWidget {
         children: [
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
-              color: Color(0xFFF2F5F7),
+              color: glassInk(const Color(0xFFF2F5F7)),
             ),
           ),
         ],
@@ -803,5 +818,3 @@ class _GlassPillButton extends StatelessWidget {
     );
   }
 }
-
-

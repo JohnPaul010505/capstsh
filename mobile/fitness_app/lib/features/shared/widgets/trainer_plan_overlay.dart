@@ -1,3 +1,4 @@
+import '../utils/plan_meal_completion.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -83,11 +84,7 @@ class _NotesBanner extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 2),
-                Icon(
-                  Icons.chevron_right,
-                  color: _sheetAccent,
-                  size: 18,
-                ),
+                Icon(Icons.chevron_right, color: _sheetAccent, size: 18),
               ],
             ),
           ),
@@ -138,11 +135,7 @@ class _TrainerPlanHeader extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Row(
           children: [
-            Icon(
-              Icons.assignment_ind_outlined,
-              size: 20,
-              color: accent,
-            ),
+            Icon(Icons.assignment_ind_outlined, size: 20, color: accent),
             const SizedBox(width: 8),
             Expanded(
               child: Column(
@@ -474,23 +467,17 @@ class _TrainerPlanWorkoutOverlayState
             ),
             Divider(color: glassLine(const Color(0xFF38383A)), height: 1),
             _TrainerPlanHeader(
-              plans:
-                  ref.watch(displayedPlansProvider).valueOrNull ?? const [],
+              plans: ref.watch(displayedPlansProvider).valueOrNull ?? const [],
               selectedPlanId: _planId,
               accent: _sheetAccent,
               actionLabel: 'Workout',
               onSelected: _switchTo,
             ),
-            _NotesBanner(
-              notes: _notes,
-              onSeeAll: () => _openNotes(context),
-            ),
+            _NotesBanner(notes: _notes, onSeeAll: () => _openNotes(context)),
             Expanded(
               child: _loading
                   ? Center(
-                      child: CupertinoActivityIndicator(
-                        color: _sheetAccent,
-                      ),
+                      child: CupertinoActivityIndicator(color: _sheetAccent),
                     )
                   : exercises.isEmpty
                   ? const Center(
@@ -739,21 +726,27 @@ class _TrainerPlanFoodOverlayState
       final endOfDay = startOfDay.add(const Duration(days: 1));
       final rows = await client
           .from('meal_logs')
-          .select('food_name')
+          .select('food_name, meal_type')
           .eq('member_id', memberId)
           .gte('meal_time', startOfDay.toUtc().toIso8601String())
           .lt('meal_time', endOfDay.toUtc().toIso8601String())
           .limit(200);
       final logged = (rows as List)
-          .map((r) => (r as Map)['food_name'] as String? ?? '')
-          .map(_normPlanName)
-          .where((n) => n.isNotEmpty)
+          .map(
+            (r) => planMealKey(
+              (r as Map)['food_name'] as String? ?? '',
+              r['meal_type'] as String?,
+            ),
+          )
           .toSet();
-      if (logged.isEmpty) return;
-      for (final f in dayFoods) {
-        final name = f['name'] as String? ?? '';
-        if (_planNameLogged(name, logged)) {
-          _completed.add(name);
+      for (final food in dayFoods) {
+        if (planMealLogged(food, logged)) {
+          _completed.add(
+            planMealKey(
+              food['name'] as String? ?? '',
+              food['meal_type'] as String?,
+            ),
+          );
         }
       }
     } catch (_) {
@@ -857,23 +850,17 @@ class _TrainerPlanFoodOverlayState
             ),
             Divider(color: glassLine(const Color(0xFF38383A)), height: 1),
             _TrainerPlanHeader(
-              plans:
-                  ref.watch(displayedPlansProvider).valueOrNull ?? const [],
+              plans: ref.watch(displayedPlansProvider).valueOrNull ?? const [],
               selectedPlanId: _planId,
               accent: _sheetAccent,
               actionLabel: 'Nutrition',
               onSelected: _switchTo,
             ),
-            _NotesBanner(
-              notes: _notes,
-              onSeeAll: () => _openNotes(context),
-            ),
+            _NotesBanner(notes: _notes, onSeeAll: () => _openNotes(context)),
             Expanded(
               child: _loading
                   ? Center(
-                      child: CupertinoActivityIndicator(
-                        color: _sheetAccent,
-                      ),
+                      child: CupertinoActivityIndicator(color: _sheetAccent),
                     )
                   : foods.isEmpty
                   ? const Center(
@@ -913,7 +900,12 @@ class _TrainerPlanFoodOverlayState
                               const SizedBox(height: 8),
                               ...items.map((food) {
                                 final name = food['name'] as String? ?? '';
-                                final isDone = _completed.contains(name);
+                                final isDone = _completed.contains(
+                                  planMealKey(
+                                    name,
+                                    food['meal_type'] as String?,
+                                  ),
+                                );
 
                                 // Same treatment as the workout sheet: a
                                 // done row gets the green check circle, a
@@ -945,7 +937,8 @@ class _TrainerPlanFoodOverlayState
                                             ? Icon(
                                                 Icons.check,
                                                 size: 14,
-                                                color: ClayTokens.clayDarkTextPrimary,
+                                                color: ClayTokens
+                                                    .clayDarkTextPrimary,
                                               )
                                             : null,
                                       ),

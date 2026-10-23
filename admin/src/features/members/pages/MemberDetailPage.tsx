@@ -536,7 +536,7 @@ export default function MemberDetailPage() {
               on the shared tab row above */}
           {tab === 'workouts' && (
             <div className="flex-1 min-h-0 flex flex-col">
-              <div className="flex-1 min-h-0">
+              <div className="flex-1 min-h-0 flex flex-col">
                 <PeopleTable
                   title="Workout Log"
                   rows={workoutRows}
@@ -567,7 +567,7 @@ export default function MemberDetailPage() {
               lives on the shared tab row above */}
           {tab === 'meals' && (
             <div className="flex-1 min-h-0 flex flex-col">
-              <div className="flex-1 min-h-0">
+              <div className="flex-1 min-h-0 flex flex-col">
                 <PeopleTable
                   title="Food Intake"
                   rows={mealRows}

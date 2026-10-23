@@ -1,3 +1,4 @@
+import '../widgets/session_metrics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/workout_session_provider.dart';
@@ -186,7 +187,7 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
             onPressed: () => Navigator.of(ctx).pop(),
             child: const Text(
               'Continue Working Out',
-              style: TextStyle(color: Color(0xFFD6A5FF)),
+              style: TextStyle(color: Colors.white),
             ),
           ),
           TextButton(
@@ -286,20 +287,12 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
                         if (ended) ...[
                           if (_showPrevCards &&
                               session.completedSessions.length > 1) ...[
-                            _PreviousSessionCards(
+                            PreviousSessionCards(
                               session: session,
                               showCompletionMessage: _showCompletionMessage,
-                              onViewProof: (s) {
-                                final url = s.exerciseProofUrls.firstWhere(
-                                  (u) => u != null && u.isNotEmpty,
-                                  orElse: () => '',
-                                );
-                                if (url != null && url.isNotEmpty) {
-                                  showProofVideoDialog(context, url);
-                                }
-                              },
+                              onViewProof: (url) => showProofVideoDialog(context, url),
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 3),
                           ],
                           WorkoutSummary(
                             session: session,
@@ -364,12 +357,13 @@ class _WorkoutPageState extends ConsumerState<WorkoutPage>
   }
 }
 
-class _PreviousSessionCards extends StatelessWidget {
+class PreviousSessionCards extends StatelessWidget {
   final WorkoutSessionState session;
   final bool showCompletionMessage;
-  final Function(CompletedSession) onViewProof;
+  final ValueChanged<String> onViewProof;
 
-  const _PreviousSessionCards({
+  const PreviousSessionCards({
+    super.key,
     required this.session,
     required this.showCompletionMessage,
     required this.onViewProof,
@@ -391,22 +385,9 @@ class _PreviousSessionCards extends StatelessWidget {
     }
     widgets.addAll(
       previous.map((s) {
-        return Container(
-          margin: const EdgeInsets.only(bottom: 10),
+        return MemberGlassCard(
+          margin: EdgeInsets.zero,
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: glassBody(const Color(0xFF1C1C2E)),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: glassRimSoft(const Color(0xFF2A2A45))),
-            gradient: RadialGradient(
-              center: Alignment(0.9, -0.9),
-              radius: 1.2,
-              colors: [
-                const Color(0xFF7C3AED).withAlpha(60),
-                glassBody(const Color(0xFF1C1C2E)),
-              ],
-            ),
-          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -456,57 +437,7 @@ class _PreviousSessionCards extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: ClayTokens.hairline.withAlpha(12)),
                 ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.timer_outlined,
-                      size: 16,
-                      color: Color(0xFFD6A5FF),
-                    ),
-                    const SizedBox(width: 8),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Session Duration',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: Color(0xFF8E8E93),
-                          ),
-                        ),
-                        Text(
-                          _format(s.elapsedSeconds),
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: glassInk(),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Spacer(),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        const Text(
-                          'Total Calories',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: Color(0xFF8E8E93),
-                          ),
-                        ),
-                        Text(
-                          '${s.totalCalories} kcal',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFFFF9F0A),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                child: SessionMetrics(elapsedSeconds: s.elapsedSeconds, restSeconds: s.restSeconds, calories: s.totalCalories),
               ),
               const SizedBox(height: 12),
               ...List.generate(s.exerciseNames.length, (i) {
@@ -595,7 +526,7 @@ class _PreviousSessionCards extends StatelessWidget {
                             const Spacer(),
                             if (hasVideo)
                               GestureDetector(
-                                onTap: () => onViewProof(s),
+                                onTap: () => onViewProof(proofUrl),
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 8,
@@ -604,8 +535,8 @@ class _PreviousSessionCards extends StatelessWidget {
                                   decoration: BoxDecoration(
                                     gradient: LinearGradient(
                                       colors: [
-                                        const Color(0xFF7C3AED).withAlpha(50),
-                                        const Color(0xFFC56BF0).withAlpha(30),
+                                        const Color(0xFF7C3AED),
+                                        const Color(0xFF7C3AED),
                                       ],
                                     ),
                                     borderRadius: BorderRadius.circular(8),
@@ -621,15 +552,15 @@ class _PreviousSessionCards extends StatelessWidget {
                                       Icon(
                                         Icons.play_circle_outline,
                                         size: 12,
-                                        color: Color(0xFFD6A5FF),
+                                        color: Colors.white,
                                       ),
                                       SizedBox(width: 3),
                                       Text(
-                                        'View',
+                                        'View Video',
                                         style: TextStyle(
                                           fontSize: 9,
                                           fontWeight: FontWeight.w600,
-                                          color: Color(0xFFD6A5FF),
+                                          color: Colors.white,
                                         ),
                                       ),
                                     ],
@@ -648,13 +579,12 @@ class _PreviousSessionCards extends StatelessWidget {
         );
       }).toList(),
     );
-    return Column(children: widgets);
-  }
-
-  String _format(int seconds) {
-    final m = seconds ~/ 60;
-    final sec = seconds % 60;
-    return m > 0 ? '${m}m ${sec}s' : '${sec}s';
+    return Column(children: [
+      for (var i = 0; i < widgets.length; i++) ...[
+        if (i > 0) const SizedBox(height: 3),
+        widgets[i],
+      ],
+    ]);
   }
 
   Widget _summaryStat({

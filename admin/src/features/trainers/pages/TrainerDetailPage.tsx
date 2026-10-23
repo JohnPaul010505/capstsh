@@ -42,6 +42,7 @@ export default function TrainerDetailPage() {
   const [memberSearch, setMemberSearch] = useState('')
   const [memberToAssign, setMemberToAssign] = useState<{ id: string; full_name: string } | null>(null)
   const [assignmentError, setAssignmentError] = useState<string | null>(null)
+  const [assignmentToRemove, setAssignmentToRemove] = useState<{ id: string; name: string } | null>(null)
   // The member page shares this hook: the trainer row follows edits made in
   // another tab or on the app without a reload.
   useRealtimeProfiles(id ? [id] : [])
@@ -262,6 +263,7 @@ export default function TrainerDetailPage() {
       return res.json()
     },
     onSuccess: () => {
+      setAssignmentToRemove(null)
       queryClient.invalidateQueries({ queryKey: ['trainer_assignments', 'paged'] })
       queryClient.invalidateQueries({ queryKey: ['trainer-member-counts'] })
       queryClient.invalidateQueries({ queryKey: ['member-assignment-ids'] })
@@ -284,7 +286,7 @@ export default function TrainerDetailPage() {
       render: a => (
         <button
           type="button"
-          onClick={e => { e.stopPropagation(); unassignMutation.mutate(a.id) }}
+          onClick={e => { e.stopPropagation(); unassignMutation.reset(); setAssignmentToRemove({ id: a.id, name: a.profiles?.full_name || 'this member' }) }}
           disabled={unassignMutation.isPending}
           title="Remove assignment"
           aria-label="Remove assignment"
@@ -351,7 +353,7 @@ export default function TrainerDetailPage() {
         </div>
       </div>
 
-      <div className="glass-card p-4 rounded-xl"><h2 className="font-semibold text-fg-strong mb-2">Availability</h2>{trainer.available_days ? trainer.available_days.split(',').map((day: string) => <p key={day} className="text-sm text-fg py-1">{day.trim()}</p>) : <p className="text-sm text-fg-muted">Schedule not provided</p>}</div></div>
+      <div className="glass-card p-4 rounded-xl"><h2 className="font-semibold text-fg-strong mb-2">Availability</h2>{trainer.available_days ? <div className="grid grid-cols-2 gap-x-6 gap-y-2 max-w-lg">{trainer.available_days.split(',').map((value: string) => value.trim()).filter(Boolean).map((entry: string, index: number, entries: string[]) => <p key={entry} className="text-sm text-fg" style={{ gridColumn: Math.floor(index / Math.ceil(entries.length / 2)) + 1, gridRow: index % Math.ceil(entries.length / 2) + 1 }}>{entry}</p>)}</div> : <p className="text-sm text-fg-muted">Schedule not provided</p>}</div></div>
       <div className="shrink-0">
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
           <div className="glass-card p-4 rounded-xl">
@@ -370,6 +372,20 @@ export default function TrainerDetailPage() {
           <div className="glass-card p-4 rounded-xl"><div className="flex items-center gap-2 text-sm text-fg-muted mb-1"><Users className="w-4 h-4" /><span>Assigned Members</span></div><p className="text-xl font-bold text-fg-strong">{assignedTotal}</p></div>
         </div>
               </div>
+
+      {assignmentToRemove && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => { if (!unassignMutation.isPending) setAssignmentToRemove(null) }}>
+          <div role="dialog" aria-modal="true" aria-labelledby="remove-assignment-title" className="glass-card rounded-xl p-6 max-w-md w-full" onClick={event => event.stopPropagation()} onKeyDown={event => { if (event.key === 'Escape' && !unassignMutation.isPending) setAssignmentToRemove(null) }}>
+            <h2 id="remove-assignment-title" className="text-lg font-bold text-fg-strong mb-2">Remove trainer assignment?</h2>
+            <p className="text-sm text-fg">Are you sure you want to remove {assignmentToRemove.name} from {trainer.full_name}'s assigned members? The member's account will remain.</p>
+            {unassignMutation.isError && <p role="alert" className="text-sm text-red-400 mt-3">Could not remove the assignment. Please try again.</p>}
+            <div className="flex justify-end gap-3 mt-5">
+              <button autoFocus disabled={unassignMutation.isPending} onClick={() => setAssignmentToRemove(null)} className="px-4 py-2 text-sm border border-line rounded-lg text-fg disabled:opacity-50">Cancel</button>
+              <button disabled={unassignMutation.isPending} onClick={() => { if (!unassignMutation.isPending) unassignMutation.mutate(assignmentToRemove.id) }} className="px-4 py-2 text-sm bg-red-500 text-white rounded-lg disabled:opacity-50">{unassignMutation.isPending ? 'Removing...' : 'Remove assignment'}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* The tab strip is the same shape Memberships uses (glass pill, active tab
           solid purple), so it reads as the same control in two places. The counts

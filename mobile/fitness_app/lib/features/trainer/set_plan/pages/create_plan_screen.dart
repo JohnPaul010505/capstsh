@@ -1,3 +1,4 @@
+import '../data/plan_repository.dart';
 // analyzer-workaround-20260907
 import 'dart:async';
 import 'dart:ui' show ImageFilter;
@@ -50,7 +51,6 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
   bool isSaving = false;
   List<Map<String, dynamic>>? members;
   Map<String, bool> memberHasActivePlan = <String, bool>{};
-  bool _confirmReplace = false;
 
   DateTime _startDate = DateTime.now();
 
@@ -140,26 +140,8 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
 
       membersList = (profilesResp as List).cast<Map<String, dynamic>>();
 
-      // 3. Batch fetch this trainer's active plans for these members in one
-      //    query. Scoped to the signed-in trainer so another trainer's active
-      //    plan for the same member is neither shown nor replaced.
-      final now = DateTime.now();
-      final todayStr = DateTime(
-        now.year,
-        now.month,
-        now.day,
-      ).toIso8601String().split('T').first;
-      final activePlansResp = await client
-          .from('member_goal_plans')
-          .select('member_id')
-          .inFilter('member_id', memberIds)
-          .eq('trainer_id', trainerId)
-          .eq('status', 'active')
-          .gte('end_date', todayStr);
-
-      final activeMemberIds = (activePlansResp as List)
-          .map((p) => p['member_id'] as String)
-          .toSet();
+      final activeMemberIds = await PlanRepository()
+          .getMembersWithUnfinishedPlans(trainerId);
 
       for (final member in membersList) {
         final id = member['id'] as String? ?? '';
@@ -180,7 +162,9 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
   }
 
   Future<void> _assignPlan() async {
-    if (selectedClient == null) return;
+    if (selectedClient == null || memberHasActivePlan[selectedClient] == true) {
+      return;
+    }
     final dayCount = _completedDayCount;
     if (dayCount == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -195,6 +179,17 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
     setState(() => isSaving = true);
     try {
       final client = SupabaseClientService().client;
+      final blocked = await PlanRepository().getMembersWithUnfinishedPlans(
+        client.auth.currentUser!.id,
+      );
+      if (blocked.contains(selectedClient)) {
+        if (mounted) {
+          setState(() => memberHasActivePlan[selectedClient!] = true);
+        }
+        throw StateError(
+          'This member already has an active plan. Finish or cancel it first.',
+        );
+      }
 
       final foodPlan = List.generate(dayCount, (day) {
         final dayNum = day + 1;
@@ -228,17 +223,7 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
         'status': 'active',
         'trainer_id': client.auth.currentUser!.id,
       };
-      // Each assignment gets a new plan ID so previous day completions never
-      // carry over to a replacement plan. Only THIS trainer's active row is
-      // cancelled: another trainer's plan for the same member stays intact.
-      if (_confirmReplace) {
-        await client
-            .from('member_goal_plans')
-            .update({'status': 'cancelled'})
-            .eq('member_id', selectedClient!)
-            .eq('trainer_id', client.auth.currentUser!.id)
-            .eq('status', 'active');
-      }
+      // An existing plan must finish or be cancelled before creating another.
       planJson['created_at'] = DateTime.now().toIso8601String();
       await client.from('member_goal_plans').insert(planJson);
 
@@ -262,7 +247,7 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
         const SnackBar(content: Text('Plan assigned successfully')),
       );
       context.pop();
-    } on Exception catch (e) {
+    } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
@@ -405,10 +390,11 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
     final hasActivePlan =
         selectedClient != null && memberHasActivePlan[selectedClient!] == true;
 
-    return Scaffold(        backgroundColor: ClayColors.isLightMode
-            ? ClayTokens.claySurfaceLight.withAlpha(250)
-            : ClayTokens.clayDarkSurface,
-        body: AppGlowBackground(
+    return Scaffold(
+      backgroundColor: ClayColors.isLightMode
+          ? ClayTokens.claySurfaceLight.withAlpha(250)
+          : ClayTokens.clayDarkSurface,
+      body: AppGlowBackground(
         child: SafeArea(
           child: Column(
             children: [
@@ -430,7 +416,6 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
                             onChanged: (value) {
                               setState(() {
                                 selectedClient = value;
-                                _confirmReplace = false;
                               });
                             },
                           ),
@@ -455,7 +440,7 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Text(
-                                      'This member already has an active plan. Creating a new plan will replace it.',
+                                      'This member already has an active plan. You can create another after it is completed or cancelled.',
                                       style: TextStyle(
                                         fontSize: 12,
                                         // Yellow vanishes on the light glass;
@@ -470,20 +455,6 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
                               ),
                             ),
                             const SizedBox(height: 10),
-                            if (!_confirmReplace)
-                              CupertinoButton(
-                                padding: EdgeInsets.zero,
-                                onPressed: () {
-                                  setState(() => _confirmReplace = true);
-                                },
-                                child: Text(
-                                  'I understand, continue',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: _accent,
-                                  ),
-                                ),
-                              ),
                           ] else ...[
                             SizedBox(height: 10),
                             Container(
@@ -519,133 +490,138 @@ class _CreatePlanScreenState extends ConsumerState<CreatePlanScreen> {
                             ),
                           ],
                           const SizedBox(height: 16),
-                          _DaySelector(
-                            currentDay: _currentDay,
-                            isDayComplete: _isDayComplete,
-                            onDayChanged: (day) {
-                              if (day > 1 && !_isDayComplete(day - 1)) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      'Finish Day ${day - 1} nutrition and training first.',
-                                    ),
-                                  ),
-                                );
-                                return;
-                              }
-                              setState(() => _currentDay = day);
-                            },
-                          ),
-                          SizedBox(height: 16),
-                          Text(
-                            'START DATE',
-                            style: ClayTokens.displaySmall.copyWith(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 1.2,
-                              color: ClayTokens.clayDarkTextPrimary,
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          GestureDetector(
-                            onTap: _pickStartDate,
-                            child: Container(
-                              width: double.infinity,
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 14,
-                              ),
-                              decoration: BoxDecoration(
-                                color: ClayTokens.hairline.withAlpha(14),
-                                borderRadius: BorderRadius.circular(
-                                  ClayTokens.radiusMd,
-                                ),
-                                border: Border.all(
-                                  color: ClayTokens.hairline.withAlpha(30),
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    CupertinoIcons.calendar,
-                                    size: 16,
-                                    color: Color(0xFF8E8E93),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      _fmtDate(_startDate),
-                                      style: ClayTokens.darkBodyMedium.copyWith(
-                                        color: ClayTokens.clayDarkTextPrimary,
+                          if (selectedClient != null &&
+                              memberHasActivePlan[selectedClient] != true) ...[
+                            _DaySelector(
+                              currentDay: _currentDay,
+                              isDayComplete: _isDayComplete,
+                              onDayChanged: (day) {
+                                if (day > 1 && !_isDayComplete(day - 1)) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Finish Day ${day - 1} nutrition and training first.',
                                       ),
                                     ),
-                                  ),
-                                  Icon(
-                                    CupertinoIcons.chevron_down,
-                                    size: 16,
-                                    color: ClayTokens.clayDarkTextTertiary,
-                                  ),
-                                ],
+                                  );
+                                  return;
+                                }
+                                setState(() => _currentDay = day);
+                              },
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'START DATE',
+                              style: ClayTokens.displaySmall.copyWith(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 1.2,
+                                color: ClayTokens.clayDarkTextPrimary,
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 16),
-                          _NutritionSection(
-                            foods: currentFoods,
-                            searchController: foodSearchController,
-                            foodNameController: foodNameController,
-                            onAddFood: _addFood,
-                            onRemoveFood: _removeFood,
-                            selectedMealType: _selectedMealType,
-                            onMealTypeChanged: (type) {
-                              setState(() => _selectedMealType = type);
-                            },
-                          ),
-                          const SizedBox(height: 16),
-                          _TrainingSection(
-                            day: _currentDay,
-                            exercises: currentExercises,
-                            workoutType: selectedWorkoutType,
-                            workoutTypes: const [
-                              'Strength Training',
-                              'Cardio',
-                              'HIIT',
-                              'Full Body',
-                              'Upper Body',
-                              'Lower Body',
-                              'Push',
-                              'Pull',
-                              'Legs',
-                              'Mobility',
-                            ],
-                            nameController: exerciseNameController,
-                            setsController: setsController,
-                            repsController: repsController,
-                            weightController: weightController,
-                            onWorkoutTypeChanged: (value) {
-                              setState(() => selectedWorkoutType = value);
-                            },
-                            onAddExercise: _addExercise,
-                            onRemoveExercise: _removeExercise,
-                          ),
-                          const SizedBox(height: 16),
-                          _NotesSection(
-                            controller: _notesControllerForDay(_currentDay),
-                          ),
-                          const SizedBox(height: 20),
-                          if (_currentDay < 7) ...[
-                            _AssignPlanButton(
-                              label: 'Next',
-                              onPressed: isSaving ? null : _goToNextDay,
-                              isLoading: false,
+                            SizedBox(height: 8),
+                            GestureDetector(
+                              onTap: _pickStartDate,
+                              child: Container(
+                                width: double.infinity,
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 14,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: ClayTokens.hairline.withAlpha(14),
+                                  borderRadius: BorderRadius.circular(
+                                    ClayTokens.radiusMd,
+                                  ),
+                                  border: Border.all(
+                                    color: ClayTokens.hairline.withAlpha(30),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      CupertinoIcons.calendar,
+                                      size: 16,
+                                      color: Color(0xFF8E8E93),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        _fmtDate(_startDate),
+                                        style: ClayTokens.darkBodyMedium
+                                            .copyWith(
+                                              color: ClayTokens
+                                                  .clayDarkTextPrimary,
+                                            ),
+                                      ),
+                                    ),
+                                    Icon(
+                                      CupertinoIcons.chevron_down,
+                                      size: 16,
+                                      color: ClayTokens.clayDarkTextTertiary,
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 16),
+                            _NutritionSection(
+                              foods: currentFoods,
+                              searchController: foodSearchController,
+                              foodNameController: foodNameController,
+                              onAddFood: _addFood,
+                              onRemoveFood: _removeFood,
+                              selectedMealType: _selectedMealType,
+                              onMealTypeChanged: (type) {
+                                setState(() => _selectedMealType = type);
+                              },
+                            ),
+                            const SizedBox(height: 16),
+                            _TrainingSection(
+                              day: _currentDay,
+                              exercises: currentExercises,
+                              workoutType: selectedWorkoutType,
+                              workoutTypes: const [
+                                'Strength Training',
+                                'Cardio',
+                                'HIIT',
+                                'Full Body',
+                                'Upper Body',
+                                'Lower Body',
+                                'Push',
+                                'Pull',
+                                'Legs',
+                                'Mobility',
+                              ],
+                              nameController: exerciseNameController,
+                              setsController: setsController,
+                              repsController: repsController,
+                              weightController: weightController,
+                              onWorkoutTypeChanged: (value) {
+                                setState(() => selectedWorkoutType = value);
+                              },
+                              onAddExercise: _addExercise,
+                              onRemoveExercise: _removeExercise,
+                            ),
+                            const SizedBox(height: 16),
+                            _NotesSection(
+                              controller: _notesControllerForDay(_currentDay),
+                            ),
+                            const SizedBox(height: 20),
+                            if (_currentDay < 7) ...[
+                              _AssignPlanButton(
+                                label: 'Next',
+                                onPressed: isSaving ? null : _goToNextDay,
+                                isLoading: false,
+                              ),
+                              const SizedBox(height: 12),
+                            ],
+                            _AssignPlanButton(
+                              onPressed: isSaving ? null : _assignPlan,
+                              isLoading: isSaving,
+                            ),
+                            const SizedBox(height: 16),
                           ],
-                          _AssignPlanButton(
-                            onPressed: isSaving ? null : _assignPlan,
-                            isLoading: isSaving,
-                          ),
-                          const SizedBox(height: 16),
                         ],
                       ),
                     ),
@@ -1007,7 +983,9 @@ class _MemberPickerDialogState extends State<_MemberPickerDialog> {
                 fillColor: ClayTokens.hairline.withAlpha(14),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: ClayTokens.hairline.withAlpha(30)),
+                  borderSide: BorderSide(
+                    color: ClayTokens.hairline.withAlpha(30),
+                  ),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -1018,7 +996,10 @@ class _MemberPickerDialogState extends State<_MemberPickerDialog> {
                   vertical: 12,
                 ),
               ),
-              style: TextStyle(fontSize: 13, color: ClayTokens.clayDarkTextPrimary),
+              style: TextStyle(
+                fontSize: 13,
+                color: ClayTokens.clayDarkTextPrimary,
+              ),
             ),
             const SizedBox(height: 10),
             if (filtered.isEmpty)
@@ -1295,10 +1276,10 @@ class _NutritionSectionState extends State<_NutritionSection> {
                               fontWeight: FontWeight.w700,
                               color: isSelected || isAdded
                                   ? (ClayColors.isLightMode
-                                      ? (isSelected
-                                          ? const Color(0xFFFFFFFF)
-                                          : ClayTokens.clayPrimary)
-                                      : Colors.white)
+                                        ? (isSelected
+                                              ? const Color(0xFFFFFFFF)
+                                              : ClayTokens.clayPrimary)
+                                        : Colors.white)
                                   : ClayTokens.clayDarkTextSecondary,
                             ),
                           ),
@@ -1340,7 +1321,9 @@ class _NutritionSectionState extends State<_NutritionSection> {
                         borderRadius: BorderRadius.circular(
                           ClayTokens.radiusMd,
                         ),
-                        border: Border.all(color: ClayTokens.hairline.withAlpha(30)),
+                        border: Border.all(
+                          color: ClayTokens.hairline.withAlpha(30),
+                        ),
                       ),
                       style: ClayTokens.darkBodyMedium,
                       cursorColor: ClayTokens.clayPrimary,
@@ -1379,7 +1362,9 @@ class _NutritionSectionState extends State<_NutritionSection> {
                         borderRadius: BorderRadius.circular(
                           ClayTokens.radiusMd,
                         ),
-                        border: Border.all(color: ClayTokens.hairline.withAlpha(30)),
+                        border: Border.all(
+                          color: ClayTokens.hairline.withAlpha(30),
+                        ),
                       ),
                       style: ClayTokens.darkBodyMedium,
                       cursorColor: ClayTokens.clayPrimary,
@@ -1458,7 +1443,9 @@ class _NutritionSectionState extends State<_NutritionSection> {
                             ],
                           ),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: ClayTokens.hairline.withAlpha(38)),
+                          border: Border.all(
+                            color: ClayTokens.hairline.withAlpha(38),
+                          ),
                         ),
                         child: ListView.builder(
                           shrinkWrap: true,
@@ -1501,7 +1488,8 @@ class _NutritionSectionState extends State<_NutritionSection> {
                                             style: TextStyle(
                                               fontSize: 12.5,
                                               fontWeight: FontWeight.w600,
-                                              color: ClayTokens.clayDarkTextPrimary,
+                                              color: ClayTokens
+                                                  .clayDarkTextPrimary,
                                             ),
                                           ),
                                           Text(
@@ -1535,10 +1523,7 @@ class _NutritionSectionState extends State<_NutritionSection> {
               const SizedBox(height: 12),
               if (widget.foods.isEmpty)
                 Container(
-                  padding: EdgeInsets.symmetric(
-                    vertical: 16,
-                    horizontal: 12,
-                  ),
+                  padding: EdgeInsets.symmetric(vertical: 16, horizontal: 12),
                   decoration: BoxDecoration(
                     color: ClayTokens.hairline.withAlpha(14),
                     borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
@@ -1580,7 +1565,9 @@ class _NutritionSectionState extends State<_NutritionSection> {
                     decoration: BoxDecoration(
                       color: ClayTokens.hairline.withAlpha(10),
                       borderRadius: BorderRadius.circular(ClayTokens.radiusMd),
-                      border: Border.all(color: ClayTokens.hairline.withAlpha(28)),
+                      border: Border.all(
+                        color: ClayTokens.hairline.withAlpha(28),
+                      ),
                     ),
                     child: Row(
                       children: [
@@ -1925,7 +1912,9 @@ class _TrainingSectionState extends State<_TrainingSection> {
                   fillColor: ClayTokens.hairline.withAlpha(14),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: ClayTokens.hairline.withAlpha(30)),
+                    borderSide: BorderSide(
+                      color: ClayTokens.hairline.withAlpha(30),
+                    ),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -2048,15 +2037,14 @@ class _TrainingSectionState extends State<_TrainingSection> {
                 controller: widget.nameController,
                 decoration: InputDecoration(
                   hintText: 'Exercise name',
-                  hintStyle: TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFF7070A0),
-                  ),
+                  hintStyle: TextStyle(fontSize: 13, color: Color(0xFF7070A0)),
                   filled: true,
                   fillColor: ClayTokens.hairline.withAlpha(14),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: ClayTokens.hairline.withAlpha(30)),
+                    borderSide: BorderSide(
+                      color: ClayTokens.hairline.withAlpha(30),
+                    ),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -2100,10 +2088,7 @@ class _TrainingSectionState extends State<_TrainingSection> {
                           vertical: 12,
                         ),
                       ),
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: glassInk(),
-                      ),
+                      style: TextStyle(fontSize: 13, color: glassInk()),
                       keyboardType: TextInputType.number,
                       // Numbers only, max 2 digits (up to 99).
                       inputFormatters: [
@@ -2140,10 +2125,7 @@ class _TrainingSectionState extends State<_TrainingSection> {
                           vertical: 12,
                         ),
                       ),
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: glassInk(),
-                      ),
+                      style: TextStyle(fontSize: 13, color: glassInk()),
                       keyboardType: TextInputType.number,
                       // Numbers only, max 2 digits (up to 99).
                       inputFormatters: [
@@ -2180,10 +2162,7 @@ class _TrainingSectionState extends State<_TrainingSection> {
                           vertical: 12,
                         ),
                       ),
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: glassInk(),
-                      ),
+                      style: TextStyle(fontSize: 13, color: glassInk()),
                       keyboardType: TextInputType.number,
                       // Numbers only, max 3 digits (up to 999).
                       inputFormatters: [

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../app/design_tokens.dart';
+import '../../../shared/widgets/glass_card.dart';
 
 /// Bottom sheet for applying for a (re)newal: plan + months (or a custom
 /// start/end window) + optional note. Pricing is handled by the admin.
@@ -88,7 +89,9 @@ class _RenewalRequestSheetState extends State<RenewalRequestSheet> {
   Widget build(BuildContext context) {
     final isMonthly = _plan == 'Monthly';
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: _GlassSheet(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
@@ -300,7 +303,9 @@ class _RenewalRequestSheetState extends State<RenewalRequestSheet> {
         padding: EdgeInsets.symmetric(vertical: 12),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? ClayTokens.clayPrimary : ClayTokens.hairline.withAlpha(15),
+          color: selected
+              ? ClayTokens.clayPrimary
+              : ClayTokens.hairline.withAlpha(15),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: selected
@@ -313,7 +318,9 @@ class _RenewalRequestSheetState extends State<RenewalRequestSheet> {
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w700,
-            color: selected ? Colors.white : const Color(0xFFA0A4B8),
+            color: selected
+                ? Colors.white
+                : glassInkDim(const Color(0xFFA0A4B8)),
           ),
         ),
       ),
@@ -328,7 +335,9 @@ class _RenewalRequestSheetState extends State<RenewalRequestSheet> {
         padding: EdgeInsets.symmetric(vertical: 10),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? ClayTokens.clayPrimary : ClayTokens.hairline.withAlpha(15),
+          color: selected
+              ? ClayTokens.clayPrimary
+              : ClayTokens.hairline.withAlpha(15),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: selected
@@ -341,7 +350,9 @@ class _RenewalRequestSheetState extends State<RenewalRequestSheet> {
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w700,
-            color: selected ? Colors.white : const Color(0xFFA0A4B8),
+            color: selected
+                ? Colors.white
+                : glassInkDim(const Color(0xFFA0A4B8)),
           ),
         ),
       ),
@@ -365,10 +376,7 @@ class _RenewalRequestSheetState extends State<RenewalRequestSheet> {
           controller: _noteController,
           placeholder: 'Anything the admin should know?',
           style: TextStyle(color: ClayTokens.clayDarkTextPrimary, fontSize: 14),
-          placeholderStyle: TextStyle(
-            color: Color(0xFF636366),
-            fontSize: 14,
-          ),
+          placeholderStyle: TextStyle(color: Color(0xFF636366), fontSize: 14),
           maxLines: 2,
           minLines: 1,
           padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -387,7 +395,8 @@ class _RenewalRequestSheetState extends State<RenewalRequestSheet> {
     // sensible number even when the member picked explicit dates.
     var months = _plan == 'Daily' ? 1 : _months;
     if (_plan == 'Monthly' && _useCustomDates) {
-      var m = (_endDate.year - _startDate.year) * 12 +
+      var m =
+          (_endDate.year - _startDate.year) * 12 +
           (_endDate.month - _startDate.month);
       if (_endDate.day < _startDate.day) m -= 1;
       months = m < 1 ? 1 : m;
@@ -396,8 +405,7 @@ class _RenewalRequestSheetState extends State<RenewalRequestSheet> {
       'plan_name': _plan,
       'months': months,
       'note': _noteController.text.trim(),
-      'start_date':
-          (_plan == 'Monthly' && _useCustomDates) ? _startDate : null,
+      'start_date': (_plan == 'Monthly' && _useCustomDates) ? _startDate : null,
       'end_date': (_plan == 'Monthly' && _useCustomDates) ? _endDate : null,
     });
   }
@@ -440,8 +448,8 @@ class _GlassSheet extends StatelessWidget {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                const Color(0xFF1A1636).withAlpha(235),
-                const Color(0xFF14142A).withAlpha(245),
+                glassBody(const Color(0xFF1A1636)).withAlpha(235),
+                glassBody(const Color(0xFF14142A)).withAlpha(245),
               ],
             ),
             border: Border(
@@ -483,12 +491,14 @@ class _GlassDatePickerState extends State<_GlassDatePicker> {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            const Color(0xFF1A1636).withAlpha(240),
-            const Color(0xFF14142A).withAlpha(250),
+            glassBody(const Color(0xFF1A1636)).withAlpha(240),
+            glassBody(const Color(0xFF14142A)).withAlpha(250),
           ],
         ),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        border: Border(top: BorderSide(color: ClayTokens.hairline.withAlpha(38))),
+        border: Border(
+          top: BorderSide(color: ClayTokens.hairline.withAlpha(38)),
+        ),
       ),
       child: SafeArea(
         top: false,

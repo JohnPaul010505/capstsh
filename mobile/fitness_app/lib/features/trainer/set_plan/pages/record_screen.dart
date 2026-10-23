@@ -1,3 +1,5 @@
+import '../data/plan_record_status.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -42,6 +44,42 @@ class RecordScreen extends ConsumerStatefulWidget {
 
 class _RecordScreenState extends ConsumerState<RecordScreen> {
   bool _showHistory = false;
+  RealtimeChannel? _requestChannel;
+
+  @override
+  void initState() {
+    super.initState();
+    final client = SupabaseClientService().client;
+    final trainerId = client.auth.currentUser?.id;
+    if (trainerId == null) return;
+    // Notifications are published already; a request creates one atomically.
+    _requestChannel = client
+        .channel('trainer-plan-requests-$trainerId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'notifications',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'user_id',
+            value: trainerId,
+          ),
+          callback: (_) {
+            if (!mounted) return;
+            ref.invalidate(trainerPlanCancellationRequestsProvider);
+            ref.invalidate(trainerPlanRecordsProvider);
+          },
+        )
+        .subscribe();
+  }
+
+  @override
+  void dispose() {
+    if (_requestChannel != null) {
+      SupabaseClientService().client.removeChannel(_requestChannel!);
+    }
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -91,13 +129,11 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
                   data: (records) {
                     final visibleRecords = records.where((record) {
                       final plan = record['plan'] as Map<String, dynamic>;
-                      final status = plan['status'] as String? ?? 'active';
-                      final isComplete =
-                          status == 'active' &&
-                          ((record['completion_pct'] as num?)?.toDouble() ??
-                                  0) >=
-                              1;
-                      final isHistory = status != 'active' || isComplete;
+                      final isHistory = trainerPlanIsHistory(
+                        record,
+                        hasPendingCancellation: cancellationRequests
+                            .containsKey(plan['id']),
+                      );
                       return _showHistory ? isHistory : !isHistory;
                     }).toList();
                     if (visibleRecords.isEmpty) {
