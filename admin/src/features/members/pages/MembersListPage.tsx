@@ -18,7 +18,7 @@ export default function MembersListPage() {
 
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
-  const [view, setView] = useState<'all' | 'unassigned' | 'recent'>('all')
+  const [view, setView] = useState<'all' | 'unassigned' | 'assigned'>('all')
   // The join-date window, opened on the whole dataset. It was `from`/`to` pairs
   // before, undefined meaning "no filter"; a `Range` cannot express that, so
   // `isAllTime` stands in for it and the hook is given no bounds at all on that
@@ -33,7 +33,7 @@ export default function MembersListPage() {
   useResetPageOnChange(setPage, search, range.start, range.end, view)
 
   const all = isAllTime(range)
-  const { data: assignedMemberIds } = useQuery({
+  const { data: memberAssignmentIds } = useQuery({
     queryKey: ['member-assignment-ids'],
     queryFn: async () => {
       const [membersResult, ...assignmentPages] = await Promise.all([
@@ -52,9 +52,9 @@ export default function MembersListPage() {
     page, pageSize: LIST_PAGE_SIZE, search,
     from: all ? undefined : range.start,
     to: all ? undefined : range.end,
-    unassignedIds: view === 'unassigned' ? assignedMemberIds : undefined,
-    sortRecent: view === 'recent',
-    enabled: view !== 'unassigned' || assignedMemberIds !== undefined,
+    unassignedIds: view === 'unassigned' ? memberAssignmentIds : undefined,
+    assignedOnly: view === 'assigned',
+    enabled: view !== 'unassigned' || memberAssignmentIds !== undefined,
   })
   // Fifteen rows is the contract; the height of one of them is what gives. The
   // scroller is owned by PeopleTable, so that is what has to be measured.
@@ -103,7 +103,7 @@ export default function MembersListPage() {
           queue and every dashboard tab keep theirs. */}
       <ListToolbar range={range} onRangeChange={setRange} left={
         <div className="glass-card page-tabs" role="group" aria-label="Member views">
-          {([['all', 'All members'], ['unassigned', 'No trainer'], ['recent', 'Recent join']] as const).map(([id, label]) => (
+          {([['all', 'All members'], ['unassigned', 'No trainer'], ['assigned', 'With Trainer']] as const).map(([id, label]) => (
             <button key={id} type="button" onClick={() => setView(id)} aria-pressed={view === id}
               className="page-tab">
               {label}

@@ -40,20 +40,20 @@ const PEOPLE_COLUMNS =
  * every column of every row, which is a large payload for a table showing a
  * handful of fields.
  */
-export function useMembersList({ page, pageSize, search, from, to, unassignedIds, sortRecent, enabled }: PeopleListParams & { unassignedIds?: string[]; sortRecent?: boolean; enabled?: boolean }) {
+export function useMembersList({ page, pageSize, search, from, to, unassignedIds, assignedOnly, enabled }: PeopleListParams & { unassignedIds?: string[]; assignedOnly?: boolean; enabled?: boolean }) {
   return usePagedTable<Profile>({
     table: 'profiles',
-    select: PEOPLE_COLUMNS,
+    select: assignedOnly ? `${PEOPLE_COLUMNS}, trainer_assignments!trainer_assignments_member_id_fkey!inner(status)` : PEOPLE_COLUMNS,
     // `code` is unique per role but is NULL for some rows, so `id` is kept as
     // the unique tiebreak that keeps pages disjoint.
-    orderBy: sortRecent ? [{ column: 'created_at', ascending: false }, { column: 'id', ascending: false }] : [{ column: 'code', ascending: true }, { column: 'id', ascending: true }],
+    orderBy: [{ column: 'code', ascending: true }, { column: 'id', ascending: true }],
     page, pageSize, search,
     searchColumns: ['full_name', 'code', 'email'],
     dateColumn: 'created_at', from, to,
     // Without this the query returns EVERY profile: 1,077 rows including the
     // 89 trainers and the admin, and the members page lists them. The role
     // predicate is part of what the list *is*, not an optional extra filter.
-    eq: { role: 'member' },
+    eq: { role: 'member', ...(assignedOnly ? { 'trainer_assignments.status': 'active' } : {}) },
     inFilter: unassignedIds === undefined ? undefined : { id: unassignedIds },
     enabled,
   })

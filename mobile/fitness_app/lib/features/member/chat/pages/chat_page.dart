@@ -1,3 +1,4 @@
+import '../../../../shared/utils/chat_time.dart';
 import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
@@ -315,7 +316,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         SupabaseClientService().client.auth.currentUser!.id;
     final content = message['content'] as String? ?? '';
     final time = message['created_at'] as String? ?? '';
-    final timeStr = time.length >= 16 ? time.substring(11, 16) : '';
+    final timeStr = formatChatTime(time);
     return StaggeredFadeIn(
       index: index,
       offset: const Offset(0, 8),

@@ -9,7 +9,7 @@ import HealthBackgroundSection, { emptyHealthBackground, type HealthBackgroundAn
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useFitSquare } from '@/hooks/useFitRows'
-import { Eye, Check, X, Plus } from 'lucide-react'
+import { Eye, Check, X, Plus, CircleCheck, Copy } from 'lucide-react'
 import AppBackground from '@/components/AppBackground'
 
 // In development the LAN URL lets a phone on the same Wi-Fi reach this Vite
@@ -56,6 +56,9 @@ export default function QRPage() {
   const queryClient = useQueryClient()
   const [selected, setSelected] = useState<any>(null)
   const [showModal, setShowModal] = useState(false)
+  const [confirmation, setConfirmation] = useState<{ code: string; legacyPassword?: string } | null>(null)
+  const [confirmationError, setConfirmationError] = useState('')
+  const [copied, setCopied] = useState(false)
   // The QR pair is the landing view: the lists are one click away rather than
   // pushing it down the page.
   const [view, setView] = useState<QrView>('codes')
@@ -137,11 +140,11 @@ export default function QRPage() {
       const res = await authorizedRequest('/api/confirm-enrollment', { enrollmentId: enrollment.id })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to confirm')
-      alert(data.legacyPassword
-        ? `Member confirmed!\nCode: ${data.code}\nTemporary password: ${data.legacyPassword}`
-        : `Member confirmed!\nCode: ${data.code}\nThey can now sign in using the password created during enrollment.`)
+      setConfirmation({ code: data.code, legacyPassword: data.legacyPassword })
+      setConfirmationError('')
+      setCopied(false)
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to confirm enrollment')
+      setConfirmationError(err instanceof Error ? err.message : 'Failed to confirm enrollment')
     }
     queryClient.invalidateQueries({ queryKey: ['enrollments'] })
   }
@@ -382,6 +385,12 @@ export default function QRPage() {
 
   return (
     <div className="h-full min-h-0 flex flex-col gap-3">
+      {confirmationError && (
+        <div role="alert" className="flex items-center justify-between gap-4 rounded-xl border border-[#EF4444]/40 bg-[#EF4444]/10 px-4 py-3 text-sm text-[#EF4444]">
+          <span>{confirmationError}</span>
+          <button type="button" onClick={() => setConfirmationError('')} aria-label="Dismiss error" className="rounded-md p-1 hover:bg-[#EF4444]/10"><X className="h-4 w-4" /></button>
+        </div>
+      )}
       {/* View switch + the one page-level action. The counts live in the tab
           labels, which is also what verify-admin-ui.mjs reads to confirm the
           pending queue is intact. */}
@@ -520,6 +529,33 @@ export default function QRPage() {
                 </button>
               )}
             </div>
+          </div>
+        </div>
+      )}
+      {confirmation && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onMouseDown={e => { if (e.target === e.currentTarget) setConfirmation(null) }}>
+          <div role="dialog" aria-modal="true" aria-labelledby="member-confirmed-title" className="glass-card w-full max-w-md rounded-2xl border border-line p-6 shadow-2xl sm:p-8">
+            <div className="mb-5 flex items-start justify-between">
+              <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#22C55E]/15 text-[#22C55E]"><CircleCheck className="h-8 w-8" /></span>
+              <button type="button" onClick={() => setConfirmation(null)} aria-label="Close confirmation" className="rounded-lg p-2 text-fg-muted hover:bg-overlay-8 hover:text-fg"><X className="h-5 w-5" /></button>
+            </div>
+            <h2 id="member-confirmed-title" className="text-xl font-semibold text-fg-strong">Member confirmed</h2>
+            <p className="mt-2 text-sm leading-6 text-fg-muted">{confirmation.legacyPassword ? 'The enrollment is approved. Share the temporary password with the member so they can sign in.' : 'The enrollment is approved. This member can now sign in using the password created during enrollment.'}</p>
+            <div className="mt-6 rounded-xl border border-line bg-overlay-8 p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-fg-muted">Member code</p>
+              <div className="mt-2 flex items-center justify-between gap-3">
+                <code className="break-all text-lg font-semibold text-fg-strong">{confirmation.code}</code>
+                <button type="button" onClick={async () => { await navigator.clipboard.writeText(confirmation.code); setCopied(true) }} aria-label="Copy member code" className="rounded-lg border border-line p-2 text-accent-purple hover:bg-overlay-8"><Copy className="h-4 w-4" /></button>
+              </div>
+              {copied && <span className="text-xs text-[#22C55E]">Copied</span>}
+            </div>
+            {confirmation.legacyPassword && (
+              <div className="mt-3 rounded-xl border border-line bg-overlay-8 p-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-fg-muted">Temporary password</p>
+                <code className="mt-2 block break-all text-base text-fg-strong">{confirmation.legacyPassword}</code>
+              </div>
+            )}
+            <button type="button" onClick={() => setConfirmation(null)} autoFocus className="mt-6 w-full rounded-lg bg-[#7C3AED] px-4 py-3 text-sm font-semibold text-white hover:bg-[#6D28D9]">Done</button>
           </div>
         </div>
       )}

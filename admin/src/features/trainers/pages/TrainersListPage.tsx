@@ -11,6 +11,7 @@ import { useResetPageOnChange } from '@/lib/pagedTable'
 import { supabase } from '@/lib/supabase'
 import type { Profile } from '@/types'
 import { X } from 'lucide-react'
+import TimeSelect from '../components/TimeSelect'
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
@@ -148,6 +149,7 @@ export default function TrainersListPage() {
   }, [password, passwordConfirm, phone])
 
   const toggleDay = (day: string) => {
+    if (!availableDays.includes(day)) setDayTimes(prev => ({ ...prev, [day]: prev[day] ?? { start: '09:00', end: '17:00' } }))
     setAvailableDays(prev =>
       prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
     )
@@ -272,7 +274,7 @@ export default function TrainersListPage() {
                 </div>
               </div>
               <div>
-                {availableDays.map(day => <div key={day} className="flex gap-2 items-center mb-2"><span className="text-fg w-10">{day}</span><input type="time" aria-label={day + ' start'} value={dayTimes[day]?.start ?? ''} onChange={e => setDayTimes(prev => ({...prev, [day]: {...(prev[day] ?? {start: '', end: ''}), start: e.target.value}}))} className="glass-input p-2 rounded-lg min-w-0 text-fg-strong" /><input type="time" aria-label={day + ' end'} value={dayTimes[day]?.end ?? ''} onChange={e => setDayTimes(prev => ({...prev, [day]: {...(prev[day] ?? {start: '', end: ''}), end: e.target.value}}))} className="glass-input p-2 rounded-lg min-w-0 text-fg-strong" /></div>)}
+                {availableDays.map(day => <div key={day} className="mb-3 rounded-lg border border-line p-2"><span className="mb-2 block text-sm font-medium text-fg-strong">{day}</span><div className="flex gap-2"><TimeSelect label={`${day} start`} value={dayTimes[day]?.start ?? '09:00'} onChange={value => setDayTimes(prev => ({...prev, [day]: {...(prev[day] ?? {start: '09:00', end: '17:00'}), start: value}}))} /><TimeSelect label={`${day} end`} value={dayTimes[day]?.end ?? '17:00'} onChange={value => setDayTimes(prev => ({...prev, [day]: {...(prev[day] ?? {start: '09:00', end: '17:00'}), end: value}}))} /></div></div>)}
 {errors.availability && <p role="alert" className="text-red-500">{errors.availability}</p>}<label className="block text-sm font-medium text-fg mb-1">Phone</label>
                 <input value={phone} onChange={e => { setPhone(e.target.value); setErrors(prev => ({...prev, phone: ''})) }} placeholder="09171234567"
                   className="w-full px-3 py-2 bg-overlay-8 border border-line rounded-lg text-sm text-fg-strong focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50 placeholder-fg-muted" />

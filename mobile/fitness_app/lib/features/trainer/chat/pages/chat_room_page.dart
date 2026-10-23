@@ -1,3 +1,4 @@
+import '../../../../shared/utils/chat_time.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
@@ -155,10 +156,11 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage> {
   Widget build(BuildContext context) {
     final userId = SupabaseClientService().client.auth.currentUser!.id;
 
-    return Scaffold(        backgroundColor: ClayColors.isLightMode
-            ? ClayTokens.claySurfaceLight.withAlpha(250)
-            : ClayTokens.clayDarkSurface,
-        body: AppGlowBackground(
+    return Scaffold(
+      backgroundColor: ClayColors.isLightMode
+          ? ClayTokens.claySurfaceLight.withAlpha(250)
+          : ClayTokens.clayDarkSurface,
+      body: AppGlowBackground(
         child: SafeArea(
           child: Column(
             children: [
@@ -273,9 +275,7 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage> {
                           final isMe = msg['sender_id'] == userId;
                           final content = msg['content'] as String? ?? '';
                           final time = msg['created_at'] as String? ?? '';
-                          final timeStr = time.length >= 16
-                              ? time.substring(11, 16)
-                              : '';
+                          final timeStr = formatChatTime(time);
 
                           return Column(
                             crossAxisAlignment: isMe

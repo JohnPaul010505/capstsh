@@ -8,6 +8,7 @@ import PeopleTable, { type PeopleColumn } from '@/components/PeopleTable'
 import PaginationFooter from '@/components/PaginationFooter'
 import { ArrowLeft, Phone, Users, UserPlus, X, Search, Trash2 } from 'lucide-react'
 import { useRealtimeProfiles } from '@/hooks/useRealtimeProfiles'
+import { formatAvailability } from '../lib/availabilityTime'
 
 /**
  * TEN rows a page, not the app-wide fifteen.
@@ -353,7 +354,7 @@ export default function TrainerDetailPage() {
         </div>
       </div>
 
-      <div className="glass-card p-4 rounded-xl"><h2 className="font-semibold text-fg-strong mb-2">Availability</h2>{trainer.available_days ? <div className="grid grid-cols-2 gap-x-6 gap-y-2 max-w-lg">{trainer.available_days.split(',').map((value: string) => value.trim()).filter(Boolean).map((entry: string, index: number, entries: string[]) => <p key={entry} className="text-sm text-fg" style={{ gridColumn: Math.floor(index / Math.ceil(entries.length / 2)) + 1, gridRow: index % Math.ceil(entries.length / 2) + 1 }}>{entry}</p>)}</div> : <p className="text-sm text-fg-muted">Schedule not provided</p>}</div></div>
+      <div className="glass-card p-4 rounded-xl"><h2 className="font-semibold text-fg-strong mb-2">Availability</h2>{trainer.available_days ? <div className="grid grid-cols-2 gap-x-6 gap-y-2 max-w-lg">{trainer.available_days.split(',').map((value: string) => value.trim()).filter(Boolean).map((entry: string, index: number, entries: string[]) => <p key={entry} className="text-sm text-fg" style={{ gridColumn: Math.floor(index / Math.ceil(entries.length / 2)) + 1, gridRow: index % Math.ceil(entries.length / 2) + 1 }}>{formatAvailability(entry)}</p>)}</div> : <p className="text-sm text-fg-muted">Schedule not provided</p>}</div></div>
       <div className="shrink-0">
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
           <div className="glass-card p-4 rounded-xl">
