@@ -228,26 +228,6 @@ export default function AttendancePage() {
        bottom of the viewport with no scrollbar to say so. The day's check-ins
        were therefore reachable only as far as the window happened to be. */
     <div className="h-full min-h-0 flex flex-col gap-3">
-      <div className="flex items-center justify-end gap-3 shrink-0">
-        {/* This slot was an empty <div />, which is why the page could not say
-            how much it had actually found. */}
-        <div className="min-w-0">
-          <p className="text-sm text-fg-strong truncate">
-            {isLoading ? 'Loading…' : `${rowCount} ${rowCount === 1 ? 'check-in' : 'check-ins'}`}
-            <span className="text-fg-muted font-normal"> · {roleLabel} · {longDate}</span>
-          </p>
-          {!isLoading && !isError && rowCount === 0 && (
-            <p className="text-xs text-fg-muted truncate">
-              {isSunday
-                ? 'The gym is closed on Sundays, so no check-ins are expected.'
-                : isSingleDay
-                  ? 'No one checked in on this day.'
-                  : 'No one checked in on any day in this range.'}
-            </p>
-          )}
-        </div>
-      </div>
-
       {/*
         ONE ROW: who you are looking at (Members / Trainers) pinned left, and the
         window plus the action collected on the right - which puts the calendar
@@ -268,19 +248,36 @@ export default function AttendancePage() {
       */}
       <ListToolbar
         left={
-          <div className="glass-card page-tabs" role="group" aria-label="Attendance views">
-            <button
-              aria-pressed={category === 'member'} onClick={() => setCategory('member')}
-              className="page-tab"
-            >
-              Members
-            </button>
-            <button
-              aria-pressed={category === 'trainer'} onClick={() => setCategory('trainer')}
-              className="page-tab"
-            >
-              Trainers
-            </button>
+          <div className="flex flex-wrap items-center gap-3 min-w-0">
+            <div className="glass-card page-tabs" role="group" aria-label="Attendance views">
+              <button
+                aria-pressed={category === 'member'} onClick={() => setCategory('member')}
+                className="page-tab"
+              >
+                Members
+              </button>
+              <button
+                aria-pressed={category === 'trainer'} onClick={() => setCategory('trainer')}
+                className="page-tab"
+              >
+                Trainers
+              </button>
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm text-fg-strong truncate">
+                {isLoading ? 'Loading…' : `${rowCount} ${rowCount === 1 ? 'check-in' : 'check-ins'}`}
+                <span className="text-fg-muted font-normal"> · {roleLabel} · {longDate}</span>
+              </p>
+              {!isLoading && !isError && rowCount === 0 && (
+                <p className="text-xs text-fg-muted truncate">
+                  {isSunday
+                    ? 'The gym is closed on Sundays, so no check-ins are expected.'
+                    : isSingleDay
+                      ? 'No one checked in on this day.'
+                      : 'No one checked in on any day in this range.'}
+                </p>
+              )}
+            </div>
           </div>
         }
         range={range}
