@@ -45,9 +45,9 @@ export function useMembersList({ page, pageSize, search, from, to, unassignedIds
   return usePagedTable<Profile>({
     table: 'profiles',
     select: assignedOnly ? `${PEOPLE_COLUMNS}, trainer_assignments!trainer_assignments_member_id_fkey!inner(status)` : PEOPLE_COLUMNS,
-    // `code` is unique per role but is NULL for some rows, so `id` is kept as
-    // the unique tiebreak that keeps pages disjoint.
-    orderBy: [{ column: 'code', ascending: true }, { column: 'id', ascending: true }],
+    // Sort by join time so four-digit codes follow earlier members; `id` keeps
+    // pages disjoint when profiles share the same timestamp.
+    orderBy: [{ column: 'created_at', ascending: true }, { column: 'id', ascending: true }],
     page, pageSize, search,
     searchColumns: ['full_name', 'code', 'email'],
     dateColumn: 'created_at', from: from ? localStartIso(from) : undefined, to: to ? localEndIso(to) : undefined,
